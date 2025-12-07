@@ -38,7 +38,7 @@ export const TablePageLayout: React.FC<TablePageLayoutProps> = ({
   return (
     <DashboardLayout title={title} subtitle={subtitle || ''}>
       <div
-        className={`bg-[#FFFFFFBF] border border-[#FFFFFF] rounded-2xl flex flex-col h-full ${className}`}
+        className={`bg-white/75 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full ${className}`}
       >
         {/* Sticky Header Section */}
         <div className="sticky top-0 z-10 rounded-t-2xl">

@@ -8,7 +8,6 @@ import {
   Button,
   Box,
   Typography,
-  CircularProgress,
 } from '@mui/material'
 import { FormProvider, useForm } from 'react-hook-form'
 
@@ -16,6 +15,7 @@ import TasStep1 from './steps/TasStep1'
 import TasStep2 from './steps/TasStep2'
 import DocumentUploadFactory from '../DocumentUpload/DocumentUploadFactory'
 import { DocumentItem } from '../DeveloperStepper/developerTypes'
+import { ManualPaymentDataProvider } from '../ManualPaymentStepper/ManualPaymentDataProvider'
 
 import { ProjectData } from './tasPaymentTypes'
 import { fundEgressService } from '@/services/api/fundEgressService'
@@ -23,6 +23,26 @@ import { toast } from 'react-hot-toast'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { useManualPaymentLabelsWithCache } from '@/hooks/useManualPaymentLabelsWithCache'
 import { MANUAL_PAYMENT_LABELS } from '@/constants/mappings/manualPaymentLabels'
+import { GlobalLoading } from '@/components/atoms'
+
+const useIsDarkMode = () => {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+    checkDarkMode()
+    const observer = new MutationObserver(checkDarkMode)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    return () => observer.disconnect()
+  }, [])
+
+  return isDark
+}
 
 export default function TasPaymentStepperWrapper() {
   const [activeStep, setActiveStep] = useState(0)
@@ -32,6 +52,7 @@ export default function TasPaymentStepperWrapper() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const params = useParams()
+  const isDarkMode = useIsDarkMode()
 
   // Use translation hook for TAS payment labels (same as manual payment)
   const { getLabel } = useManualPaymentLabelsWithCache('EN')
@@ -66,7 +87,7 @@ export default function TasPaymentStepperWrapper() {
         if (paymentId) {
           if (!paymentId.startsWith('temp_')) {
             const data = await fundEgressService.getFundEgressById(paymentId)
-            console.log('data for tas payment', data)
+
             setFundEgressData(data)
             setSavedId(paymentId)
           } else {
@@ -168,7 +189,7 @@ export default function TasPaymentStepperWrapper() {
 
         return (
           <DocumentUploadFactory
-            type="BUILD_PARTNER"
+            type="PAYMENTS"
             entityId={savedId}
             isOptional={true}
             onDocumentsChange={(documents: DocumentItem[]) => {
@@ -186,8 +207,19 @@ export default function TasPaymentStepperWrapper() {
 
   if (loading) {
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <CircularProgress sx={{ mb: 2 }} />
+      <Box
+        sx={{
+          backgroundColor: isDarkMode ? '#101828' : '#FFFFFFBF',
+          borderRadius: '16px',
+          margin: '0 auto',
+          width: '100%',
+          height: '500px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <GlobalLoading fullHeight className="min-h-[500px]" />
       </Box>
     )
   }
@@ -207,99 +239,138 @@ export default function TasPaymentStepperWrapper() {
   }
 
   return (
-    <FormProvider {...methods}>
-      <Box
-        className="border-gray-200 rounded-t-2xl"
-        sx={{
-          width: '100%',
-          height: 'calc(100vh - 200px)', // Adjust for header height
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: '#FFFFFFBF',
-          border: 'none',
-          paddingTop: '16px',
-        }}
-      >
-        {/* Stepper Header - Fixed */}
-        <Box sx={{ flexShrink: 0 }}>
-          <Stepper activeStep={activeStep} alternativeLabel>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 400,
-                      fontStyle: 'normal',
-                      fontSize: '12px',
-                      lineHeight: '100%',
-                      letterSpacing: '0.36px',
-                      textAlign: 'center',
-                      verticalAlign: 'middle',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {label}
-                  </Typography>
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Box>
-
-        {/* Content Area - Scrollable */}
+    <ManualPaymentDataProvider>
+      <FormProvider {...methods}>
         <Box
+          className="border-gray-200 rounded-t-2xl"
           sx={{
-            flex: 1,
-            overflow: 'auto',
-            backgroundColor: '#FFFFFFBF',
-            boxShadow: 'none',
-            p: 1,
+            width: '100%',
+            height: 'calc(100vh - 200px)', // Adjust for header height
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: isDarkMode ? '#101828' : '#FFFFFFBF',
+            border: isDarkMode ? '1px solid rgba(51, 65, 85, 1)' : 'none',
+            paddingTop: '16px',
           }}
         >
-          {getStepContent(activeStep)}
-        </Box>
+          {/* Stepper Header - Fixed */}
+          <Box sx={{ flexShrink: 0 }}>
+            <Stepper activeStep={activeStep} alternativeLabel>
+              {steps.map((label) => (
+                <Step key={label}>
+                  <StepLabel>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontFamily: 'Outfit, sans-serif',
+                        fontWeight: 400,
+                        fontStyle: 'normal',
+                        fontSize: '12px',
+                        lineHeight: '100%',
+                        letterSpacing: '0.36px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                        textTransform: 'uppercase',
+                        color: isDarkMode ? '#CBD5E1' : '#4A5565',
+                      }}
+                    >
+                      {label}
+                    </Typography>
+                  </StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
 
-        {/* Navigation Buttons - Sticky Bottom */}
-        <Box
-          sx={{
-            flexShrink: 0,
-            backgroundColor: '#FFFFFFBF',
-            borderTop: '1px solid #E5E7EB',
-            px: 6,
-            py: 2,
-            position: 'sticky',
-            bottom: 0,
-            zIndex: 10,
-          }}
-        >
+          {/* Content Area - Scrollable */}
           <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
             sx={{
-              width: '100%',
-              minHeight: '100%',
+              flex: 1,
+              overflow: 'auto',
+              backgroundColor: isDarkMode ? '#101828' : '#FFFFFFBF',
+              boxShadow: 'none',
+              p: 1,
             }}
           >
-            <Button
-              onClick={handleReset}
+            {getStepContent(activeStep)}
+          </Box>
+
+          {/* Navigation Buttons - Sticky Bottom */}
+          <Box
+            sx={{
+              flexShrink: 0,
+              backgroundColor: isDarkMode ? '#101828' : '#FFFFFFBF',
+              borderTop: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
+              px: 6,
+              py: 2,
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 10,
+            }}
+          >
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
               sx={{
-                fontFamily: 'Outfit, sans-serif',
-                fontWeight: 500,
-                fontStyle: 'normal',
-                fontSize: '14px',
-                lineHeight: '20px',
-                letterSpacing: 0,
+                width: '100%',
+                minHeight: '100%',
               }}
             >
-              Cancel
-            </Button>
-            <Box>
-              {activeStep !== 0 && (
+              <Button
+                onClick={handleReset}
+                variant="outlined"
+                sx={{
+                  minWidth: '120px',
+                  height: '40px',
+                  fontFamily: 'Outfit, sans-serif',
+                  fontWeight: 500,
+                  fontStyle: 'normal',
+                  fontSize: '14px',
+                  lineHeight: '20px',
+                  letterSpacing: 0,
+                }}
+              >
+                Cancel
+              </Button>
+              <Box>
+                {activeStep !== 0 && (
+                  <Button
+                    onClick={handleBack}
+                    sx={{
+                      width: '114px',
+                      height: '36px',
+                      gap: '6px',
+                      opacity: 1,
+                      paddingTop: '2px',
+                      paddingRight: '3px',
+                      paddingBottom: '2px',
+                      paddingLeft: '3px',
+                      borderRadius: '6px',
+                      backgroundColor: isDarkMode ? '#1E293B' : '#DBEAFE',
+                      color: isDarkMode ? '#60A5FA' : '#155DFC',
+                      border: 'none',
+                      mr: 2,
+                      fontFamily: 'Outfit, sans-serif',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '14px',
+                      lineHeight: '20px',
+                      letterSpacing: 0,
+                      '&:hover': {
+                        backgroundColor: isDarkMode ? '#334155' : '#BFDBFE',
+                      },
+                    }}
+                    variant="outlined"
+                  >
+                    Back
+                  </Button>
+                )}
                 <Button
-                  onClick={handleBack}
+                  onClick={
+                    activeStep === steps.length - 1 ? handleFinish : handleNext
+                  }
+                  variant="contained"
                   sx={{
                     width: '114px',
                     height: '36px',
@@ -310,54 +381,27 @@ export default function TasPaymentStepperWrapper() {
                     paddingBottom: '2px',
                     paddingLeft: '3px',
                     borderRadius: '6px',
-                    backgroundColor: '#DBEAFE',
-                    color: '#155DFC',
-                    border: 'none',
-                    mr: 2,
+                    backgroundColor: '#2563EB',
+                    color: '#FFFFFF',
+                    boxShadow: 'none',
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
                     fontStyle: 'normal',
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
+                    '&:hover': {
+                      backgroundColor: isDarkMode ? '#1E40AF' : '#1E3A8A',
+                    },
                   }}
-                  variant="outlined"
                 >
-                  Back
+                  {activeStep === steps.length - 1 ? 'Finish' : 'Next'}
                 </Button>
-              )}
-              <Button
-                onClick={
-                  activeStep === steps.length - 1 ? handleFinish : handleNext
-                }
-                variant="contained"
-                sx={{
-                  width: '114px',
-                  height: '36px',
-                  gap: '6px',
-                  opacity: 1,
-                  paddingTop: '2px',
-                  paddingRight: '3px',
-                  paddingBottom: '2px',
-                  paddingLeft: '3px',
-                  borderRadius: '6px',
-                  backgroundColor: '#2563EB',
-                  color: '#FFFFFF',
-                  boxShadow: 'none',
-                  fontFamily: 'Outfit, sans-serif',
-                  fontWeight: 500,
-                  fontStyle: 'normal',
-                  fontSize: '14px',
-                  lineHeight: '20px',
-                  letterSpacing: 0,
-                }}
-              >
-                {activeStep === steps.length - 1 ? 'Finish' : 'Next'}
-              </Button>
+              </Box>
             </Box>
           </Box>
         </Box>
-      </Box>
-    </FormProvider>
+      </FormProvider>
+    </ManualPaymentDataProvider>
   )
 }

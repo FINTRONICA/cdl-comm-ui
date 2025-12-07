@@ -18,7 +18,7 @@ function ManualPaymentContent() {
 
   return (
     <DashboardLayout title={pageTitle} subtitle={pageSubtitle}>
-      <div className="px-3">
+      <div className="px-3 mt-[10px] bg-white/75 dark:bg-[#101828] p-3 rounded-xl">
         <ManualPaymentStepperWrapper />
       </div>
     </DashboardLayout>

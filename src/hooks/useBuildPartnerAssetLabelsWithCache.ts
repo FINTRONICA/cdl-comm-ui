@@ -42,8 +42,7 @@ export function useBuildPartnerAssetLabelsWithCache() {
     isFetching: buildPartnerAssetLabelsLoading,
     isSuccess: !!buildPartnerAssetLabels,
     refetch: () => {
-      // Note: In compliance mode, refetch is handled by app initialization
-      console.log('🏦 [COMPLIANCE] Refetch requested - handled by compliance loader')
+    
       return Promise.resolve({ data: buildPartnerAssetLabels })
     },
     
@@ -54,6 +53,6 @@ export function useBuildPartnerAssetLabelsWithCache() {
     
     // Compatibility properties (maintained for existing UI components)
     hasCache: !!buildPartnerAssetLabels, // Now represents Zustand store state
-    cacheStatus: buildPartnerAssetLabels ? 'cached' : buildPartnerAssetLabelsLoading ? 'loading' : 'fresh',
+    cacheStatus: buildPartnerAssetLabels ? 'cached' : buildPartnerAssetLabelsLoading ? 'Loading...' : 'fresh',
   }
 }

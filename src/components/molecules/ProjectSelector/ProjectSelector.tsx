@@ -157,16 +157,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       <div
         onClick={handleToggle}
         className={`
-          relative w-full min-h-[40px] px-3 py-2 text-left bg-white border border-gray-300 rounded-md cursor-pointer
+          relative w-full min-h-[40px] px-3 py-2 text-left bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer
           transition-colors duration-200
-          ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'hover:border-gray-400'}
-          ${isOpen ? 'border-blue-500 ring-1 ring-blue-500' : ''}
-          ${required && !value ? 'border-red-300' : ''}
+          ${disabled ? 'bg-gray-50 dark:bg-gray-700 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-gray-500'}
+          ${isOpen ? 'border-blue-500 dark:border-blue-500 ring-1 ring-blue-500 dark:ring-blue-500' : ''}
+          ${required && !value ? 'border-red-300 dark:border-red-600' : ''}
         `}
       >
         {/* Selected Value or Placeholder */}
         <div className="flex items-center justify-between">
-          <span className={`block truncate ${!selectedOption ? 'text-gray-500' : 'text-gray-900'}`}>
+          <span className={`block truncate ${!selectedOption ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           
@@ -175,16 +175,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             {value && !disabled && (
               <button
                 onClick={handleClear}
-                className="p-1 hover:bg-gray-100 rounded transition-colors duration-200"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors duration-200"
                 type="button"
               >
-                <X className="w-4 h-4 text-gray-400" />
+                <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               </button>
             )}
             
             {/* Dropdown Arrow */}
             <ChevronDown 
-              className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+              className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${
                 isOpen ? 'rotate-180' : ''
               }`} 
             />
@@ -194,18 +194,18 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
           {/* Search Input */}
-          <div className="p-2 border-b border-gray-200">
+          <div className="p-2 border-b border-gray-200 dark:border-gray-700">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
                 ref={inputRef}
                 type="text"
                 value={searchQuery}
                 onChange={handleInputChange}
                 placeholder="Type to search projects..."
-                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:border-blue-500 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-500 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             </div>
           </div>
@@ -223,9 +223,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   onClick={() => handleSelect(option)}
                   className={`
                     px-3 py-2 text-sm cursor-pointer transition-colors duration-150
-                    ${index === focusedIndex ? 'bg-blue-50 text-blue-900' : 'text-gray-900'}
-                    ${option.value === value ? 'bg-blue-100 text-blue-900 font-medium' : ''}
-                    hover:bg-gray-50
+                    ${index === focusedIndex ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}
+                    ${option.value === value ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-300 font-medium' : ''}
+                    hover:bg-gray-50 dark:hover:bg-gray-700
                   `}
                   role="option"
                   aria-selected={option.value === value}
@@ -233,13 +233,13 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   <div className="flex flex-col">
                     <span className="font-medium">{option.label}</span>
                     {option.originalId && option.originalId !== option.label && (
-                      <span className="text-xs text-gray-500 mt-1">ID: {option.originalId}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">ID: {option.originalId}</span>
                     )}
                   </div>
                 </li>
               ))
             ) : (
-              <li className="px-3 py-2 text-sm text-gray-500 italic">
+              <li className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 italic">
                 No projects found matching &ldquo;{searchQuery}&rdquo;
               </li>
             )}

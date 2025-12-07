@@ -1,7 +1,9 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { UserProfile } from '../../molecules/UserProfile'
+import { ThemeSwitcher } from '../../molecules/ThemeSwitcher'
 import { useAuthStore } from '@/store/authStore'
+import { useLogout } from '@/hooks/useAuthQuery'
 
 interface HeaderProps {
   title: string
@@ -23,11 +25,17 @@ export const Header: React.FC<HeaderProps> = ({
   className = '',
 }) => {
   const router = useRouter()
-  const { user, logout } = useAuthStore()
+  const { user } = useAuthStore()
+  const logoutMutation = useLogout()
 
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync()
+      router.push('/login')
+    } catch (error) {
+      // Even if logout fails, redirect to login
+      router.push('/login')
+    }
   }
 
   // Fallback user data if user is not available
@@ -35,14 +43,15 @@ export const Header: React.FC<HeaderProps> = ({
   const displayEmail = user?.email
 
   return (
-    <header className={`bg-white/0 px-5 py-4 ${className}`}>
+    <header className={`dark:bg-gray-900 px-5 py-4 ${className}`}>
       <div className="flex items-center justify-between">
-        {/* Left side - Title and description */}
         <div className="flex flex-col justify-center">
-          <h1 className="text-[32px] font-sans text-[#1E2939] font-semibold leading-normal">
+          <h1 className="text-[32px] font-sans text-gray-900 dark:text-gray-100 font-semibold leading-normal">
             {title}
           </h1>
-          <p className="text-gray-600 text-base mt-1">{subtitle}</p>
+          <p className="mt-1 text-base text-gray-600 dark:text-gray-400">
+            {subtitle}
+          </p>
         </div>
 
         {/* Spacer */}
@@ -50,6 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right side - Controls */}
         <div className="flex items-center gap-6">
+          <ThemeSwitcher />
           <UserProfile
             name={displayName}
             {...(displayEmail && { email: displayEmail })}

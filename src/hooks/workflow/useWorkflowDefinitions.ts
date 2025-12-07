@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { toast } from 'react-hot-toast'
 import {
   workflowDefinitionService,
   type CreateWorkflowDefinitionRequest,
@@ -118,9 +119,11 @@ export function useCreateWorkflowDefinition() {
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_DEFINITIONS_QUERY_KEY],
       })
+      toast.success('Workflow definition created successfully!')
     },
     onError: (error) => {
-      console.log(error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Failed to create workflow definition: ${errorMessage}`)
     },
     retry: 2,
   })
@@ -150,9 +153,11 @@ export function useUpdateWorkflowDefinition() {
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_DEFINITIONS_QUERY_KEY, 'detail', variables.id],
       })
+      toast.success('Workflow definition updated successfully!')
     },
     onError: (error) => {
-      console.log(error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Failed to update workflow definition: ${errorMessage}`)
     },
     retry: 2,
   })
@@ -171,9 +176,11 @@ export function useDeleteWorkflowDefinition() {
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_DEFINITIONS_QUERY_KEY],
       })
+      toast.success('Workflow definition deleted successfully')
     },
     onError: (error) => {
-      console.log(error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Failed to delete workflow definition: ${errorMessage}`)
     },
     retry: false,
   })
@@ -189,7 +196,7 @@ export function useWorkflowDefinitionLabels() {
       return WorkflowDefinitionLabelsService.processLabels(raw)
     },
     enabled: !!isAuthenticated,
-    staleTime: 24 * 60 * 60 * 1000, 
+    staleTime: 24 * 60 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 3,
   })
@@ -236,7 +243,7 @@ export function useApplicationModules() {
     queryKey: ['applicationModules'],
     queryFn: () =>
       workflowDefinitionService.getWorkflowDefinitionApplicationModules(),
-    staleTime: 30 * 60 * 1000, 
+    staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 2,
   })
@@ -305,7 +312,7 @@ export function useWorkflowDefinitionForm() {
   const moduleOptions =
     applicationModules.data?.map((module: ApplicationModuleDTO) => ({
       id: module.id,
-      label: module.moduleDescription || 'No description available',
+      label: module.moduleDescription,
       value: module.id,
       code: module.moduleCode,
       description: module.moduleDescription,
@@ -314,7 +321,7 @@ export function useWorkflowDefinitionForm() {
   const actionOptions =
     workflowActions.data?.map((action: WorkflowActionDTO) => ({
       id: action.id,
-      label: action.description || 'No description available',
+      label: action.description,
       value: action.id,
       key: action.actionKey,
       description: action.description,
@@ -329,7 +336,7 @@ export function useWorkflowDefinitionForm() {
       actionCode?: string
       applicationModuleId?: number | null
       workflowActionId?: number | null
-      active?: boolean
+      enabled?: boolean
     }) => {
       const createRequest: CreateWorkflowDefinitionRequest = {
         name: formData.name,
@@ -345,7 +352,7 @@ export function useWorkflowDefinitionForm() {
         ...(formData.workflowActionId && {
           workflowActionId: formData.workflowActionId,
         }),
-        ...(formData.active !== undefined && { active: formData.active }),
+        ...(formData.enabled !== undefined && { enabled: formData.enabled }),
       }
       return create.mutateAsync(createRequest)
     },
@@ -363,7 +370,7 @@ export function useWorkflowDefinitionForm() {
         actionCode?: string
         applicationModuleId?: number | null
         workflowActionId?: number | null
-        active?: boolean
+        enabled?: boolean
       }
     ) => {
       const updateRequest: UpdateWorkflowDefinitionRequest = {
@@ -380,7 +387,7 @@ export function useWorkflowDefinitionForm() {
         ...(formData.workflowActionId && {
           workflowActionId: formData.workflowActionId,
         }),
-        ...(formData.active !== undefined && { active: formData.active }),
+        ...(formData.enabled !== undefined && { enabled: formData.enabled }),
       }
       return update.mutateAsync({ id, updates: updateRequest })
     },

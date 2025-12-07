@@ -15,22 +15,22 @@ export const validateFile: FileValidator = (file: File, config: UploadConfig): V
     };
   }
 
-  // File type validation
-  if (mergedConfig.allowedTypes && !mergedConfig.allowedTypes.includes(file.type)) {
-    return {
-      isValid: false,
-      error: 'File type not supported. Please upload PDF, Word, Excel, or Image files.'
-    };
-  }
-
-  // File extension validation (fallback if MIME type is not reliable)
+  // File extension validation (primary check)
   if (mergedConfig.allowedExtensions) {
     const fileExtension = '.' + file.name.toLowerCase().split('.').pop();
     if (!mergedConfig.allowedExtensions.includes(fileExtension)) {
       return {
         isValid: false,
-        error: 'File extension not supported. Please upload PDF, Word, Excel, or Image files.'
+        error: `Only PDF, DOCX, XLSX, JPEG, PNG files are allowed. Please upload a supported file type.`
       };
+    }
+  }
+
+  // File type validation (secondary check - only if MIME type is available and not empty)
+  if (mergedConfig.allowedTypes && file.type && file.type !== 'application/octet-stream') {
+    if (!mergedConfig.allowedTypes.includes(file.type)) {
+      // Don't fail here if extension validation passed - MIME types can be unreliable
+      // Just log for debugging purposes
     }
   }
 
@@ -46,13 +46,11 @@ export const getFileTypeFromName = (filename: string): string => {
   const extension = filename.toLowerCase().split('.').pop();
   const typeMap: Record<string, string> = {
     'pdf': 'application/pdf',
-    'doc': 'application/msword',
     'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'xls': 'application/vnd.ms-excel',
     'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'jpg': 'image/jpeg',
     'jpeg': 'image/jpeg',
-    'png': 'image/png'
+    'png': 'image/png',
   };
   
   return typeMap[extension || ''] || 'application/octet-stream';

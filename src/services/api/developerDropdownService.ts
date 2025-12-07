@@ -53,11 +53,10 @@ export class DeveloperDropdownService {
         }
       )
       
-      console.log('✅ DeveloperDropdownService: Regulatory authorities fetched successfully')
-      console.log('📊 Regulatory Authorities API Response:', authorities)
+   
       return authorities
     } catch (error) {
-      console.error('❌ DeveloperDropdownService: Error fetching regulatory authorities:', error)
+      
       throw new Error(ERROR_MESSAGE)
     }
   }

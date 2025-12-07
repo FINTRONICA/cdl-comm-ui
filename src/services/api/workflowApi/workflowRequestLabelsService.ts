@@ -51,10 +51,7 @@ export class WorkflowRequestLabelsService {
             )
             return labels
         } catch (error) {
-            console.log(
-                ' WorkflowRequestLabelsService: Error fetching labels:',
-                error
-            )
+           
             throw new Error(ERROR_MESSAGE)
         }
     }
@@ -110,10 +107,7 @@ export class WorkflowRequestLabelsService {
 
             return Array.from(languages)
         } catch (error) {
-            console.error(
-                'WorkflowRequestLabelsService: Error getting available languages:',
-                error
-            )
+            
             return [DEFAULT_LANGUAGE]
         }
     }

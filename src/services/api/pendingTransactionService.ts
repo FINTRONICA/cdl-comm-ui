@@ -3,49 +3,47 @@ import { buildApiUrl, API_ENDPOINTS } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
 export interface PendingTransaction {
   id: number
-  ptfiTransactionId: string | null
-  ptfiTransactionRefId: string | null
-  ptfiAmount: number | null
-  ptfiTotalAmount: number | null
-  ptfiTransactionDate: string | null
-  ptfiNarration: string | null
-  ptfiDescription: string | null
-  ptfiDiscard: boolean | null
-  ptfiIsAllocated: boolean | null
-  ptfiTransParticular1: string | null
-  ptfiTransParticular2: string | null
-  ptfiTransRemark1: string | null
-  ptfiTransRemark2: string | null
-  ptfiCheckNumber: string | null
-  ptfiTasUpdated: boolean | null
-  ptfiTasUpdate: boolean | null
-  ptfiUnitRefNumber: string | null
-  ptfiValueDateTime: string | null
-  ptfiPostedDateTime: string | null
-  ptfiPrimaryUnitHolderName: string | null
-  ptfiNormalDateTime: string | null
-  ptfiBranchCode: string | null
-  ptfiPostedBranchCode: string | null
-  ptfiCurrencyCode: string | null
-  ptfiSpecialField1: string | null
-  ptfiSpecialField2: string | null
-  ptfiSpecialField3: string | null
-  ptfiSpecialField4: string | null
-  ptfiSpecialField5: string | null
-  ptfiRetentionAmount: number | null
-  ptfiIsUnAllocatedCategory: boolean | null
-  ptfiTasPaymentStatus: string | null
-  ptfiDiscardedDateTime: string | null
-  ptfiCreditedEscrow: boolean | null
-  ptfiCbsResponse: string | null
-  ptfiPaymentRefNo: string | null
-  realEstateAssestDTO: any | null
-  capitalPartnerUnitDTO: any | null
-  bucketTypeDTO: any | null
-  depositModeDTO: any | null
-  subDepositTypeDTO: any | null
-  bankAccountDTO: any | null
-  taskStatusDTO?: any | null
+  unReconTransactionId: string | null
+  transactionReferenceNumber: string | null
+  transactionAmount: number | null
+  totalTransactionAmount: number | null
+  transactionDateTime: string | null
+  transactionNarration: string | null
+  transactionDescription: string | null
+  discardFlag: boolean | null
+  allocatedFlag: boolean | null
+  transactionParticular1: string | null
+  transactionParticular2: string | null
+  transactionParticularRemark1: string | null
+  transactionParticularRemark2: string | null
+  chequeReferenceNumber: string | null
+  tasUpdateRequestedFlag: boolean | null
+  tasUpdateAppliedFlag: boolean | null
+  valueDateTime: string | null
+  postedDateTime: string | null
+  processingDateTime: string | null
+  branchIdentifierCode: string | null
+  postedBranchIdentifierCode: string | null
+  currencyCode: string | null
+  customField1: string | null
+  customField2: string | null
+  customField3: string | null
+  customField4: string | null
+  customField5: string | null
+  primaryUnitHolderFullName: string | null
+  unallocatedCategoryFlag: boolean | null
+  tasPaymentStatusCode: string | null
+  discardedDateTime: string | null
+  creditedToEscrowFlag: boolean | null
+  coreBankingResponsePayload: string | null
+  paymentReferenceNumber: string | null
+  subBucketIdentifier: string | null
+  escrowAgreementDTO: Record<string, unknown> | null
+  bucketTypeDTO: Record<string, unknown> | null
+  subBucketTypeDTO: Record<string, unknown> | null
+  escrowAccountDTO: Record<string, unknown> | null
+  depositModeDTO: Record<string, unknown> | null
+  taskStatusDTO?: Record<string, unknown> | null
 }
 
 export interface PendingTransactionFilters {
@@ -79,7 +77,30 @@ export interface PendingTransactionUIData {
   projectName?: string
   projectRegulatorId?: string
   developerName?: string
-  taskStatusDTO?: any | null
+  taskStatusDTO?: Record<string, unknown> | null
+  // Additional fields from API response
+  valueDateTime?: string
+  postedDateTime?: string
+  processingDateTime?: string
+  branchIdentifierCode?: string
+  postedBranchIdentifierCode?: string
+  customField1?: string
+  customField2?: string
+  customField3?: string
+  customField4?: string
+  customField5?: string
+  transactionParticular1?: string
+  transactionParticular2?: string
+  transactionParticularRemark1?: string
+  transactionParticularRemark2?: string
+  chequeReferenceNumber?: string
+  paymentReferenceNumber?: string
+  subBucketIdentifier?: string
+  primaryUnitHolderFullName?: string
+  unallocatedCategoryFlag?: boolean
+  creditedToEscrowFlag?: boolean
+  tasUpdateRequestedFlag?: boolean
+  tasUpdateAppliedFlag?: boolean
 }
 
 export interface PendingTransactionLabel {
@@ -91,29 +112,29 @@ export interface PendingTransactionLabel {
 }
 
 export interface CreatePendingTransactionRequest {
-  ptfiTransactionId: string
-  ptfiTransactionRefId: string
-  ptfiAmount: number
-  ptfiTotalAmount: number
-  ptfiTransactionDate: string
-  ptfiNarration?: string
-  ptfiDescription?: string
-  ptfiCurrencyCode?: string
-  ptfiTasPaymentStatus?: string
+  unReconTransactionId: string
+  transactionReferenceNumber: string
+  transactionAmount: number
+  totalTransactionAmount: number
+  transactionDateTime: string
+  transactionNarration?: string
+  transactionDescription?: string
+  currencyCode?: string
+  tasPaymentStatusCode?: string
 }
 
 export interface UpdatePendingTransactionRequest {
-  ptfiTransactionId?: string
-  ptfiTransactionRefId?: string
-  ptfiAmount?: number
-  ptfiTotalAmount?: number
-  ptfiTransactionDate?: string
-  ptfiNarration?: string
-  ptfiDescription?: string
-  ptfiCurrencyCode?: string
-  ptfiTasPaymentStatus?: string
-  ptfiIsAllocated?: boolean
-  ptfiDiscard?: boolean
+  unReconTransactionId?: string
+  transactionReferenceNumber?: string
+  transactionAmount?: number
+  totalTransactionAmount?: number
+  transactionDateTime?: string
+  transactionNarration?: string
+  transactionDescription?: string
+  currencyCode?: string
+  tasPaymentStatusCode?: string
+  allocatedFlag?: boolean
+  discardFlag?: boolean
 }
 
 export const mapPendingTransactionToUIData = (
@@ -124,42 +145,65 @@ export const mapPendingTransactionToUIData = (
     return value.toFixed(2)
   }
 
-  const mapApiStatus = (taskStatusDTO: any | null): string => {
-    if (!taskStatusDTO) {
-      return 'INITIATED'
+  const formatDateTime = (value: string | null | undefined): string => {
+    if (!value) return ''
+    try {
+      return new Date(value).toISOString()
+    } catch {
+      return value
     }
-    
-    // Use the code from taskStatusDTO directly as it matches our new status options
-    return taskStatusDTO.code || 'INITIATED'
   }
 
   return {
     id: String(apiData.id),
-    transactionId: apiData.ptfiTransactionId || '—',
-    referenceId: apiData.ptfiTransactionRefId || '—',
-    amount: formatAmount(apiData.ptfiAmount ?? null),
-    totalAmount: formatAmount(apiData.ptfiTotalAmount ?? null),
-    currency: apiData.ptfiCurrencyCode || '—',
-    transactionDate: apiData.ptfiTransactionDate || '',
-    narration: apiData.ptfiNarration || '',
-    description: apiData.ptfiDescription || '',
-    paymentStatus: apiData.ptfiTasPaymentStatus || '—',
-    allocated: apiData.ptfiIsAllocated ? 'Yes' : 'No',
-    discard: apiData.ptfiDiscard ? 'Yes' : 'No',
-    tasUpdate: String(apiData.ptfiTasUpdate),
-    projectName: apiData?.realEstateAssestDTO?.reaName || '—',
-    projectRegulatorId: apiData?.realEstateAssestDTO?.reaId || '—',
-    developerName: apiData.ptfiPrimaryUnitHolderName || '—',
+    transactionId: apiData.unReconTransactionId || '—',
+    referenceId: apiData.transactionReferenceNumber || '—',
+    amount: formatAmount(apiData.transactionAmount ?? null),
+    totalAmount: formatAmount(apiData.totalTransactionAmount ?? null),
+    currency: apiData.currencyCode || '—',
+    transactionDate: apiData.transactionDateTime || '',
+    narration: apiData.transactionNarration || '',
+    description: apiData.transactionDescription || '',
+    paymentStatus: apiData.tasPaymentStatusCode || '—',
+    allocated: apiData.allocatedFlag ? 'Yes' : 'No',
+    discard: apiData.discardFlag ? 'Yes' : 'No',
+    tasUpdate: String(apiData.tasUpdateRequestedFlag || apiData.tasUpdateAppliedFlag || false),
+    projectName: (apiData?.escrowAgreementDTO as { clientNameDTO?: { partyFullName?: string } } | null)?.clientNameDTO?.partyFullName || '—',
+    projectRegulatorId: (apiData?.escrowAgreementDTO as { clientNameDTO?: { partyCifNumber?: string } } | null)?.clientNameDTO?.partyCifNumber || '—',
+    developerName: apiData.primaryUnitHolderFullName || '—',
     taskStatusDTO: apiData.taskStatusDTO || null,
+    // Additional fields - only include if they have values
+    ...(apiData.valueDateTime && { valueDateTime: formatDateTime(apiData.valueDateTime) }),
+    ...(apiData.postedDateTime && { postedDateTime: formatDateTime(apiData.postedDateTime) }),
+    ...(apiData.processingDateTime && { processingDateTime: formatDateTime(apiData.processingDateTime) }),
+    ...(apiData.branchIdentifierCode && { branchIdentifierCode: apiData.branchIdentifierCode }),
+    ...(apiData.postedBranchIdentifierCode && { postedBranchIdentifierCode: apiData.postedBranchIdentifierCode }),
+    ...(apiData.customField1 && { customField1: apiData.customField1 }),
+    ...(apiData.customField2 && { customField2: apiData.customField2 }),
+    ...(apiData.customField3 && { customField3: apiData.customField3 }),
+    ...(apiData.customField4 && { customField4: apiData.customField4 }),
+    ...(apiData.customField5 && { customField5: apiData.customField5 }),
+    ...(apiData.transactionParticular1 && { transactionParticular1: apiData.transactionParticular1 }),
+    ...(apiData.transactionParticular2 && { transactionParticular2: apiData.transactionParticular2 }),
+    ...(apiData.transactionParticularRemark1 && { transactionParticularRemark1: apiData.transactionParticularRemark1 }),
+    ...(apiData.transactionParticularRemark2 && { transactionParticularRemark2: apiData.transactionParticularRemark2 }),
+    ...(apiData.chequeReferenceNumber && { chequeReferenceNumber: apiData.chequeReferenceNumber }),
+    ...(apiData.paymentReferenceNumber && { paymentReferenceNumber: apiData.paymentReferenceNumber }),
+    ...(apiData.subBucketIdentifier && { subBucketIdentifier: apiData.subBucketIdentifier }),
+    ...(apiData.primaryUnitHolderFullName && { primaryUnitHolderFullName: apiData.primaryUnitHolderFullName }),
+    ...(apiData.unallocatedCategoryFlag !== null && apiData.unallocatedCategoryFlag !== undefined && { unallocatedCategoryFlag: apiData.unallocatedCategoryFlag }),
+    ...(apiData.creditedToEscrowFlag !== null && apiData.creditedToEscrowFlag !== undefined && { creditedToEscrowFlag: apiData.creditedToEscrowFlag }),
+    ...(apiData.tasUpdateRequestedFlag !== null && apiData.tasUpdateRequestedFlag !== undefined && { tasUpdateRequestedFlag: apiData.tasUpdateRequestedFlag }),
+    ...(apiData.tasUpdateAppliedFlag !== null && apiData.tasUpdateAppliedFlag !== undefined && { tasUpdateAppliedFlag: apiData.tasUpdateAppliedFlag }),
   }
 }
 
 export class PendingTransactionService {
   async createPendingTransaction(
-    data: Partial<PendingTransaction>
+    data: CreatePendingTransactionRequest
   ): Promise<PendingTransaction> {
     try {
-      const url = buildApiUrl(API_ENDPOINTS.PENDING_FUND_INGRESS.SAVE)
+      const url = buildApiUrl(API_ENDPOINTS.UNRECONCILED_TRANSACTION.SAVE)
       const result = await apiClient.post<PendingTransaction>(url, data)
       return result
     } catch (error) {
@@ -169,10 +213,10 @@ export class PendingTransactionService {
 
   async updatePendingTransaction(
     id: string,
-    updates: Partial<PendingTransaction>
+    updates: UpdatePendingTransactionRequest
   ): Promise<PendingTransaction> {
     try {
-      const url = buildApiUrl(API_ENDPOINTS.PENDING_FUND_INGRESS.UPDATE(id))
+      const url = buildApiUrl(API_ENDPOINTS.UNRECONCILED_TRANSACTION.UPDATE(id))
       const result = await apiClient.put<PendingTransaction>(url, updates)
       return result
     } catch (error) {
@@ -183,7 +227,7 @@ export class PendingTransactionService {
   async deletePendingTransaction(id: string): Promise<void> {
     try {
       const url = buildApiUrl(
-        API_ENDPOINTS.PENDING_FUND_INGRESS.SOFT_DELETE(id)
+        API_ENDPOINTS.UNRECONCILED_TRANSACTION.SOFT_DELETE(id)
       )
       await apiClient.delete(url)
     } catch (error) {
@@ -196,28 +240,30 @@ export class PendingTransactionService {
     size = 20,
     filters?: PendingTransactionFilters
   ): Promise<PaginatedResponse<PendingTransaction>> {
-    const apiFilters: Record<string, any> = {}
+    const apiFilters: Record<string, string> = {}
     if (filters) {
       if (filters.transactionId)
-        apiFilters.ptfiTransactionId = filters.transactionId
+        apiFilters['unReconTransactionId.contains'] = filters.transactionId
       if (filters.referenceId)
-        apiFilters.ptfiTransactionRefId = filters.referenceId
+        apiFilters['transactionReferenceNumber.contains'] = filters.referenceId
       if (filters.minAmount !== undefined)
-        apiFilters['ptfiAmount.greaterThanOrEqual'] = String(filters.minAmount)
+        apiFilters['transactionAmount.greaterThanOrEqual'] = String(filters.minAmount)
       if (filters.maxAmount !== undefined)
-        apiFilters['ptfiAmount.lessThanOrEqual'] = String(filters.maxAmount)
+        apiFilters['transactionAmount.lessThanOrEqual'] = String(filters.maxAmount)
       if (filters.currencyCode)
-        apiFilters.ptfiCurrencyCode = filters.currencyCode
+        apiFilters.currencyCode = filters.currencyCode
       if (filters.isAllocated !== undefined)
-        apiFilters['ptfiDiscard.equals'] = String(filters.isAllocated)
+        apiFilters['allocatedFlag.equals'] = String(filters.isAllocated)
+      if (filters.discard !== undefined)
+        apiFilters['discardFlag.equals'] = String(filters.discard)
       if (filters.paymentStatus)
-        apiFilters.ptfiTasPaymentStatus = filters.paymentStatus
+        apiFilters.tasPaymentStatusCode = filters.paymentStatus
       if (filters.unitRefNumber)
-        apiFilters.ptfiUnitRefNumber = filters.unitRefNumber
+        apiFilters.subBucketIdentifier = filters.unitRefNumber
       if (filters.fromDate)
-        apiFilters['ptfiTransactionDate.greaterThanOrEqual'] = filters.fromDate
+        apiFilters['transactionDateTime.greaterThanOrEqual'] = filters.fromDate
       if (filters.toDate)
-        apiFilters['ptfiTransactionDate.lessThanOrEqual'] = filters.toDate
+        apiFilters['transactionDateTime.lessThanOrEqual'] = filters.toDate
     }
 
     const params = {
@@ -226,7 +272,7 @@ export class PendingTransactionService {
       ...apiFilters,
     }
     const queryString = new URLSearchParams(params).toString()
-    const url = `${buildApiUrl(API_ENDPOINTS.PENDING_FUND_INGRESS.GET_ALL)}${queryString ? `&${queryString}` : ''}`
+    const url = `${buildApiUrl(API_ENDPOINTS.UNRECONCILED_TRANSACTION.GET_ALL)}${queryString ? `&${queryString}` : ''}`
 
     try {
       const result =
@@ -282,7 +328,7 @@ export class PendingTransactionService {
   async getPendingTransaction(id: string): Promise<PendingTransaction> {
     try {
       const result = await apiClient.get<PendingTransaction>(
-        buildApiUrl(API_ENDPOINTS.PENDING_FUND_INGRESS.GET_BY_ID(id))
+        buildApiUrl(API_ENDPOINTS.UNRECONCILED_TRANSACTION.GET_BY_ID(id))
       )
       return result
     } catch (error) {
@@ -292,7 +338,7 @@ export class PendingTransactionService {
 
   async getPendingTransactionLabels(): Promise<PendingTransactionLabel[]> {
     return apiClient.get<PendingTransactionLabel[]>(
-      buildApiUrl(API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.TRANSCATIONS_LABEL)
+      buildApiUrl(API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.UNRECONCILED_TRANSACTION)
     )
   }
 

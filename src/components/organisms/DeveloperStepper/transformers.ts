@@ -34,6 +34,7 @@ export const useStepDataTransformers = () => {
       bpWorldCheckRemarks: formData.bpWorldCheckRemarks,
       bpMigratedData: formData.bpMigratedData,
       bpremark: formData.bpremark,
+      bpRegulatorId: formData.bpRegulatorDTO?.id || formData.bpRegulatorId,
       bpRegulatorDTO: {
         id: safeParseInt(formData.bpRegulatorDTO?.id),
       },
@@ -48,8 +49,8 @@ export const useStepDataTransformers = () => {
         bpcFirstName: contact.name?.split(' ')[0] || '',
         bpcLastName: contact.name?.split(' ').slice(1).join(' ') || '',
         bpcContactEmail: contact.email || '',
-        bpcContactAddressLine1: contact.address || '',
-        bpcContactAddressLine2: '', 
+        bpcContactmpaddressLine1: contact.address || '',
+        bpcContactmpaddressLine2: '', 
         bpcContactPoBox: contact.pobox || '',
         bpcCountryMobCode: contact.countrycode || '',
         bpcContactTelNo: contact.telephoneno || '',

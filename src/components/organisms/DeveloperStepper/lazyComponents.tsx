@@ -1,5 +1,29 @@
-import React, { lazy, Suspense } from 'react'
-import { Box, Typography, CircularProgress } from '@mui/material'
+import React, { lazy, Suspense, useEffect, useState } from 'react'
+import { Box, Typography } from '@mui/material'
+import { GlobalLoading } from '@/components/atoms'
+
+// Hook to detect dark mode
+const useIsDarkMode = () => {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+
+    checkTheme()
+
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  return isDark
+}
 
 // Lazy load step components
 const Step1 = lazy(() => import('./steps/Step1'))
@@ -9,26 +33,27 @@ const Step4 = lazy(() => import('./steps/Step4'))
 const Step5 = lazy(() => import('./steps/Step5'))
 const DocumentUploadStep = lazy(() => import('./steps/DocumentUploadStep'))
 
-// Loading component for Suspense fallback
-const StepLoadingFallback = () => (
-  <Box
-    sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '200px',
-      gap: 2,
-    }}
-  >
-    <CircularProgress size={40} />
-    <Typography variant="body2" color="text.secondary">
-      Loading step...
-    </Typography>
-  </Box>
-)
+const StepLoadingFallback = () => {
+  const isDarkMode = useIsDarkMode()
 
-// Error boundary component for lazy loading errors
+  return (
+    <Box
+      sx={{
+        backgroundColor: isDarkMode ? '#101828' : '#FFFFFFBF',
+        borderRadius: '16px',
+        margin: '0 auto',
+        width: '100%',
+        height: '400px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <GlobalLoading fullHeight className="min-h-[400px]" />
+    </Box>
+  )
+}
+
 const StepErrorBoundary = ({
   children,
   fallback,

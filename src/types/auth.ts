@@ -8,7 +8,8 @@ export const COOKIES = {
   AUTH_TOKEN: 'auth_token',
   USER_TYPE: 'user_type',
   USER_NAME: 'user_name',
-  USER_ID: 'user_id'
+  USER_ID: 'user_id',
+  REFRESH_TOKEN: 'refresh_token'
 } as const;
 
 export interface User {

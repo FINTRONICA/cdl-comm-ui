@@ -56,10 +56,8 @@ export function useLogin(): UseLoginReturn {
         success: 'Login successful! Redirecting...' 
       }));
       
-      console.log('About to redirect to dashboard...');
-      
-      // Start session service for client-side session management
-      SessionService.startSession();
+      // Note: Session management is handled by EnhancedSessionTracker in layout.tsx
+      // No need to manually start session here to avoid duplicate session tracking
       
       // Use replace instead of push to avoid navigation history issues
       router.replace('/dashboard');

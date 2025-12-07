@@ -13,7 +13,7 @@ export const FEE_REPUSH_LABELS = {
   CDL_FRP_FEE_TYPE: 'Fee Type',
   CDL_FRP_AMOUNT: 'Amount',
   CDL_FRP_TRANSACTION_DATE: 'Transaction Date',
-  CDL_FRP_APPROVAL_STATUS: 'Approval Status..',
+  CDL_FRP_APPROVAL_STATUS: ' Status..',
   CDL_FRP_PAYMENT_TYPE: 'Payment Type',
   CDL_FRP_ACTION: 'Actions',
 

@@ -44,7 +44,7 @@ export const usePermissionsStore = create<PermissionsState>()(
       lastFetched: null,
       
       setPermissions: (permissions) => {
-        console.log('🔧 [Permissions] Setting permissions:', permissions)
+        
         const permissionMap = new Map<string, Permission>()
         permissions.forEach(permission => {
           permissionMap.set(permission.name, permission)
@@ -56,12 +56,7 @@ export const usePermissionsStore = create<PermissionsState>()(
           lastFetched: Date.now(),
           error: null 
         })
-        
-        console.log('✅ [Permissions] Permissions set successfully:', {
-          count: permissions.length,
-          names: permissions.map(p => p.name),
-          mapSize: permissionMap.size
-        })
+     
       },
       
       fetchUserPermissions: async (userId: string) => {
@@ -79,7 +74,7 @@ export const usePermissionsStore = create<PermissionsState>()(
             permissions: [],
             permissionMap: new Map()
           })
-          console.error('Error fetching user permissions:', error)
+          
         }
       },
       
@@ -158,7 +153,7 @@ export const usePermissionsStore = create<PermissionsState>()(
             permissionMap.set(permission.name, permission)
           })
           state.permissionMap = permissionMap
-          console.log('✅ [Permissions] Rehydrated permissions from storage:', state.permissions.length, 'permissions')
+          
         }
       },
     }

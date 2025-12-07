@@ -1,31 +1,19 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { CapitalPartnerLabelsService, ProcessedCapitalPartnerLabels } from '@/services/api/capitalPartnerLabelsService'
+import { useAppStore } from '@/store'
 
+// Hook that reads from Zustand store (labels are pre-loaded by ComplianceProvider)
+// No API calls are made here to avoid duplicate requests
 export function useCapitalPartnerLabelsApi() {
-  const [labels, setLabels] = useState<ProcessedCapitalPartnerLabels | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Read labels from Zustand store (already loaded by ComplianceProvider)
+  const capitalPartnerLabels = useAppStore((state) => state.capitalPartnerLabels)
+  const capitalPartnerLabelsLoading = useAppStore((state) => state.capitalPartnerLabelsLoading)
+  const capitalPartnerLabelsError = useAppStore((state) => state.capitalPartnerLabelsError)
 
-  const fetchLabels = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      
-      const rawLabels = await CapitalPartnerLabelsService.fetchLabels()
-      const processedLabels = CapitalPartnerLabelsService.processLabels(rawLabels)
-      
-      setLabels(processedLabels)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch labels')
-     
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchLabels()
-  }, [fetchLabels])
+  // Labels are already loaded by ComplianceProvider, no need to fetch
+  const labels = capitalPartnerLabels as ProcessedCapitalPartnerLabels | null
+  const isLoading = capitalPartnerLabelsLoading
+  const error = capitalPartnerLabelsError
 
   const getLabel = useCallback(
     (configId: string, language: string = 'EN', fallback?: string): string => {
@@ -45,15 +33,22 @@ export function useCapitalPartnerLabelsApi() {
     return CapitalPartnerLabelsService.getAvailableLanguages(labels || {})
   }, [labels])
 
-  return {
-    labels,
-    isLoading,
-    error,
-    isError: !!error,
-    isSuccess: !!labels && !error,
-    refetch: fetchLabels,
-    getLabel,
-    hasLabels,
-    getAvailableLanguages,
-  }
+  return useMemo(
+    () => ({
+      labels,
+      isLoading,
+      error,
+      isError: !!error,
+      isSuccess: !!labels && !error,
+      refetch: async () => {
+        // Labels are managed by ComplianceProvider, refetch is a no-op
+        // If refresh is needed, it should be done through ComplianceProvider
+        return Promise.resolve({ data: labels })
+      },
+      getLabel,
+      hasLabels,
+      getAvailableLanguages,
+    }),
+    [labels, isLoading, error, getLabel, hasLabels, getAvailableLanguages]
+  )
 }

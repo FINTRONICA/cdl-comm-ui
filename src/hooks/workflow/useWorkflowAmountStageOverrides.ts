@@ -1,6 +1,6 @@
-
 import { useCallback, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
 import {
   workflowAmountStageOverrideService,
   type WorkflowAmountStageOverride,
@@ -91,19 +91,44 @@ export function useCreateWorkflowAmountStageOverride() {
 
   return useMutation({
     mutationFn: async (data: CreateWorkflowAmountStageOverrideRequest) => {
-      const result =
-        await workflowAmountStageOverrideService.createWorkflowAmountStageOverride(
-          data
+      try {
+        const result =
+          await workflowAmountStageOverrideService.createWorkflowAmountStageOverride(
+            data
+          )
+        return result
+      } catch (error) {
+        throw error
+      }
+    },
+    onSuccess: (newStageOverride) => {
+      try {
+        // Update all workflow amount stage override queries
+        queryClient.setQueriesData(
+          { queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY] },
+          (old: any) => {
+            if (!old?.content) return old
+            return {
+              ...old,
+              content: [newStageOverride, ...old.content],
+            }
+          }
         )
-      return result
+        toast.success('Workflow amount stage override created successfully!')
+      } catch (error) {
+        toast.error(`${error}Failed to update local data`)
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
-      })
-    },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          'Failed to create workflow amount stage override'
+        toast.error(errorMessage)
+      } catch (toastError) {
+        toast.error(`${toastError}Failed to show error message`)
+      }
     },
     retry: 2,
   })
@@ -120,27 +145,50 @@ export function useUpdateWorkflowAmountStageOverride() {
       id: string
       updates: UpdateWorkflowAmountStageOverrideRequest
     }) => {
-      const result =
-        await workflowAmountStageOverrideService.updateWorkflowAmountStageOverride(
-          id,
-          updates
+      try {
+        const result =
+          await workflowAmountStageOverrideService.updateWorkflowAmountStageOverride(
+            id,
+            updates
+          )
+        return result
+      } catch (error) {
+        throw error
+      }
+    },
+    onSuccess: (updatedStageOverride) => {
+      try {
+        // Update all workflow amount stage override queries
+        queryClient.setQueriesData(
+          { queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY] },
+          (old: any) => {
+            if (!old?.content) return old
+
+            // Remove the old item and add updated one to top
+            const filteredContent = old.content.filter(
+              (item: any) => item.id !== updatedStageOverride.id
+            )
+            return {
+              ...old,
+              content: [updatedStageOverride, ...filteredContent],
+            }
+          }
         )
-      return result
+        toast.success('Workflow amount stage override updated successfully!')
+      } catch (error) {
+        toast.error(`${error}Failed to update local data`)
+      }
     },
-    onSuccess: (variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
-      })
-      queryClient.invalidateQueries({
-        queryKey: [
-          WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY,
-          'detail',
-          variables.id,
-        ],
-      })
-    },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          'Failed to update workflow amount stage override'
+        toast.error(errorMessage)
+      } catch (toastError) {
+        toast.error(`${toastError}Failed to show error message`)
+      }
     },
     retry: 2,
   })
@@ -151,19 +199,36 @@ export function useDeleteWorkflowAmountStageOverride() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const result =
-        await workflowAmountStageOverrideService.deleteWorkflowAmountStageOverride(
-          id
-        )
-      return result
+      try {
+        const result =
+          await workflowAmountStageOverrideService.deleteWorkflowAmountStageOverride(
+            id
+          )
+        return result
+      } catch (error) {
+        throw error
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
-      })
+      try {
+        queryClient.invalidateQueries({
+          queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
+        })
+        toast.success('Workflow amount stage override deleted successfully!')
+      } catch (error) {
+        toast.error(`${error}Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          'Failed to delete workflow amount stage override'
+        toast.error(errorMessage)
+      } catch (toastError) {
+        toast.error(`${toastError}Failed to show error message`)
+      }
     },
     retry: false,
   })
@@ -276,22 +341,41 @@ export function useBulkWorkflowAmountStageOverrideOperations() {
     mutationFn: async (
       dataArray: CreateWorkflowAmountStageOverrideRequest[]
     ) => {
-      const results = await Promise.all(
-        dataArray.map((data) =>
-          workflowAmountStageOverrideService.createWorkflowAmountStageOverride(
-            data
+      try {
+        const results = await Promise.all(
+          dataArray.map((data) =>
+            workflowAmountStageOverrideService.createWorkflowAmountStageOverride(
+              data
+            )
           )
         )
-      )
-      return results
+        return results
+      } catch (error) {
+        throw error
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
-      })
+    onSuccess: (newStageOverrides) => {
+      try {
+        queryClient.invalidateQueries({
+          queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
+        })
+        toast.success(
+          `${newStageOverrides.length} workflow amount stage override(s) created successfully!`
+        )
+      } catch (error) {
+        toast.error(`${error}Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          'Failed to create workflow amount stage overrides'
+        toast.error(errorMessage)
+      } catch (toastError) {
+        toast.error(`${toastError}Failed to show error message`)
+      }
     },
     retry: 1,
   })
@@ -303,44 +387,82 @@ export function useBulkWorkflowAmountStageOverrideOperations() {
         updates: UpdateWorkflowAmountStageOverrideRequest
       }>
     ) => {
-      const results = await Promise.all(
-        updatesArray.map(({ id, updates }) =>
-          workflowAmountStageOverrideService.updateWorkflowAmountStageOverride(
-            id,
-            updates
+      try {
+        const results = await Promise.all(
+          updatesArray.map(({ id, updates }) =>
+            workflowAmountStageOverrideService.updateWorkflowAmountStageOverride(
+              id,
+              updates
+            )
           )
         )
-      )
-      return results
+        return results
+      } catch (error) {
+        throw error
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
-      })
+    onSuccess: (updatedStageOverrides) => {
+      try {
+        queryClient.invalidateQueries({
+          queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
+        })
+        toast.success(
+          `${updatedStageOverrides.length} workflow amount stage override(s) updated successfully!`
+        )
+      } catch (error) {
+        toast.error(`${error}Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          'Failed to update workflow amount stage overrides'
+        toast.error(errorMessage)
+      } catch (toastError) {
+        toast.error(`${toastError}Failed to show error message`)
+      }
     },
     retry: 1,
   })
 
   const bulkDelete = useMutation({
     mutationFn: async (idsArray: string[]) => {
-      await Promise.all(
-        idsArray.map((id) =>
-          workflowAmountStageOverrideService.deleteWorkflowAmountStageOverride(
-            id
+      try {
+        await Promise.all(
+          idsArray.map((id) =>
+            workflowAmountStageOverrideService.deleteWorkflowAmountStageOverride(
+              id
+            )
           )
         )
-      )
+      } catch (error) {
+        throw error
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
-      })
+    onSuccess: (_, deletedIds) => {
+      try {
+        queryClient.invalidateQueries({
+          queryKey: [WORKFLOW_AMOUNT_STAGE_OVERRIDES_QUERY_KEY],
+        })
+        toast.success(
+          `${deletedIds.length} workflow amount stage override(s) deleted successfully!`
+        )
+      } catch (error) {
+        toast.error(`${error}Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          'Failed to delete workflow amount stage overrides'
+        toast.error(errorMessage)
+      } catch (toastError) {
+        toast.error(`${toastError}Failed to show error message`)
+      }
     },
     retry: 1,
   })

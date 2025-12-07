@@ -1,116 +1,44 @@
-import { buildApiUrl, API_ENDPOINTS } from '@/constants/apiEndpoints'
 import { apiClient } from '@/lib/apiClient'
+import { API_ENDPOINTS, buildApiUrl } from '@/constants/apiEndpoints'
+import { getProcessedTransactionLabel } from '@/constants/mappings/processedTransactionMapping'
+import type {
+  LabelConfig,
+  ProcessedTransactionLabels,
+  LabelConfigFilters,
+} from '@/types/labelConfig'
 
-export interface ProcessedTransactionLabel {
-  id: number
-  configId: string
-  configValue: string
-  appLanguageCode: {
-    id: number
-    languageCode: string
-    nameKey: string
-    nameNativeValue: string
-    deleted: boolean
-    enabled: boolean
-    rtl: boolean
-  }
-  applicationModuleDTO: {
-    id: number
-    moduleName: string
-    moduleCode: string
-    moduleDescription: string
-    deleted: boolean
-    enabled: boolean
-    active: boolean
-  }
-  status: any
-  enabled: boolean
-  deleted: any
-}
-
-export interface ProcessedTransactionLabelsResponse {
-  labels: ProcessedTransactionLabel[]
-  totalCount: number
-}
-
+/**
+ * Service for managing processed transaction label configurations from the API
+ * Handles fetching, caching, and processing of processed transaction label data
+ */
 export class ProcessedTransactionLabelsService {
+  private labelCache: Map<string, ProcessedTransactionLabels> = new Map()
+  private lastCacheTime: number = 0
+  private cacheExpiry: number = 5 * 60 * 1000 // 5 minutes
+
   /**
-   * Fetch processed transaction labels from API endpoint '/app-language-translation/transactions'
-   * This endpoint provides labels for all transaction types including allocated/processed transactions
+   * Fetch all processed transaction labels from the API
+   * @returns Promise<LabelConfig[]>
    */
-  async getProcessedTransactionLabels(): Promise<ProcessedTransactionLabel[]> {
+  async getProcessedTransactionLabels(): Promise<LabelConfig[]> {
     try {
       const url = buildApiUrl(
-        API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.TRANSCATIONS_LABEL
+        API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.PROCESSED_TRANSACTIONS_LABEL
       )
-      console.log('🔧 getProcessedTransactionLabels: Making API call to:', url)
-      const result = await apiClient.get<ProcessedTransactionLabel[]>(url)
-      console.log('🔧 getProcessedTransactionLabels: API response:', { 
-        count: result?.length, 
-        firstItem: result?.[0],
-        url 
-      })
+      
+      const result = await apiClient.get<LabelConfig[]>(url)
+      
       return result || []
     } catch (error) {
-      console.error('🔧 getProcessedTransactionLabels: API error:', error)
       throw error
     }
   }
 
   /**
-   * Get a specific label by configId and language code
+   * Get labels with caching support for better performance
+   * @returns Promise<LabelConfig[]>
    */
-  async getProcessedTransactionLabel(
-    configId: string,
-    languageCode: string = 'en'
-  ): Promise<string> {
-    try {
-      const labels = await this.getProcessedTransactionLabels()
-      const matchingLabel = labels.find(
-        (label) =>
-          label.configId === configId && label.languageCode === languageCode
-      )
-
-      const result = matchingLabel?.configValue || configId
-      return result
-    } catch (error) {
-      // Fallback to configId if API fails
-      return configId
-    }
-  }
-
-  /**
-   * Get labels by category for better organization
-   */
-  async getProcessedTransactionLabelsByCategory(
-    category: string,
-    languageCode: string = 'en'
-  ): Promise<ProcessedTransactionLabel[]> {
-    try {
-      const labels = await this.getProcessedTransactionLabels()
-      const filteredLabels = labels.filter(
-        (label) =>
-          label.category === category && label.languageCode === languageCode
-      )
-      return filteredLabels
-    } catch (error) {
-      return []
-    }
-  }
-
-  /**
-   * Cache management for better performance
-   */
-  private labelCache: Map<string, ProcessedTransactionLabel[]> = new Map()
-  private cacheExpiry: number = 5 * 60 * 1000 // 5 minutes in milliseconds
-  private lastCacheTime: number = 0
-
-  /**
-   * Get labels with caching support
-   */
-  async getProcessedTransactionLabelsWithCache(): Promise<
-    ProcessedTransactionLabel[]
-  > {
+  async getProcessedTransactionLabelsWithCache(): Promise<LabelConfig[]> {
     const now = Date.now()
     const cacheKey = 'processed-transaction-labels'
 
@@ -118,17 +46,201 @@ export class ProcessedTransactionLabelsService {
       this.labelCache.has(cacheKey) &&
       now - this.lastCacheTime < this.cacheExpiry
     ) {
-      return this.labelCache.get(cacheKey) || []
+      const cached = this.labelCache.get(cacheKey)
+      return cached?.labels || []
     }
 
     try {
       const labels = await this.getProcessedTransactionLabels()
-      this.labelCache.set(cacheKey, labels)
+      const processedLabels: ProcessedTransactionLabels = {
+        labels: labels || [],
+        totalCount: labels?.length || 0,
+      }
+      this.labelCache.set(cacheKey, processedLabels)
       this.lastCacheTime = now
       return labels
     } catch (error) {
-      // Return cached data if available, even if expired
-      return this.labelCache.get(cacheKey) || []
+      const cached = this.labelCache.get(cacheKey)
+      return cached?.labels || []
+    }
+  }
+
+  /**
+   * Get a specific label by configId and language code
+   * @param configId - The configuration ID to search for
+   * @param languageCode - The language code (default: 'EN')
+   * @returns The label value or configId as fallback
+   */
+  async getLabel(
+    configId: string,
+    languageCode: string = 'EN'
+  ): Promise<string> {
+    try {
+      const labels = await this.getProcessedTransactionLabelsWithCache()
+      
+      const matchingLabel = labels.find(
+        (label) =>
+          label.configId === configId &&
+          label.appLanguageCode.languageCode === languageCode &&
+          label.enabled &&
+          !label.deleted
+      )
+
+      const result = matchingLabel?.configValue || getProcessedTransactionLabel(configId)
+      return result
+    } catch (error) {
+      return getProcessedTransactionLabel(configId)
+    }
+  }
+
+  /**
+   * Get labels filtered by specific criteria
+   * @param filters - Filter criteria
+   * @returns Filtered labels
+   */
+  async getLabelsByFilters(filters: LabelConfigFilters): Promise<LabelConfig[]> {
+    try {
+      const labels = await this.getProcessedTransactionLabelsWithCache()
+      
+      return labels.filter((label) => {
+        if (filters.configId && label.configId !== filters.configId) {
+          return false
+        }
+        if (filters.languageCode && label.appLanguageCode.languageCode !== filters.languageCode) {
+          return false
+        }
+        if (filters.moduleCode && label.applicationModuleDTO.moduleCode !== filters.moduleCode) {
+          return false
+        }
+        if (filters.enabled !== undefined && label.enabled !== filters.enabled) {
+          return false
+        }
+        if (filters.deleted !== undefined && label.deleted !== filters.deleted) {
+          return false
+        }
+        return true
+      })
+    } catch (error) {
+      return []
+    }
+  }
+
+  /**
+   * Get labels by module for better organization
+   * @param moduleCode - The module code to filter by
+   * @param languageCode - The language code (default: 'EN')
+   * @returns Labels for the specified module
+   */
+  async getLabelsByModule(
+    moduleCode: string,
+    languageCode: string = 'EN'
+  ): Promise<LabelConfig[]> {
+    return this.getLabelsByFilters({
+      moduleCode,
+      languageCode,
+      enabled: true,
+      deleted: false,
+    })
+  }
+
+  /**
+   * Get labels by language
+   * @param languageCode - The language code
+   * @returns Labels for the specified language
+   */
+  async getLabelsByLanguage(languageCode: string): Promise<LabelConfig[]> {
+    return this.getLabelsByFilters({
+      languageCode,
+      enabled: true,
+      deleted: false,
+    })
+  }
+
+  /**
+   * Get all available language codes from the labels
+   * @returns Array of unique language codes
+   */
+  async getAvailableLanguages(): Promise<string[]> {
+    try {
+      const labels = await this.getProcessedTransactionLabelsWithCache()
+      const languages = new Set<string>()
+      
+      labels.forEach((label) => {
+        if (label.enabled && !label.deleted) {
+          languages.add(label.appLanguageCode.languageCode)
+        }
+      })
+      
+      return Array.from(languages)
+    } catch (error) {
+      return ['EN'] // Default fallback
+    }
+  }
+
+  /**
+   * Get all available config IDs
+   * @returns Array of unique config IDs
+   */
+  async getAvailableConfigIds(): Promise<string[]> {
+    try {
+      const labels = await this.getProcessedTransactionLabelsWithCache()
+      const configIds = new Set<string>()
+      
+      labels.forEach((label) => {
+        if (label.enabled && !label.deleted) {
+          configIds.add(label.configId)
+        }
+      })
+      
+      return Array.from(configIds)
+    } catch (error) {
+      return []
+    }
+  }
+
+  /**
+   * Check if a specific configId exists in the labels
+   * @param configId - The configuration ID to check
+   * @returns Boolean indicating if the configId exists
+   */
+  async hasConfigId(configId: string): Promise<boolean> {
+    try {
+      const configIds = await this.getAvailableConfigIds()
+      return configIds.includes(configId)
+    } catch (error) {
+      return false
+    }
+  }
+
+  /**
+   * Get label statistics
+   * @returns Object with label statistics
+   */
+  async getLabelStats(): Promise<{
+    totalLabels: number
+    enabledLabels: number
+    availableLanguages: string[]
+    availableConfigIds: string[]
+  }> {
+    try {
+      const labels = await this.getProcessedTransactionLabelsWithCache()
+      const enabledLabels = labels.filter(label => label.enabled && !label.deleted)
+      const languages = await this.getAvailableLanguages()
+      const configIds = await this.getAvailableConfigIds()
+      
+      return {
+        totalLabels: labels.length,
+        enabledLabels: enabledLabels.length,
+        availableLanguages: languages,
+        availableConfigIds: configIds,
+      }
+    } catch (error) {
+      return {
+        totalLabels: 0,
+        enabledLabels: 0,
+        availableLanguages: ['EN'],
+        availableConfigIds: [],
+      }
     }
   }
 
@@ -139,7 +251,20 @@ export class ProcessedTransactionLabelsService {
     this.labelCache.clear()
     this.lastCacheTime = 0
   }
+
+  /**
+   * Get cache statistics
+   * @returns Object with cache information
+   */
+  getCacheStats(): { size: number; lastUpdate: number; isExpired: boolean } {
+    const now = Date.now()
+    return {
+      size: this.labelCache.size,
+      lastUpdate: this.lastCacheTime,
+      isExpired: now - this.lastCacheTime > this.cacheExpiry,
+    }
+  }
 }
 
-export const processedTransactionLabelsService =
-  new ProcessedTransactionLabelsService()
+// Export singleton instance
+export const processedTransactionLabelsService = new ProcessedTransactionLabelsService()

@@ -6,17 +6,12 @@ import {
   TextField,
   Card,
   CardContent,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Grid,
   Button,
   Divider,
   Snackbar,
   Alert,
 } from '@mui/material'
-import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import HighlightOffOutlinedIcon from '@mui/icons-material/HighlightOffOutlined'
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
@@ -25,18 +20,19 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { AccountData } from '../types'
 import { Controller, useFormContext } from 'react-hook-form'
-import { useProjectLabels } from '@/hooks/useProjectLabels'
+// import { useProjectLabels } from '@/hooks/useProjectLabels'
+import { useBuildPartnerAssetLabelsWithUtils } from '@/hooks/useBuildPartnerAssetLabels'
 import { useCurrencies } from '@/hooks/useFeeDropdowns'
 import {
   useValidateBankAccount,
-  useSaveMultipleBankAccounts,
+  useSaveOrUpdateBankAccount,
 } from '@/hooks/useBankAccount'
 import { BankAccountData } from '@/types/bankAccount'
 import dayjs from 'dayjs'
 import {
   commonFieldStyles,
-  selectStyles,
   datePickerStyles,
+  errorFieldStyles,
   labelSx,
   valueSx,
   cardStyles,
@@ -48,6 +44,7 @@ import {
   ERROR_MESSAGES,
   SUCCESS_MESSAGES,
 } from '../constants'
+import { validateAccountField } from '../validation/accountZodSchema'
 
 interface Step2Props {
   accounts: AccountData[]
@@ -56,9 +53,9 @@ interface Step2Props {
   isViewMode?: boolean
 }
 
-const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false }) => {
-  
-  const { getLabel } = useProjectLabels()
+const Step2: React.FC<Step2Props> = ({ projectId, isViewMode = false }) => {
+  const { getLabel } = useBuildPartnerAssetLabelsWithUtils()
+  const language = 'EN'
 
   const {
     data: currencies = [],
@@ -67,13 +64,14 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
   } = useCurrencies()
 
   const validateBankAccount = useValidateBankAccount()
-  const saveMultipleBankAccounts = useSaveMultipleBankAccounts()
+  const saveOrUpdateBankAccount = useSaveOrUpdateBankAccount()
 
-  const getDisplayLabel = (currency: any, fallbackValue?: string): string => {
-    return currency?.configValue || fallbackValue || 'Unknown'
-  }
-
-  const { control, watch, setValue } = useFormContext<{
+  const {
+    control,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useFormContext<{
     accounts: AccountData[]
   }>()
 
@@ -89,10 +87,66 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
   )
   const [validatingIndex, setValidatingIndex] = useState<number | null>(null)
 
+  // Function to check if all backend fields are filled and auto-validate
+  const checkAndAutoValidate = (account: AccountData, index: number) => {
+    const hasAccountNumber =
+      account.trustAccountNumber && account.trustAccountNumber.trim() !== ''
+    const hasIban = account.ibanNumber && account.ibanNumber.trim() !== ''
+    const hasDateOpened = account.dateOpened
+    const hasAccountTitle =
+      account.accountTitle && account.accountTitle.trim() !== ''
+    const hasCurrency = account.currency && account.currency.trim() !== ''
+    const hasId = account.id && account.id !== 9007199254740991
+
+    // If all fields are filled and has an ID (loaded from backend), mark as validated
+    if (
+      hasAccountNumber &&
+      hasIban &&
+      hasDateOpened &&
+      hasAccountTitle &&
+      hasCurrency &&
+      hasId
+    ) {
+      setSuccessIndexes((prev) => {
+        if (!prev.includes(index)) {
+          return [...prev, index]
+        }
+        return prev
+      })
+      setErrorIndex((prev) => (prev === index ? null : prev))
+
+      // Create validated account data
+      const bankAccountData: BankAccountData = {
+        id: account.id ?? null,
+        accountType: ACCOUNT_TYPES[index] || 'TRUST',
+        accountNumber: account.trustAccountNumber,
+        ibanNumber: account.ibanNumber,
+        dateOpened: dayjs(account.dateOpened).toISOString(),
+        accountTitle: account.accountTitle,
+        currencyCode: account.currency,
+        isValidated: true,
+        realEstateAssestDTO: {
+          id: projectId ? parseInt(projectId) : 9007199254740991,
+        },
+      }
+
+      // Add to validated accounts array if not already present
+      setValidatedAccounts((prev) => {
+        const existingIndex = prev.findIndex((acc, idx) => idx === index && acc)
+        if (existingIndex === -1 || !prev[index]) {
+          const newAccounts = [...prev]
+          newAccounts[index] = bankAccountData
+          return newAccounts
+        }
+        return prev
+      })
+    }
+  }
+
   const validateAccount = async (account: AccountData, index: number) => {
     if (!account.trustAccountNumber) {
       setErrorIndex(index)
-      setSuccessIndexes(prev => prev.filter(i => i !== index))
+      setSuccessIndexes((prev) => prev.filter((i) => i !== index))
       setSnackbarMessage('Account number is required for validation')
       setSnackbarSeverity('error')
       setSnackbarOpen(true)
@@ -102,26 +156,32 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
     try {
       setValidatingIndex(index)
       setErrorIndex(null)
-      // Don't reset successIndex to preserve previously validated accounts
 
+      // Clear previous validation data before fetching new data (override previous)
+      setSuccessIndexes((prev) => prev.filter((i) => i !== index))
+      setValidatedAccounts((prev) => {
+        const newAccounts = [...prev]
+        newAccounts[index] = null as any
+        return newAccounts
+      })
+
+      // Step 1: Validate account with core banking
       const validationResponse = await validateBankAccount.mutateAsync(
         account.trustAccountNumber
       )
 
-      // Convert Unix timestamp to dayjs date
       const dateOpened = dayjs.unix(
         validationResponse.details.lastStatementDate / 1000
       )
 
-      // Get the correct account type for this index
       const accountType = ACCOUNT_TYPES[index] || 'TRUST'
 
-      // Create the bank account data object
       const bankAccountData: BankAccountData = {
+        id: (account as any).id ?? null,
         accountType: accountType,
-        accountNumber: validationResponse.accountNumber,
+        accountNumber: account.trustAccountNumber, // Keep user's original account number
         ibanNumber: validationResponse.details.iban,
-        dateOpened: dateOpened.format('YYYY-MM-DD'),
+        dateOpened: dateOpened.toISOString(),
         accountTitle: validationResponse.name,
         currencyCode: validationResponse.currencyCode,
         isValidated: true,
@@ -130,37 +190,39 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
         },
       }
 
-      // Add to validated accounts array
+      // Store validated account data (will be saved when "Save and Next" is clicked)
       setValidatedAccounts((prev) => {
         const newAccounts = [...prev]
         newAccounts[index] = bankAccountData
         return newAccounts
       })
 
-      // Update form fields with validated data using setValue
-
-      // Find the correct currency ID from the dropdown options
-      const currencyOption = currencies.find(
-        (c) => c.configValue === validationResponse.currencyCode
-      )
-      const currencyId = currencyOption ? currencyOption.id : 32 // Default to ID 32 if not found
-
+      // Update form fields with validation data
       setValue(`accounts.${index}.ibanNumber`, validationResponse.details.iban)
       setValue(`accounts.${index}.dateOpened`, dateOpened)
       setValue(`accounts.${index}.accountTitle`, validationResponse.name)
-      setValue(`accounts.${index}.currency`, currencyId.toString())
+      setValue(`accounts.${index}.currency`, validationResponse.currencyCode)
 
-      setSuccessIndexes(prev => [...prev.filter(i => i !== index), index])
-      setSnackbarMessage(SUCCESS_MESSAGES.STEP_SAVED)
+      setSuccessIndexes((prev) => [...prev.filter((i) => i !== index), index])
+      setSnackbarMessage('Account validated successfully!')
       setSnackbarSeverity('success')
       setSnackbarOpen(true)
 
       return true
     } catch (error) {
       setErrorIndex(index)
-      // Remove the current account from success indexes if it was previously validated
-      setSuccessIndexes(prev => prev.filter(i => i !== index))
-      setSnackbarMessage(ERROR_MESSAGES.VALIDATION_FAILED)
+      // Clear validation state on error
+      setSuccessIndexes((prev) => prev.filter((i) => i !== index))
+      setValidatedAccounts((prev) => {
+        const newAccounts = [...prev]
+        newAccounts[index] = null as any
+        return newAccounts
+      })
+      setSnackbarMessage(
+        error instanceof Error && error.message.includes('save')
+          ? 'Validation successful but failed to save account'
+          : ERROR_MESSAGES.VALIDATION_FAILED
+      )
       setSnackbarSeverity('error')
       setSnackbarOpen(true)
       return false
@@ -169,7 +231,7 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
     }
   }
 
-  // Function to save all validated accounts
+  // Function to save all validated accounts (called on "Save and Next")
   const saveAllValidatedAccounts = async () => {
     const accountsToSave = validatedAccounts.filter(
       (account) => account && account.isValidated
@@ -183,7 +245,38 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
     }
 
     try {
-      await saveMultipleBankAccounts.mutateAsync(accountsToSave)
+      // Save or update each account (POST for new, PUT for existing)
+      const savePromises = validatedAccounts.map(async (account, index) => {
+        // Skip empty slots
+        if (!account || !account.isValidated) {
+          return null
+        }
+
+        const response = await saveOrUpdateBankAccount.mutateAsync(account)
+
+        // Update the account with returned ID if it's a new account
+        if (response?.id && (!account.id || account.id === 9007199254740991)) {
+          // Update the validated accounts array with the new ID
+          setValidatedAccounts((prev) => {
+            const newAccounts = [...prev]
+            if (newAccounts[index]) {
+              newAccounts[index] = {
+                ...newAccounts[index],
+                id: response.id,
+              }
+            }
+            return newAccounts
+          })
+
+          // Update form state with the new ID
+          setValue(`accounts.${index}.id`, response.id)
+        }
+
+        return response
+      })
+
+      await Promise.all(savePromises)
+
       setSnackbarMessage(SUCCESS_MESSAGES.ACCOUNTS_SAVED)
       setSnackbarSeverity('success')
       setSnackbarOpen(true)
@@ -200,6 +293,53 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
     ;(window as any).saveStep2Accounts = saveAllValidatedAccounts
     ;(window as any).step2ValidatedAccounts = validatedAccounts
   }, [validatedAccounts])
+
+  // Watch for account number changes to reset validation state
+  React.useEffect(() => {
+    const subscription = watch((_value, { name }) => {
+      // Check if an account number field changed
+      if (name && name.includes('.trustAccountNumber')) {
+        const match = name.match(/accounts\.(\d+)\.trustAccountNumber/)
+        if (match && match[1]) {
+          const index = parseInt(match[1])
+          // Reset validation state for this account when account number changes
+          setSuccessIndexes((prev) => prev.filter((i) => i !== index))
+          setErrorIndex((prev) => (prev === index ? null : prev))
+          // Remove from validated accounts (override previous validation)
+          setValidatedAccounts((prev) => {
+            const newAccounts = [...prev]
+            newAccounts[index] = null as any
+            return newAccounts
+          })
+          // Clear the fetched fields so user knows they need to re-validate
+          setValue(`accounts.${index}.ibanNumber`, '')
+          setValue(`accounts.${index}.dateOpened`, null)
+          setValue(`accounts.${index}.accountTitle`, '')
+          setValue(`accounts.${index}.currency`, '')
+        }
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [watch, setValue])
+
+  // Auto-validate on initial load when all backend fields are filled (for edit mode)
+  // But don't auto-validate when user is actively editing
+  React.useEffect(() => {
+    const watchedAccounts = watch('accounts')
+    if (watchedAccounts && Array.isArray(watchedAccounts)) {
+      watchedAccounts.forEach((account, index) => {
+        // Only auto-validate if this account is not already in success or error state
+        // This prevents auto-validation when user is editing
+        if (
+          account &&
+          !successIndexes.includes(index) &&
+          errorIndex !== index
+        ) {
+          checkAndAutoValidate(account, index)
+        }
+      })
+    }
+  }, [watch('accounts'), successIndexes, errorIndex])
 
   const StyledCalendarIcon = (
     props: React.ComponentProps<typeof CalendarTodayOutlinedIcon>
@@ -225,7 +365,25 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
               </Alert>
             )}
 
-          {ACCOUNT_LABELS.map((label, index) => {
+          {ACCOUNT_LABELS.map((_, index) => {
+            const isRequired = index === 0 || index === 1 // Trust and Retention are required
+
+            // Get the field label for account number based on account type
+            const getAccountNumberLabel = () => {
+              switch (index) {
+                case 0:
+                  return 'Trust Account Number'
+                case 1:
+                  return 'Retention Account'
+                case 2:
+                  return 'Sub Construction Account'
+                case 3:
+                  return 'Corporate Account Number'
+                default:
+                  return 'Account Number'
+              }
+            }
+
             return (
               <Box key={index} mb={4}>
                 <Grid container spacing={3}>
@@ -234,15 +392,31 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
                       name={`accounts.${index}.trustAccountNumber`}
                       control={control}
                       defaultValue=""
+                      rules={{
+                        validate: (value: any) =>
+                          validateAccountField('trustAccountNumber', value),
+                      }}
                       render={({ field }) => (
-                    <TextField
-                    {...field}
-                    fullWidth
-                    disabled={isViewMode}
-                          label={label}
+                        <TextField
+                          {...field}
+                          fullWidth
+                          disabled={isViewMode}
+                          required={isRequired}
+                          label={getAccountNumberLabel()}
+                          error={!!errors.accounts?.[index]?.trustAccountNumber}
+                          helperText={
+                            (errors.accounts?.[index]?.trustAccountNumber
+                              ?.message as string) ||
+                            'Manual entry - Numerical only (max 15 digits)'
+                          }
+                          inputProps={{ maxLength: 15 }}
                           InputLabelProps={{ sx: labelSx }}
                           InputProps={{ sx: valueSx }}
-                          sx={commonFieldStyles}
+                          sx={
+                            errors.accounts?.[index]?.trustAccountNumber
+                              ? errorFieldStyles
+                              : commonFieldStyles
+                          }
                         />
                       )}
                     />
@@ -253,15 +427,31 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
                       name={`accounts.${index}.ibanNumber`}
                       control={control}
                       defaultValue=""
+                      rules={{
+                        validate: (value: any) =>
+                          validateAccountField('trustAccountIban', value),
+                      }}
                       render={({ field }) => (
-                    <TextField
-                    {...field}
-                    fullWidth
-                    disabled={isViewMode}
-                          label="IBAN Number*"
+                        <TextField
+                          {...field}
+                          fullWidth
+                          disabled={true} // Always disabled - fetched from backend
+                          required={isRequired}
+                          label={getLabel('CDL_BPA_ACC_IBAN', language, 'IBAN')}
+                          error={!!errors.accounts?.[index]?.ibanNumber}
+                          helperText={
+                            (errors.accounts?.[index]?.ibanNumber
+                              ?.message as string) ||
+                            'Fetched from core banking'
+                          }
+                          inputProps={{ maxLength: 25 }}
                           InputLabelProps={{ sx: labelSx }}
                           InputProps={{ sx: valueSx }}
-                          sx={commonFieldStyles}
+                          sx={
+                            errors.accounts?.[index]?.ibanNumber
+                              ? errorFieldStyles
+                              : commonFieldStyles
+                          }
                         />
                       )}
                     />
@@ -273,12 +463,17 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
                       name={`accounts.${index}.dateOpened`}
                       control={control}
                       defaultValue={null}
+                      rules={{
+                        validate: (value: any) =>
+                          validateAccountField('trustAccountOpenedDate', value),
+                      }}
                       render={({ field }) => (
-                  <DatePicker
-                    disabled={isViewMode}
-                    label={getLabel(
-                            'CDL_BPA_DATE_OPENED',
-                            'Date Opened*'
+                        <DatePicker
+                          disabled={true} // Always disabled - fetched from backend
+                          label={getLabel(
+                            'CDL_BPA_ACC_OPENDATE',
+                            language,
+                            'Account Opening Date'
                           )}
                           value={field.value}
                           onChange={field.onChange}
@@ -288,8 +483,16 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
                           }}
                           slotProps={{
                             textField: {
+                              required: isRequired,
                               fullWidth: true,
-                              sx: datePickerStyles,
+                              error: !!errors.accounts?.[index]?.dateOpened,
+                              helperText:
+                                (errors.accounts?.[index]?.dateOpened
+                                  ?.message as string) ||
+                                'Fetched from core banking',
+                              sx: errors.accounts?.[index]?.dateOpened
+                                ? errorFieldStyles
+                                : datePickerStyles,
                               InputLabelProps: { sx: labelSx },
                               InputProps: {
                                 sx: valueSx,
@@ -308,15 +511,35 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
                       name={`accounts.${index}.accountTitle`}
                       control={control}
                       defaultValue=""
+                      rules={{
+                        validate: (value: any) =>
+                          validateAccountField('trustAccountTitle', value),
+                      }}
                       render={({ field }) => (
-                    <TextField
-                    {...field}
-                    fullWidth
-                    disabled={isViewMode}
-                          label="Account Title*"
+                        <TextField
+                          {...field}
+                          fullWidth
+                          disabled={true} // Always disabled - fetched from backend
+                          required={isRequired}
+                          label={getLabel(
+                            'CDL_BPA_ACC_NAME',
+                            language,
+                            'Account Name'
+                          )}
+                          error={!!errors.accounts?.[index]?.accountTitle}
+                          helperText={
+                            (errors.accounts?.[index]?.accountTitle
+                              ?.message as string) ||
+                            'Fetched from core banking'
+                          }
+                          inputProps={{ maxLength: 100 }}
                           InputLabelProps={{ sx: labelSx }}
                           InputProps={{ sx: valueSx }}
-                          sx={commonFieldStyles}
+                          sx={
+                            errors.accounts?.[index]?.accountTitle
+                              ? errorFieldStyles
+                              : commonFieldStyles
+                          }
                         />
                       )}
                     />
@@ -329,55 +552,41 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
                         name={`accounts.${index}.currency`}
                         control={control}
                         defaultValue=""
+                        rules={{
+                          validate: (value: any) =>
+                            validateAccountField('accountCurrency', value),
+                        }}
                         render={({ field }) => (
-                          <FormControl fullWidth>
-                            <InputLabel sx={labelSx}>
-                              {currenciesLoading
+                          <TextField
+                            {...field}
+                            fullWidth
+                            disabled={true} // Always disabled - fetched from backend
+                            required={isRequired}
+                            label={
+                              currenciesLoading
                                 ? 'Loading...'
-                                : getLabel('CDL_BPA_CURRENCY', 'Currency*')}
-                            </InputLabel>
-                    <Select
-                      {...field}
-                      disabled={isViewMode}
-                              label={
-                                currenciesLoading
-                                  ? 'Loading...'
-                                  : getLabel('CDL_BPA_CURRENCY', 'Currency*')
-                              }
-                              IconComponent={KeyboardArrowDownIcon}
-                              sx={{
-                                '& .MuiOutlinedInput-notchedOutline': {
+                                : getLabel(
+                                    'CDL_BPA_ACC_CUR',
+                                    language,
+                                    'Account Currency'
+                                  )
+                            }
+                            placeholder="Enter currency code"
+                            error={!!errors.accounts?.[index]?.currency}
+                            helperText={
+                              errors.accounts?.[index]?.currency?.message
+                            }
+                            InputLabelProps={{ sx: labelSx }}
+                            InputProps={{ sx: valueSx }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                '& fieldset': {
                                   border: '1px solid #d1d5db',
                                   borderRadius: '6px',
                                 },
-                              }}
-                            >
-                              {currencies.length > 0
-                                ? currencies.map((currency) => (
-                                    <MenuItem
-                                      key={currency.id}
-                                      value={currency.id.toString()}
-                                    >
-                                      {getDisplayLabel(
-                                        currency,
-                                        currency.configValue
-                                      )}
-                                    </MenuItem>
-                                  ))
-                                : // Fallback to hardcoded currencies if API fails
-                                  [
-                                    <MenuItem key="AED" value="AED">
-                                      AED
-                                    </MenuItem>,
-                                    <MenuItem key="USD" value="USD">
-                                      USD
-                                    </MenuItem>,
-                                    <MenuItem key="EUR" value="EUR">
-                                      EUR
-                                    </MenuItem>,
-                                  ]}
-                            </Select>
-                          </FormControl>
+                              },
+                            }}
+                          />
                         )}
                       />
                       <Button
@@ -435,18 +644,25 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
                                   : '#D0E3FF',
                           },
                         }}
-                        onClick={() =>
-                          validateAccount(watch(`accounts.${index}`), index)
-                        }
+                        onClick={() => {
+                          const currentAccount = watch(`accounts.${index}`)
+                          // Always call API validation when button is clicked
+                          // This ensures fresh data is fetched when user changes account number
+                          validateAccount(currentAccount, index)
+                        }}
                         disabled={isViewMode || validatingIndex === index}
                       >
-                        {validatingIndex === index
-                          ? 'Validating...'
-                          : errorIndex === index
-                            ? 'Invalidate'
-                            : successIndexes.includes(index)
-                              ? 'Validated'
-                              : 'Validate'}
+                        {(() => {
+                          if (validatingIndex === index) {
+                            return 'Validating...'
+                          } else if (errorIndex === index) {
+                            return 'Invalidate'
+                          } else if (successIndexes.includes(index)) {
+                            return 'Validated'
+                          } else {
+                            return 'Validate'
+                          }
+                        })()}
                       </Button>
                     </Box>
                   </Grid>
@@ -472,8 +688,8 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
           severity={snackbarSeverity}
           sx={{ width: '100%', fontFamily: 'Outfit, sans-serif' }}
           iconMapping={{
-            success: <span style={{ fontSize: '1.2rem' }}>✅</span>,
-            error: <span style={{ fontSize: '1.2rem' }}>❌</span>,
+            success: <span style={{ fontSize: '1.2rem' }}></span>,
+            error: <span style={{ fontSize: '1.2rem' }}></span>,
           }}
         >
           {snackbarMessage}
@@ -481,6 +697,6 @@ const Step2: React.FC<Step2Props> = React.memo(({ projectId, isViewMode = false 
       </Snackbar>
     </LocalizationProvider>
   )
-})
+}
 
 export default Step2

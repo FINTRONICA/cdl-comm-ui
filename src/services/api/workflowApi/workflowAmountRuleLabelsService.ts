@@ -1,6 +1,7 @@
 import { apiClient } from '@/lib/apiClient'
 import { buildApiUrl, API_ENDPOINTS } from '@/constants/apiEndpoints'
 import { getAuthCookies } from '@/utils/cookieUtils'
+import { toast } from 'react-hot-toast'
 
 export interface WorkflowAmountRuleLabelResponse {
   id: number
@@ -55,7 +56,7 @@ export class WorkflowAmountLabelsService {
 
       return labels
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw new Error(ERROR_MESSAGE_FETCH)
     }
   }
@@ -102,7 +103,7 @@ export class WorkflowAmountLabelsService {
 
       return Array.from(languages)
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       return [DEFAULT_LANGUAGE]
     }
   }

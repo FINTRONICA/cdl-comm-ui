@@ -1,11 +1,5 @@
 import React from 'react'
 import {
-  Visibility as VisibilityIcon,
-  Download as DownloadIcon,
-  Delete as DeleteIcon,
-} from '@mui/icons-material'
-
-import {
   DocumentItem,
   ApiDocumentResponse,
 } from '../../DeveloperStepper/developerTypes'
@@ -16,7 +10,8 @@ import {
   TableColumn,
   DocumentAction,
 } from '../types'
-import { formatDate, previewFile, downloadFile } from '../utils'
+import { formatDate, downloadFile } from '../utils'
+import { Download, Trash2 } from 'lucide-react'
 
 // Service adapter for payment documents using PAYMENTS module
 export const paymentDocumentService: DocumentService<
@@ -42,8 +37,8 @@ export const paymentDocumentService: DocumentService<
     return buildPartnerService.uploadBuildPartnerDocument(
       file,
       paymentId,
-      documentType,
-      'PAYMENTS'
+      'PAYMENTS',
+      documentType
     )
   },
 }
@@ -146,23 +141,23 @@ export const paymentColumns: TableColumn<DocumentItem>[] = [
 
 // Document actions configuration for payment documents
 export const paymentActions: DocumentAction<DocumentItem>[] = [
-  {
-    key: 'view',
-    label: 'View',
-    icon: <VisibilityIcon fontSize="small" />,
-    onClick: (document: DocumentItem) => {
-      if (document.file) {
-        previewFile(document.file)
-      } else if (document.url) {
-        window.open(document.url, '_blank')
-      }
-    },
-    disabled: (document: DocumentItem) => !document.file && !document.url,
-  },
+  // {
+  //   key: 'view',
+  //   label: 'View',
+  //   icon: <VisibilityIcon fontSize="small" />,
+  //   onClick: (document: DocumentItem) => {
+  //     if (document.file) {
+  //       previewFile(document.file)
+  //     } else if (document.url) {
+  //       window.open(document.url, '_blank')
+  //     }
+  //   },
+  //   disabled: (document: DocumentItem) => !document.file && !document.url,
+  // },
   {
     key: 'download',
     label: 'Download',
-    icon: <DownloadIcon fontSize="small" />,
+    icon: <Download className="w-4 h-4" />,
     onClick: (document: DocumentItem) => {
       if (document.file) {
         downloadFile(document.file, document.name)
@@ -181,15 +176,12 @@ export const paymentActions: DocumentAction<DocumentItem>[] = [
   {
     key: 'delete',
     label: 'Delete',
-    icon: <DeleteIcon fontSize="small" />,
+    icon: <Trash2 className="w-4 h-4" />,
     color: 'error' as const,
     requiresConfirmation: true,
     confirmationMessage:
       'Are you sure you want to delete this document? This action cannot be undone.',
     onClick: async (document: DocumentItem) => {
-      // Note: This would need to be implemented in the parent component
-      // as it requires updating the local state
-      console.log('Delete document:', document.id)
     },
   },
 ]
@@ -201,6 +193,7 @@ export const createPaymentDocumentConfig = (
     title?: string
     description?: string
     isOptional?: boolean
+    isReadOnly?: boolean
     onDocumentsChange?: (documents: DocumentItem[]) => void
     onUploadSuccess?: (documents: DocumentItem[]) => void
     onUploadError?: (error: string) => void
@@ -225,15 +218,16 @@ export const createPaymentDocumentConfig = (
 
   const config: DocumentUploadConfig<DocumentItem, ApiDocumentResponse> = {
     entityId: paymentId,
-    entityType: 'PAYMENT',
+    entityType: 'PAYMENTS',
     documentService: paymentDocumentService,
     mapApiToDocument: mapApiToPaymentDocumentItem,
-    documentTypeSettingKey: 'PAYMENT_DOC_TYPE', // Setting key for payment document types
+    documentTypeSettingKey: 'INVESTOR_ID_TYPE', // Setting key for payment document types
     title: options?.title || 'Payment Documents',
     description:
       options?.description ||
       'This step is optional. You can upload payment-related documents or skip to continue.',
     isOptional: options?.isOptional ?? true,
+    isReadOnly: options?.isReadOnly ?? false,
     columns: paymentColumns,
     actions,
   }

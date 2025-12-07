@@ -1,5 +1,0 @@
-export { default as CustomerStep1 } from './CustomerStep1'
-export { default as CustomerStep2 } from './CustomerStep2'
-export { default as CustomerStep3 } from './CustomerStep3'
-export { default as CustomerStep4 } from './CustomerStep4'
-export { default as DocumentUploadStep } from './DocumentUploadStep'

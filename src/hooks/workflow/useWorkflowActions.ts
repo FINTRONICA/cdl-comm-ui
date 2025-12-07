@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { toast } from 'react-hot-toast'
 import {
   workflowActionService,
   type WorkflowActionFilters,
@@ -108,14 +109,40 @@ export function useCreateWorkflowAction() {
 
   return useMutation({
     mutationFn: async (data: CreateWorkflowActionRequest) => {
-      const result = await workflowActionService.createWorkflowAction(data)
-      return result
+      try {
+        // toast.loading('Creating workflow action...', { id: 'create-action' })
+        const result = await workflowActionService.createWorkflowAction(data)
+        return result
+      } catch (error) {
+        throw error
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] })
+    onSuccess: (newAction) => {
+      try {
+        // Update all workflow action queries (including those with parameters)
+        queryClient.setQueriesData(
+          { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+          (old: any) => {
+            if (!old?.content) return old
+            return {
+              ...old,
+              content: [newAction, ...old.content]
+            }
+          }
+        )
+
+        toast.success('Workflow action created successfully!', { id: 'create-action' })
+      } catch (error) {
+        toast.error(`${error} Failed to update local data`)
+      }
     },
     onError: (error) => {
-      console.log(error)
+      try {
+
+        toast.error(`${error}`, { id: 'create-action' })
+      } catch (error) {
+        toast.error(`${error} Failed to update local data`)
+      }
     },
     retry: 2,
   })
@@ -132,20 +159,50 @@ export function useUpdateWorkflowAction() {
       id: string
       updates: UpdateWorkflowActionRequest
     }) => {
-      const result = await workflowActionService.updateWorkflowAction(
-        id,
-        updates
-      )
-      return result
+      try {
+        // toast.loading('Updating workflow action...', { id: 'update-action' })
+        const result = await workflowActionService.updateWorkflowAction(
+          id,
+          updates
+        )
+        return result
+      } catch (error) {
+        throw error
+      }
     },
-    onSuccess: ({ id }) => {
-      queryClient.invalidateQueries({ queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] })
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_ACTIONS_QUERY_KEY, id],
-      })
+    onSuccess: (updatedAction) => {
+      try {
+        // Update all workflow action queries (including those with parameters)
+        queryClient.setQueriesData(
+          { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+          (old: any) => {
+            if (!old?.content) return old
+
+            // Remove the old item and add updated one to top
+            const filteredContent = old.content.filter(
+              (item: any) => item.id !== updatedAction.id
+            )
+            return {
+              ...old,
+              content: [updatedAction, ...filteredContent]
+            }
+          }
+        )
+
+        toast.success('Workflow action updated successfully!')
+      } catch (error) {
+        toast.error(`${error} Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage = error?.response?.data?.message ||
+          error?.message ||
+          'Failed to update workflow action'
+        toast.error(errorMessage, { id: 'update-action' })
+      } catch (error) {
+        toast.error(`${error} Failed to update local data`)
+      }
     },
     retry: 2,
   })
@@ -156,14 +213,31 @@ export function useDeleteWorkflowAction() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const result = await workflowActionService.deleteWorkflowAction(id)
-      return result
+      try {
+        // toast.loading('Deleting workflow action...', { id: 'delete-action' })
+        const result = await workflowActionService.deleteWorkflowAction(id)
+        return result
+      } catch (error) {
+        throw error
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] })
+      try {
+        queryClient.invalidateQueries({ queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] })
+        toast.success('Workflow action deleted successfully!', { id: 'delete-action' })
+      } catch (error) {
+        toast.error(`${error} Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage = error?.response?.data?.message ||
+          error?.message ||
+          'Failed to delete workflow action'
+        toast.error(errorMessage, { id: 'delete-action' })
+      } catch (toastError) {
+        toast.error(`${toastError} Failed to update local data`)
+      }
     },
     retry: false,
   })
@@ -298,6 +372,135 @@ export function useOptimisticWorkflowActions() {
   return {
     optimisticUpdate,
     rollbackUpdate,
+  }
+}
+
+// Advanced utility functions for list manipulation
+export function useWorkflowActionListUtils() {
+  const queryClient = useQueryClient()
+
+  // Prepend item to top of list (most efficient)
+  const prependToList = useCallback((newItem: any) => {
+    queryClient.setQueriesData(
+      { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+      (old: any) => {
+        if (!old?.content) return old
+        return {
+          ...old,
+          content: [newItem, ...old.content]
+        }
+      }
+    )
+  }, [queryClient])
+
+  // Append item to bottom of list
+  const appendToList = useCallback((newItem: any) => {
+    queryClient.setQueriesData(
+      { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+      (old: any) => {
+        if (!old?.content) return old
+        return {
+          ...old,
+          content: [...old.content, newItem]
+        }
+      }
+    )
+  }, [queryClient])
+
+  // Move existing item to top (optimized)
+  const moveToTop = useCallback((itemId: string | number, updatedItem: any) => {
+    queryClient.setQueriesData(
+      { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+      (old: any) => {
+        if (!old?.content) return old
+
+        const filteredContent = old.content.filter(
+          (item: any) => item.id !== itemId
+        )
+        return {
+          ...old,
+          content: [updatedItem, ...filteredContent]
+        }
+      }
+    )
+  }, [queryClient])
+
+  // Move existing item to bottom
+  const moveToBottom = useCallback((itemId: string | number, updatedItem: any) => {
+    queryClient.setQueriesData(
+      { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+      (old: any) => {
+        if (!old?.content) return old
+
+        const filteredContent = old.content.filter(
+          (item: any) => item.id !== itemId
+        )
+        return {
+          ...old,
+          content: [...filteredContent, updatedItem]
+        }
+      }
+    )
+  }, [queryClient])
+
+  // Insert item at specific position
+  const insertAtPosition = useCallback((newItem: any, position: number) => {
+    queryClient.setQueriesData(
+      { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+      (old: any) => {
+        if (!old?.content) return old
+
+        const newContent = [...old.content]
+        newContent.splice(position, 0, newItem)
+
+        return {
+          ...old,
+          content: newContent
+        }
+      }
+    )
+  }, [queryClient])
+
+  // Remove item by ID
+  const removeById = useCallback((itemId: string | number) => {
+    queryClient.setQueriesData(
+      { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+      (old: any) => {
+        if (!old?.content) return old
+
+        return {
+          ...old,
+          content: old.content.filter((item: any) => item.id !== itemId)
+        }
+      }
+    )
+  }, [queryClient])
+
+  // Update item in place (without moving position)
+  const updateInPlace = useCallback((itemId: string | number, updatedItem: any) => {
+    queryClient.setQueriesData(
+      { queryKey: [WORKFLOW_ACTIONS_QUERY_KEY] },
+      (old: any) => {
+        if (!old?.content) return old
+
+        return {
+          ...old,
+          content: old.content.map((item: any) =>
+            item.id === itemId ? updatedItem : item
+          )
+        }
+      }
+    )
+  }, [queryClient])
+
+  return {
+    prependToList,      // Add new item to top
+    appendToList,       // Add new item to bottom
+    moveToTop,          // Move existing item to top
+    moveToBottom,       // Move existing item to bottom
+    insertAtPosition,   // Insert at specific position
+    removeById,         // Remove item by ID
+    updateInPlace,      // Update without moving position
   }
 }
 

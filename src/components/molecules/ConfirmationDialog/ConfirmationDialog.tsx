@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -17,6 +17,25 @@ import {
   Info as InfoIcon,
   CheckCircle as SuccessIcon,
 } from '@mui/icons-material'
+
+const useIsDarkMode = () => {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+    checkDarkMode()
+    const observer = new MutationObserver(checkDarkMode)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    return () => observer.disconnect()
+  }, [])
+
+  return isDark
+}
 
 export interface ConfirmationDialogProps {
   open: boolean
@@ -70,6 +89,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
 }) => {
   const config = variantConfig[variant]
   const IconComponent = config.icon
+  const isDark = useIsDarkMode()
 
   const handleConfirm = async () => {
     try {
@@ -87,28 +107,44 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       fullWidth
       aria-labelledby="confirmation-dialog-title"
       aria-describedby="confirmation-dialog-description"
+      PaperProps={{
+        sx: {
+          borderRadius: '12px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+          backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+        },
+      }}
     >
       <DialogTitle
         id="confirmation-dialog-title"
         sx={{
           fontFamily: 'Outfit',
+          fontWeight: 600,
+          fontSize: '18px',
+          color: isDark ? '#F9FAFB' : '#1F2937',
+          pb: 1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          pb: 1,
+          backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <IconComponent
             sx={{
-              color: config.color,
-              fontSize: 24,
+              color: variant === 'error' ? '#DC2626' : '#2563EB',
+              fontSize: 20,
             }}
           />
-          <Typography 
-            variant="h6" 
+          <Typography
+            variant="h6"
             component="span"
-            sx={{ fontFamily: 'Outfit' }}
+            sx={{
+              fontFamily: 'Outfit',
+              fontWeight: 600,
+              fontSize: '18px',
+              color: isDark ? '#F9FAFB' : '#1F2937',
+            }}
           >
             {title}
           </Typography>
@@ -118,20 +154,26 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           onClick={onClose}
           disabled={loading}
           sx={{
-            color: (theme) => theme.palette.grey[500],
+            color: isDark ? '#9CA3AF' : '#6B7280',
+            '&:hover': {
+              backgroundColor: isDark ? '#374151' : '#F3F4F6',
+            },
           }}
         >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
-      <DialogContent>
+      <DialogContent
+        sx={{ pt: 2, backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }}
+      >
         <DialogContentText
           id="confirmation-dialog-description"
           sx={{
-            color: 'text.primary',
-            fontSize: '1rem',
+            color: isDark ? '#E5E7EB' : '#6B7280',
+            fontSize: '14px',
             fontFamily: 'Outfit',
+            lineHeight: '20px',
           }}
         >
           {message}
@@ -141,15 +183,15 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             sx={{
               mt: 2,
               p: 2,
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: 1,
+              backgroundColor: isDark ? '#7F1D1D' : '#FEF2F2',
+              border: isDark ? '1px solid #991B1B' : '1px solid #FECACA',
+              borderRadius: '8px',
             }}
           >
             <Typography
               sx={{
-                color: '#dc2626',
-                fontSize: '0.875rem',
+                color: isDark ? '#FCA5A5' : '#DC2626',
+                fontSize: '14px',
                 fontFamily: 'Outfit',
                 fontWeight: 500,
               }}
@@ -160,18 +202,38 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions
+        sx={{
+          p: 3,
+          pt: 2,
+          gap: 2,
+          backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+        }}
+      >
         <Button
           onClick={onClose}
           disabled={loading}
-          variant="outlined"
-          color="primary"
-          sx={{ 
+          sx={{
             fontFamily: 'Outfit',
-            height: '32px',
-            fontSize: '14px',
+            textTransform: 'none',
             fontWeight: 500,
-            textTransform: 'none'
+            fontSize: '14px',
+            lineHeight: '20px',
+            letterSpacing: '0px',
+            borderRadius: '8px',
+            padding: '10px 24px',
+            border: isDark ? '1px solid #4B5563' : '1px solid #D1D5DB',
+            color: isDark ? '#F9FAFB' : '#374151',
+            backgroundColor: isDark ? '#374151' : '#FFFFFF',
+            '&:hover': {
+              backgroundColor: isDark ? '#4B5563' : '#F9FAFB',
+              borderColor: isDark ? '#6B7280' : '#9CA3AF',
+            },
+            '&:disabled': {
+              backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
+              color: isDark ? '#6B7280' : '#9CA3AF',
+              borderColor: isDark ? '#374151' : '#E5E7EB',
+            },
           }}
         >
           {cancelText}
@@ -180,21 +242,25 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           onClick={handleConfirm}
           disabled={loading}
           autoFocus
-          sx={{ 
+          sx={{
             fontFamily: 'Outfit',
-            height: '32px',
-            fontSize: '14px',
-            fontWeight: 500,
             textTransform: 'none',
-            backgroundColor: '#155DFC',
-            color: '#FAFAF9',
+            fontWeight: 500,
+            fontSize: '14px',
+            lineHeight: '20px',
+            letterSpacing: '0px',
+            borderRadius: '8px',
+            padding: '10px 24px',
+            backgroundColor: variant === 'error' ? '#DC2626' : '#2563EB',
+            color: '#FFFFFF',
             '&:hover': {
-              backgroundColor: '#1d4ed8'
+              backgroundColor: variant === 'error' ? '#B91C1C' : '#1D4ED8',
+              color: '#FFFFFF',
             },
             '&:disabled': {
-              backgroundColor: '#9ca3af',
-              color: '#f3f4f6'
-            }
+              backgroundColor: isDark ? '#6B7280' : '#9CA3AF',
+              color: '#FFFFFF',
+            },
           }}
         >
           {loading ? 'Processing...' : confirmText}

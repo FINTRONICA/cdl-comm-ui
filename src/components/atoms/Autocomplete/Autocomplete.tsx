@@ -92,7 +92,6 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       try {
         if (onSearch) {
           const searchResults = await onSearch(query)
-          console.log('Autocomplete search results:', searchResults)
           setFilteredOptions(searchResults)
         } else {
           // Local filtering if no search function provided
@@ -222,18 +221,18 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   }, [options, searchQuery])
 
   const baseClasses =
-    'w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200'
+    'w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors duration-200'
   const errorClasses = error
-    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+    ? 'border-red-500 dark:border-red-500 focus:ring-red-500 dark:focus:ring-red-400 focus:border-red-500 dark:focus:border-red-500'
     : ''
   const disabledClasses = disabled
-    ? 'bg-gray-100 cursor-not-allowed opacity-60'
+    ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60'
     : ''
 
   return (
     <div className={cn('relative', className)} ref={dropdownRef}>
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
           <Search className="w-4 h-4" />
         </div>
         <input
@@ -269,14 +268,14 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         )}
 
         {/* Dropdown arrow */}
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
           <ChevronDown
             className={cn(
               'w-4 h-4 transition-transform',
@@ -288,10 +287,10 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg dark:shadow-gray-900/50 max-h-60 overflow-auto">
           {loading || isSearching ? (
-            <div className="px-3 py-2 text-sm text-gray-500 flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+            <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 dark:border-t-blue-400 rounded-full animate-spin" />
               Searching...
             </div>
           ) : filteredOptions.length > 0 ? (
@@ -301,8 +300,8 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 className={cn(
                   'px-3 py-2 cursor-pointer transition-colors',
                   index === highlightedIndex
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'hover:bg-gray-50 text-gray-700'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
                 )}
                 onClick={() => handleOptionSelect(option)}
               >
@@ -310,7 +309,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
               </div>
             ))
           ) : (
-            <div className="px-3 py-2 text-sm text-gray-500">
+            <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
               {noResultsText}
             </div>
           )}
@@ -318,7 +317,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       )}
 
       {/* Error message */}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }

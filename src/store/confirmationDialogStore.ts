@@ -11,6 +11,10 @@ export interface ConfirmationDialogState {
   error: string | null
   onConfirm: (() => void | Promise<void>) | null
   onCancel: (() => void) | null
+  // UI customization options
+  showCloseButton?: boolean
+  maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+  fullWidth?: boolean
 }
 
 export interface ConfirmationDialogConfig {
@@ -21,6 +25,10 @@ export interface ConfirmationDialogConfig {
   variant?: 'warning' | 'error' | 'info' | 'success'
   onConfirm: () => void | Promise<void>
   onCancel?: () => void
+  // UI customization options
+  showCloseButton?: boolean
+  maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+  fullWidth?: boolean
 }
 
 export interface ConfirmationDialogActions {
@@ -30,7 +38,8 @@ export interface ConfirmationDialogActions {
   confirm: () => Promise<void>
 }
 
-export type ConfirmationDialogStore = ConfirmationDialogState & ConfirmationDialogActions
+export type ConfirmationDialogStore = ConfirmationDialogState &
+  ConfirmationDialogActions
 
 const initialState: ConfirmationDialogState = {
   isOpen: false,
@@ -43,58 +52,67 @@ const initialState: ConfirmationDialogState = {
   error: null,
   onConfirm: null,
   onCancel: null,
+  showCloseButton: true,
+  maxWidth: 'sm',
+  fullWidth: true,
 }
 
-export const useConfirmationDialogStore = create<ConfirmationDialogStore>((set, get) => ({
-  ...initialState,
+export const useConfirmationDialogStore = create<ConfirmationDialogStore>(
+  (set, get) => ({
+    ...initialState,
 
-  openDialog: (config) => {
-    set({
-      isOpen: true,
-      title: config.title || 'Confirm Action',
-      message: config.message || 'Are you sure you want to proceed?',
-      confirmText: config.confirmText || 'Confirm',
-      cancelText: config.cancelText || 'Cancel',
-      variant: config.variant || 'warning',
-      onConfirm: config.onConfirm,
-      onCancel: config.onCancel || null,
-      isLoading: false,
-      error: null,
-    })
-  },
-
-  closeDialog: () => {
-    const state = get()
-    if (state.onCancel) {
-      state.onCancel()
-    }
-    set(initialState)
-  },
-
-  setLoading: (loading) => {
-    set({ isLoading: loading })
-  },
-
-  confirm: async () => {
-    const state = get()
-    if (!state.onConfirm) return
-
-    try {
-      set({ isLoading: true, error: null })
-      await state.onConfirm()
-      set(initialState) // Close dialog on success
-    } catch (error) {
-      console.error('Confirmation action failed:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Operation failed'
-      set({ 
-        isLoading: false, 
-        error: errorMessage,
-        title: 'Delete Failed',
-        confirmText: 'Try Again'
+    openDialog: (config) => {
+      set({
+        isOpen: true,
+        title: config.title || 'Confirm Action',
+        message: config.message || 'Are you sure you want to proceed?',
+        confirmText: config.confirmText || 'Confirm',
+        cancelText: config.cancelText || 'Cancel',
+        variant: config.variant || 'warning',
+        onConfirm: config.onConfirm,
+        onCancel: config.onCancel || null,
+        isLoading: false,
+        error: null,
+        showCloseButton: config.showCloseButton !== false,
+        maxWidth: config.maxWidth || 'sm',
+        fullWidth: config.fullWidth !== false,
       })
-    }
-  },
-}))
+    },
+
+    closeDialog: () => {
+      const state = get()
+      if (state.onCancel) {
+        state.onCancel()
+      }
+      set(initialState)
+    },
+
+    setLoading: (loading) => {
+      set({ isLoading: loading })
+    },
+
+    confirm: async () => {
+      const state = get()
+      if (!state.onConfirm) return
+
+      try {
+        set({ isLoading: true, error: null })
+        await state.onConfirm()
+        set(initialState) // Close dialog on success
+      } catch (error) {
+        console.error('Confirmation action failed:', error)
+        const errorMessage =
+          error instanceof Error ? error.message : 'Operation failed'
+        set({
+          isLoading: false,
+          error: errorMessage,
+          title: 'Delete Failed',
+          confirmText: 'Try Again',
+        })
+      }
+    },
+  })
+)
 
 // Convenience function for common delete confirmations with full configurability
 export const useDeleteConfirmation = () => {
@@ -117,12 +135,12 @@ export const useDeleteConfirmation = () => {
     showSuccessNotification?: boolean
   }) => {
     // Default delete message, but fully overridable
-    const defaultMessage = config.itemName 
+    const defaultMessage = config.itemName
       ? `Are you sure you want to delete ${config.itemName}${config.itemId ? ` (ID: ${config.itemId})` : ''}?\n\nThis action cannot be undone.`
       : 'Are you sure you want to delete this item?\n\nThis action cannot be undone.'
 
     // Default success message
-    const defaultSuccessTitle = config.itemName 
+    const defaultSuccessTitle = config.itemName
       ? `${config.itemName.charAt(0).toUpperCase() + config.itemName.slice(1)} deleted successfully`
       : 'Item deleted successfully'
 
@@ -134,13 +152,13 @@ export const useDeleteConfirmation = () => {
       variant: config.variant || 'error',
       onConfirm: async () => {
         await config.onConfirm()
-        
+
         // Show success notification if enabled (default: true)
         if (config.showSuccessNotification !== false) {
           // Dynamically import to avoid circular dependencies
           const { useNotificationStore } = await import('./notificationStore')
           const { addNotification } = useNotificationStore.getState()
-          
+
           addNotification({
             type: 'success',
             title: config.successTitle || defaultSuccessTitle,

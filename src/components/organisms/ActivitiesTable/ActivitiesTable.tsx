@@ -128,12 +128,12 @@ export const ActivitiesTable: React.FC<ActivitiesTableProps> = ({
     { key: 'comment', label: 'Comment', width: 'w-56' },
     { key: 'createdDate', label: 'Created Date', width: 'w-40' },
     { key: 'updatedDate', label: 'Updated Date', width: 'w-40' },
-    { key: 'status', label: 'Status', type: 'status' as const, width: 'w-28' },
+    { key: 'status', label: 'Status', type: 'status' as const, width: 'w-40' },
     {
       key: 'actions',
       label: 'Actions',
       type: 'actions' as const,
-      width: 'w-20',
+      width: 'w-28',
     },
   ]
 

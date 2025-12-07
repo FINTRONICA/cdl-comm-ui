@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Box,
   Grid,
@@ -10,7 +10,6 @@ import {
   Divider,
   Button,
   Checkbox,
-  CircularProgress,
   Alert,
   Table,
   TableBody,
@@ -28,26 +27,53 @@ import {
   type BuildPartnerBeneficiaryResponse,
 } from '@/services/api/buildPartnerService'
 import { formatDate } from '@/utils'
+import { GlobalLoading } from '@/components/atoms'
+import { useBuildPartnerLabelsWithCache } from '@/hooks/useBuildPartnerLabelsWithCache'
+import { getBuildPartnerLabel } from '@/constants/mappings/buildPartnerMapping'
+import { useAppStore } from '@/store'
 
-const labelSx = {
-  color: '#6B7280',
+// Hook to detect dark mode
+const useIsDarkMode = () => {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+
+    checkTheme()
+
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  return isDark
+}
+
+const getLabelSx = (isDark: boolean) => ({
+  color: isDark ? '#9CA3AF' : '#6B7280',
   fontFamily: 'Outfit, sans-serif',
   fontWeight: 400,
   fontSize: '12px',
   lineHeight: '16px',
   letterSpacing: 0,
   marginBottom: '4px',
-}
+})
 
-const valueSx = {
-  color: '#1F2937',
+const getValueSx = (isDark: boolean) => ({
+  color: isDark ? '#F9FAFB' : '#1F2937',
   fontFamily: 'Outfit, sans-serif',
   fontWeight: 500,
   fontSize: '14px',
   lineHeight: '20px',
   letterSpacing: 0,
   wordBreak: 'break-word',
-}
+})
 
 const fieldBoxSx = {
   display: 'flex',
@@ -56,30 +82,13 @@ const fieldBoxSx = {
   marginBottom: '16px',
 }
 
-const renderDisplayField = (
-  label: string,
-  value: string | number | null = '-'
-) => (
-  <Box sx={fieldBoxSx}>
-    <Typography sx={labelSx}>{label}</Typography>
-    <Typography sx={valueSx}>{value || '-'}</Typography>
-  </Box>
-)
-
-const renderCheckboxField = (label: string, checked: boolean) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-    <Checkbox checked={checked} disabled sx={{ p: 0, pr: 1 }} />
-    <Typography sx={valueSx}>{label}</Typography>
-  </Box>
-)
-
 // Data interfaces
 interface ContactData {
   bpcFirstName: string
   bpcLastName: string
   bpcContactEmail: string
-  bpcContactAddressLine1: string
-  bpcContactAddressLine2: string
+  bpcContactmpaddressLine1: string
+  bpcContactmpaddressLine2: string
   bpcContactPoBox: string
   bpcCountryMobCode: string
   bpcContactTelNo: string
@@ -116,6 +125,7 @@ interface Step5Props {
 const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
   const params = useParams()
   const buildPartnerId = developerId || (params.id as string)
+  const isDarkMode = useIsDarkMode()
 
   const [buildPartnerDetails, setBuildPartnerDetails] =
     useState<BuildPartner | null>(null)
@@ -128,6 +138,41 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Dynamic labels helper (same as other steps)
+  const { data: buildPartnerLabels, getLabel } =
+    useBuildPartnerLabelsWithCache()
+  const currentLanguage = useAppStore((state) => state.language) || 'EN'
+  const getBuildPartnerLabelDynamic = useCallback(
+    (configId: string): string => {
+      const fallback = getBuildPartnerLabel(configId)
+      return buildPartnerLabels
+        ? getLabel(configId, currentLanguage, fallback)
+        : fallback
+    },
+    [buildPartnerLabels, currentLanguage, getLabel]
+  )
+
+  // Render helper functions with dark mode support
+  const renderDisplayField = useCallback(
+    (label: string, value: string | number | null = '-') => (
+      <Box sx={fieldBoxSx}>
+        <Typography sx={getLabelSx(isDarkMode)}>{label}</Typography>
+        <Typography sx={getValueSx(isDarkMode)}>{value || '-'}</Typography>
+      </Box>
+    ),
+    [isDarkMode]
+  )
+
+  const renderCheckboxField = useCallback(
+    (label: string, checked: boolean) => (
+      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+        <Checkbox checked={checked} disabled sx={{ p: 0, pr: 1 }} />
+        <Typography sx={getValueSx(isDarkMode)}>{label}</Typography>
+      </Box>
+    ),
+    [isDarkMode]
+  )
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -165,7 +210,6 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
           beneficiaries.status === 'fulfilled' ? beneficiaries.value : null
         const documentsResult =
           documents.status === 'fulfilled' ? documents.value : null
-
 
         setBuildPartnerDetails(detailsResult as BuildPartner)
 
@@ -243,7 +287,8 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
           documentArray.map((doc) => ({
             id: doc.id?.toString() || '',
             fileName: doc.documentName || '',
-            documentType: doc.documentTypeDTO?.settingValue || '',
+            documentType:
+              doc.documentTypeDTO?.languageTranslationId?.configValue || '',
             uploadDate: doc.uploadDate || '',
             fileSize: parseInt(doc.documentSize || '0'),
           }))
@@ -266,45 +311,49 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
   ) => {
     const fields = [
       {
-        label: 'Contact Name',
+        label: getBuildPartnerLabelDynamic('CDL_BP_AUTH_NAME'),
         value:
           `${contact.bpcFirstName || ''} ${contact.bpcLastName || ''}`.trim() ||
           '',
         gridSize: 6,
       },
       {
-        label: 'Contact Email',
+        label: getBuildPartnerLabelDynamic('CDL_BP_EMAIL_ADDRESS'),
         value: contact.bpcContactEmail || ' ',
         gridSize: 6,
       },
       {
-        label: 'Contact Address',
+        label: getBuildPartnerLabelDynamic('CDL_BP_BUSINESS_ADDRESS'),
         value:
-          `${contact.bpcContactAddressLine1 || ''} ${contact.bpcContactAddressLine2 || ''}`.trim() ||
+          `${contact.bpcContactmpaddressLine1 || ''} ${contact.bpcContactmpaddressLine2 || ''}`.trim() ||
           '',
         gridSize: 6,
       },
       {
-        label: 'Contact P.O. Box',
+        label: getBuildPartnerLabelDynamic('CDL_BP_POBOX'),
         value: contact.bpcContactPoBox || '',
         gridSize: 6,
       },
       {
-        label: 'Country Code',
+        label: getBuildPartnerLabelDynamic('CDL_BP_COUNTRY_CODE'),
         value: contact.bpcCountryMobCode || '',
         gridSize: 3,
       },
       {
-        label: 'Tel No.',
+        label: getBuildPartnerLabelDynamic('CDL_BP_TELEPHONE_NUMBER'),
         value: contact.bpcContactTelNo || '',
         gridSize: 3,
       },
       {
-        label: 'Mobile Number',
+        label: getBuildPartnerLabelDynamic('CDL_BP_MOBILE_NUMBER'),
         value: contact.bpcContactMobNo || '',
         gridSize: 3,
       },
-      { label: 'FAX', value: contact.bpcContactFaxNo || '', gridSize: 3 },
+      {
+        label: getBuildPartnerLabelDynamic('CDL_BP_FAX_NUMBER'),
+        value: contact.bpcContactFaxNo || '',
+        gridSize: 3,
+      },
     ]
     return (
       <Box sx={{ mb: 0 }}>
@@ -318,6 +367,7 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
             letterSpacing: '0.15px',
             verticalAlign: 'middle',
             mb: 2,
+            color: isDarkMode ? '#F9FAFB' : '#1E2939',
           }}
         >
           {title}
@@ -335,7 +385,15 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
             </Grid>
           ))}
         </Grid>
-        {!isLast && <Divider sx={{ mb: 0, mt: 4 }} />}
+        {!isLast && (
+          <Divider
+            sx={{
+              mb: 0,
+              mt: 4,
+              borderColor: isDarkMode ? '#334155' : '#E5E7EB',
+            }}
+          />
+        )}
       </Box>
     )
   }
@@ -344,51 +402,59 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
   const renderFeeFields = (fee: FeeData, title: string, isLast: boolean) => {
     const fields = [
       {
-        label: 'Fee Type',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_TYPE'),
         value: fee.bpFeeCategoryDTO?.languageTranslationId?.configValue || '',
         gridSize: 6,
       },
       {
-        label: 'Frequency',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_FREQUENCY'),
         value: fee.bpFeeFrequencyDTO?.languageTranslationId?.configValue || '',
         gridSize: 6,
       },
       {
-        label: 'Debit Amount',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_ACCOUNT'),
+        value:
+          (fee as any)?.bpAccountTypeDTO?.languageTranslationId?.configValue ||
+          (fee as any)?.bpAccountTypeDTO?.settingValue ||
+          '',
+        gridSize: 6,
+      },
+      {
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_AMOUNT'),
         value: fee.debitAmount?.toString() || '',
         gridSize: 6,
       },
       {
-        label: 'Fee to be Collected',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_TOTAL'),
         value: fee.feeCollectionDate
-          ? formatDate(fee.feeCollectionDate, 'MMM DD, YYYY')
+          ? formatDate(fee.feeCollectionDate, 'DD/MM/YYYY')
           : '',
         gridSize: 6,
       },
       {
-        label: 'Next Recovery Date',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_DATE'),
         value: fee.feeNextRecoveryDate
-          ? formatDate(fee.feeNextRecoveryDate, 'MMM DD, YYYY')
+          ? formatDate(fee.feeNextRecoveryDate, 'DD/MM/YYYY')
           : '',
         gridSize: 6,
       },
       {
-        label: 'Fee Percentage',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_RATE'),
         value: fee.feePercentage?.toString() || '',
         gridSize: 6,
       },
       {
-        label: 'Amount',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_TOTAL_AMOUNT'),
         value: fee.totalAmount?.toString() || '',
         gridSize: 6,
       },
       {
-        label: 'VAT Percentage',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_VAT'),
         value: fee.vatPercentage?.toString() || '',
         gridSize: 6,
       },
       {
-        label: 'Currency',
+        label: getBuildPartnerLabelDynamic('CDL_BP_FEES_CURRENCY'),
         value: fee.bpFeeCurrencyDTO?.languageTranslationId?.configValue || '',
         gridSize: 6,
       },
@@ -405,6 +471,7 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
             letterSpacing: '0.15px',
             verticalAlign: 'middle',
             mb: 2,
+            color: isDarkMode ? '#F9FAFB' : '#1E2939',
           }}
         >
           {title}
@@ -422,42 +489,61 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
             </Grid>
           ))}
         </Grid>
-        {!isLast && <Divider sx={{ mb: 0, mt: 4 }} />}
+        {!isLast && (
+          <Divider
+            sx={{
+              mb: 0,
+              mt: 4,
+              borderColor: isDarkMode ? '#334155' : '#E5E7EB',
+            }}
+          />
+        )}
       </Box>
     )
   }
 
   // Render beneficiary fields with actual API data
   const renderBeneficiaryFields = (
-    beneficiary: BuildPartnerBeneficiaryResponse,
+    beneficiary: BuildPartnerBeneficiaryResponse | any,
     title: string,
     isLast: boolean
   ) => {
     const fields = [
       {
-        label: 'Transfer Type',
-        value: beneficiary.bpbBeneficiaryType || '',
+        label: getBuildPartnerLabelDynamic('CDL_BP_BENE_PAYMODE'),
+        value:
+          beneficiary?.bpbTransferTypeDTO?.languageTranslationId?.configValue ||
+          beneficiary.bpbBeneficiaryType ||
+          '',
         gridSize: 6,
       },
       {
-        label: 'Beneficiary ID',
+        label: getBuildPartnerLabelDynamic('CDL_BP_BENE_REF'),
         value: beneficiary.bpbBeneficiaryId || '',
         gridSize: 6,
       },
-      { label: 'Name', value: beneficiary.bpbName || '', gridSize: 6 },
-      { label: 'Bank', value: beneficiary.bpbBankName || '', gridSize: 6 },
       {
-        label: 'Account Number/IBAN',
+        label: getBuildPartnerLabelDynamic('CDL_BP_BENE_NAME'),
+        value: beneficiary.bpbName || '',
+        gridSize: 6,
+      },
+      {
+        label: getBuildPartnerLabelDynamic('CDL_BP_BENE_BANK'),
+        value: beneficiary.bpbBankName || '',
+        gridSize: 6,
+      },
+      {
+        label: getBuildPartnerLabelDynamic('CDL_BP_BENE_ACCOUNT'),
         value: beneficiary.bpbAccountNumber || '',
         gridSize: 6,
       },
       {
-        label: 'Swift/BIC',
+        label: getBuildPartnerLabelDynamic('CDL_BP_BENE_BIC'),
         value: beneficiary.bpbSwiftCode || '',
         gridSize: 6,
       },
       {
-        label: 'Routing Code',
+        label: getBuildPartnerLabelDynamic('CDL_BP_BENE_ROUTING'),
         value: beneficiary.bpbRoutingCode || '',
         gridSize: 6,
       },
@@ -474,6 +560,7 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
             letterSpacing: '0.15px',
             verticalAlign: 'middle',
             mb: 2,
+            color: isDarkMode ? '#F9FAFB' : '#1E2939',
           }}
         >
           {title}
@@ -491,7 +578,15 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
             </Grid>
           ))}
         </Grid>
-        {!isLast && <Divider sx={{ mb: 0, mt: 4 }} />}
+        {!isLast && (
+          <Divider
+            sx={{
+              mb: 0,
+              mt: 4,
+              borderColor: isDarkMode ? '#334155' : '#E5E7EB',
+            }}
+          />
+        )}
       </Box>
     )
   }
@@ -501,14 +596,17 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
     return (
       <Box
         sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          backgroundColor: isDarkMode ? '#101828' : '#FFFFFFBF',
+          borderRadius: '16px',
+          margin: '0 auto',
+          width: '100%',
           height: '400px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading review data...</Typography>
+        <GlobalLoading fullHeight className="min-h-[400px]" />
       </Box>
     )
   }
@@ -538,11 +636,11 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
       <Card
         sx={{
           boxShadow: 'none',
-          backgroundColor: '#FFFFFF',
+          backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
           width: '100%',
           margin: '0 auto',
           mb: 3,
-          border: '1px solid #E5E7EB',
+          border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
         }}
       >
         <CardContent sx={{ p: 3 }}>
@@ -560,17 +658,16 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                 fontWeight: 600,
                 fontSize: '18px',
                 lineHeight: '24px',
-                color: '#1E2939',
+                color: isDarkMode ? '#F9FAFB' : '#1E2939',
               }}
             >
-              Developer Details
+              {getBuildPartnerLabelDynamic('CDL_BP_DETAILS')}
             </Typography>
             {!isReadOnly && (
               <Button
                 startIcon={<EditIcon />}
                 variant="outlined"
                 onClick={() => {
-                  
                   onEditStep?.(0)
                 }}
                 sx={{
@@ -578,12 +675,14 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                   fontWeight: 500,
                   fontSize: '14px',
                   lineHeight: '20px',
-                  color: '#6B7280',
-                  borderColor: '#D1D5DB',
+                  color: isDarkMode ? '#93C5FD' : '#6B7280',
+                  borderColor: isDarkMode ? '#334155' : '#D1D5DB',
                   textTransform: 'none',
                   '&:hover': {
-                    borderColor: '#9CA3AF',
-                    backgroundColor: '#F9FAFB',
+                    borderColor: isDarkMode ? '#475569' : '#9CA3AF',
+                    backgroundColor: isDarkMode
+                      ? 'rgba(51, 65, 85, 0.3)'
+                      : '#F9FAFB',
                   },
                 }}
               >
@@ -591,96 +690,111 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
               </Button>
             )}
           </Box>
-          <Divider sx={{ mb: 3, borderColor: '#E5E7EB' }} />
+          <Divider
+            sx={{
+              mb: 3,
+              borderColor: isDarkMode ? '#334155' : '#E5E7EB',
+            }}
+          />
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'Developer ID (RERA)*',
+                getBuildPartnerLabelDynamic('CDL_BP_ID'),
                 buildPartnerDetails.bpDeveloperId
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'Developer CIF (Core Banking)*',
+                getBuildPartnerLabelDynamic('CDL_BP_CIF'),
                 buildPartnerDetails.bpCifrera
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'Developer Registration No.',
+                getBuildPartnerLabelDynamic('CDL_BP_REGNO'),
                 buildPartnerDetails.bpDeveloperRegNo
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'RERA Registration Date*',
+                getBuildPartnerLabelDynamic('CDL_BP_REGDATE'),
                 buildPartnerDetails.bpOnboardingDate
                   ? formatDate(
                       buildPartnerDetails.bpOnboardingDate,
-                      'MM/DD/YYYY'
+                      'DD/MM/YYYY'
                     )
                   : ' '
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'Developer Name (English)*',
+                getBuildPartnerLabelDynamic('CDL_BP_NAME'),
                 buildPartnerDetails.bpName
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'Developer Name (Arabic)*',
+                getBuildPartnerLabelDynamic('CDL_BP_NAME_LOCALE'),
                 buildPartnerDetails.bpNameLocal
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'Master Developer (if any)',
+                getBuildPartnerLabelDynamic('CDL_BP_MASTER'),
                 buildPartnerDetails.bpMasterName
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'Regulator*',
-                buildPartnerDetails.bpRegulatorDTO ? ' ' : ' '
+                getBuildPartnerLabelDynamic('CDL_BP_REGULATORY_AUTHORITY'),
+                (buildPartnerDetails.bpRegulatorDTO as any)
+                  ?.languageTranslationId?.configValue || null
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 12 }}>
               {renderDisplayField(
-                'Address',
+                getBuildPartnerLabelDynamic('CDL_BP_ADDRESS'),
                 buildPartnerDetails.bpContactAddress
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 3 }}>
-              {renderDisplayField('Mobile No.', buildPartnerDetails.bpMobile)}
+              {renderDisplayField(
+                getBuildPartnerLabelDynamic('CDL_BP_MOBILE'),
+                buildPartnerDetails.bpMobile
+              )}
             </Grid>
             <Grid size={{ xs: 12, md: 3 }}>
-              {renderDisplayField('Email', buildPartnerDetails.bpEmail)}
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField('FAX No', buildPartnerDetails.bpFax)}
+              {renderDisplayField(
+                getBuildPartnerLabelDynamic('CDL_BP_EMAIL'),
+                buildPartnerDetails.bpEmail
+              )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'License Number (Trade License)*',
+                getBuildPartnerLabelDynamic('CDL_BP_FAX'),
+                buildPartnerDetails.bpFax
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBuildPartnerLabelDynamic('CDL_BP_LICENSE'),
                 buildPartnerDetails.bpLicenseNo
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'License Expiry Date*',
+                getBuildPartnerLabelDynamic('CDL_BP_LICENSE_VALID'),
                 buildPartnerDetails.bpLicenseExpDate
                   ? formatDate(
                       buildPartnerDetails.bpLicenseExpDate,
-                      'MM/DD/YYYY'
+                      'DD/MM/YYYY'
                     )
                   : ' '
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 3 }}>
               {renderCheckboxField(
-                'World Check Flag',
+                getBuildPartnerLabelDynamic('CDL_BP_WORLD_STATUS'),
                 buildPartnerDetails.bpWorldCheckFlag === 'true'
               )}
             </Grid>
@@ -692,12 +806,15 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                'World Check Flag Remarks',
+                getBuildPartnerLabelDynamic('CDL_BP_WORLD_REMARKS'),
                 buildPartnerDetails.bpWorldCheckRemarks
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField('Remarks', buildPartnerDetails.bpremark)}
+              {renderDisplayField(
+                getBuildPartnerLabelDynamic('CDL_BP_NOTES'),
+                buildPartnerDetails.bpremark
+              )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
@@ -714,42 +831,84 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
         <Card
           sx={{
             boxShadow: 'none',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
             width: '100%',
             margin: '0 auto',
             mb: 3,
-            border: '1px solid #E5E7EB',
+            border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
           }}
         >
           <CardContent sx={{ p: 3 }}>
-            <Typography
-              variant="h6"
-              fontWeight={600}
-              sx={{
-                fontFamily: 'Outfit, sans-serif',
-                fontWeight: 600,
-                fontSize: '18px',
-                lineHeight: '24px',
-                color: '#1E2939',
-                mb: 3,
-              }}
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={3}
             >
-              Submitted Documents
-            </Typography>
+              <Typography
+                variant="h6"
+                fontWeight={600}
+                sx={{
+                  fontFamily: 'Outfit, sans-serif',
+                  fontWeight: 600,
+                  fontSize: '18px',
+                  lineHeight: '24px',
+                  color: isDarkMode ? '#F9FAFB' : '#1E2939',
+                }}
+              >
+                Submitted Documents
+              </Typography>
+              {!isReadOnly && (
+                <Button
+                  startIcon={<EditIcon />}
+                  variant="outlined"
+                  onClick={() => {
+                    onEditStep?.(1)
+                  }}
+                  sx={{
+                    fontFamily: 'Outfit, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    color: isDarkMode ? '#93C5FD' : '#6B7280',
+                    borderColor: isDarkMode ? '#334155' : '#D1D5DB',
+                    textTransform: 'none',
+                    '&:hover': {
+                      borderColor: isDarkMode ? '#475569' : '#9CA3AF',
+                      backgroundColor: isDarkMode
+                        ? 'rgba(51, 65, 85, 0.3)'
+                        : '#F9FAFB',
+                    },
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
+            </Box>
             <TableContainer
               component={Paper}
-              sx={{ boxShadow: 'none', border: '1px solid #E5E7EB' }}
+              sx={{
+                boxShadow: 'none',
+                border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
+                backgroundColor: isDarkMode ? '#0F172A' : '#FFFFFF',
+              }}
             >
               <Table>
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#F9FAFB' }}>
+                  <TableRow
+                    sx={{
+                      backgroundColor: isDarkMode ? '#1E293B' : '#F9FAFB',
+                    }}
+                  >
                     <TableCell
                       sx={{
                         fontFamily: 'Outfit, sans-serif',
                         fontWeight: 600,
                         fontSize: '14px',
-                        color: '#374151',
-                        borderBottom: '1px solid #E5E7EB',
+                        color: isDarkMode ? '#F9FAFB' : '#374151',
+                        borderBottom: isDarkMode
+                          ? '1px solid #334155'
+                          : '1px solid #E5E7EB',
                       }}
                     >
                       Name
@@ -759,8 +918,10 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                         fontFamily: 'Outfit, sans-serif',
                         fontWeight: 600,
                         fontSize: '14px',
-                        color: '#374151',
-                        borderBottom: '1px solid #E5E7EB',
+                        color: isDarkMode ? '#F9FAFB' : '#374151',
+                        borderBottom: isDarkMode
+                          ? '1px solid #334155'
+                          : '1px solid #E5E7EB',
                       }}
                     >
                       Date
@@ -770,8 +931,10 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                         fontFamily: 'Outfit, sans-serif',
                         fontWeight: 600,
                         fontSize: '14px',
-                        color: '#374151',
-                        borderBottom: '1px solid #E5E7EB',
+                        color: isDarkMode ? '#F9FAFB' : '#374151',
+                        borderBottom: isDarkMode
+                          ? '1px solid #334155'
+                          : '1px solid #E5E7EB',
                       }}
                     >
                       Type
@@ -782,14 +945,20 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                   {documentData.map((doc, index) => (
                     <TableRow
                       key={doc.id || index}
-                      sx={{ '&:hover': { backgroundColor: '#F9FAFB' } }}
+                      sx={{
+                        '&:hover': {
+                          backgroundColor: isDarkMode ? '#334155' : '#F9FAFB',
+                        },
+                      }}
                     >
                       <TableCell
                         sx={{
                           fontFamily: 'Outfit, sans-serif',
                           fontSize: '14px',
-                          color: '#374151',
-                          borderBottom: '1px solid #E5E7EB',
+                          color: isDarkMode ? '#E5E7EB' : '#374151',
+                          borderBottom: isDarkMode
+                            ? '1px solid #334155'
+                            : '1px solid #E5E7EB',
                         }}
                       >
                         {doc.fileName}
@@ -798,18 +967,22 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                         sx={{
                           fontFamily: 'Outfit, sans-serif',
                           fontSize: '14px',
-                          color: '#374151',
-                          borderBottom: '1px solid #E5E7EB',
+                          color: isDarkMode ? '#E5E7EB' : '#374151',
+                          borderBottom: isDarkMode
+                            ? '1px solid #334155'
+                            : '1px solid #E5E7EB',
                         }}
                       >
-                        {formatDate(doc.uploadDate, 'DD-MM-YYYY')}
+                        {formatDate(doc.uploadDate, 'DD/MM/YYYY')}
                       </TableCell>
                       <TableCell
                         sx={{
                           fontFamily: 'Outfit, sans-serif',
                           fontSize: '14px',
-                          color: '#374151',
-                          borderBottom: '1px solid #E5E7EB',
+                          color: isDarkMode ? '#E5E7EB' : '#374151',
+                          borderBottom: isDarkMode
+                            ? '1px solid #334155'
+                            : '1px solid #E5E7EB',
                         }}
                       >
                         {doc.documentType}
@@ -828,11 +1001,11 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
         <Card
           sx={{
             boxShadow: 'none',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
             width: '100%',
             margin: '0 auto',
             mb: 3,
-            border: '1px solid #E5E7EB',
+            border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
           }}
         >
           <CardContent sx={{ p: 3 }}>
@@ -850,17 +1023,16 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                   fontWeight: 600,
                   fontSize: '18px',
                   lineHeight: '24px',
-                  color: '#1E2939',
+                  color: isDarkMode ? '#F9FAFB' : '#1E2939',
                 }}
               >
-                Contact Details
+                {getBuildPartnerLabelDynamic('CDL_BP_CONTACT')}
               </Typography>
               {!isReadOnly && (
                 <Button
                   startIcon={<EditIcon />}
                   variant="outlined"
                   onClick={() => {
-              
                     onEditStep?.(2)
                   }}
                   sx={{
@@ -868,12 +1040,14 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                     fontWeight: 500,
                     fontSize: '14px',
                     lineHeight: '20px',
-                    color: '#6B7280',
-                    borderColor: '#D1D5DB',
+                    color: isDarkMode ? '#93C5FD' : '#6B7280',
+                    borderColor: isDarkMode ? '#334155' : '#D1D5DB',
                     textTransform: 'none',
                     '&:hover': {
-                      borderColor: '#9CA3AF',
-                      backgroundColor: '#F9FAFB',
+                      borderColor: isDarkMode ? '#475569' : '#9CA3AF',
+                      backgroundColor: isDarkMode
+                        ? 'rgba(51, 65, 85, 0.3)'
+                        : '#F9FAFB',
                     },
                   }}
                 >
@@ -881,7 +1055,12 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                 </Button>
               )}
             </Box>
-            <Divider sx={{ mb: 3, borderColor: '#E5E7EB' }} />
+            <Divider
+              sx={{
+                mb: 3,
+                borderColor: isDarkMode ? '#334155' : '#E5E7EB',
+              }}
+            />
             <Grid container spacing={3}>
               {contactData.map((contact, index) => (
                 <Grid size={{ xs: 12 }} key={index}>
@@ -902,11 +1081,11 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
         <Card
           sx={{
             boxShadow: 'none',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
             width: '100%',
             margin: '0 auto',
             mb: 3,
-            border: '1px solid #E5E7EB',
+            border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
           }}
         >
           <CardContent sx={{ p: 3 }}>
@@ -924,17 +1103,16 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                   fontWeight: 600,
                   fontSize: '18px',
                   lineHeight: '24px',
-                  color: '#1E2939',
+                  color: isDarkMode ? '#F9FAFB' : '#1E2939',
                 }}
               >
-                Fee Details
+                {getBuildPartnerLabelDynamic('CDL_BP_FEES')}
               </Typography>
               {!isReadOnly && (
                 <Button
                   startIcon={<EditIcon />}
                   variant="outlined"
                   onClick={() => {
-          
                     onEditStep?.(3)
                   }}
                   sx={{
@@ -942,12 +1120,14 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                     fontWeight: 500,
                     fontSize: '14px',
                     lineHeight: '20px',
-                    color: '#6B7280',
-                    borderColor: '#D1D5DB',
+                    color: isDarkMode ? '#93C5FD' : '#6B7280',
+                    borderColor: isDarkMode ? '#334155' : '#D1D5DB',
                     textTransform: 'none',
                     '&:hover': {
-                      borderColor: '#9CA3AF',
-                      backgroundColor: '#F9FAFB',
+                      borderColor: isDarkMode ? '#475569' : '#9CA3AF',
+                      backgroundColor: isDarkMode
+                        ? 'rgba(51, 65, 85, 0.3)'
+                        : '#F9FAFB',
                     },
                   }}
                 >
@@ -955,7 +1135,12 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                 </Button>
               )}
             </Box>
-            <Divider sx={{ mb: 3, borderColor: '#E5E7EB' }} />
+            <Divider
+              sx={{
+                mb: 3,
+                borderColor: isDarkMode ? '#334155' : '#E5E7EB',
+              }}
+            />
             <Grid container spacing={3}>
               {feeData.map((fee, index) => (
                 <Grid size={{ xs: 12 }} key={index}>
@@ -976,11 +1161,11 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
         <Card
           sx={{
             boxShadow: 'none',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
             width: '100%',
             margin: '0 auto',
             mb: 3,
-            border: '1px solid #E5E7EB',
+            border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
           }}
         >
           <CardContent sx={{ p: 3 }}>
@@ -998,17 +1183,16 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                   fontWeight: 600,
                   fontSize: '18px',
                   lineHeight: '24px',
-                  color: '#1E2939',
+                  color: isDarkMode ? '#F9FAFB' : '#1E2939',
                 }}
               >
-                Beneficiary Details
+                {getBuildPartnerLabelDynamic('CDL_BP_BENE_INFO')}
               </Typography>
               {!isReadOnly && (
                 <Button
                   startIcon={<EditIcon />}
                   variant="outlined"
                   onClick={() => {
-            
                     onEditStep?.(4)
                   }}
                   sx={{
@@ -1016,12 +1200,14 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                     fontWeight: 500,
                     fontSize: '14px',
                     lineHeight: '20px',
-                    color: '#6B7280',
-                    borderColor: '#D1D5DB',
+                    color: isDarkMode ? '#93C5FD' : '#6B7280',
+                    borderColor: isDarkMode ? '#334155' : '#D1D5DB',
                     textTransform: 'none',
                     '&:hover': {
-                      borderColor: '#9CA3AF',
-                      backgroundColor: '#F9FAFB',
+                      borderColor: isDarkMode ? '#475569' : '#9CA3AF',
+                      backgroundColor: isDarkMode
+                        ? 'rgba(51, 65, 85, 0.3)'
+                        : '#F9FAFB',
                     },
                   }}
                 >
@@ -1029,7 +1215,12 @@ const Step5 = ({ developerId, onEditStep, isReadOnly = false }: Step5Props) => {
                 </Button>
               )}
             </Box>
-            <Divider sx={{ mb: 3, borderColor: '#E5E7EB' }} />
+            <Divider
+              sx={{
+                mb: 3,
+                borderColor: isDarkMode ? '#334155' : '#E5E7EB',
+              }}
+            />
             <Grid container spacing={3}>
               {beneficiaryData.map((beneficiary, index) => (
                 <Grid size={{ xs: 12 }} key={beneficiary.id || index}>

@@ -150,7 +150,7 @@ export class EnvironmentConfig {
         EMAIL_FROM: envVars.EMAIL_FROM,
         
         // File Upload
-        MAX_FILE_SIZE: parseInt(envVars.MAX_FILE_SIZE || '10485760'), // 10MB
+        MAX_FILE_SIZE: parseInt(envVars.MAX_FILE_SIZE || '26214400'), // 25MB
         ALLOWED_FILE_TYPES: envVars.ALLOWED_FILE_TYPES || 'pdf,doc,docx,jpg,jpeg,png',
         UPLOAD_DIR: envVars.UPLOAD_DIR || './uploads',
         
@@ -195,9 +195,9 @@ export class EnvironmentConfig {
       this._config = config;
       this._isValidated = true;
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Environment validation successful');
-      }
+      // if (process.env.NODE_ENV === 'development') {
+      //   console.log('Environment validation successful');
+      // }
 
       return config;
     } catch (error) {

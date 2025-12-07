@@ -78,7 +78,7 @@ export interface RealEstateAsset {
   reaMarketingExpenses: string | null
   reaAccoutStatusDate: string | null
   reaTeamLeadName: string | null
-  reaRelationshipManagerName: string | null
+  reamprelationshipManagerName: string | null
   reaAssestRelshipManagerName: string | null
   reaRealEstateBrokerExp: number
   reaAdvertisementExp: number
@@ -113,10 +113,20 @@ export class RealEstateAssetService {
    */
   async getRealEstateAssets(
     page: number = 0,
-    size: number = 20
+    size: number = 20,
+    buildPartnerId?: number
   ): Promise<RealEstateAsset[]> {
     try {
-      const url = buildApiUrl(`/real-estate-assest?page=${page}&size=${size}`)
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: size.toString(),
+      })
+      
+      if (buildPartnerId) {
+        params.append('buildPartnerId.equals', buildPartnerId.toString())
+      }
+      
+      const url = buildApiUrl(`/real-estate-assest?${params.toString()}`)
       const result = await apiClient.get<
         RealEstateAssetResponse | RealEstateAsset[]
       >(url)

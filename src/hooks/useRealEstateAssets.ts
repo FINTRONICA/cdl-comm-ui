@@ -43,7 +43,8 @@ export interface UseDeleteRealEstateAssetReturn {
 
 export function useRealEstateAssets(
   page: number = 0,
-  size: number = 20
+  size: number = 20,
+  buildPartnerId?: number
 ): UseRealEstateAssetsReturn {
   const [assets, setAssets] = useState<RealEstateAsset[]>([])
   const [loading, setLoading] = useState<boolean>(true)
@@ -56,7 +57,8 @@ export function useRealEstateAssets(
 
       const result = await realEstateAssetService.getRealEstateAssets(
         page,
-        size
+        size,
+        buildPartnerId
       )
       setAssets(result)
     } catch (err) {
@@ -67,7 +69,7 @@ export function useRealEstateAssets(
     } finally {
       setLoading(false)
     }
-  }, [page, size])
+  }, [page, size, buildPartnerId])
 
   useEffect(() => {
     fetchAssets()
@@ -166,27 +168,17 @@ export function useDeleteRealEstateAsset(): UseDeleteRealEstateAssetReturn {
       setIsLoading(true)
       setError(null)
 
-      console.log('🔄 useDeleteRealEstateAsset: Deleting asset...', {
-        id,
-        timestamp: new Date().toISOString(),
-      })
+     
 
       await realEstateAssetService.deleteRealEstateAsset(id)
 
-      console.log('✅ useDeleteRealEstateAsset: Successfully deleted asset:', {
-        id,
-        timestamp: new Date().toISOString(),
-      })
+     
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred'
       setError(errorMessage)
 
-      console.error('❌ useDeleteRealEstateAsset: Failed to delete asset:', {
-        error: errorMessage,
-        errorType: err instanceof Error ? err.name : 'Unknown',
-        timestamp: new Date().toISOString(),
-      })
+     
 
       throw err
     } finally {

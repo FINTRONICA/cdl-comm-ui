@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { JWTParser } from '@/utils/jwtParser';
+import { getAuthCookies } from '@/utils/cookieUtils';
 // import { JWTPayload } from '@/types/auth';
 
 /**
@@ -7,7 +8,9 @@ import { JWTParser } from '@/utils/jwtParser';
  */
 export function useJWT() {
   const token = useMemo(() => {
-    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    if (typeof window === 'undefined') return null;
+    const { token } = getAuthCookies();
+    return token;
   }, []);
 
   const decodedToken = useMemo(() => {

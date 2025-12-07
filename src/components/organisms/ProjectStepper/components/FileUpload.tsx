@@ -13,6 +13,8 @@ import {
   LinearProgress,
   Alert,
   Chip,
+  useTheme,
+  alpha,
 } from '@mui/material'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -47,13 +49,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   accept = '*/*',
   multiple = false,
   maxFiles = 5,
-  maxSize = 10, // 10MB default
+  maxSize = 25, // 25MB default
   onUpload,
   onRemove,
   error,
   helperText,
   sx,
 }) => {
+  const theme = useTheme()
   const formContext = useFormContext()
 
   // Early return if form context is not available
@@ -235,7 +238,22 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             <Box mt={2}>
               <List dense>
                 {files.map((file) => (
-                  <ListItem key={file.id} sx={{ px: 0 }}>
+                  <ListItem
+                    key={file.id}
+                    sx={{
+                      px: 0,
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? alpha(theme.palette.background.paper, 0.3) 
+                        : alpha('#F9FAFB', 0.5),
+                      borderRadius: '4px',
+                      mb: 1,
+                      '&:hover': {
+                        backgroundColor: theme.palette.mode === 'dark' 
+                          ? alpha(theme.palette.background.paper, 0.5) 
+                          : alpha('#F9FAFB', 0.8),
+                      },
+                    }}
+                  >
                     <FileIcon sx={{ mr: 1, color: 'text.secondary' }} />
                     <ListItemText
                       primary={file.name}

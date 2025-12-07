@@ -45,7 +45,7 @@ export function useBuildPartners(
       ),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-    retry: 3, 
+    retry: 3,
   })
 
   // Update API pagination when data changes
@@ -76,17 +76,15 @@ export function useBuildPartners(
   }
 }
 
-
 export function useBuildPartner(id: string) {
   return useQuery({
     queryKey: [BUILD_PARTNERS_QUERY_KEY, id],
     queryFn: () => buildPartnerService.getBuildPartner(id),
-    enabled: !!id, 
+    enabled: !!id,
     staleTime: 5 * 60 * 1000,
     retry: 3,
   })
 }
-
 
 export function useCreateBuildPartner() {
   const queryClient = useQueryClient()
@@ -95,13 +93,11 @@ export function useCreateBuildPartner() {
     mutationFn: (data: CreateBuildPartnerRequest) =>
       buildPartnerService.createBuildPartner(data),
     onSuccess: () => {
-     
       queryClient.invalidateQueries({ queryKey: [BUILD_PARTNERS_QUERY_KEY] })
     },
-    retry: 2, 
+    retry: 2,
   })
 }
-
 
 export function useUpdateBuildPartner() {
   const queryClient = useQueryClient()
@@ -115,7 +111,6 @@ export function useUpdateBuildPartner() {
       updates: UpdateBuildPartnerRequest
     }) => buildPartnerService.updateBuildPartner(id, updates),
     onSuccess: (_, { id }) => {
-    
       queryClient.invalidateQueries({ queryKey: [BUILD_PARTNERS_QUERY_KEY] })
       queryClient.invalidateQueries({
         queryKey: [BUILD_PARTNERS_QUERY_KEY, id],
@@ -125,27 +120,23 @@ export function useUpdateBuildPartner() {
   })
 }
 
-
 export function useDeleteBuildPartner() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (id: string) => buildPartnerService.deleteBuildPartner(id),
     onSuccess: () => {
-     
       queryClient.invalidateQueries({ queryKey: [BUILD_PARTNERS_QUERY_KEY] })
     },
     retry: 0, // Disable retry to prevent multiple calls
   })
 }
 
-
 export function useBuildPartnerLabels() {
-
   const { isAuthenticated } = useIsAuthenticated()
 
   return useQuery({
-    queryKey: ['buildPartnerLabels'], 
+    queryKey: ['buildPartnerLabels'],
     queryFn: async () => {
       const rawLabels = await buildPartnerService.getBuildPartnerLabels()
       // Process the raw API response into the expected format
@@ -167,13 +158,12 @@ export function useBuildPartnerLabels() {
         {} as Record<string, Record<string, string>>
       )
     },
-    enabled: !!isAuthenticated, 
-    staleTime: 24 * 60 * 60 * 1000, 
+    enabled: !!isAuthenticated,
+    staleTime: 24 * 60 * 60 * 1000,
     refetchOnWindowFocus: false,
-    retry: 3, 
+    retry: 3,
   })
 }
-
 
 export function useRefreshBuildPartners() {
   const queryClient = useQueryClient()
@@ -202,14 +192,17 @@ export function useBuildPartnerLabelsWithUtils() {
   }
 }
 
-
 export function useSaveBuildPartnerDetails() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ data, isEditing = false, developerId }: {
-      data: BuildPartnerDetailsData,
-      isEditing?: boolean,
+    mutationFn: ({
+      data,
+      isEditing = false,
+      developerId,
+    }: {
+      data: BuildPartnerDetailsData
+      isEditing?: boolean
       developerId?: string | undefined
     }) =>
       buildPartnerService.saveBuildPartnerDetails(data, isEditing, developerId),
@@ -229,9 +222,13 @@ export function useSaveBuildPartnerContact() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ data, isEditing = false, developerId }: { 
-      data: BuildPartnerContactData, 
-      isEditing?: boolean, 
+    mutationFn: ({
+      data,
+      isEditing = false,
+      developerId,
+    }: {
+      data: BuildPartnerContactData
+      isEditing?: boolean
       developerId?: string | undefined
     }) =>
       buildPartnerService.saveBuildPartnerContact(data, isEditing, developerId),
@@ -251,13 +248,69 @@ export function useSaveBuildPartnerContact() {
   })
 }
 
+export function useDeleteBuildPartnerContact() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (contactId: string | number) =>
+      buildPartnerService.deleteBuildPartnerContact(contactId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BUILD_PARTNERS_QUERY_KEY, 'contacts'],
+      })
+    },
+    retry: 1,
+  })
+}
+
+export function useBuildPartnerContactById(contactId: string | number | null) {
+  return useQuery({
+    queryKey: [BUILD_PARTNERS_QUERY_KEY, 'contact', contactId],
+    queryFn: () =>
+      buildPartnerService.getBuildPartnerContactById(contactId!.toString()),
+    enabled: !!contactId,
+    staleTime: 0,
+    retry: 2,
+  })
+}
+
+export function useDeleteBuildPartnerFee() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (feeId: string | number) =>
+      buildPartnerService.deleteBuildPartnerFee(feeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BUILD_PARTNERS_QUERY_KEY, 'fees'],
+      })
+    },
+    retry: 1,
+  })
+}
+
+export function useBuildPartnerFeeById(feeId: string | number | null) {
+  return useQuery({
+    queryKey: [BUILD_PARTNERS_QUERY_KEY, 'fee', feeId],
+    queryFn: () =>
+      buildPartnerService.getBuildPartnerFeeById(feeId!.toString()),
+    enabled: !!feeId,
+    staleTime: 0, // Always fetch fresh data when editing
+    retry: 2,
+  })
+}
+
 export function useSaveBuildPartnerFees() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ data, isEditing = false, developerId }: { 
-      data: BuildPartnerFeesData, 
-      isEditing?: boolean, 
+    mutationFn: ({
+      data,
+      isEditing = false,
+      developerId,
+    }: {
+      data: BuildPartnerFeesData
+      isEditing?: boolean
       developerId?: string | undefined
     }) =>
       buildPartnerService.saveBuildPartnerFees(data, isEditing, developerId),
@@ -280,12 +333,20 @@ export function useSaveBuildPartnerIndividualFee() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ data, isEditing = false, developerId }: {
-      data: BuildPartnerIndividualFeeData,
-      isEditing?: boolean,
+    mutationFn: ({
+      data,
+      isEditing = false,
+      developerId,
+    }: {
+      data: BuildPartnerIndividualFeeData
+      isEditing?: boolean
       developerId?: string | undefined
     }) =>
-      buildPartnerService.saveBuildPartnerIndividualFee(data, isEditing, developerId),
+      buildPartnerService.saveBuildPartnerIndividualFee(
+        data,
+        isEditing,
+        developerId
+      ),
     onSuccess: (_, variables) => {
       // Only invalidate specific queries, not the entire BUILD_PARTNERS_QUERY_KEY
       queryClient.invalidateQueries({
@@ -305,12 +366,23 @@ export function useSaveBuildPartnerBeneficiary() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ data, isEditing = false, developerId }: { 
-      data: BuildPartnerBeneficiaryData, 
-      isEditing?: boolean, 
+    mutationFn: ({
+      data,
+      isEditing = false,
+      developerId,
+      beneficiaryId,
+    }: {
+      data: BuildPartnerBeneficiaryData
+      isEditing?: boolean
       developerId?: string | undefined
+      beneficiaryId?: string | number | undefined
     }) =>
-      buildPartnerService.saveBuildPartnerBeneficiary(data, isEditing, developerId),
+      buildPartnerService.saveBuildPartnerBeneficiary(
+        data,
+        isEditing,
+        developerId,
+        beneficiaryId
+      ),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [BUILD_PARTNERS_QUERY_KEY] })
       queryClient.invalidateQueries({
@@ -326,30 +398,90 @@ export function useSaveBuildPartnerBeneficiary() {
   })
 }
 
-export function useBuildPartnerBeneficiaries(buildPartnerId?: string) {
-  return useQuery({
-    queryKey: [BUILD_PARTNERS_QUERY_KEY, 'beneficiaries', buildPartnerId],
+export function useBuildPartnerBeneficiaries(
+  buildPartnerId?: string,
+  page = 0,
+  size = 20
+) {
+  const [pagination, setPagination] = useState({ page, size })
+  const [apiPagination, setApiPagination] = useState({
+    totalElements: 0,
+    totalPages: 1,
+  })
+
+  const query = useQuery({
+    queryKey: [
+      BUILD_PARTNERS_QUERY_KEY,
+      'beneficiaries',
+      buildPartnerId,
+      { page: pagination.page, size: pagination.size },
+    ],
     queryFn: () =>
-      buildPartnerService.getBuildPartnerBeneficiaries(buildPartnerId),
+      buildPartnerService.getBuildPartnerBeneficiariesPaginated(
+        buildPartnerId,
+        pagination.page,
+        pagination.size
+      ),
     enabled: !!buildPartnerId,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 3,
   })
-}
 
+  // Update API pagination when data changes
+  if (query.data?.page) {
+    const newApiPagination = {
+      totalElements: query.data.page.totalElements,
+      totalPages: query.data.page.totalPages,
+    }
+    if (JSON.stringify(newApiPagination) !== JSON.stringify(apiPagination)) {
+      setApiPagination(newApiPagination)
+    }
+  }
+
+  const updatePagination = useCallback((newPage: number, newSize?: number) => {
+    setPagination((prev) => ({
+      page: newPage,
+      size: newSize !== undefined ? newSize : prev.size,
+    }))
+  }, [])
+
+  return {
+    ...query,
+    updatePagination,
+    apiPagination,
+  } as typeof query & {
+    updatePagination: typeof updatePagination
+    apiPagination: typeof apiPagination
+  }
+}
 
 export function useBuildPartnerBeneficiary(id: string) {
   return useQuery({
     queryKey: [BUILD_PARTNERS_QUERY_KEY, 'beneficiaries', id],
     queryFn: () => buildPartnerService.getBuildPartnerBeneficiary(id),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 3,
   })
 }
 
+export function useBuildPartnerBeneficiaryById(
+  beneficiaryId: string | number | null
+) {
+  return useQuery({
+    queryKey: [BUILD_PARTNERS_QUERY_KEY, 'beneficiary', beneficiaryId],
+    queryFn: () =>
+      buildPartnerService.getBuildPartnerBeneficiaryById(
+        beneficiaryId as string
+      ),
+    enabled: !!beneficiaryId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 3,
+  })
+}
 
 export function useUpdateBuildPartnerBeneficiary() {
   const queryClient = useQueryClient()
@@ -389,6 +521,21 @@ export function useDeleteBuildPartnerBeneficiary() {
   })
 }
 
+export function useSoftDeleteBuildPartnerBeneficiary() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      buildPartnerService.softDeleteBuildPartnerBeneficiary(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BUILD_PARTNERS_QUERY_KEY, 'beneficiaries'],
+      })
+    },
+    retry: 2,
+  })
+}
+
 export function useSaveBuildPartnerReview() {
   const queryClient = useQueryClient()
 
@@ -402,7 +549,6 @@ export function useSaveBuildPartnerReview() {
   })
 }
 
-
 export function useBuildPartnerStepData(step: number) {
   return useQuery({
     queryKey: [BUILD_PARTNERS_QUERY_KEY, 'step', step],
@@ -412,7 +558,6 @@ export function useBuildPartnerStepData(step: number) {
     retry: 3,
   })
 }
-
 
 export function useValidateBuildPartnerStep() {
   return useMutation({
@@ -424,17 +569,14 @@ export function useValidateBuildPartnerStep() {
       data: unknown
     }): Promise<StepValidationResponse> =>
       buildPartnerService.validateStep(step, data),
-    retry: 1, 
+    retry: 1,
   })
 }
 
-
 export function useBuildPartnerStepStatus(developerId: string) {
-
   return useQuery({
     queryKey: [BUILD_PARTNERS_QUERY_KEY, 'stepStatus', developerId],
     queryFn: async () => {
-      
       const [step1Result, step2Result, step3Result, step4Result] =
         await Promise.allSettled([
           buildPartnerService.getBuildPartner(developerId),
@@ -442,7 +584,6 @@ export function useBuildPartnerStepStatus(developerId: string) {
           buildPartnerService.getBuildPartnerFees(developerId),
           buildPartnerService.getBuildPartnerBeneficiary(developerId),
         ])
-        
 
       const stepStatus = {
         step1: step1Result.status === 'fulfilled' && step1Result.value !== null,
@@ -487,16 +628,37 @@ export function useBuildPartnerStepManager() {
   const validateStep = useValidateBuildPartnerStep()
 
   const saveStep = useCallback(
-    async (step: number, data: unknown, isEditing = false, developerId?: string) => {
+    async (
+      step: number,
+      data: unknown,
+      isEditing = false,
+      developerId?: string
+    ) => {
       switch (step) {
         case 1:
-          return await saveDetails.mutateAsync({ data: data as any, isEditing, developerId: developerId || undefined })
+          return await saveDetails.mutateAsync({
+            data: data as any,
+            isEditing,
+            developerId: developerId || undefined,
+          })
         case 2:
-          return await saveContact.mutateAsync({ data: data as any, isEditing, developerId: developerId || undefined })
+          return await saveContact.mutateAsync({
+            data: data as any,
+            isEditing,
+            developerId: developerId || undefined,
+          })
         case 3:
-          return await saveFees.mutateAsync({ data: data as any, isEditing, developerId: developerId || undefined })
+          return await saveFees.mutateAsync({
+            data: data as any,
+            isEditing,
+            developerId: developerId || undefined,
+          })
         case 4:
-          return await saveBeneficiary.mutateAsync({ data: data as any, isEditing, developerId: developerId || undefined })
+          return await saveBeneficiary.mutateAsync({
+            data: data as any,
+            isEditing,
+            developerId: developerId || undefined,
+          })
         case 5:
           return await saveReview.mutateAsync(data as any)
         default:
@@ -524,15 +686,120 @@ export function useBuildPartnerStepManager() {
   }
 }
 
-// Hook for fetching build partner fees with UI transformation
-export function useBuildPartnerFees(buildPartnerId?: string) {
-  return useQuery<FeeUIData[]>({
-    queryKey: [BUILD_PARTNERS_QUERY_KEY, 'fees', buildPartnerId],
+// Hook for fetching build partner contacts with pagination
+export function useBuildPartnerContacts(
+  buildPartnerId?: string,
+  page = 0,
+  size = 20
+) {
+  const [pagination, setPagination] = useState({ page, size })
+  const [apiPagination, setApiPagination] = useState({
+    totalElements: 0,
+    totalPages: 1,
+  })
+
+  const query = useQuery({
+    queryKey: [
+      BUILD_PARTNERS_QUERY_KEY,
+      'contacts',
+      buildPartnerId,
+      { page: pagination.page, size: pagination.size },
+    ],
     queryFn: () =>
-      buildPartnerService.getBuildPartnerFeesUIData(buildPartnerId!),
+      buildPartnerService.getBuildPartnerContactsPaginated(
+        buildPartnerId!,
+        pagination.page,
+        pagination.size
+      ),
     enabled: !!buildPartnerId,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 3,
   })
+
+  // Update API pagination when data changes
+  if (query.data?.page) {
+    const newApiPagination = {
+      totalElements: query.data.page.totalElements,
+      totalPages: query.data.page.totalPages,
+    }
+    if (JSON.stringify(newApiPagination) !== JSON.stringify(apiPagination)) {
+      setApiPagination(newApiPagination)
+    }
+  }
+
+  const updatePagination = useCallback((newPage: number, newSize?: number) => {
+    setPagination((prev) => ({
+      page: newPage,
+      size: newSize !== undefined ? newSize : prev.size,
+    }))
+  }, [])
+
+  return {
+    ...query,
+    updatePagination,
+    apiPagination,
+  } as typeof query & {
+    updatePagination: typeof updatePagination
+    apiPagination: typeof apiPagination
+  }
+}
+
+// Hook for fetching build partner fees with UI transformation and pagination
+export function useBuildPartnerFees(
+  buildPartnerId?: string,
+  page = 0,
+  size = 20
+) {
+  const [pagination, setPagination] = useState({ page, size })
+  const [apiPagination, setApiPagination] = useState({
+    totalElements: 0,
+    totalPages: 1,
+  })
+
+  const query = useQuery({
+    queryKey: [
+      BUILD_PARTNERS_QUERY_KEY,
+      'fees',
+      buildPartnerId,
+      { page: pagination.page, size: pagination.size },
+    ],
+    queryFn: () =>
+      buildPartnerService.getBuildPartnerFeesPaginated(
+        buildPartnerId!,
+        pagination.page,
+        pagination.size
+      ),
+    enabled: !!buildPartnerId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 3,
+  })
+
+  // Update API pagination when data changes
+  if (query.data?.page) {
+    const newApiPagination = {
+      totalElements: query.data.page.totalElements,
+      totalPages: query.data.page.totalPages,
+    }
+    if (JSON.stringify(newApiPagination) !== JSON.stringify(apiPagination)) {
+      setApiPagination(newApiPagination)
+    }
+  }
+
+  const updatePagination = useCallback((newPage: number, newSize?: number) => {
+    setPagination((prev) => ({
+      page: newPage,
+      size: newSize !== undefined ? newSize : prev.size,
+    }))
+  }, [])
+
+  return {
+    ...query,
+    updatePagination,
+    apiPagination,
+  } as typeof query & {
+    updatePagination: typeof updatePagination
+    apiPagination: typeof apiPagination
+  }
 }

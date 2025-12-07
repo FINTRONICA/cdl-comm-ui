@@ -104,6 +104,13 @@ export function useBoolYnOptions() {
 
 export function useBuildAssetAccountStatuses() {
   return useApplicationSettings('BUILD_ASSEST_ACCOUNT_STATUS')
+}
 
+export function useAccountTypes() {
+  return useApplicationSettings('ACCOUNT_TYPE')
+}
+
+export function useRoles() {
+  return useApplicationSettings('ROLE')
 }
 

@@ -10,14 +10,20 @@ import { usePendingTransactionsUI } from '@/hooks'
 import { usePendingTransactionLabelApi } from '@/hooks/usePendingTransactionLabelApi'
 import { useDeletePendingTransaction } from '@/hooks/usePendingTransactions'
 import { getPendingTransactionLabel } from '@/constants/mappings/pendingTransactionMapping'
+import type {
+  PendingTransactionUIData,
+  PendingTransactionFilters,
+} from '@/services/api/pendingTransactionService'
 import { useSidebarConfig } from '@/hooks/useSidebarConfig'
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { TEMPLATE_FILES } from '@/constants'
 import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
+import { GlobalLoading, GlobalError } from '@/components/atoms'
 
 interface TransactionData extends Record<string, unknown> {
   id: number
+  transactionId: string
   projectName: string
   projectRegulatorId: string
   tranReference: string
@@ -29,8 +35,28 @@ interface TransactionData extends Record<string, unknown> {
   approvalStatus: string
 }
 
-const usePendingRows = (page: number, size: number) => {
-  const filters = React.useMemo(() => ({ isAllocated: false }), [])
+const usePendingRows = (
+  page: number,
+  size: number,
+  searchFilters?: Record<string, string>
+) => {
+  const filters = React.useMemo(() => {
+    const baseFilters: PendingTransactionFilters = { isAllocated: false }
+    
+    // Convert search filters to API filters
+    if (searchFilters) {
+      // Only add filters if they have non-empty values
+      if (searchFilters.transactionId && searchFilters.transactionId.trim()) {
+        baseFilters.transactionId = searchFilters.transactionId.trim()
+      }
+      if (searchFilters.tranReference && searchFilters.tranReference.trim()) {
+        baseFilters.referenceId = searchFilters.tranReference.trim()
+      }
+    }
+    
+    return baseFilters
+  }, [searchFilters])
+  
   const { data, isLoading, error } = usePendingTransactionsUI(
     Math.max(0, page - 1),
     size,
@@ -42,11 +68,12 @@ const usePendingRows = (page: number, size: number) => {
       return []
     }
 
-    const items = data.content as any[]
+    const items: PendingTransactionUIData[] = data.content as PendingTransactionUIData[]
 
-    return items.map((ui: any) => {
+    return items.map((ui: PendingTransactionUIData) => {
       return {
         id: Number(ui.id),
+        transactionId: ui.transactionId || '—',
         projectName: ui.projectName || '—',
         projectRegulatorId: ui.projectRegulatorId || '—',
         tranReference: ui.referenceId || '—',
@@ -58,8 +85,11 @@ const usePendingRows = (page: number, size: number) => {
         narration: ui.narration || '—',
         tasMatch: ui.tasUpdate || '—',
         approvalStatus:
-          ui.taskStatusDTO?.name ||
-          mapPaymentStatusToApprovalStatus(ui.paymentStatus),
+          (ui.taskStatusDTO && typeof ui.taskStatusDTO === 'object' && 'name' in ui.taskStatusDTO
+            ? String(ui.taskStatusDTO.name)
+            : null) ||
+          mapPaymentStatusToApprovalStatus(ui.paymentStatus || '') ||
+          '—',
       }
     })
   }, [data])
@@ -102,7 +132,9 @@ const UnallocatedTransactionPage: React.FC = () => {
   const handleDownloadTemplate = async () => {
     try {
       await downloadTemplate(TEMPLATE_FILES.SPLIT)
-    } catch (error) {}
+    } catch {
+      // Error handled silently
+    }
   }
 
   const [isDeleting, setIsDeleting] = useState(false)
@@ -134,29 +166,138 @@ const UnallocatedTransactionPage: React.FC = () => {
   const [currentApiPage, setCurrentApiPage] = useState(1)
   const [currentApiSize, setCurrentApiSize] = useState(20)
 
+  // Initialize search state first
+  const [search, setSearch] = useState<Record<string, string>>(() => ({
+    transactionId: '',
+    tranReference: '',
+    projectName: '',
+    projectRegulatorId: '',
+    tranDesc: '',
+    narration: '',
+    tranDate: '',
+    approvalStatus: '',
+  }))
+
+  const handleSearchChange = React.useCallback((field: string, value: string) => {
+    setSearch((prev) => {
+      const newSearch = { ...prev, [field]: value }
+      return newSearch
+    })
+    // Reset to page 1 when search changes
+    setCurrentApiPage(1)
+  }, [])
+
+  // Convert search state to API filters for transactionId and tranReference
+  const apiSearchFilters = React.useMemo(() => {
+    const hasSearch = Object.values(search).some((v) => typeof v === 'string' && v?.trim())
+    if (!hasSearch) return undefined
+    
+    const searchFilters: Record<string, string> = {}
+    
+    // Check if search is specifically for transactionId or tranReference
+    if (search.transactionId && typeof search.transactionId === 'string' && search.transactionId.trim()) {
+      searchFilters.transactionId = search.transactionId.trim()
+    }
+    if (search.tranReference && typeof search.tranReference === 'string' && search.tranReference.trim()) {
+      searchFilters.tranReference = search.tranReference.trim()
+    }
+    
+    return Object.keys(searchFilters).length > 0 ? searchFilters : undefined
+  }, [search])
+
+  // Fetch data with API filters when searching by transactionId or tranReference
   const {
     rows: apiRows,
     total: apiTotal,
     totalPages: apiTotalPages,
     isLoading,
     error,
-  } = usePendingRows(currentApiPage, currentApiSize)
+  } = usePendingRows(currentApiPage, currentApiSize, apiSearchFilters)
 
   const deleteMutation = useDeletePendingTransaction()
   const confirmDelete = useDeleteConfirmation()
 
+  // Determine if we're using API search
+  const isApiSearch = React.useMemo(() => {
+    return !!apiSearchFilters && (
+      !!apiSearchFilters.transactionId || 
+      !!apiSearchFilters.tranReference
+    )
+  }, [apiSearchFilters])
+
+  // Apply client-side filtering for all search fields
+  const filteredRows = React.useMemo(() => {
+    const hasSearch = Object.values(search).some((v) => typeof v === 'string' && v?.trim())
+    if (!hasSearch) return apiRows
+    
+    // Filter all rows based on search criteria
+    // Note: If API search is active, apiRows is already filtered by API for transactionId/tranReference
+    // We just need to apply additional client-side filters for other fields
+    return apiRows.filter((row) => {
+      // Get all field values in lowercase for comparison
+      const transactionId = String(row.transactionId || '').toLowerCase()
+      const tranReference = String(row.tranReference || '').toLowerCase()
+      const projectName = String(row.projectName || '').toLowerCase()
+      const projectRegulatorId = String(row.projectRegulatorId || '').toLowerCase()
+      const tranDesc = String(row.tranDesc || '').toLowerCase()
+      const narration = String(row.narration || '').toLowerCase()
+      const tranDate = String(row.tranDate || '').toLowerCase()
+      // Normalize status value - remove extra spaces and convert to uppercase for consistent matching
+      const approvalStatus = String(row.approvalStatus || '').trim().toUpperCase()
+      
+      // Get search values
+      const searchTransactionId = search.transactionId?.trim().toLowerCase() || ''
+      const searchTranReference = search.tranReference?.trim().toLowerCase() || ''
+      const searchProjectName = search.projectName?.trim().toLowerCase() || ''
+      const searchProjectRegulatorId = search.projectRegulatorId?.trim().toLowerCase() || ''
+      const searchTranDesc = search.tranDesc?.trim().toLowerCase() || ''
+      const searchNarration = search.narration?.trim().toLowerCase() || ''
+      const searchTranDate = search.tranDate?.trim().toLowerCase() || ''
+      // Normalize status search value - convert to uppercase for consistent matching
+      const searchApprovalStatus = search.approvalStatus?.trim().toUpperCase() || ''
+      
+      // Match each field - if search is empty, it matches (no filter for that field)
+      const transactionIdMatch = !searchTransactionId || transactionId.includes(searchTransactionId)
+      const tranReferenceMatch = !searchTranReference || tranReference.includes(searchTranReference)
+      const projectNameMatch = !searchProjectName || projectName.includes(searchProjectName)
+      const projectRegulatorIdMatch = !searchProjectRegulatorId || projectRegulatorId.includes(searchProjectRegulatorId)
+      const tranDescMatch = !searchTranDesc || tranDesc.includes(searchTranDesc)
+      const narrationMatch = !searchNarration || narration.includes(searchNarration)
+      
+      // Date field - use substring matching (e.g., "05/12" matches "05/12/2025")
+      // Also handle different date formats (DD/MM, DD/MM/YYYY, etc.)
+      const tranDateMatch = !searchTranDate || tranDate.includes(searchTranDate)
+      
+      // Status field - use exact match (case-insensitive) for status dropdown
+      // Normalize both values to uppercase for consistent comparison
+      const approvalStatusMatch = !searchApprovalStatus || 
+        approvalStatus === searchApprovalStatus
+      
+      // All non-empty search fields must match
+      return transactionIdMatch && 
+             tranReferenceMatch && 
+             projectNameMatch && 
+             projectRegulatorIdMatch && 
+             tranDescMatch && 
+             narrationMatch &&
+             tranDateMatch &&
+             approvalStatusMatch
+    })
+  }, [apiRows, search])
+
+  const hasActiveSearch = React.useMemo(() => {
+    return Object.values(search).some((v) => typeof v === 'string' && v?.trim())
+  }, [search])
+
+  // Use useTableState for pagination and other table features
   const {
-    search,
     paginated,
-    totalRows: localTotalRows,
-    totalPages: localTotalPages,
     startItem,
     endItem,
     page: localPage,
     rowsPerPage,
     selectedRows,
     expandedRows,
-    handleSearchChange,
     handlePageChange: localHandlePageChange,
     handleRowsPerPageChange: localHandleRowsPerPageChange,
     handleRowSelectionChange,
@@ -164,23 +305,24 @@ const UnallocatedTransactionPage: React.FC = () => {
     handleSort,
     sortConfig,
   } = useTableState({
-    data: apiRows,
-    searchFields: [
-      'projectName',
-      'projectRegulatorId',
-      'tranReference',
-      'tranDesc',
-      'narration',
-    ],
+    data: filteredRows,
+    searchFields: [], // We handle search manually, so no fields here
     initialRowsPerPage: currentApiSize,
   })
 
-  const handlePageChange = (newPage: number) => {
-    const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const finalTotalRows = hasActiveSearch && !isApiSearch
+    ? filteredRows.length
+    : apiTotal
+  const finalTotalPages = hasActiveSearch && !isApiSearch
+    ? Math.ceil(filteredRows.length / rowsPerPage)
+    : apiTotalPages
 
-    if (hasActiveSearch) {
+  const handlePageChange = (newPage: number) => {
+    if (hasActiveSearch && !isApiSearch) {
+      // Client-side search - use local pagination
       localHandlePageChange(newPage)
     } else {
+      // API search or no search - use API pagination
       setCurrentApiPage(newPage)
     }
   }
@@ -191,29 +333,24 @@ const UnallocatedTransactionPage: React.FC = () => {
     localHandleRowsPerPageChange(newRowsPerPage)
   }
 
-  const effectiveTotalRows = Object.values(search).some((value) => value.trim())
-    ? localTotalRows
-    : apiTotal
-  const effectiveTotalPages = Object.values(search).some((value) =>
-    value.trim()
-  )
-    ? localTotalPages
-    : apiTotalPages
-  const effectivePage = Object.values(search).some((value) => value.trim())
+  const effectiveTotalRows = finalTotalRows
+  const effectiveTotalPages = finalTotalPages
+  const effectivePage = hasActiveSearch && !isApiSearch
     ? localPage
     : currentApiPage
 
+  // Calculate effective startItem and endItem based on pagination type
+  const effectiveStartItem = hasActiveSearch && !isApiSearch
+    ? startItem
+    : (currentApiPage - 1) * currentApiSize + 1
+  const effectiveEndItem = hasActiveSearch && !isApiSearch
+    ? endItem
+    : Math.min(currentApiPage * currentApiSize, apiTotal)
+
   const tableColumns = [
     {
-      key: 'projectName',
-      label: getTransactionLabelDynamic('CDL_TRANS_BPA_NAME'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'projectRegulatorId',
-      label: getTransactionLabelDynamic('CDL_TRANS_BPA_REGULATOR'),
+      key: 'transactionId',
+      label: getTransactionLabelDynamic('CDL_UNRECONCILED_TRANSACTION_ID'),
       type: 'text' as const,
       width: 'w-40',
       sortable: true,
@@ -305,8 +442,6 @@ const UnallocatedTransactionPage: React.FC = () => {
           setIsDeleting(true)
           await deleteMutation.mutateAsync(String(row.id))
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
           throw error // Re-throw to keep dialog open on error
         } finally {
           setIsDeleting(false)
@@ -329,81 +464,81 @@ const UnallocatedTransactionPage: React.FC = () => {
   const renderExpandedContent = (row: TransactionData) => (
     <div className="grid grid-cols-2 gap-8">
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold text-gray-900 mb-4">
+        <h4 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
           Transaction Information
         </h4>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-gray-600">Project Name:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400">Project Name:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {row.projectName}
             </span>
           </div>
           <div>
-            <span className="text-gray-600">Project Regulator ID:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400">Project Regulator ID:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {row.projectRegulatorId}
             </span>
           </div>
           <div>
-            <span className="text-gray-600">Transaction Reference:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400">Transaction Reference:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {row.tranReference}
             </span>
           </div>
           <div>
-            <span className="text-gray-600">Transaction Description:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400">Transaction Description:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {row.tranDesc}
             </span>
           </div>
           <div>
-            <span className="text-gray-600">Transaction Amount:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400">Transaction Amount:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {formatNumber(row.tranAmount)}
             </span>
           </div>
           <div>
-            <span className="text-gray-600">Transaction Date:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400">Transaction Date:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {row.tranDate}
             </span>
           </div>
           <div>
-            <span className="text-gray-600">Narration:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400">Narration:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {row.narration}
             </span>
           </div>
           <div>
-            <span className="text-gray-600">TAS Match:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400">TAS Match:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {row.tasMatch}
             </span>
           </div>
           <div>
-            <span className="text-gray-600">Approval Status:</span>
-            <span className="ml-2 text-gray-800 font-medium">
+            <span className="text-gray-600 dark:text-gray-400"> Status:</span>
+            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
               {row.approvalStatus}
             </span>
           </div>
         </div>
       </div>
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold text-gray-900 mb-4">
+        <h4 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
           Transaction Actions
         </h4>
         <div className="space-y-3">
-          <button className="w-full text-left p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 shadow-sm">
+          <button className="w-full p-3 text-sm text-left text-gray-700 transition-colors bg-white border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">
             View Transaction Details
           </button>
-          <button className="w-full text-left p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 shadow-sm">
+          <button className="w-full p-3 text-sm text-left text-gray-700 transition-colors bg-white border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">
             Allocate Transaction
           </button>
-          <button className="w-full text-left p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 shadow-sm">
+          <button className="w-full p-3 text-sm text-left text-gray-700 transition-colors bg-white border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">
             Download Transaction Report
           </button>
-          <button className="w-full text-left p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 shadow-sm">
+          <button className="w-full p-3 text-sm text-left text-gray-700 transition-colors bg-white border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">
             Export Transaction Data
           </button>
         </div>
@@ -414,17 +549,8 @@ const UnallocatedTransactionPage: React.FC = () => {
   if (isLoading || labelsLoading) {
     return (
       <DashboardLayout title={unallocatedTitle}>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">
-              {isLoading && labelsLoading
-                ? 'Loading transactions and labels...'
-                : isLoading
-                  ? 'Loading transactions...'
-                  : 'Loading labels...'}
-            </p>
-          </div>
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
         </div>
       </DashboardLayout>
     )
@@ -433,57 +559,13 @@ const UnallocatedTransactionPage: React.FC = () => {
   if (error || labelsError) {
     return (
       <DashboardLayout title={unallocatedTitle}>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="text-red-600 mb-4">
-              <svg
-                className="w-12 h-12 mx-auto"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {error && labelsError
-                ? 'Error Loading Transactions and Labels'
-                : error
-                  ? 'Error Loading Transactions'
-                  : 'Error Loading Labels'}
-            </h3>
-            <p className="text-gray-600 mb-4">Please try refreshing the page</p>
-            <div className="text-left text-xs bg-red-50 p-4 rounded border max-w-md mx-auto">
-              <p>
-                <strong>Error Details:</strong>
-              </p>
-              {error && (
-                <div className="mb-2">
-                  <p>
-                    <strong>Transactions:</strong>{' '}
-                    {error.message || 'Unknown error'}
-                  </p>
-                </div>
-              )}
-              {labelsError && (
-                <div className="mb-2">
-                  <p>
-                    <strong>Labels:</strong> {labelsError}
-                  </p>
-                </div>
-              )}
-              {process.env.NODE_ENV === 'development' && (
-                <pre className="mt-2 text-xs">
-                  {JSON.stringify({ error, labelsError }, null, 2)}
-                </pre>
-              )}
-            </div>
-          </div>
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalError 
+            error={error?.message || labelsError || 'Unknown error'} 
+            onRetry={() => window.location.reload()}
+            title="Error loading unallocated transactions"
+            fullHeight
+          />
         </div>
       </DashboardLayout>
     )
@@ -499,8 +581,8 @@ const UnallocatedTransactionPage: React.FC = () => {
       )}
 
       <DashboardLayout title={unallocatedTitle}>
-        <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
-          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] border-b border-gray-200 rounded-t-2xl">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
             <div className="flex justify-end gap-2 py-3.5 px-4">
               <PageActionButtons
                 entityType="pendingPayment"
@@ -525,8 +607,8 @@ const UnallocatedTransactionPage: React.FC = () => {
               rowsPerPage: rowsPerPage,
               totalRows: effectiveTotalRows,
               totalPages: effectiveTotalPages,
-              startItem,
-              endItem,
+              startItem: effectiveStartItem,
+              endItem: effectiveEndItem,
             }}
             onPageChange={handlePageChange}
             onRowsPerPageChange={handleRowsPerPageChange}

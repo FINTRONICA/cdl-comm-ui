@@ -26,15 +26,49 @@ export interface ProjectDetailsData {
   reaManagementExpenses: string
   reaMarketingExpenses: string
   reaTeamLeadName: string
-  reaRelationshipManagerName: string
+  reamprelationshipManagerName: string
   reaAssestRelshipManagerName: string
   reaRealEstateBrokerExp: number
   reaAdvertisementExp: number
   reaLandOwnerName: string
-  
+
+  // New fields from table specifications
+  unitReferenceNumber?: string
+  unitNumber?: string
+  unitStatus?: string
+  towerBuildingName?: string
+  unitPlotSize?: string
+  propertyId?: string
+  unitIban?: string
+  unitRegistrationFee?: string
+  nameOfAgent?: string
+  agentNationalId?: string
+  grossSalePrice?: string
+  salePrice?: string
+  vatApplicable?: boolean
+  deedNumber?: string
+  agreementNumber?: string
+  agreementDate?: Dayjs | null
+  salePurchaseAgreement?: boolean
+  projectPaymentPlan?: boolean
+  paymentPlanSelection?: string
+  worldCheck?: string
+  amountPaidToDeveloperWithinEscrow?: string
+  amountPaidToDeveloperOutOfEscrow?: string
+  totalAmountPaid?: string
+  reservationBookingForm?: boolean
+  unitAreaSize?: string
+  forfeitAmount?: string
+  refundAmount?: string
+  transferredAmount?: string
+  mpadditionalRemarks?: string
+
   // DTO objects matching API structure exactly
   buildPartnerDTO: {
     id: number
+    bpCifrera?: string
+    bpName?: string
+    bpMasterName?: string
   }
   reaStatusDTO: {
     id: number
@@ -48,13 +82,16 @@ export interface ProjectDetailsData {
   reaConstructionCostCurrencyDTO: {
     id: number
   }
-  
+  reaBlockPaymentTypeDTO: {
+    id: number
+  }
+
   // Additional fields
   status: string | null
-  reaBlockPaymentTypeDTO: unknown | null
 }
 
 export interface AccountData {
+  id?: number | null
   trustAccountNumber: string
   ibanNumber: string
   dateOpened: Dayjs | null
@@ -71,6 +108,8 @@ export interface FeeData {
   feePercentage: string
   amount: string
   vatPercentage: string
+  currency: string
+  debitAccount: string
 }
 
 export interface BeneficiaryData {
@@ -85,6 +124,7 @@ export interface BeneficiaryData {
 }
 
 export interface PaymentPlanData {
+  id?: number // Add ID for existing payment plans
   installmentNumber: number
   installmentPercentage: string
   projectCompletionPercentage: string

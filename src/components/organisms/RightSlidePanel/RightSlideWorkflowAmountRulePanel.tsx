@@ -9,8 +9,6 @@ import {
   Button,
   Drawer,
   Box,
-  Snackbar,
-  Alert,
   CircularProgress,
   FormControlLabel,
   Checkbox,
@@ -19,11 +17,13 @@ import {
   Select,
   MenuItem,
   Grid,
+  FormHelperText,
 } from '@mui/material'
-import { Controller, useForm, FieldErrors } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { getLabelByConfigId as getWorkflowAmountRuleLabel } from '@/constants/mappings/workflowMapping'
+import { getWorkflowAmountRuleValidationRules } from '@/lib/validation'
 
 import {
   useCreateWorkflowAmountRule,
@@ -36,6 +36,8 @@ import type {
   CreateWorkflowAmountRuleRequest,
   UpdateWorkflowAmountRuleRequest,
 } from '@/services/api/workflowApi'
+import { alpha, useTheme } from '@mui/material/styles'
+import { buildPanelSurfaceTokens } from './panelTheme'
 
 interface RightSlideWorkflowAmountRulePanelProps {
   isOpen: boolean
@@ -52,7 +54,7 @@ type AmountRuleFormData = {
   requiredMakers: number
   requiredCheckers: number
   workflowDefinitionName: string
-  active: boolean
+  enabled: boolean
 }
 
 interface WorkflowDefinition {
@@ -63,41 +65,22 @@ interface WorkflowDefinition {
 
 const DEFAULT_VALUES: AmountRuleFormData = {
   currency: '',
-  minAmount: 0,
-  maxAmount: 0,
-  priority: 0,
-  requiredMakers: 0,
-  requiredCheckers: 0,
+  minAmount: 1,
+  maxAmount: 1,
+  priority: 1,
+  requiredMakers: 1,
+  requiredCheckers: 1,
   workflowDefinitionName: '',
-  active: false,
+  enabled: true,
 }
 
-const selectStyles = {
-  height: '46px',
-  '& .MuiOutlinedInput-root': {
-    height: '46px',
-    borderRadius: '8px',
-    '& fieldset': {
-      borderColor: '#CAD5E2',
-      borderWidth: '1px',
-    },
-    '&:hover fieldset': {
-      borderColor: '#CAD5E2',
-    },
-    '&.Mui-focused fieldset': {
-      borderColor: '#2563EB',
-    },
-  },
-  '& .MuiSelect-icon': {
-    color: '#666',
-  },
-}
+// Styles will be defined inside component to access theme
 
 export const RightSlideWorkflowAmountRulePanel: React.FC<
   RightSlideWorkflowAmountRulePanelProps
 > = ({ isOpen, onClose, mode = 'add', amountRuleData }) => {
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const theme = useTheme()
+  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [selectedWorkflowAmountRuleId, setSelectedWorkflowAmountRuleId] =
     useState<number | null>(null)
   const createAmountRule = useCreateWorkflowAmountRule()
@@ -105,13 +88,11 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
 
   const { isSubmitting: formLoading } = useWorkflowAmountRuleForm()
 
-  // Fetch workflow definitions for dropdown
   const {
     data: workflowDefinitionsResponse,
     isLoading: workflowDefinitionsLoading,
   } = useFindAllWorkflowDefinitions()
 
-  // Transform workflow definitions for dropdown
   const workflowDefinitionOptions = useMemo(() => {
     if (!workflowDefinitionsResponse?.content) return []
 
@@ -144,23 +125,25 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
     workflowDefinitionsLoading
   const isViewMode = mode === 'view'
 
-  // Button state logic
   const isFormDirty = isDirty
   const canSave = isFormDirty && !isSubmitting && !isViewMode
   const canReset = isFormDirty && !isSubmitting && !isViewMode
 
-  // Handle workflow definition selection
   const handleWorkflowDefinitionChange = useCallback(
     (workflowDefinitionName: string) => {
-      // Find the workflow definition ID for the selected name
-      const selectedDefinition = workflowDefinitionOptions.find(
-        (option) => option.label === workflowDefinitionName
-      )
-      if (selectedDefinition && typeof selectedDefinition.value === 'number') {
-        setSelectedWorkflowAmountRuleId(selectedDefinition.value)
-      } else {
-        setSelectedWorkflowAmountRuleId(null)
-      }
+      try {
+        const selectedDefinition = workflowDefinitionOptions.find(
+          (option) => option.label === workflowDefinitionName
+        )
+        if (
+          selectedDefinition &&
+          typeof selectedDefinition.value === 'number'
+        ) {
+          setSelectedWorkflowAmountRuleId(selectedDefinition.value)
+        } else {
+          setSelectedWorkflowAmountRuleId(null)
+        }
+      } catch {}
     },
     [workflowDefinitionOptions]
   )
@@ -194,19 +177,6 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
   }
 
   useEffect(() => {
-    if (
-      workflowDefinitionsResponse?.content &&
-      workflowDefinitionsResponse.content.length > 0 &&
-      !selectedWorkflowAmountRuleId
-    ) {
-      const firstDefinition = workflowDefinitionsResponse.content[0]
-      if (firstDefinition && typeof firstDefinition.id === 'number') {
-        setSelectedWorkflowAmountRuleId(firstDefinition.id)
-      }
-    }
-  }, [workflowDefinitionsResponse, selectedWorkflowAmountRuleId])
-
-  useEffect(() => {
     if (!isOpen) return
 
     const extractedWorkflowDefinitionId =
@@ -225,7 +195,7 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
             requiredCheckers: amountRuleData.requiredCheckers ?? 0,
             workflowDefinitionName:
               amountRuleData.workflowDefinitionDTO?.name || '',
-            active: amountRuleData.active ?? false,
+            enabled: amountRuleData.enabled ?? true,
           } as AmountRuleFormData)
         : DEFAULT_VALUES
 
@@ -235,295 +205,471 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
 
     reset(values, { keepDirty: false })
     clearErrors()
-    setSuccessMessage(null)
-    setErrorMessage(null)
-  }, [
-    isOpen,
-    mode,
-    amountRuleData,
-    reset,
-    clearErrors,
-    workflowDefinitionOptions,
-  ])
+  }, [isOpen, mode, amountRuleData, reset, clearErrors])
 
   const onSubmit = (data: AmountRuleFormData) => {
-    setSuccessMessage(null)
-    setErrorMessage(null)
+    try {
+      if (mode === 'edit') {
+        if (!amountRuleData?.id) {
+          return
+        }
 
-    if (mode === 'edit') {
-      if (!amountRuleData?.id) {
-        setErrorMessage('Invalid or missing amount rule ID for update')
-        return
-      }
+        const updatePayload: UpdateWorkflowAmountRuleRequest = {
+          id: Number(amountRuleData.id),
+          currency: data.currency.trim(),
+          minAmount: data.minAmount,
+          maxAmount: data.maxAmount,
+          priority: data.priority,
+          requiredMakers: data.requiredMakers,
+          requiredCheckers: data.requiredCheckers,
+          workflowDefinitionId: selectedWorkflowAmountRuleId || 0,
+          enabled: data.enabled,
+        }
 
-      const updatePayload: UpdateWorkflowAmountRuleRequest = {
-        id: Number(amountRuleData.id),
-        currency: data.currency.trim(),
-        minAmount: data.minAmount,
-        maxAmount: data.maxAmount,
-        priority: data.priority,
-        requiredMakers: data.requiredMakers,
-        requiredCheckers: data.requiredCheckers,
-        workflowDefinitionId: selectedWorkflowAmountRuleId || 0,
-        active: data.active,
-      }
+        updateAmountRule.mutate(
+          { id: String(amountRuleData.id), updates: updatePayload },
+          {
+            onSuccess: () => {
+              setTimeout(() => onClose(), 1000)
+            },
+          }
+        )
+      } else {
+        const createPayload: CreateWorkflowAmountRuleRequest = {
+          currency: data.currency.trim(),
+          minAmount: data.minAmount,
+          maxAmount: data.maxAmount,
+          priority: data.priority,
+          requiredMakers: data.requiredMakers,
+          requiredCheckers: data.requiredCheckers,
+          workflowDefinitionId: selectedWorkflowAmountRuleId || 0,
+          workflowId: selectedWorkflowAmountRuleId || 0,
+          amountRuleName: `Rule_${selectedWorkflowAmountRuleId || ''}`,
+          enabled: data.enabled,
+        }
 
-      updateAmountRule.mutate(
-        { id: String(amountRuleData.id), updates: updatePayload },
-        {
+        createAmountRule.mutate(createPayload, {
           onSuccess: () => {
-            setSuccessMessage('Workflow amount rule updated successfully.')
             setTimeout(() => onClose(), 1000)
           },
-          onError: (err: Error | unknown) => {
-            const error = err as Error & {
-              response?: {
-                data?: {
-                  message?: string
-                  details?: string
-                  error?: string
-                }
-                status?: number
-                statusText?: string
-              }
-            }
-            const errorMessage =
-              error?.response?.data?.message ||
-              error?.response?.data?.details ||
-              error?.response?.data?.error ||
-              error?.message ||
-              `Failed to update workflow amount rule (Status: ${error?.response?.status})`
-            setErrorMessage(errorMessage)
-          },
-        }
-      )
-    } else {
-      const createPayload: CreateWorkflowAmountRuleRequest = {
-        currency: data.currency.trim(),
-        minAmount: data.minAmount,
-        maxAmount: data.maxAmount,
-        priority: data.priority,
-        requiredMakers: data.requiredMakers,
-        requiredCheckers: data.requiredCheckers,
-        workflowDefinitionId: selectedWorkflowAmountRuleId || 0,
-        workflowId: selectedWorkflowAmountRuleId || 0,
-        amountRuleName: `Rule_${selectedWorkflowAmountRuleId || ''}`,
-        active: data.active,
+        })
       }
-
-      createAmountRule.mutate(createPayload, {
-        onSuccess: () => {
-          setSuccessMessage('Workflow amount rule created successfully.')
-          setTimeout(() => onClose(), 1000)
-        },
-        onError: (err: Error | unknown) => {
-          const error = err as Error & {
-            response?: {
-              data?: {
-                message?: string
-                details?: string
-                error?: string
-              }
-              status?: number
-              statusText?: string
-            }
-          }
-          const errorMessage =
-            error?.response?.data?.message ||
-            error?.response?.data?.details ||
-            error?.response?.data?.error ||
-            error?.message ||
-            `Failed to create workflow amount rule (Status: ${error?.response?.status})`
-          setErrorMessage(errorMessage)
-        },
-      })
-    }
+    } catch {}
   }
 
   const handleResetToLoaded = useCallback(() => {
-    const loaded: AmountRuleFormData =
-      mode === 'edit' && amountRuleData
-        ? {
-            currency: amountRuleData.currency ?? '',
-            minAmount: amountRuleData.minAmount ?? 0,
-            maxAmount: amountRuleData.maxAmount ?? 0,
-            priority: amountRuleData.priority ?? 0,
-            requiredMakers: amountRuleData.requiredMakers ?? 0,
-            requiredCheckers: amountRuleData.requiredCheckers ?? 0,
-            workflowDefinitionName:
-              amountRuleData.workflowDefinitionDTO?.name || '',
-            active: amountRuleData.active ?? false,
-          }
-        : DEFAULT_VALUES
-    reset(loaded, { keepDirty: false })
-    clearErrors()
+    try {
+      const loaded: AmountRuleFormData =
+        mode === 'edit' && amountRuleData
+          ? {
+              currency: amountRuleData.currency ?? '',
+              minAmount: amountRuleData.minAmount ?? 0,
+              maxAmount: amountRuleData.maxAmount ?? 0,
+              priority: amountRuleData.priority ?? 0,
+              requiredMakers: amountRuleData.requiredMakers ?? 0,
+              requiredCheckers: amountRuleData.requiredCheckers ?? 0,
+              workflowDefinitionName:
+                amountRuleData.workflowDefinitionDTO?.name || '',
+              enabled: amountRuleData.enabled ?? true,
+            }
+          : DEFAULT_VALUES
 
-    // Reset workflow definition ID
-    if (mode === 'edit' && amountRuleData?.workflowDefinitionDTO?.id) {
-      setSelectedWorkflowAmountRuleId(
-        Number(amountRuleData.workflowDefinitionDTO.id)
-      )
-    } else if (
-      workflowDefinitionsResponse?.content &&
-      workflowDefinitionsResponse.content.length > 0
-    ) {
-      const firstDefinition = workflowDefinitionsResponse.content[0]
-      if (firstDefinition && typeof firstDefinition.id === 'number') {
-        setSelectedWorkflowAmountRuleId(firstDefinition.id)
+      reset(loaded, { keepDirty: false })
+      clearErrors()
+
+      if (mode === 'edit' && amountRuleData?.workflowDefinitionDTO?.id) {
+        setSelectedWorkflowAmountRuleId(
+          Number(amountRuleData.workflowDefinitionDTO.id)
+        )
+      } else if (
+        workflowDefinitionsResponse?.content &&
+        workflowDefinitionsResponse.content.length > 0
+      ) {
+        const firstDefinition = workflowDefinitionsResponse.content[0]
+        if (firstDefinition && typeof firstDefinition.id === 'number') {
+          setSelectedWorkflowAmountRuleId(firstDefinition.id)
+        }
       }
-    }
+    } catch {}
   }, [mode, amountRuleData, reset, clearErrors, workflowDefinitionsResponse])
 
-  const onError = (errors: FieldErrors<AmountRuleFormData>) => {
-    console.log(errors)
-  }
-  // Common styles for form components
-  const commonFieldStyles = (hasError: boolean) => ({
-    '& .MuiOutlinedInput-root': {
-      height: '46px',
-      borderRadius: '8px',
-      '& fieldset': {
-        borderColor: hasError ? '#ef4444' : '#CAD5E2',
-        borderWidth: '1px',
-      },
-      '&:hover fieldset': {
-        borderColor: hasError ? '#ef4444' : '#CAD5E2',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: hasError ? '#ef4444' : '#2563EB',
-      },
-    },
-  })
+  const onError = () => {}
 
-  const labelSx = {
-    color: '#6A7282',
-    fontFamily: 'Outfit',
-    fontWeight: 400,
-    fontStyle: 'normal',
-    fontSize: '12px',
-    letterSpacing: 0,
-  }
-
-  const valueSx = {
-    fontFamily: 'Outfit',
-    fontWeight: 400,
-    fontStyle: 'normal',
-    fontSize: '14px',
-    letterSpacing: 0,
-    wordBreak: 'break-word',
-  }
-
-  const renderTextField = (
-    name: keyof AmountRuleFormData,
-    label: string,
-    type: 'text' | 'number' = 'text',
-    gridSize: number = 12
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => (
-          <TextField
-            name={field.name}
-            value={field.value || ''}
-            type={type}
-            label={label}
-            fullWidth
-            disabled={isSubmitting || isViewMode}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{
-              sx: valueSx,
-            }}
-            sx={commonFieldStyles(false)}
-            onChange={(e) => {
-              const value =
-                type === 'number' ? Number(e.target.value) : e.target.value
-              if (type === 'number' && typeof value === 'number' && value < 0) {
-                field.onChange(0)
-              } else {
-                field.onChange(value)
-              }
-            }}
-            onBlur={field.onBlur}
-          />
-        )}
-      />
-    </Grid>
-  )
+  const labelSx = tokens.label
+  const valueSx = tokens.value
 
   type OptionItem = {
     label: string
     value: string | number
     id?: string | number
   }
+
   const renderSelectField = (
     name: keyof AmountRuleFormData,
     label: string,
-    options: OptionItem[] | string[],
+    options?: OptionItem[] | string[],
     gridSize: number = 6,
+    showRedAsterisk: boolean = false,
     extraProps: {
       isLoading?: boolean
       disabled?: boolean
       onChange?: (value: string | number) => void
       placeholder?: string
     } = {}
-  ) => (
-    <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue={''}
-        render={({ field }) => {
-          return (
-            <FormControl fullWidth>
-              <InputLabel sx={labelSx}>
-                {extraProps.placeholder ?? label}
-              </InputLabel>
+  ) => {
+    const resolvedOptions: OptionItem[] | string[] =
+      options && options.length > 0 ? options : []
 
-              <Select
-                {...field}
-                value={field.value ?? ''}
-                onChange={(e) => {
-                  const val = (e.target as HTMLInputElement).value
+    const validationRules = getWorkflowAmountRuleValidationRules()
+    const fieldRules =
+      validationRules[name as keyof typeof validationRules] || {}
 
-                  field.onChange(val)
-                  if (extraProps.onChange) extraProps.onChange(val)
-                }}
+    return (
+      <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={fieldRules}
+          defaultValue={''}
+          render={({ field, fieldState }) => {
+            const hasError = !!fieldState.error
+
+            const fieldStyles = hasError
+              ? {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+              : {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.7)
+                          : '#CAD5E2',
+                      borderWidth: '1px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[300], 0.8)
+                          : '#94A3B8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.primary.main,
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+
+            const dynamicLabelSx = {
+              ...labelSx,
+              ...(hasError && {
+                color: theme.palette.error.main,
+                '& .MuiFormLabel-asterisk': {
+                  color: theme.palette.error.main,
+                },
+              }),
+              ...(showRedAsterisk && {
+                '& .MuiFormLabel-asterisk': {
+                  color: theme.palette.error.main,
+                },
+              }),
+              '&.Mui-focused': {
+                color: hasError
+                  ? theme.palette.error.main
+                  : theme.palette.primary.main,
+              },
+            }
+
+            return (
+              <FormControl
+                fullWidth
+                error={hasError}
                 disabled={!!extraProps.disabled || !!extraProps.isLoading}
-                label={extraProps.placeholder ?? label}
-                sx={{ ...selectStyles, ...valueSx }}
-                IconComponent={KeyboardArrowDownIcon}
               >
-                {extraProps.isLoading ? (
-                  <MenuItem disabled>
-                    <CircularProgress size={16} sx={{ mr: 1 }} />
-                    Loading {label.toLowerCase()}...
-                  </MenuItem>
-                ) : Array.isArray(options) && options.length > 0 ? (
-                  options.map((opt) =>
-                    typeof opt === 'string' ? (
-                      <MenuItem key={opt} value={opt}>
-                        {opt}
-                      </MenuItem>
-                    ) : (
-                      <MenuItem key={opt.id ?? opt.value} value={opt.value}>
-                        {opt.label}
-                      </MenuItem>
+                <InputLabel
+                  sx={dynamicLabelSx}
+                  id={`${String(name)}-label`}
+                  required={true}
+                >
+                  {extraProps.placeholder ?? label}
+                </InputLabel>
+
+                <Select
+                  labelId={`${String(name)}-label`}
+                  id={`${String(name)}-select`}
+                  name={field.name}
+                  value={field.value ?? ''}
+                  onChange={(e) => {
+                    const val = (e.target as HTMLInputElement).value
+                    field.onChange(val)
+                    if (extraProps.onChange) extraProps.onChange(val)
+                  }}
+                  onBlur={field.onBlur}
+                  disabled={
+                    !!extraProps.disabled ||
+                    !!extraProps.isLoading ||
+                    isSubmitting ||
+                    isViewMode
+                  }
+                  label={extraProps.placeholder ?? label}
+                  sx={{
+                    ...valueSx,
+                    ...fieldStyles,
+                  }}
+                  IconComponent={KeyboardArrowDownIcon}
+                >
+                  {extraProps.isLoading ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={16} sx={{ mr: 1 }} />
+                      Loading {label.toLowerCase()}...
+                    </MenuItem>
+                  ) : Array.isArray(resolvedOptions) &&
+                    resolvedOptions.length > 0 ? (
+                    resolvedOptions.map((opt) =>
+                      typeof opt === 'string' ? (
+                        <MenuItem key={opt} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ) : (
+                        <MenuItem key={opt.id ?? opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      )
                     )
-                  )
-                ) : (
-                  <MenuItem disabled>
-                    No {label.toLowerCase()} available
-                  </MenuItem>
+                  ) : (
+                    <MenuItem disabled>
+                      No {label.toLowerCase()} available
+                    </MenuItem>
+                  )}
+                </Select>
+
+                {hasError && (
+                  <FormHelperText>{fieldState.error?.message}</FormHelperText>
                 )}
-              </Select>
-            </FormControl>
-          )
-        }}
-      />
-    </Grid>
-  )
+              </FormControl>
+            )
+          }}
+        />
+      </Grid>
+    )
+  }
+
+  const renderTextField = (
+    name: keyof AmountRuleFormData,
+    label: string,
+    type: 'text' | 'number' = 'text',
+    gridSize: number = 12,
+    required: boolean = true
+  ) => {
+    const validationRules = getWorkflowAmountRuleValidationRules()
+    const fieldRules =
+      validationRules[name as keyof typeof validationRules] || {}
+
+    return (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={fieldRules}
+          render={({ field, fieldState }) => {
+            const hasError = !!fieldState.error
+
+            const fieldStyles = hasError
+              ? {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+              : {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.7)
+                          : '#CAD5E2',
+                      borderWidth: '1px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[300], 0.8)
+                          : '#94A3B8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.primary.main,
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+
+            const labelStyles = {
+              ...labelSx,
+              color: hasError
+                ? theme.palette.error.main
+                : (tokens.label.color as string),
+              '& .MuiFormLabel-asterisk': {
+                color: required ? theme.palette.error.main : 'inherit',
+              },
+              '&.Mui-focused': {
+                color: hasError
+                  ? theme.palette.error.main
+                  : theme.palette.primary.main,
+              },
+            }
+
+            const getMaxLength = () => {
+              switch (name) {
+                case 'currency':
+                  return 10
+                default:
+                  return undefined
+              }
+            }
+
+            return (
+              <Box>
+                <TextField
+                  {...field}
+                  type={type}
+                  label={label}
+                  fullWidth
+                  disabled={isSubmitting || isViewMode}
+                  required={required}
+                  error={hasError}
+                  helperText={hasError ? fieldState.error?.message : ''}
+                  InputLabelProps={{ sx: labelStyles }}
+                  InputProps={{
+                    sx: valueSx,
+                    inputProps: {
+                      maxLength: getMaxLength(),
+                      max:
+                        name === 'requiredMakers' || name === 'requiredCheckers'
+                          ? 10
+                          : name === 'priority'
+                            ? 10
+                            : undefined,
+                      min: name === 'priority' ? 1 : undefined,
+                    },
+                  }}
+                  sx={fieldStyles}
+                  onChange={(e) => {
+                    let value = e.target.value
+
+                    if (type === 'text') {
+                      if (name === 'currency') {
+                        value = value.replace(/[^A-Za-z]/g, '')
+                      }
+                    } else if (type === 'number') {
+                      if (value === '') {
+                        field.onChange('')
+                        return
+                      }
+
+                      const numValue = Number(value)
+                      if (isNaN(numValue)) {
+                        return
+                      }
+
+                      if (name === 'priority') {
+                        if (numValue < 1) {
+                          return
+                        }
+                        if (numValue > 10) {
+                          return
+                        }
+                        if (value.length > 2) {
+                          return
+                        }
+                      }
+
+                      if (
+                        name === 'requiredMakers' ||
+                        name === 'requiredCheckers'
+                      ) {
+                        if (numValue < 1) {
+                          return
+                        }
+                        if (numValue > 10) {
+                          return
+                        }
+                      }
+
+                      if (name === 'minAmount' || name === 'maxAmount') {
+                        if (numValue < 0) {
+                          return
+                        }
+                      }
+                    }
+
+                    const finalValue = type === 'number' ? Number(value) : value
+                    field.onChange(finalValue)
+                  }}
+                />
+              </Box>
+            )
+          }}
+        />
+      </Grid>
+    )
+  }
 
   const renderCheckboxField = (
     name: keyof AmountRuleFormData,
@@ -532,7 +678,7 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
     extraProps: {
       disabled?: boolean
       defaultValue?: boolean
-      onChange?: (value: boolean) => void // 👈 allow custom onChange too
+      onChange?: (value: boolean) => void
     } = {}
   ) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
@@ -552,9 +698,12 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
                 }}
                 disabled={extraProps.disabled}
                 sx={{
-                  color: '#CAD5E2',
+                  color:
+                    theme.palette.mode === 'dark'
+                      ? alpha(theme.palette.grey[600], 0.7)
+                      : '#CAD5E2',
                   '&.Mui-checked': {
-                    color: '#2563EB',
+                    color: theme.palette.primary.main,
                   },
                 }}
               />
@@ -581,12 +730,10 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
     </Grid>
   )
 
-  // Prevent drawer from closing when clicking inside the form
   const handleDrawerClose = (
     _event: React.KeyboardEvent | React.MouseEvent,
     reason?: string
   ) => {
-    // Only close on backdrop click or escape key, not on form interactions
     if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
       onClose()
     }
@@ -599,6 +746,7 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
       onClose={handleDrawerClose}
       PaperProps={{
         sx: {
+          ...tokens.paper,
           width: '460px',
           height: '100%',
           display: 'flex',
@@ -606,7 +754,13 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
         },
       }}
     >
-      <Box sx={{ p: 3, borderBottom: '1px solid #E5E7EB' }}>
+      <Box
+        sx={{
+          p: 3,
+          borderBottom: `1px solid ${tokens.dividerColor}`,
+          backgroundColor: tokens.paper.backgroundColor as string,
+        }}
+      >
         <Box
           sx={{
             display: 'flex',
@@ -620,6 +774,7 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
               fontSize: '20px',
               fontWeight: 500,
               fontStyle: 'normal',
+              color: theme.palette.text.primary,
             }}
           >
             {mode === 'edit'
@@ -628,54 +783,65 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
                 ? 'View Workflow Amount Rule'
                 : 'Add New Workflow Amount Rule'}
           </DialogTitle>
-          <IconButton onClick={onClose} size="small">
-            <CancelOutlinedIcon />
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+          >
+            <CancelOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
       </Box>
 
       <form onSubmit={handleSubmit(onSubmit, onError)}>
-        <DialogContent dividers>
-          {/* Error message at the top */}
-          {errorMessage && (
-            <Box sx={{ mb: 2 }}>
-              <Alert severity="error" onClose={() => setErrorMessage(null)}>
-                {errorMessage}
-              </Alert>
-            </Box>
-          )}
-
+        <DialogContent
+          dividers
+          sx={{
+            borderColor: tokens.dividerColor,
+            backgroundColor: tokens.paper.backgroundColor as string,
+          }}
+        >
           <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
             {renderTextField(
               'currency',
               getWorkflowAmountRuleLabel('CDL_WAR_CURRENCY'),
               'text',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'minAmount',
               getWorkflowAmountRuleLabel('CDL_WAR_MIN_AMOUNT'),
               'number',
-              12
+              12,
+              true
             )}
 
             {renderTextField(
               'maxAmount',
               getWorkflowAmountRuleLabel('CDL_WAR_MAX_AMOUNT'),
               'number',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'priority',
               getWorkflowAmountRuleLabel('CDL_WAR_PRIORITY'),
               'number',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'requiredMakers',
               getWorkflowAmountRuleLabel('CDL_WAR_REQUIRED_MAKERS'),
               'number',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'requiredCheckers',
@@ -693,6 +859,7 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
                 id: option.id,
               })),
               12,
+              true,
               {
                 isLoading: workflowDefinitionsLoading,
                 disabled: isSubmitting || isViewMode,
@@ -703,7 +870,7 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
 
             <Grid size={{ xs: 12 }}>
               {renderCheckboxField(
-                'active',
+                'enabled',
                 getWorkflowAmountRuleLabel('CDL_WAR_ACTIVE'),
                 3,
                 { disabled: isSubmitting, defaultValue: true }
@@ -720,6 +887,12 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
               left: 0,
               right: 0,
               padding: 2,
+              borderTop: `1px solid ${tokens.dividerColor}`,
+              backgroundColor: alpha(
+                theme.palette.background.paper,
+                theme.palette.mode === 'dark' ? 0.92 : 0.9
+              ),
+              backdropFilter: 'blur(10px)',
             }}
           >
             <Grid container spacing={2}>
@@ -742,6 +915,12 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
                     justifyContent: 'center',
                     gap: 1,
                     opacity: canReset ? 1 : 0.5,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
                   }}
                 >
                   Reset
@@ -767,13 +946,19 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
                     justifyContent: 'center',
                     gap: 1,
                     opacity: canSave ? 1 : 0.5,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
                   }}
                 >
                   {isSubmitting && (
                     <CircularProgress
                       size={20}
                       sx={{
-                        color: 'white',
+                        color: theme.palette.primary.contrastText,
                       }}
                     />
                   )}
@@ -789,78 +974,7 @@ export const RightSlideWorkflowAmountRulePanel: React.FC<
             </Grid>
           </Box>
         )}
-        {/* {!isViewMode && (
-          <div className="relative left-0 right-0 p-2 top-5">
-            <div className="grid grid-cols-12 gap-2">
-              <div className="col-span-6">
-                <Button
-                  onClick={handleResetToLoaded}
-                  disabled={!canReset}
-                  className={`
-                            w-full relative flex items-center justify-center gap-1
-                            font-['Outfit',sans-serif] font-medium not-italic text-sm leading-5
-                            ${canReset ? 'opacity-100' : 'opacity-50'}
-                            bg-gray-200 text-black rounded px-4 py-2
-                          `}
-                >
-                  Reset
-                </Button>
-              </div>
-
-              <div className="col-span-6">
-                <Button
-                  type="submit"
-                  disabled={!canSave}
-                  className={`
-                            w-full relative flex items-center justify-center gap-1
-                            font-['Outfit',sans-serif] font-medium not-italic text-sm leading-5
-                            ${canSave ? 'opacity-100' : 'opacity-50'}
-                            bg-blue-600 text-white rounded px-4 py-2
-                          `}
-                >
-                  {isSubmitting && (
-                    <CircularProgress
-                      size={20}
-                      sx={{
-                        color: 'white',
-                      }}
-                    />
-                  )}
-                  {isSubmitting
-                    ? mode === 'edit'
-                      ? 'Updating...'
-                      : 'Creating...'
-                    : mode === 'edit'
-                      ? 'Update'
-                      : 'Save'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )} */}
       </form>
-
-      <Snackbar
-        open={!!successMessage}
-        autoHideDuration={6000}
-        onClose={() => setSuccessMessage(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={() => setSuccessMessage(null)} severity="success">
-          {successMessage}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar
-        open={!!errorMessage}
-        autoHideDuration={6000}
-        onClose={() => setErrorMessage(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={() => setErrorMessage(null)} severity="error">
-          {errorMessage}
-        </Alert>
-      </Snackbar>
     </Drawer>
   )
 }

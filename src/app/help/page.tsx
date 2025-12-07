@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Header } from '@/components/organisms/Header'
+import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { 
   Accordion, 
   AccordionSummary, 
@@ -766,14 +766,11 @@ const HelpPage = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 lg:p-6 overflow-y-auto">
-      <Header 
-        title="Help & Support" 
-        subtitle="CDL Escrow RERA Application - Find answers to common questions and get the support you need"
-        className="!p-0" 
-      />
-      
-      <Box sx={{ maxWidth: '1200px', mx: 'auto', mt: 4, pb: 6 }}>
+    <DashboardLayout 
+      title="Help" 
+      subtitle="CDL Escrow RERA Application - Find answers to common questions and get the support you need"
+    >
+      <Box sx={{ maxWidth: '1200px', mx: 'auto', pb: 6 }}>
         {/* FAQ Sections as Accordions */}
         {faqSections.map((section) => (
           <Accordion 
@@ -784,7 +781,9 @@ const HelpPage = () => {
               mb: 2, 
               '&:before': { display: 'none' },
               boxShadow: 1,
-              '&:hover': { boxShadow: 2 }
+              '&:hover': { boxShadow: 2 },
+              borderRadius: '8px !important',
+              overflow: 'hidden'
             }}
           >
             <AccordionSummary
@@ -822,7 +821,7 @@ const HelpPage = () => {
         ))}
 
       </Box>
-    </div>
+    </DashboardLayout>
   )
 }
 

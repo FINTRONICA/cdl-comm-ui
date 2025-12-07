@@ -5,6 +5,7 @@ import {
   API_ENDPOINTS,
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
+import { toast } from 'react-hot-toast'
 
 export interface WorkflowStageTemplate {
   id: number
@@ -34,6 +35,7 @@ export interface CreateWorkflowStageTemplateRequest {
   description: string
   slaHours: number
   workflowDefinitionDTO: string
+  createdBy?: string
 }
 
 export interface UpdateWorkflowStageTemplateRequest {
@@ -52,6 +54,7 @@ export interface UpdateWorkflowStageTemplateRequest {
   workflowDefinitionVersion?: number
   status?: string
   createdBy?: string
+  updatedBy?: string
 }
 
 export interface WorkflowStageTemplateFilters {
@@ -184,7 +187,7 @@ export class WorkflowStageTemplateService {
         )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -198,7 +201,7 @@ export class WorkflowStageTemplateService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -212,7 +215,7 @@ export class WorkflowStageTemplateService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -225,8 +228,8 @@ export class WorkflowStageTemplateService {
         'workflowDefinitionId' in data && data.workflowDefinitionId
           ? data.workflowDefinitionId
           : 'workflowDefinitionDTO' in data &&
-              typeof (data as { workflowDefinitionDTO?: string })
-                .workflowDefinitionDTO === 'string'
+            typeof (data as { workflowDefinitionDTO?: string })
+              .workflowDefinitionDTO === 'string'
             ? (data as { workflowDefinitionDTO?: string }).workflowDefinitionDTO
             : undefined
 
@@ -238,6 +241,7 @@ export class WorkflowStageTemplateService {
         name: data.name,
         description: data.description,
         slaHours: data.slaHours,
+        ...(data.createdBy && { createdBy: data.createdBy }),
         ...(workflowDefinitionId
           ? { workflowDefinitionDTO: { id: workflowDefinitionId } }
           : {}),
@@ -249,7 +253,7 @@ export class WorkflowStageTemplateService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -261,13 +265,13 @@ export class WorkflowStageTemplateService {
     try {
       const workflowDefinitionId =
         typeof updates === 'object' &&
-        'workflowDefinitionId' in updates &&
-        updates.workflowDefinitionId
+          'workflowDefinitionId' in updates &&
+          updates.workflowDefinitionId
           ? updates.workflowDefinitionId
           : typeof updates === 'object' && 'workflowDefinitionDTO' in updates
             ? (updates as any).workflowDefinitionDTO
             : // ? (updates as { workflowDefinitionDTO?: string }).workflowDefinitionDTO
-              undefined
+            undefined
 
       const payload = {
         ...(updates.id ? { id: updates.id } : {}),
@@ -281,7 +285,8 @@ export class WorkflowStageTemplateService {
         workflowDefinitionName: updates.workflowDefinitionName,
         workflowDefinitionVersion: updates.workflowDefinitionVersion,
         status: updates.status,
-        createdBy: updates.createdBy,
+        ...(updates.createdBy && { createdBy: updates.createdBy }),
+        ...(updates.updatedBy && { updatedBy: updates.updatedBy }),
         ...(workflowDefinitionId
           ? { workflowDefinitionDTO: { id: workflowDefinitionId } }
           : {}),
@@ -293,7 +298,7 @@ export class WorkflowStageTemplateService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -303,7 +308,7 @@ export class WorkflowStageTemplateService {
     try {
       await apiClient.delete<void>(url)
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }

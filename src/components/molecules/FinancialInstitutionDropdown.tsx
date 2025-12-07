@@ -164,7 +164,7 @@ const FinancialInstitutionDropdown: React.FC<FinancialInstitutionDropdownProps> 
           <MenuItem disabled>
             <Box display="flex" alignItems="center" justifyContent="center" width="100%">
               <CircularProgress size={16} sx={{ mr: 1 }} />
-              <Typography variant="body2">Loading institutions...</Typography>
+              <Typography variant="body2">Loading...</Typography>
             </Box>
           </MenuItem>
         ) : (

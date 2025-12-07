@@ -1,4 +1,6 @@
 import { User } from '@/types/auth';
+import { useAuthStore } from '@/store/authStore';
+import { clearAuthCookies } from '@/utils/cookieUtils';
 
 export class AuthController {
   static async getCurrentUser(): Promise<User | null> {
@@ -20,5 +22,11 @@ export class AuthController {
     } catch {
       return null;
     }
+  }
+
+  static logout(): void {
+    // Clear auth state and cookies
+    useAuthStore.getState().logout();
+    clearAuthCookies();
   }
 }

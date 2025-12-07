@@ -84,6 +84,7 @@ export interface DocumentUploadConfig<T = BaseDocument, ApiResponse = unknown> {
   title?: string
   description?: string
   isOptional?: boolean
+  isReadOnly?: boolean
 
   // Table configuration
   columns: TableColumn<T>[]
@@ -104,29 +105,24 @@ export interface DocumentUploadConfig<T = BaseDocument, ApiResponse = unknown> {
 
 // Default upload configuration
 export const DEFAULT_UPLOAD_CONFIG: UploadConfig = {
-  maxFileSize: 10 * 1024 * 1024, // 10MB
+  maxFileSize: 25 * 1024 * 1024, // 25MB
   allowedTypes: [
     'application/pdf',
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg',
+    'image/png',
   ],
   allowedExtensions: [
     '.pdf',
-    '.doc',
     '.docx',
-    '.xls',
     '.xlsx',
     '.jpg',
     '.jpeg',
     '.png',
   ],
   multiple: true,
-  accept: '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png',
+  accept: '.pdf,.docx,.xlsx,.jpg,.jpeg,.png',
 }
 
 // Validation result interface

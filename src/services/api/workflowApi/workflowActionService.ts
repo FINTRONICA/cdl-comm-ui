@@ -5,6 +5,8 @@ import {
   API_ENDPOINTS,
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
+import { toast } from 'react-hot-toast'
+
 
 export interface WorkflowAction {
   id: number
@@ -95,7 +97,8 @@ export class WorkflowActionService {
       const result = await apiClient.get<PaginatedResponse<WorkflowAction>>(url)
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
+
       throw error
     }
   }
@@ -113,7 +116,8 @@ export class WorkflowActionService {
       const result = await apiClient.get<PaginatedResponse<WorkflowAction>>(url)
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
+
       throw error
     }
   }
@@ -125,7 +129,8 @@ export class WorkflowActionService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
+
       throw error
     }
   }
@@ -147,7 +152,8 @@ export class WorkflowActionService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
+
       throw error
     }
   }
@@ -161,7 +167,8 @@ export class WorkflowActionService {
       const result = await apiClient.put<WorkflowAction>(url, updates)
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
+
       throw error
     }
   }
@@ -174,7 +181,8 @@ export class WorkflowActionService {
     try {
       await apiClient.delete<void>(url, { data: deletePayload })
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
+
       throw error
     }
   }

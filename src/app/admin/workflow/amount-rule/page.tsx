@@ -6,30 +6,32 @@ import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import { Spinner } from '@/components/atoms/Spinner'
+import { GlobalLoading } from '@/components/atoms'
 import {
   mapWorkflowAmountRuleToUI,
   type WorkflowAmountRuleUIData,
 } from '@/services/api/workflowApi'
-import { CommentModal } from '@/components/molecules'
 import {
   useDeleteWorkflowAmountRule,
   useWorkflowAmountRules,
   useFindAllWorkflowDefinitions,
   useWorkflowAmountRuleLabelsWithCache,
 } from '@/hooks/workflow'
+import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 import { RightSlideWorkflowAmountRulePanel } from '@/components/organisms/RightSlidePanel/RightSlideWorkflowAmountRulePanel'
 import { getLabelByConfigId as getWorkflowAmountRuleLabel } from '@/constants/mappings/workflowMapping'
+import { toast } from 'react-hot-toast'
+
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
   onRetry,
 }) => (
-  <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50">
+  <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
     <div className="w-full max-w-md text-center">
       <div className="mb-8">
-        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-red-100 rounded-full">
+        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-red-100 dark:bg-red-500/20 rounded-full">
           <svg
-            className="w-12 h-12 text-red-600"
+            className="w-12 h-12 text-red-600 dark:text-red-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -42,19 +44,19 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
             />
           </svg>
         </div>
-        <h1 className="mb-4 text-2xl font-semibold text-gray-900">
+        <h1 className="mb-4 text-2xl font-semibold text-gray-900 dark:text-white">
           Failed to load workflow amount rules
         </h1>
-        <p className="mb-4 text-gray-600">
+        <p className="mb-4 text-gray-600 dark:text-gray-200">
           {error.message ||
             'An error occurred while loading the data. Please try again.'}
         </p>
         {process.env.NODE_ENV === 'development' && (
           <details className="text-left">
-            <summary className="text-sm font-medium text-gray-600 cursor-pointer">
+            <summary className="text-sm font-medium text-gray-600 dark:text-gray-200 cursor-pointer">
               Error Details (Development)
             </summary>
-            <pre className="p-4 mt-2 overflow-auto text-xs text-gray-500 bg-gray-100 rounded">
+            <pre className="p-4 mt-2 overflow-auto text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 rounded">
               {error.stack}
             </pre>
           </details>
@@ -63,7 +65,7 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="w-full px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+          className="w-full px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
         >
           Try Again
         </button>
@@ -73,12 +75,11 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
 )
 
 const LoadingSpinner: React.FC = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50">
-    <div className="text-center">
-      <Spinner size="lg" />
-      <p className="mt-4 text-gray-600"></p>
+  <DashboardLayout title="Amount Rule">
+    <div className="bg-[#FFFFFFBF] dark:bg-gray-800 rounded-2xl flex flex-col h-full text-gray-900 dark:text-white">
+      <GlobalLoading fullHeight />
     </div>
-  </div>
+  </DashboardLayout>
 )
 
 type WorkflowAmountRuleRow = {
@@ -91,7 +92,7 @@ type WorkflowAmountRuleRow = {
   requiredCheckers: number
   workflowId: string | number
   workflowDefinitionName?: string
-  active: boolean
+  enabled: boolean
   status?: string | undefined
 }
 type ViewRow = {
@@ -110,8 +111,7 @@ type ViewRow = {
 }
 
 const WorkflowAmountRulesPageImpl: React.FC = () => {
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteIds, setDeleteIds] = useState<(string | number)[]>([])
+  const [isDeleting, setIsDeleting] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
@@ -126,6 +126,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
   } = useWorkflowAmountRules(currentPage, pageSize)
 
   const deleteMutation = useDeleteWorkflowAmountRule()
+  const confirmDelete = useDeleteConfirmation()
 
   const workflowAmountRulesData: WorkflowAmountRuleRow[] = useMemo(() => {
     if (!apiResponse?.content) {
@@ -147,85 +148,14 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         workflowDefinitionName:
           (item as { workflowDefinitionDTO?: { name?: string } })
             .workflowDefinitionDTO?.name || '',
-        active: uiData.active,
-        status: uiData.active ? 'Active' : 'Inactive',
+        enabled: uiData.enabled,
+        status: uiData.enabled ? 'Active' : 'Inactive',
       }
     })
 
     return mappedData
   }, [apiResponse])
 
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  const confirmDelete = async () => {
-    if (isDeleting || (deleteMutation as { isPending?: boolean })?.isPending) {
-      return
-    }
-
-    if (!deleteIds?.length) {
-      setIsDeleteModalOpen(false)
-      return
-    }
-
-    setIsDeleting(true)
-
-    try {
-      for (const id of Array.from(new Set(deleteIds))) {
-        try {
-          if (
-            typeof (
-              deleteMutation as {
-                mutateAsync?: (id: string) => Promise<unknown>
-              }
-            ).mutateAsync === 'function'
-          ) {
-            await (
-              deleteMutation as {
-                mutateAsync: (id: string) => Promise<unknown>
-              }
-            ).mutateAsync(id.toString())
-          } else if (
-            typeof (deleteMutation as { mutate?: (id: string) => void })
-              .mutate === 'function'
-          ) {
-            ;(deleteMutation as { mutate: (id: string) => void }).mutate(
-              id.toString()
-            )
-          } else if (
-            typeof (window as { deleteApi?: (id: string) => Promise<unknown> })
-              .deleteApi === 'function'
-          ) {
-            const win = window as unknown as {
-              deleteApi?: (id: string) => Promise<unknown>
-            }
-            if (typeof win.deleteApi === 'function') {
-              await win.deleteApi(id.toString())
-            } else {
-              throw new Error(
-                'No delete function available (mutateAsync/mutate/deleteApi)'
-              )
-            }
-          }
-        } catch (innerErr) {
-          console.log(innerErr)
-        }
-      }
-
-      if (typeof refetch === 'function') {
-        try {
-          await refetch()
-        } catch (refetchErr) {
-          console.log(refetchErr)
-        }
-      }
-    } catch (err) {
-      console.log(err)
-    } finally {
-      setIsDeleteModalOpen(false)
-      setDeleteIds([])
-      setIsDeleting(false)
-    }
-  }
   const { data: workflowDefinitionLabels, getLabel } =
     useWorkflowAmountRuleLabelsWithCache()
   const getWorkflowDefinitionLabelDynamic = useCallback(
@@ -249,7 +179,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
     })
     return map
   }, [workflowDefinitionsResponse])
-  const statusOptions = ['Active', 'Inactive']
+  const statusOptions = ['Active', 'Inactive', 'Expired', 'Cancelled']
 
   const tableColumns = [
     {
@@ -265,7 +195,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       key: 'minAmount',
       label: getWorkflowDefinitionLabelDynamic('CDL_WAR_MIN_AMOUNT'),
       type: 'text' as const,
-      width: 'w-24',
+      width: 'w-20',
       sortable: true,
       render: (value: string | number | null | undefined) =>
         displayValue(value),
@@ -274,7 +204,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       key: 'maxAmount',
       label: getWorkflowDefinitionLabelDynamic('CDL_WAR_MIN_AMOUNT'),
       type: 'text' as const,
-      width: 'w-24',
+      width: 'w-20',
       sortable: true,
       render: (value: string | number | null | undefined) =>
         displayValue(value),
@@ -292,7 +222,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       key: 'requiredMakers',
       label: getWorkflowDefinitionLabelDynamic('CDL_WAR_REQUIRED_MAKERS'),
       type: 'text' as const,
-      width: 'w-32',
+      width: 'w-20',
       sortable: true,
       render: (value: string | number | null | undefined) =>
         displayValue(value),
@@ -301,7 +231,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       key: 'requiredCheckers',
       label: getWorkflowDefinitionLabelDynamic('CDL_WAR_REQUIRED_CHECKERS'),
       type: 'text' as const,
-      width: 'w-36',
+      width: 'w-20',
       sortable: true,
       render: (value: string | number | null | undefined) =>
         displayValue(value),
@@ -310,7 +240,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       key: 'workflowId',
       label: getWorkflowDefinitionLabelDynamic('CDL_WAR_WORKFLOW_DEFINITION'),
       type: 'text' as const,
-      width: 'w-32',
+      width: 'w-50',
       sortable: true,
       render: (value: string | number | null | undefined) =>
         displayValue(value),
@@ -320,7 +250,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       key: 'status',
       label: getWorkflowDefinitionLabelDynamic('CDL_WAR_ACTIVE'),
       type: 'status' as const,
-      width: 'w-24',
+      width: 'w-20',
       sortable: true,
     },
     {
@@ -369,25 +299,43 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
   ) => {
     if (arg && 'stopPropagation' in arg) arg.stopPropagation()
 
-    const singleId =
-      arg && typeof (arg as ViewRow)?.id === 'string'
-        ? (arg as ViewRow).id
-        : (arg as WorkflowAmountRuleRow)?.id
+    if (isDeleting || (deleteMutation as { isPending?: boolean })?.isPending) {
+      return
+    }
 
-    const ids: (string | number)[] =
-      typeof singleId === 'string' || typeof singleId === 'number'
-        ? [singleId]
-        : selectedRows
-            .map((idx: number) => viewRows[idx]?._raw?.id)
-            .filter(
-              (v: string | number | undefined): v is string | number =>
-                v !== undefined
-            )
+    let row: WorkflowAmountRuleRow | undefined
 
-    if (!ids.length) return
+    if (arg && typeof arg === 'object' && !('stopPropagation' in arg)) {
+      if ('_raw' in arg) {
+        row = (arg as ViewRow)._raw
+      } else {
+        row = arg as WorkflowAmountRuleRow
+      }
+    }
 
-    setDeleteIds(ids)
-    setIsDeleteModalOpen(true)
+    if (!row || !row.id) return
+
+    confirmDelete({
+      itemName: `workflow amount rule (${row.currency})`,
+      itemId: row.id.toString(),
+      onConfirm: async () => {
+        try {
+          setIsDeleting(true)
+          await deleteMutation.mutateAsync(row.id.toString())
+          refetch()
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error occurred'
+          console.error(
+            `Failed to delete workflow amount rule: ${errorMessage}`
+          )
+          toast.error(`Failed to delete: ${errorMessage}`)
+          throw error
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+    })
   }
 
   const handleRowClick = (row: WorkflowAmountRuleRow) => {
@@ -411,8 +359,8 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       },
       amountRuleName: `Rule_${row.id}`,
       workflowAmountStageOverrideDTOS: [],
-      active: row.active,
-      status: row.active ? 'Active' : 'Inactive',
+      enabled: row.enabled,
+      status: row.enabled ? 'Active' : 'Inactive',
     }
 
     setSelectedAmountRuleForEdit(uiData)
@@ -425,46 +373,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
     return <ErrorMessage error={error} onRetry={refetch} />
   }
 
-  // if (!workflowAmountRulesData.length) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen bg-gray-50">
-  //       <div className="text-center">
-  //         <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full">
-  //           <svg
-  //             className="w-12 h-12 text-gray-400"
-  //             fill="none"
-  //             viewBox="0 0 24 24"
-  //             stroke="currentColor"
-  //           >
-  //             <path
-  //               strokeLinecap="round"
-  //               strokeLinejoin="round"
-  //               strokeWidth={2}
-  //               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-  //             />
-  //           </svg>
-  //         </div>
-  //         <h3 className="mb-2 text-lg font-medium text-gray-900">
-  //           No workflow amount rules found
-  //         </h3>
-  //         <p className="mb-6 text-gray-600">
-  //           There are no workflow amount rules available at the moment.
-  //         </p>
-  //         <button
-  //           onClick={() => {
-  //           }}
-  //           className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-  //         >
-  //           Add New Workflow Amount Rule
-  //         </button>
-  //       </div>
-  //     </div>
-  //   )
-  // }
-
-  // Transform data for table using paginated data
   const viewRows: ViewRow[] = paginatedData.map((row) => {
-   
     return {
       _raw: row,
       id: row.id?.toString(),
@@ -505,17 +414,8 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
             displayValue(row.workflowId)}
         </div>
       ),
-      status: (
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            row.status === 'Active'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-gray-100 text-gray-800'
-          }`}
-        >
-          {displayValue(row.status)}
-        </span>
-      ),
+      status: row.status,
+
       actions: (
         <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
           <div className="flex items-center space-x-2">
@@ -541,73 +441,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         </div>
       ),
     }
-   
   })
-
-  const renderExpandedContent = (row: ViewRow) => {
-    const rawData = row._raw
-    return (
-      <div className="grid grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <h4 className="mb-4 text-sm font-semibold text-gray-900">
-            Amount Rule Details
-          </h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600">Currency:</span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.currency)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">Min Amount:</span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.minAmount)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">Max Amount:</span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.maxAmount)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">Priority:</span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.priority)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">Required Makers:</span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.requiredMakers)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">Required Checkers:</span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.requiredCheckers)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">Workflow Definition:</span>
-              <span className="ml-2 font-medium text-gray-800">
-                {rawData.workflowDefinitionName ||
-                  workflowDefinitionNameMap.get(rawData.workflowId) ||
-                  displayValue(rawData.workflowId)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">Status:</span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.status)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <>
@@ -622,8 +456,8 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       />
 
       <DashboardLayout title="Workflow Amount Rules">
-        <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
-          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] border-b border-gray-200 rounded-t-2xl">
+        <div className="bg-[#FFFFFFBF] dark:bg-gray-800 rounded-2xl flex flex-col h-full text-gray-900 dark:text-white">
+          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
             <PageActionButtons
               entityType="workflowAmountRule"
               customActionButtons={[]}
@@ -656,7 +490,6 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
                 onRowSelectionChange={handleRowSelectionChange}
                 expandedRows={expandedRows}
                 onRowExpansionChange={handleRowExpansionChange}
-                renderExpandedContent={renderExpandedContent}
                 statusOptions={statusOptions}
                 onRowClick={() => {}}
                 onRowDelete={handleRowDelete}
@@ -668,25 +501,6 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
           </div>
         </div>
       </DashboardLayout>
-
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete Workflow Amount Rules"
-        message={`Are you sure you want to delete`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => setIsDeleteModalOpen(false),
-            color: 'secondary',
-          },
-          {
-            label: 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-          },
-        ]}
-      />
     </>
   )
 }
@@ -696,9 +510,11 @@ const WorkflowAmountRulesPageClient = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
-      </div>
+      <DashboardLayout title="Amount Rule">
+        <div className="bg-[#FFFFFFBF] dark:bg-gray-800 rounded-2xl flex flex-col h-full text-gray-900 dark:text-white">
+          <GlobalLoading fullHeight />
+        </div>
+      </DashboardLayout>
     ),
   }
 )

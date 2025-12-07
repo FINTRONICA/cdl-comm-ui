@@ -90,10 +90,24 @@ export function mapStep4ToCapitalPartnerBankInfoPayload(
  * Validates Step4 form data before mapping
  */
 export function validateStep4Data(formData: Step4FormData): string[] {
+  // Keep lightweight validation to mirror Zod constraints where useful.
   const errors: string[] = []
 
-  if (!formData.payMode) {
-    errors.push('Pay Mode is required')
+  const validators: { key: keyof Step4FormData; max?: number }[] = [
+    { key: 'accountNumber', max: 16 },
+    { key: 'payeeName', max: 50 },
+    { key: 'payeeAddress', max: 35 },
+    { key: 'bankName', max: 35 },
+    { key: 'bankAddress', max: 35 },
+    { key: 'beneficiaryRoutingCode', max: 35 },
+    { key: 'bic', max: 15 },
+  ]
+
+  for (const { key, max } of validators) {
+    const value = formData[key]
+    if (typeof value === 'string' && max && value.length > max) {
+      errors.push(`${key} exceeds maximum length of ${max}`)
+    }
   }
 
   return errors

@@ -114,18 +114,6 @@ export class AuditLogger {
     // Store in memory (in production, save to database)
     this.getInstance().auditEvents.push(auditEvent);
 
-    // Log to console in development
-    if (env.isDevelopment) {
-      console.log('[AUDIT]', {
-        id: auditEvent.id,
-        timestamp: auditEvent.timestamp.toISOString(),
-        eventType: auditEvent.eventType,
-        severity: auditEvent.severity,
-        userId: auditEvent.userId,
-        action: auditEvent.action,
-        outcome: auditEvent.outcome
-      });
-    }
 
     // Send to external monitoring in production
     if (env.isProduction) {
@@ -404,16 +392,6 @@ export class AuditLogger {
   }
 
   private static sendToMonitoring(event: AuditEvent): void {
-    // In production, send to external monitoring service
-    // This could be Sentry, DataDog, or a custom monitoring solution
-    if (env.monitoringConfig.sentryDsn) {
-      // Send to Sentry
-      console.log('Sending audit event to Sentry:', event.id);
-    }
-
-    if (env.monitoringConfig.datadogApiKey) {
-      // Send to DataDog
-      console.log('Sending audit event to DataDog:', event.id);
-    }
+   
   }
 } 

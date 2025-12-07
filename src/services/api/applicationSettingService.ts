@@ -32,11 +32,6 @@ export class ApplicationSettingService {
    * Get application settings by setting key
    */
   async getApplicationSettingsByKey(settingKey: string): Promise<ApplicationSetting[]> {
-    console.log('🔧 ApplicationSettingService.getApplicationSettingsByKey Called:', { 
-      settingKey,
-      timestamp: new Date().toISOString() 
-    })
-    
     try {
       const params = new URLSearchParams({
         'settingKey.equals': settingKey
@@ -44,23 +39,15 @@ export class ApplicationSettingService {
       
       const url = `${buildApiUrl(API_ENDPOINTS.APPLICATION_SETTING.GET_ALL)}?${params.toString()}`
       
+      console.log('[ApplicationSettingService] Fetching from URL:', url)
+      
       const result = await apiClient.get<ApplicationSetting[]>(url)
       
-      console.log('✅ ApplicationSettingService.getApplicationSettingsByKey Success:', { 
-        settingKey,
-        resultCount: result?.length || 0,
-        hasResult: !!result,
-        timestamp: new Date().toISOString() 
-      })
+      console.log('[ApplicationSettingService] API response:', result)
       
       return result || []
     } catch (error) {
-      console.error('❌ ApplicationSettingService.getApplicationSettingsByKey Failed:', { 
-        settingKey,
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      console.error('[ApplicationSettingService] Error in getApplicationSettingsByKey:', error)
       throw error
     }
   }
@@ -69,41 +56,51 @@ export class ApplicationSettingService {
    * Get dropdown options for any setting key
    */
   async getDropdownOptionsByKey(settingKey: string): Promise<DropdownOption[]> {
-    console.log('🔧 ApplicationSettingService.getDropdownOptionsByKey Called:', { 
-      settingKey,
-      timestamp: new Date().toISOString() 
-    })
-    
     try {
       const settings = await this.getApplicationSettingsByKey(settingKey)
       
+      console.log('[ApplicationSettingService] Raw settings for key:', settingKey, 'Count:', settings?.length || 0)
+      console.log('[ApplicationSettingService] Raw settings data:', settings)
+      
+      if (!settings || settings.length === 0) {
+        console.warn('[ApplicationSettingService] No settings returned from API for key:', settingKey)
+        return []
+      }
+      
+      // Log filtering details
+      const enabledCount = settings.filter(s => s.enabled).length
+      const notDeletedCount = settings.filter(s => !s.deleted).length
+      const bothCount = settings.filter(s => s.enabled && !s.deleted).length
+      
+      console.log('[ApplicationSettingService] Filtering stats:', {
+        total: settings.length,
+        enabled: enabledCount,
+        notDeleted: notDeletedCount,
+        enabledAndNotDeleted: bothCount
+      })
+      
       // Map settings to dropdown options
       const options: DropdownOption[] = settings
-        .filter(setting => setting.enabled && !setting.deleted) // Only include enabled, non-deleted items
-        .map(setting => ({
-          id: setting.id,
-          value: setting.settingValue,
-          label: setting.languageTranslationId?.configValue || setting.settingValue
-        }))
+        .filter(setting => {
+          const isEnabled = setting.enabled !== false // Allow undefined/null as enabled
+          const isNotDeleted = setting.deleted !== true // Only exclude if explicitly true
+          return isEnabled && isNotDeleted
+        })
+        .map(setting => {
+          const label = setting.languageTranslationId?.configValue || setting.settingValue || 'Unknown'
+          return {
+            id: setting.id,
+            value: setting.settingValue,
+            label: label
+          }
+        })
       
-      console.log('✅ ApplicationSettingService.getDropdownOptionsByKey Success:', { 
-        settingKey,
-        optionsCount: options.length,
-        options: options.map(opt => ({ value: opt.value, label: opt.label })),
-        timestamp: new Date().toISOString() 
-      })
+      console.log('[ApplicationSettingService] Mapped options:', options.length, options)
       
       return options
-    } catch (error) {
-      console.error('❌ ApplicationSettingService.getDropdownOptionsByKey Failed:', { 
-        settingKey,
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
-      
-      // Return empty array if API fails
-      return []
+    } catch (err) {
+      console.error('[ApplicationSettingService] Error fetching dropdown options for key:', settingKey, err)
+      throw err // Re-throw to let caller handle
     }
   }
 
@@ -173,8 +170,8 @@ export class ApplicationSettingService {
     try {
       const options = await this.getDropdownOptionsByKey(settingKey)
       return options.length > 0 ? options : fallbackOptions
-    } catch (error) {
-      console.warn(`Failed to fetch dropdown for ${settingKey}, using fallback:`, error)
+    } catch (err) {
+      console.error('[ApplicationSettingService] Error in getDropdownWithFallback:', err)
       return fallbackOptions
     }
   }

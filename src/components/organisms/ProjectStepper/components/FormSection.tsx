@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Card, CardContent, Box, Typography, Alert } from '@mui/material'
+import { Card, CardContent, Box, Typography, Alert, useTheme } from '@mui/material'
 import { cardStyles } from '../styles'
 
 interface FormSectionProps {
@@ -27,15 +27,18 @@ export const FormSection: React.FC<FormSectionProps> = ({
   loadingMessage = 'Loading...',
   sx,
 }) => {
+  const theme = useTheme()
   return (
-    <Card sx={{ ...cardStyles, ...sx }}>
+    <Card sx={[cardStyles(theme), sx]}>
       <CardContent>
         {title && (
           <Typography
             variant="h6"
             gutterBottom
             sx={{
-              color: '#1E2939',
+              color: theme.palette.mode === 'dark' 
+                ? '#FFFFFF' 
+                : '#1E2939',
               fontFamily: 'Outfit, sans-serif',
               fontWeight: 500,
               fontStyle: 'normal',

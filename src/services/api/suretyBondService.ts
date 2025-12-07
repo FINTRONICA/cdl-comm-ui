@@ -5,7 +5,7 @@ export interface SuretyBondTypeDTO {
   id: number
   settingKey: string
   settingValue: string
-  languageTranslationId: string | null
+  languageTranslationId: any | null
   remarks: string | null
   status: string | null
   enabled: boolean
@@ -39,7 +39,7 @@ export interface RealEstateAssetDTO {
   reaMarketingExpenses: string
   reaAccoutStatusDate: string
   reaTeamLeadName: string
-  reaRelationshipManagerName: string
+  reamprelationshipManagerName: string
   reaAssestRelshipManagerName: string
   reaRealEstateBrokerExp: number
   reaAdvertisementExp: number
@@ -58,6 +58,7 @@ export interface RealEstateAssetDTO {
 
 export interface BuildPartnerDTO {
   id: number
+  bpName?: string | null
 }
 
 export interface IssuerBankDTO {

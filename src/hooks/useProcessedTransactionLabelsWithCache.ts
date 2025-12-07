@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import {
-  processedTransactionLabelsService,
-  ProcessedTransactionLabel,
-} from '@/services/api/processedTransactionLabelsService'
+import { processedTransactionLabelsService } from '@/services/api/processedTransactionLabelsService'
+import { getProcessedTransactionLabel } from '@/constants/mappings/processedTransactionMapping'
+import type { LabelConfig } from '@/types/labelConfig'
 
 export interface UseProcessedTransactionLabelsWithCacheResult {
-  data: ProcessedTransactionLabel[] | null
+  data: LabelConfig[] | null
   loading: boolean
   error: string | null
   refetch: () => Promise<void>
@@ -17,9 +16,9 @@ export interface UseProcessedTransactionLabelsWithCacheResult {
 }
 
 export const useProcessedTransactionLabelsWithCache = (
-  languageCode: string = 'en'
+  languageCode: string = 'EN'
 ): UseProcessedTransactionLabelsWithCacheResult => {
-  const [data, setData] = useState<ProcessedTransactionLabel[] | null>(null)
+  const [data, setData] = useState<LabelConfig[] | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,16 +27,13 @@ export const useProcessedTransactionLabelsWithCache = (
       setLoading(true)
       setError(null)
 
-  
       const labels =
         await processedTransactionLabelsService.getProcessedTransactionLabelsWithCache()
 
-    
       setData(labels)
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch labels'
-      console.error('🔧 fetchLabels: Error fetching labels:', errorMessage)
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -51,32 +47,55 @@ export const useProcessedTransactionLabelsWithCache = (
       fallback?: string
     ): string => {
       if (!data) {
-        return fallback || configId
+        return fallback || getProcessedTransactionLabel(configId)
       }
 
-      const matchingLabel = data.find(
+      let matchingLabel = data.find(
         (label) =>
-          label.configId === configId && label.appLanguageCode?.languageCode === language
+          label.configId === configId &&
+          label.appLanguageCode?.languageCode === language &&
+          label.enabled &&
+          !label.deleted
       )
 
-      const result = matchingLabel?.configValue || fallback || configId
-      
-      if (!matchingLabel) {
-        
-      } else {
-       
+      if (!matchingLabel && language !== language.toUpperCase()) {
+        matchingLabel = data.find(
+          (label) =>
+            label.configId === configId &&
+            label.appLanguageCode?.languageCode === language.toUpperCase() &&
+            label.enabled &&
+            !label.deleted
+        )
       }
-      
-      return result
+
+      if (!matchingLabel && language !== language.toLowerCase()) {
+        matchingLabel = data.find(
+          (label) =>
+            label.configId === configId &&
+            label.appLanguageCode?.languageCode === language.toLowerCase() &&
+            label.enabled &&
+            !label.deleted
+        )
+      }
+
+      if (!matchingLabel) {
+        matchingLabel = data.find(
+          (label) =>
+            label.configId === configId &&
+            label.enabled &&
+            !label.deleted
+        )
+      }
+
+      return matchingLabel?.configValue || fallback || getProcessedTransactionLabel(configId)
     },
     [data, languageCode]
   )
 
   const refetch = useCallback(async () => {
-    // Clear cache before refetching
     processedTransactionLabelsService.clearCache()
     await fetchLabels()
-  }, [fetchLabels, languageCode])
+  }, [fetchLabels])
 
   useEffect(() => {
     fetchLabels()

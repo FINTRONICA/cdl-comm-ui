@@ -42,8 +42,7 @@ export function useCapitalPartnerLabelsWithCache() {
     isFetching: capitalPartnerLabelsLoading,
     isSuccess: !!capitalPartnerLabels,
     refetch: () => {
-      // Note: In compliance mode, refetch is handled by app initialization
-      console.log('🏦 [COMPLIANCE] Refetch requested - handled by compliance loader')
+     
       return Promise.resolve({ data: capitalPartnerLabels })
     },
     
@@ -54,6 +53,6 @@ export function useCapitalPartnerLabelsWithCache() {
     
     // Compatibility properties (maintained for existing UI components)
     hasCache: !!capitalPartnerLabels, // Now represents Zustand store state
-    cacheStatus: capitalPartnerLabels ? 'cached' : capitalPartnerLabelsLoading ? 'loading' : 'fresh',
+    cacheStatus: capitalPartnerLabels ? 'cached' : capitalPartnerLabelsLoading ? 'Loading...' : 'fresh',
   }
 }

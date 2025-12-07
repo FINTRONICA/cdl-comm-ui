@@ -22,7 +22,7 @@ export class APISecurityService {
   };
 
   private static readonly SECURITY_CONFIG: SecurityConfig = {
-    maxRequestSize: 10 * 1024 * 1024, // 10MB
+    maxRequestSize: 25 * 1024 * 1024, // 25MB
     allowedOrigins: ['https://yourdomain.com', 'https://app.yourdomain.com'],
     blockedUserAgents: [
       'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python'
@@ -201,13 +201,6 @@ export class APISecurityService {
     path: string;
     details?: unknown;
   }): void {
-    console.log(`[SECURITY] ${event.type}:`, {
-      timestamp: new Date().toISOString(),
-      ip: event.ip,
-      userAgent: event.userAgent,
-      path: event.path,
-      details: event.details
-    });
   }
 }
 

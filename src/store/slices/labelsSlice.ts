@@ -1,5 +1,4 @@
 import { type StateCreator } from 'zustand'
-import { CUSTOMER_FIELD_CONFIG, getCustomerLabel } from '../../constants/mappings/customerMapping'
 
 // Type definitions for labels
 export interface LabelData {
@@ -29,6 +28,12 @@ export interface LabelsState {
   sidebarLabelsLoading: boolean
   sidebarLabelsError: string | null
   sidebarLabelsLastFetched: number | null
+
+  // Party labels
+  partyLabels: ProcessedLabels | null
+  partyLabelsLoading: boolean
+  partyLabelsError: string | null
+  partyLabelsLastFetched: number | null
 
   // Build partner labels
   buildPartnerLabels: ProcessedLabels | null
@@ -96,96 +101,9 @@ export interface LabelsState {
   discardedTransactionLabelsError: string | null
   discardedTransactionLabelsLastFetched: number | null
 
-  // Master Customer labels - Customer Master module
-  customerMasterLabels: ProcessedLabels | null
-  customerMasterLabelsLoading: boolean
-  customerMasterLabelsError: string | null
-  customerMasterLabelsLastFetched: number | null
-
-  // Master Customer labels - Account Purpose module
-  accountPurposeLabels: ProcessedLabels | null
-  accountPurposeLabelsLoading: boolean
-  accountPurposeLabelsError: string | null
-  accountPurposeLabelsLastFetched: number | null
-
-  // Master Customer labels - Investment Master module
-  investmentMasterLabels: ProcessedLabels | null
-  investmentMasterLabelsLoading: boolean
-  investmentMasterLabelsError: string | null
-  investmentMasterLabelsLastFetched: number | null
-
-  // Master Customer labels - Business Segment module
-  businessSegmentLabels: ProcessedLabels | null
-  businessSegmentLabelsLoading: boolean
-  businessSegmentLabelsError: string | null
-  businessSegmentLabelsLastFetched: number | null
-
-  // Master Customer labels - Business Sub Segment module
-  businessSubSegmentLabels: ProcessedLabels | null
-  businessSubSegmentLabelsLoading: boolean
-  businessSubSegmentLabelsError: string | null
-  businessSubSegmentLabelsLastFetched: number | null
-
-  // Master Customer labels - Deal Type module
-  dealTypeLabels: ProcessedLabels | null
-  dealTypeLabelsLoading: boolean
-  dealTypeLabelsError: string | null
-  dealTypeLabelsLastFetched: number | null
-
-  // Master Customer labels - Deal Subtype module
-  dealSubtypeLabels: ProcessedLabels | null
-  dealSubtypeLabelsLoading: boolean
-  dealSubtypeLabelsError: string | null
-  dealSubtypeLabelsLastFetched: number | null
-
-  // Master Customer labels - Product Program module
-  productProgramLabels: ProcessedLabels | null
-  productProgramLabelsLoading: boolean
-  productProgramLabelsError: string | null
-  productProgramLabelsLastFetched: number | null
-
-  // Master Customer labels - Beneficiary module
-  beneficiaryLabels: ProcessedLabels | null
-  beneficiaryLabelsLoading: boolean
-  beneficiaryLabelsError: string | null
-  beneficiaryLabelsLastFetched: number | null
-
-  // Master Customer labels - Document module
-  documentLabels: ProcessedLabels | null
-  documentLabelsLoading: boolean
-  documentLabelsError: string | null
-  documentLabelsLastFetched: number | null
-
-  // Master Customer labels - Deal Segment module
-  dealSegmentLabels: ProcessedLabels | null
-  dealSegmentLabelsLoading: boolean
-  dealSegmentLabelsError: string | null
-  dealSegmentLabelsLastFetched: number | null
-
-  // Master Customer labels - Ledger Account module
-  ledgerAccountLabels: ProcessedLabels | null
-  ledgerAccountLabelsLoading: boolean
-  ledgerAccountLabelsError: string | null
-  ledgerAccountLabelsLastFetched: number | null
-
-  // Master Customer labels - Country Code module
-  countryCodeLabels: ProcessedLabels | null
-  countryCodeLabelsLoading: boolean
-  countryCodeLabelsError: string | null
-  countryCodeLabelsLastFetched: number | null
-
-  // Master Customer labels - Currency Code module
-  currencyCodeLabels: ProcessedLabels | null
-  currencyCodeLabelsLoading: boolean
-  currencyCodeLabelsError: string | null
-  currencyCodeLabelsLastFetched: number | null
-
   // Global loading state for all labels
   allLabelsLoading: boolean
   allLabelsError: string | null
-
-  // Customer field configuration
-  customerFieldConfig: typeof CUSTOMER_FIELD_CONFIG
 }
 
 // Label actions interface
@@ -194,6 +112,11 @@ export interface LabelsActions {
   setSidebarLabels: (labels: ProcessedLabels) => void
   setSidebarLabelsLoading: (loading: boolean) => void
   setSidebarLabelsError: (error: string | null) => void
+
+  // Party labels actions
+  setPartyLabels: (labels: ProcessedLabels) => void
+  setPartyLabelsLoading: (loading: boolean) => void
+  setPartyLabelsError: (error: string | null) => void
 
   // Build partner labels actions
   setBuildPartnerLabels: (labels: ProcessedLabels) => void
@@ -250,89 +173,16 @@ export interface LabelsActions {
   setDiscardedTransactionLabelsLoading: (loading: boolean) => void
   setDiscardedTransactionLabelsError: (error: string | null) => void
 
-  // Master Customer labels actions - Customer Master module
-  setCustomerMasterLabels: (labels: ProcessedLabels) => void
-  setCustomerMasterLabelsLoading: (loading: boolean) => void
-  setCustomerMasterLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Account Purpose module
-  setAccountPurposeLabels: (labels: ProcessedLabels) => void
-  setAccountPurposeLabelsLoading: (loading: boolean) => void
-  setAccountPurposeLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Investment Master module
-  setInvestmentMasterLabels: (labels: ProcessedLabels) => void
-  setInvestmentMasterLabelsLoading: (loading: boolean) => void
-  setInvestmentMasterLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Business Segment module
-  setBusinessSegmentLabels: (labels: ProcessedLabels) => void
-  setBusinessSegmentLabelsLoading: (loading: boolean) => void
-  setBusinessSegmentLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Business Sub Segment module
-  setBusinessSubSegmentLabels: (labels: ProcessedLabels) => void
-  setBusinessSubSegmentLabelsLoading: (loading: boolean) => void
-  setBusinessSubSegmentLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Deal Type module
-  setDealTypeLabels: (labels: ProcessedLabels) => void
-  setDealTypeLabelsLoading: (loading: boolean) => void
-  setDealTypeLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Deal Subtype module
-  setDealSubtypeLabels: (labels: ProcessedLabels) => void
-  setDealSubtypeLabelsLoading: (loading: boolean) => void
-  setDealSubtypeLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Product Program module
-  setProductProgramLabels: (labels: ProcessedLabels) => void
-  setProductProgramLabelsLoading: (loading: boolean) => void
-  setProductProgramLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Beneficiary module
-  setBeneficiaryLabels: (labels: ProcessedLabels) => void
-  setBeneficiaryLabelsLoading: (loading: boolean) => void
-  setBeneficiaryLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Document module
-  setDocumentLabels: (labels: ProcessedLabels) => void
-  setDocumentLabelsLoading: (loading: boolean) => void
-  setDocumentLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Deal Segment module
-  setDealSegmentLabels: (labels: ProcessedLabels) => void
-  setDealSegmentLabelsLoading: (loading: boolean) => void
-  setDealSegmentLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Ledger Account module
-  setLedgerAccountLabels: (labels: ProcessedLabels) => void
-  setLedgerAccountLabelsLoading: (loading: boolean) => void
-  setLedgerAccountLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Country Code module
-  setCountryCodeLabels: (labels: ProcessedLabels) => void
-  setCountryCodeLabelsLoading: (loading: boolean) => void
-  setCountryCodeLabelsError: (error: string | null) => void
-
-  // Master Customer labels actions - Currency Code module
-  setCurrencyCodeLabels: (labels: ProcessedLabels) => void
-  setCurrencyCodeLabelsLoading: (loading: boolean) => void
-  setCurrencyCodeLabelsError: (error: string | null) => void
-
   // Global actions
   setAllLabelsLoading: (loading: boolean) => void
   setAllLabelsError: (error: string | null) => void
-
-  // Customer field configuration actions
-  setCustomerFieldConfig: (config: typeof CUSTOMER_FIELD_CONFIG) => void
-  getCustomerFieldLabel: (configId: string) => string
 
   // Utility actions
   clearAllLabels: () => void
   getLabel: (
     type:
       | 'sidebar'
+      | 'party'
       | 'buildPartner'
       | 'capitalPartner'
       | 'buildPartnerAsset'
@@ -343,21 +193,7 @@ export interface LabelsActions {
       | 'workflowAmountStageOverride'
       | 'workflowRequested'
       | 'pendingTransaction'
-      | 'discardedTransaction'
-      | 'customerMaster'
-      | 'accountPurpose'
-      | 'investmentMaster'
-      | 'businessSegment'
-      | 'businessSubSegment'
-      | 'dealType'
-      | 'dealSubtype'
-      | 'productProgram'
-      | 'beneficiary'
-      | 'document'
-      | 'dealSegment'
-      | 'ledgerAccount'
-      | 'countryCode'
-      | 'currencyCode',
+      | 'discardedTransaction',
     configId: string,
     language: string,
     fallback: string
@@ -367,6 +203,7 @@ export interface LabelsActions {
   hasLabels: (
     type:
       | 'sidebar'
+      | 'party'
       | 'buildPartner'
       | 'capitalPartner'
       | 'buildPartnerAsset'
@@ -378,24 +215,11 @@ export interface LabelsActions {
       | 'workflowRequested'
       | 'pendingTransaction'
       | 'discardedTransaction'
-      | 'customerMaster'
-      | 'accountPurpose'
-      | 'investmentMaster'
-      | 'businessSegment'
-      | 'businessSubSegment'
-      | 'dealType'
-      | 'dealSubtype'
-      | 'productProgram'
-      | 'beneficiary'
-      | 'document'
-      | 'dealSegment'
-      | 'ledgerAccount'
-      | 'countryCode'
-      | 'currencyCode'
   ) => boolean
   getAvailableLanguages: (
     type:
       | 'sidebar'
+      | 'party'
       | 'buildPartner'
       | 'capitalPartner'
       | 'buildPartnerAsset'
@@ -407,25 +231,12 @@ export interface LabelsActions {
       | 'workflowRequested'
       | 'pendingTransaction'
       | 'discardedTransaction'
-      | 'customerMaster'
-      | 'accountPurpose'
-      | 'investmentMaster'
-      | 'businessSegment'
-      | 'businessSubSegment'
-      | 'dealType'
-      | 'dealSubtype'
-      | 'productProgram'
-      | 'beneficiary'
-      | 'document'
-      | 'dealSegment'
-      | 'ledgerAccount'
-      | 'countryCode'
-      | 'currencyCode'
   ) => string[]
 
   // Status helpers
   getLoadingStatus: () => {
     sidebar: boolean
+    party: boolean
     buildPartner: boolean
     capitalPartner: boolean
     buildPartnerAsset: boolean
@@ -452,6 +263,12 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
   sidebarLabelsLoading: false,
   sidebarLabelsError: null,
   sidebarLabelsLastFetched: null,
+
+  partyLabels: null,
+  partyLabelsLoading: false,
+  partyLabelsError: null,
+  partyLabelsLastFetched: null,
+
 
   buildPartnerLabels: null,
   buildPartnerLabelsLoading: false,
@@ -508,95 +325,8 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
   discardedTransactionLabelsError: null,
   discardedTransactionLabelsLastFetched: null,
 
-  // Master Customer labels initial state - Customer Master module
-  customerMasterLabels: null,
-  customerMasterLabelsLoading: false,
-  customerMasterLabelsError: null,
-  customerMasterLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Account Purpose module
-  accountPurposeLabels: null,
-  accountPurposeLabelsLoading: false,
-  accountPurposeLabelsError: null,
-  accountPurposeLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Investment Master module
-  investmentMasterLabels: null,
-  investmentMasterLabelsLoading: false,
-  investmentMasterLabelsError: null,
-  investmentMasterLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Business Segment module
-  businessSegmentLabels: null,
-  businessSegmentLabelsLoading: false,
-  businessSegmentLabelsError: null,
-  businessSegmentLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Business Sub Segment module
-  businessSubSegmentLabels: null,
-  businessSubSegmentLabelsLoading: false,
-  businessSubSegmentLabelsError: null,
-  businessSubSegmentLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Deal Type module
-  dealTypeLabels: null,
-  dealTypeLabelsLoading: false,
-  dealTypeLabelsError: null,
-  dealTypeLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Deal Subtype module
-  dealSubtypeLabels: null,
-  dealSubtypeLabelsLoading: false,
-  dealSubtypeLabelsError: null,
-  dealSubtypeLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Product Program module
-  productProgramLabels: null,
-  productProgramLabelsLoading: false,
-  productProgramLabelsError: null,
-  productProgramLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Beneficiary module
-  beneficiaryLabels: null,
-  beneficiaryLabelsLoading: false,
-  beneficiaryLabelsError: null,
-  beneficiaryLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Document module
-  documentLabels: null,
-  documentLabelsLoading: false,
-  documentLabelsError: null,
-  documentLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Deal Segment module
-  dealSegmentLabels: null,
-  dealSegmentLabelsLoading: false,
-  dealSegmentLabelsError: null,
-  dealSegmentLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Ledger Account module
-  ledgerAccountLabels: null,
-  ledgerAccountLabelsLoading: false,
-  ledgerAccountLabelsError: null,
-  ledgerAccountLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Country Code module
-  countryCodeLabels: null,
-  countryCodeLabelsLoading: false,
-  countryCodeLabelsError: null,
-  countryCodeLabelsLastFetched: null,
-
-  // Master Customer labels initial state - Currency Code module
-  currencyCodeLabels: null,
-  currencyCodeLabelsLoading: false,
-  currencyCodeLabelsError: null,
-  currencyCodeLabelsLastFetched: null,
-
   allLabelsLoading: false,
   allLabelsError: null,
-
-  // Customer field configuration initial state
-  customerFieldConfig: CUSTOMER_FIELD_CONFIG,
 
   // Sidebar labels actions
   setSidebarLabels: (labels) => {
@@ -623,6 +353,24 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       buildPartnerLabelsLastFetched: Date.now(),
       buildPartnerLabelsError: null,
     })
+  },
+
+  // Party labels actions
+  setPartyLabels: (labels) => {
+    set({
+      partyLabels: labels,
+      partyLabelsLastFetched: Date.now(),
+      partyLabelsError: null,
+    })
+  },
+
+  setPartyLabelsLoading: (loading) => set({ partyLabelsLoading: loading }),
+
+  setPartyLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Party labels error:', error)
+    }
+    set({ partyLabelsError: error })
   },
 
   setBuildPartnerLabelsLoading: (loading) =>
@@ -819,244 +567,6 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
     set({ discardedTransactionLabelsError: error })
   },
 
-  // Master Customer labels actions - Customer Master module
-  setCustomerMasterLabels: (labels) => {
-    set({
-      customerMasterLabels: labels,
-      customerMasterLabelsLastFetched: Date.now(),
-      customerMasterLabelsError: null,
-    })
-  },
-  setCustomerMasterLabelsLoading: (loading) =>
-    set({ customerMasterLabelsLoading: loading }),
-  setCustomerMasterLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Customer Master labels error:', error)
-    }
-    set({ customerMasterLabelsError: error })
-  },
-
-  // Master Customer labels actions - Account Purpose module
-  setAccountPurposeLabels: (labels) => {
-    set({
-      accountPurposeLabels: labels,
-      accountPurposeLabelsLastFetched: Date.now(),
-      accountPurposeLabelsError: null,
-    })
-  },
-  setAccountPurposeLabelsLoading: (loading) =>
-    set({ accountPurposeLabelsLoading: loading }),
-  setAccountPurposeLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Account Purpose labels error:', error)
-    }
-    set({ accountPurposeLabelsError: error })
-  },
-
-  // Master Customer labels actions - Investment Master module
-  setInvestmentMasterLabels: (labels) => {
-    set({
-      investmentMasterLabels: labels,
-      investmentMasterLabelsLastFetched: Date.now(),
-      investmentMasterLabelsError: null,
-    })
-  },
-  setInvestmentMasterLabelsLoading: (loading) =>
-    set({ investmentMasterLabelsLoading: loading }),
-  setInvestmentMasterLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Investment Master labels error:', error)
-    }
-    set({ investmentMasterLabelsError: error })
-  },
-
-  // Master Customer labels actions - Business Segment module
-  setBusinessSegmentLabels: (labels) => {
-    set({
-      businessSegmentLabels: labels,
-      businessSegmentLabelsLastFetched: Date.now(),
-      businessSegmentLabelsError: null,
-    })
-  },
-  setBusinessSegmentLabelsLoading: (loading) =>
-    set({ businessSegmentLabelsLoading: loading }),
-  setBusinessSegmentLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Business Segment labels error:', error)
-    }
-    set({ businessSegmentLabelsError: error })
-  },
-
-  // Master Customer labels actions - Business Sub Segment module
-  setBusinessSubSegmentLabels: (labels) => {
-    set({
-      businessSubSegmentLabels: labels,
-      businessSubSegmentLabelsLastFetched: Date.now(),
-      businessSubSegmentLabelsError: null,
-    })
-  },
-  setBusinessSubSegmentLabelsLoading: (loading) =>
-    set({ businessSubSegmentLabelsLoading: loading }),
-  setBusinessSubSegmentLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Business Sub Segment labels error:', error)
-    }
-    set({ businessSubSegmentLabelsError: error })
-  },
-
-  // Master Customer labels actions - Deal Type module
-  setDealTypeLabels: (labels) => {
-    set({
-      dealTypeLabels: labels,
-      dealTypeLabelsLastFetched: Date.now(),
-      dealTypeLabelsError: null,
-    })
-  },
-  setDealTypeLabelsLoading: (loading) =>
-    set({ dealTypeLabelsLoading: loading }),
-  setDealTypeLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Deal Type labels error:', error)
-    }
-    set({ dealTypeLabelsError: error })
-  },
-
-  // Master Customer labels actions - Deal Subtype module
-  setDealSubtypeLabels: (labels) => {
-    set({
-      dealSubtypeLabels: labels,
-      dealSubtypeLabelsLastFetched: Date.now(),
-      dealSubtypeLabelsError: null,
-    })
-  },
-  setDealSubtypeLabelsLoading: (loading) =>
-    set({ dealSubtypeLabelsLoading: loading }),
-  setDealSubtypeLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Deal Subtype labels error:', error)
-    }
-    set({ dealSubtypeLabelsError: error })
-  },
-
-  // Master Customer labels actions - Product Program module
-  setProductProgramLabels: (labels) => {
-    set({
-      productProgramLabels: labels,
-      productProgramLabelsLastFetched: Date.now(),
-      productProgramLabelsError: null,
-    })
-  },
-  setProductProgramLabelsLoading: (loading) =>
-    set({ productProgramLabelsLoading: loading }),
-  setProductProgramLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Product Program labels error:', error)
-    }
-    set({ productProgramLabelsError: error })
-  },
-
-  // Master Customer labels actions - Beneficiary module
-  setBeneficiaryLabels: (labels) => {
-    set({
-      beneficiaryLabels: labels,
-      beneficiaryLabelsLastFetched: Date.now(),
-      beneficiaryLabelsError: null,
-    })
-  },
-  setBeneficiaryLabelsLoading: (loading) =>
-    set({ beneficiaryLabelsLoading: loading }),
-  setBeneficiaryLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Beneficiary labels error:', error)
-    }
-    set({ beneficiaryLabelsError: error })
-  },
-
-  // Master Customer labels actions - Document module
-  setDocumentLabels: (labels) => {
-    set({
-      documentLabels: labels,
-      documentLabelsLastFetched: Date.now(),
-      documentLabelsError: null,
-    })
-  },
-  setDocumentLabelsLoading: (loading) =>
-    set({ documentLabelsLoading: loading }),
-  setDocumentLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Document labels error:', error)
-    }
-    set({ documentLabelsError: error })
-  },
-
-  // Master Customer labels actions - Deal Segment module
-  setDealSegmentLabels: (labels) => {
-    set({
-      dealSegmentLabels: labels,
-      dealSegmentLabelsLastFetched: Date.now(),
-      dealSegmentLabelsError: null,
-    })
-  },
-  setDealSegmentLabelsLoading: (loading) =>
-    set({ dealSegmentLabelsLoading: loading }),
-  setDealSegmentLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Deal Segment labels error:', error)
-    }
-    set({ dealSegmentLabelsError: error })
-  },
-
-  // Master Customer labels actions - Ledger Account module
-  setLedgerAccountLabels: (labels) => {
-    set({
-      ledgerAccountLabels: labels,
-      ledgerAccountLabelsLastFetched: Date.now(),
-      ledgerAccountLabelsError: null,
-    })
-  },
-  setLedgerAccountLabelsLoading: (loading) =>
-    set({ ledgerAccountLabelsLoading: loading }),
-  setLedgerAccountLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Ledger Account labels error:', error)
-    }
-    set({ ledgerAccountLabelsError: error })
-  },
-
-  // Master Customer labels actions - Country Code module
-  setCountryCodeLabels: (labels) => {
-    set({
-      countryCodeLabels: labels,
-      countryCodeLabelsLastFetched: Date.now(),
-      countryCodeLabelsError: null,
-    })
-  },
-  setCountryCodeLabelsLoading: (loading) =>
-    set({ countryCodeLabelsLoading: loading }),
-  setCountryCodeLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Country Code labels error:', error)
-    }
-    set({ countryCodeLabelsError: error })
-  },
-
-  // Master Customer labels actions - Currency Code module
-  setCurrencyCodeLabels: (labels) => {
-    set({
-      currencyCodeLabels: labels,
-      currencyCodeLabelsLastFetched: Date.now(),
-      currencyCodeLabelsError: null,
-    })
-  },
-  setCurrencyCodeLabelsLoading: (loading) =>
-    set({ currencyCodeLabelsLoading: loading }),
-  setCurrencyCodeLabelsError: (error) => {
-    if (error) {
-      console.error('❌ [COMPLIANCE] Currency Code labels error:', error)
-    }
-    set({ currencyCodeLabelsError: error })
-  },
-
   // Global actions
   setAllLabelsLoading: (loading) => set({ allLabelsLoading: loading }),
 
@@ -1067,26 +577,18 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
     set({ allLabelsError: error })
   },
 
-  // Customer field configuration actions
-  setCustomerFieldConfig: (config) => {
-    set({ customerFieldConfig: config })
-  },
-
-  getCustomerFieldLabel: (configId) => {
-    const state = get()
-    return getCustomerLabel(configId)
-  },
-
   // Utility actions
   clearAllLabels: () => {
     set({
       sidebarLabels: null,
+      partyLabels: null,
       buildPartnerLabels: null,
       capitalPartnerLabels: null,
       buildPartnerAssetLabels: null,
       pendingTransactionLabels: null,
       discardedTransactionLabels: null,
       sidebarLabelsLastFetched: null,
+      partyLabelsLastFetched: null,
       workflowActionLabels: null,
       workflowDefinitionLabels: null,
       workflowStageTemplateLabels: null,
@@ -1094,6 +596,7 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       workflowAmountStageOverrideLabels: null,
       workflowRequestedLabels: null,
       buildPartnerLabelsLastFetched: null,
+    
       capitalPartnerLabelsLastFetched: null,
       buildPartnerAssetLabelsLastFetched: null,
       workflowActionLabelsLastFetched: null,
@@ -1104,36 +607,8 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       workflowRequestedLabelsLastFetched: null,
       pendingTransactionLabelsLastFetched: null,
       discardedTransactionLabelsLastFetched: null,
-      // Master Customer labels
-      customerMasterLabels: null,
-      accountPurposeLabels: null,
-      investmentMasterLabels: null,
-      businessSegmentLabels: null,
-      businessSubSegmentLabels: null,
-      dealTypeLabels: null,
-      dealSubtypeLabels: null,
-      productProgramLabels: null,
-      beneficiaryLabels: null,
-      documentLabels: null,
-      dealSegmentLabels: null,
-      ledgerAccountLabels: null,
-      countryCodeLabels: null,
-      currencyCodeLabels: null,
-      customerMasterLabelsLastFetched: null,
-      accountPurposeLabelsLastFetched: null,
-      investmentMasterLabelsLastFetched: null,
-      businessSegmentLabelsLastFetched: null,
-      businessSubSegmentLabelsLastFetched: null,
-      dealTypeLabelsLastFetched: null,
-      dealSubtypeLabelsLastFetched: null,
-      productProgramLabelsLastFetched: null,
-      beneficiaryLabelsLastFetched: null,
-      documentLabelsLastFetched: null,
-      dealSegmentLabelsLastFetched: null,
-      ledgerAccountLabelsLastFetched: null,
-      countryCodeLabelsLastFetched: null,
-      currencyCodeLabelsLastFetched: null,
       sidebarLabelsError: null,
+      partyLabelsError: null,
       buildPartnerLabelsError: null,
       capitalPartnerLabelsError: null,
       buildPartnerAssetLabelsError: null,
@@ -1145,21 +620,6 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       workflowRequestedLabelsError: null,
       pendingTransactionLabelsError: null,
       discardedTransactionLabelsError: null,
-      // Master Customer labels errors
-      customerMasterLabelsError: null,
-      accountPurposeLabelsError: null,
-      investmentMasterLabelsError: null,
-      businessSegmentLabelsError: null,
-      businessSubSegmentLabelsError: null,
-      dealTypeLabelsError: null,
-      dealSubtypeLabelsError: null,
-      productProgramLabelsError: null,
-      beneficiaryLabelsError: null,
-      documentLabelsError: null,
-      dealSegmentLabelsError: null,
-      ledgerAccountLabelsError: null,
-      countryCodeLabelsError: null,
-      currencyCodeLabelsError: null,
       allLabelsError: null,
     })
   },
@@ -1171,6 +631,9 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
     switch (type) {
       case 'sidebar':
         labels = state.sidebarLabels
+        break
+      case 'party':
+        labels = state.partyLabels
         break
       case 'buildPartner':
         labels = state.buildPartnerLabels
@@ -1205,48 +668,6 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       case 'discardedTransaction':
         labels = state.discardedTransactionLabels
         break
-      case 'customerMaster':
-        labels = state.customerMasterLabels
-        break
-      case 'accountPurpose':
-        labels = state.accountPurposeLabels
-        break
-      case 'investmentMaster':
-        labels = state.investmentMasterLabels
-        break
-      case 'businessSegment':
-        labels = state.businessSegmentLabels
-        break
-      case 'businessSubSegment':
-        labels = state.businessSubSegmentLabels
-        break
-      case 'dealType':
-        labels = state.dealTypeLabels
-        break
-      case 'dealSubtype':
-        labels = state.dealSubtypeLabels
-        break
-      case 'productProgram':
-        labels = state.productProgramLabels
-        break
-      case 'beneficiary':
-        labels = state.beneficiaryLabels
-        break
-      case 'document':
-        labels = state.documentLabels
-        break
-      case 'dealSegment':
-        labels = state.dealSegmentLabels
-        break
-      case 'ledgerAccount':
-        labels = state.ledgerAccountLabels
-        break
-      case 'countryCode':
-        labels = state.countryCodeLabels
-        break
-      case 'currencyCode':
-        labels = state.currencyCodeLabels
-        break
       default:
         console.warn('⚠️ [COMPLIANCE] Unknown label type:', type)
         return fallback
@@ -1269,6 +690,10 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       case 'sidebar':
         return !!(
           state.sidebarLabels && Object.keys(state.sidebarLabels).length > 0
+        )
+      case 'party':
+        return !!(
+          state.partyLabels && Object.keys(state.partyLabels).length > 0
         )
       case 'buildPartner':
         return !!(
@@ -1325,76 +750,6 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
           state.discardedTransactionLabels &&
           Object.keys(state.discardedTransactionLabels).length > 0
         )
-      case 'customerMaster':
-        return !!(
-          state.customerMasterLabels &&
-          Object.keys(state.customerMasterLabels).length > 0
-        )
-      case 'accountPurpose':
-        return !!(
-          state.accountPurposeLabels &&
-          Object.keys(state.accountPurposeLabels).length > 0
-        )
-      case 'investmentMaster':
-        return !!(
-          state.investmentMasterLabels &&
-          Object.keys(state.investmentMasterLabels).length > 0
-        )
-      case 'businessSegment':
-        return !!(
-          state.businessSegmentLabels &&
-          Object.keys(state.businessSegmentLabels).length > 0
-        )
-      case 'businessSubSegment':
-        return !!(
-          state.businessSubSegmentLabels &&
-          Object.keys(state.businessSubSegmentLabels).length > 0
-        )
-      case 'dealType':
-        return !!(
-          state.dealTypeLabels &&
-          Object.keys(state.dealTypeLabels).length > 0
-        )
-      case 'dealSubtype':
-        return !!(
-          state.dealSubtypeLabels &&
-          Object.keys(state.dealSubtypeLabels).length > 0
-        )
-      case 'productProgram':
-        return !!(
-          state.productProgramLabels &&
-          Object.keys(state.productProgramLabels).length > 0
-        )
-      case 'beneficiary':
-        return !!(
-          state.beneficiaryLabels &&
-          Object.keys(state.beneficiaryLabels).length > 0
-        )
-      case 'document':
-        return !!(
-          state.documentLabels &&
-          Object.keys(state.documentLabels).length > 0
-        )
-      case 'dealSegment':
-        return !!(
-          state.dealSegmentLabels &&
-          Object.keys(state.dealSegmentLabels).length > 0
-        )
-      case 'ledgerAccount':
-        return !!(
-          state.ledgerAccountLabels &&
-          Object.keys(state.ledgerAccountLabels).length > 0
-        )
-      case 'countryCode':
-        return !!(
-          state.countryCodeLabels &&
-          Object.keys(state.countryCodeLabels).length > 0
-        )
-      case 'currencyCode':
-        return !!(
-          state.currencyCodeLabels &&
-          Object.keys(state.currencyCodeLabels).length > 0
-        )
       default:
         return false
     }
@@ -1409,6 +764,9 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
     switch (type) {
       case 'sidebar':
         labels = state.sidebarLabels
+        break
+      case 'party':
+        labels = state.partyLabels
         break
       case 'buildPartner':
         labels = state.buildPartnerLabels
@@ -1443,48 +801,6 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       case 'discardedTransaction':
         labels = state.discardedTransactionLabels
         break
-      case 'customerMaster':
-        labels = state.customerMasterLabels
-        break
-      case 'accountPurpose':
-        labels = state.accountPurposeLabels
-        break
-      case 'investmentMaster':
-        labels = state.investmentMasterLabels
-        break
-      case 'businessSegment':
-        labels = state.businessSegmentLabels
-        break
-      case 'businessSubSegment':
-        labels = state.businessSubSegmentLabels
-        break
-      case 'dealType':
-        labels = state.dealTypeLabels
-        break
-      case 'dealSubtype':
-        labels = state.dealSubtypeLabels
-        break
-      case 'productProgram':
-        labels = state.productProgramLabels
-        break
-      case 'beneficiary':
-        labels = state.beneficiaryLabels
-        break
-      case 'document':
-        labels = state.documentLabels
-        break
-      case 'dealSegment':
-        labels = state.dealSegmentLabels
-        break
-      case 'ledgerAccount':
-        labels = state.ledgerAccountLabels
-        break
-      case 'countryCode':
-        labels = state.countryCodeLabels
-        break
-      case 'currencyCode':
-        labels = state.currencyCodeLabels
-        break
       default:
         return ['EN']
     }
@@ -1509,6 +825,7 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
     const state = get()
     return {
       sidebar: state.sidebarLabelsLoading,
+      party: state.partyLabelsLoading,
       buildPartner: state.buildPartnerLabelsLoading,
       capitalPartner: state.capitalPartnerLabelsLoading,
       buildPartnerAsset: state.buildPartnerAssetLabelsLoading,
@@ -1521,23 +838,9 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       workflowRequested: state.workflowRequestedLabelsLoading,
       pendingTransaction: state.pendingTransactionLabelsLoading,
       discardedTransaction: state.discardedTransactionLabelsLoading,
-      // Master Customer loading states
-      customerMaster: state.customerMasterLabelsLoading,
-      accountPurpose: state.accountPurposeLabelsLoading,
-      investmentMaster: state.investmentMasterLabelsLoading,
-      businessSegment: state.businessSegmentLabelsLoading,
-      businessSubSegment: state.businessSubSegmentLabelsLoading,
-      dealType: state.dealTypeLabelsLoading,
-      dealSubtype: state.dealSubtypeLabelsLoading,
-      productProgram: state.productProgramLabelsLoading,
-      beneficiary: state.beneficiaryLabelsLoading,
-      document: state.documentLabelsLoading,
-      dealSegment: state.dealSegmentLabelsLoading,
-      ledgerAccount: state.ledgerAccountLabelsLoading,
-      countryCode: state.countryCodeLabelsLoading,
-      currencyCode: state.currencyCodeLabelsLoading,
       any:
         state.sidebarLabelsLoading ||
+        state.partyLabelsLoading ||
         state.buildPartnerLabelsLoading ||
         state.capitalPartnerLabelsLoading ||
         state.buildPartnerAssetLabelsLoading ||
@@ -1549,20 +852,6 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
         state.workflowRequestedLabelsLoading ||
         state.pendingTransactionLabelsLoading ||
         state.discardedTransactionLabelsLoading ||
-        state.customerMasterLabelsLoading ||
-        state.accountPurposeLabelsLoading ||
-        state.investmentMasterLabelsLoading ||
-        state.businessSegmentLabelsLoading ||
-        state.businessSubSegmentLabelsLoading ||
-        state.dealTypeLabelsLoading ||
-        state.dealSubtypeLabelsLoading ||
-        state.productProgramLabelsLoading ||
-        state.beneficiaryLabelsLoading ||
-        state.documentLabelsLoading ||
-        state.dealSegmentLabelsLoading ||
-        state.ledgerAccountLabelsLoading ||
-        state.countryCodeLabelsLoading ||
-        state.currencyCodeLabelsLoading ||
         state.allLabelsLoading,
       all: state.allLabelsLoading,
     }

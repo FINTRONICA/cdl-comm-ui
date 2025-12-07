@@ -23,11 +23,11 @@ export async function POST(request: NextRequest) {
 
     const { username, password } = validation.data;
 
-    // Authenticate user (replace with your actual user lookup)
+
     const user = await authenticateUser(username, password);
     
     if (!user) {
-      // Log failed login attempt
+
       AuditLogger.logAuthEvent(
         AuditEventType.LOGIN_FAILURE,
         'unknown',
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create session
+
     const { sessionId } = SessionManager.createSession(
       user.id,
       user.username,
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       request.headers.get('user-agent') || ''
     );
 
-    // Log successful login
+
     AuditLogger.logAuthEvent(
       AuditEventType.LOGIN_SUCCESS,
       user.id,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       sessionId
     );
 
-    // Generate JWT token for client-side authentication
+  
     const userForToken = {
       ...user,
       role: user.role as UserRole,
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     };
     const jwtToken = AuthService.generateToken(userForToken);
 
-    // Create response with session cookie and JWT token (like main branch)
+ 
     const response = NextResponse.json({
       message: 'Login successful',
       user: {
@@ -88,15 +88,15 @@ export async function POST(request: NextRequest) {
         role: user.role,
         permissions: user.permissions
       },
-      token: jwtToken, // JWT token for client-side authentication
-      refreshToken: `refresh_${sessionId}`, // Simple refresh token
-      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(), // 8 hours
+      token: jwtToken, 
+      refreshToken: `refresh_${sessionId}`, 
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), 
       permissions: user.permissions
     });
 
     return SessionManager.setSessionCookie(response, sessionId);
   } catch (error) {
-    console.error('Login error:', error);
+    throw error
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -111,8 +111,7 @@ function getClientIP(request: NextRequest): string {
 }
 
 async function authenticateUser(username: string, password: string) {
-  // Replace with your actual user authentication logic
-  // This is a placeholder implementation
+
   if (username === 'admin' && password === 'SecurePass123!') {
     return {
       id: '1',

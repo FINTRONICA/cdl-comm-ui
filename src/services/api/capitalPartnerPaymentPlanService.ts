@@ -10,6 +10,7 @@ export interface CapitalPartnerPaymentPlanRequest {
     id: number
   }
   deleted?: boolean
+  enabled?: boolean
 }
 
 // ---------- Response DTO ----------
@@ -20,6 +21,7 @@ export interface CapitalPartnerPaymentPlanResponse {
   cpppBookingAmount: number
   capitalPartnerDTO: any
   deleted: boolean
+  enabled: boolean
 }
 
 // ---------- Service ----------
@@ -48,6 +50,13 @@ class CapitalPartnerPaymentPlanService {
   async deleteCapitalPartnerPaymentPlan(id: number): Promise<void> {
     const url = buildApiUrl(
       API_ENDPOINTS.CAPITAL_PARTNER_PAYMENT_PLAN.DELETE(id.toString())
+    )
+    await apiClient.delete(url)
+  }
+
+  async softDeleteCapitalPartnerPaymentPlan(id: number): Promise<void> {
+    const url = buildApiUrl(
+      API_ENDPOINTS.CAPITAL_PARTNER_PAYMENT_PLAN.SOFT_DELETE(id.toString())
     )
     await apiClient.delete(url)
   }

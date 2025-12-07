@@ -24,19 +24,19 @@ export function useAccountBalance(): UseAccountBalanceReturn {
       setLoading(true);
       setError(null);
       
-      console.log(`🔄 useAccountBalance: Fetching balance for account "${accountNumber}"`);
+    
       
       const result = await accountBalanceService.getAccountBalance(accountNumber, bankCode);
       
       setData(result);
       
-      console.log(`✅ useAccountBalance: Successfully fetched balance for account "${accountNumber}"`);
+     
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       setData(null);
       
-      console.error(`❌ useAccountBalance: Failed to fetch balance for account "${accountNumber}":`, errorMessage);
+     
     } finally {
       setLoading(false);
     }
@@ -67,19 +67,18 @@ export function useMultipleAccountBalances() {
       setLoadingStates(prev => ({ ...prev, [accountKey]: true }));
       setErrors(prev => ({ ...prev, [accountKey]: null }));
       
-      console.log(`🔄 useMultipleAccountBalances: Fetching balance for ${accountKey} - "${accountNumber}"`);
+      
       
       const result = await accountBalanceService.getAccountBalance(accountNumber, bankCode);
       
       setBalances(prev => ({ ...prev, [accountKey]: result }));
       
-      console.log(`✅ useMultipleAccountBalances: Successfully fetched balance for ${accountKey}`);
+     
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setErrors(prev => ({ ...prev, [accountKey]: errorMessage }));
       setBalances(prev => ({ ...prev, [accountKey]: null }));
-      
-      console.error(`❌ useMultipleAccountBalances: Failed to fetch balance for ${accountKey}:`, errorMessage);
+   
     } finally {
       setLoadingStates(prev => ({ ...prev, [accountKey]: false }));
     }

@@ -115,7 +115,7 @@ export const useFinancialInstitutions = (
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch financial institutions'
       setError(errorMessage)
-      console.error('useFinancialInstitutions.fetchFinancialInstitutions Failed:', errorMessage)
+      
     } finally {
       setLoading(false)
     }
@@ -133,7 +133,7 @@ export const useFinancialInstitutions = (
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch financial institution'
       setErrorById(errorMessage)
-      console.error('useFinancialInstitutions.fetchFinancialInstitutionById Failed:', errorMessage)
+      
     } finally {
       setLoadingById(false)
     }
@@ -154,7 +154,7 @@ export const useFinancialInstitutions = (
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create financial institution'
       setCreateError(errorMessage)
-      console.error('useFinancialInstitutions.createFinancialInstitution Failed:', errorMessage)
+     
       return null
     } finally {
       setCreating(false)
@@ -184,7 +184,7 @@ export const useFinancialInstitutions = (
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update financial institution'
       setUpdateError(errorMessage)
-      console.error('useFinancialInstitutions.updateFinancialInstitution Failed:', errorMessage)
+     
       return null
     } finally {
       setUpdating(false)
@@ -211,7 +211,7 @@ export const useFinancialInstitutions = (
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete financial institution'
       setDeleteError(errorMessage)
-      console.error('useFinancialInstitutions.deleteFinancialInstitution Failed:', errorMessage)
+     
       return false
     } finally {
       setDeleting(false)
@@ -239,7 +239,7 @@ export const useFinancialInstitutions = (
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to search financial institutions'
       setError(errorMessage)
-      console.error('useFinancialInstitutions.searchFinancialInstitutions Failed:', errorMessage)
+      
     } finally {
       setLoading(false)
     }
@@ -320,7 +320,7 @@ export const useFinancialInstitutionsDropdown = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch financial institutions'
       setError(errorMessage)
-      console.error('❌ useFinancialInstitutionsDropdown Failed:', errorMessage)
+      
     } finally {
       setLoading(false)
     }
@@ -380,7 +380,7 @@ export const useEnabledFinancialInstitutionsDropdown = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch enabled financial institutions'
       setError(errorMessage)
-      console.error('❌ useEnabledFinancialInstitutionsDropdown Failed:', errorMessage)
+     
     } finally {
       setLoading(false)
       setLoadingMore(false)

@@ -26,11 +26,11 @@ export const MANUAL_PAYMENT_LABELS = {
   // Form Field Labels
   FORM_FIELDS: {
     TAS_REFERENCE: 'CDL_PAYMENTS_EMS_REFNO', // "EMS Payment Reference Number"
-    DEVELOPER_NAME: 'CDL_TRANS_BP_NAME', // "Build Partner Name"
-    DEVELOPER_ID: 'CDL_TRANS_BP_NAME', // "Build Partner Name"
-    PROJECT_NAME: 'CDL_TRANS_BPA_NAME', // "Build Partner Assets Name"
-    PROJECT_ID: 'CDL_TRANS_BPA_NAME', // "Build Partner Assets Name"
-    PROJECT_STATUS: 'CDL_TRANS_APPROVAL_STATUS', // "Approval Status"
+    DEVELOPER_NAME: 'CDL_TRAN_BP_NAME', // "Build Partner Name"
+    DEVELOPER_ID: 'CDL_TRAN_BP_ID', // "Build Partner Name"
+    PROJECT_NAME: 'CDL_TRAN_BPA_NAME', // "Build Partner Assets Name"
+    PROJECT_ID: 'CDL_TRAN_BPA_CIF', // "Build Partner Assets Name"
+    PROJECT_STATUS: 'CDL_TRAN_BP_ACC_STATUS', // "Approval Status"
     ESCROW_ACCOUNT: 'CDL_PAYMENTS_ESCROW_BAL', // "Escrow Account Current Balance"
     SUB_CONSTRUCTION_ACCOUNT: 'CDL_PAYMENTS_CONS_BAL', // "Construction Account Current Balance"
     CORPORATE_ACCOUNT: 'CDL_PAYMENTS_COR_PAYMENT', // "Corporate Payment"
@@ -202,6 +202,13 @@ export const MANUAL_PAYMENT_LABELS = {
     CBS: 'CDL_PAYMENTS_PAYOUT_CBS', // "Payout via CBS"
   },
 
+  // Button Labels
+  BUTTONS: {
+    SAVE_NEXT: 'CDL_COMMON_SAVE_NEXT', // "Save & Next"
+    SAVE_CONTINUE: 'CDL_COMMON_SAVE_CONTINUE', // "Save & Continue"
+    SAVING: 'CDL_COMMON_SAVING', // "Saving..."
+  },
+
   // Additional Form Labels from API
   ADDITIONAL_FORM_FIELDS: {
     SUB_CONSTRUCTION_BALANCE: 'CDL_PAYMENTS_SUBCONS_BAL', // "Sub-Construction Account Current Balance"
@@ -257,8 +264,8 @@ export const MANUAL_PAYMENT_LABELS = {
       PROJECT_NAME: 'Project Name',
       PROJECT_ID: 'Project ID',
       PROJECT_STATUS: 'Project Account Status',
-      ESCROW_ACCOUNT: 'Escrow Account',
-      SUB_CONSTRUCTION_ACCOUNT: 'Sub Construction Account',
+      ESCROW_ACCOUNT: 'Escrow Account Current Balance',
+      SUB_CONSTRUCTION_ACCOUNT: 'Construction Account Current Balance',
       CORPORATE_ACCOUNT: 'Corporate Account',
       RETENTION_ACCOUNT: 'Retention Account',
       PAYMENT_TYPE: 'Payment Type',
@@ -325,7 +332,7 @@ export const MANUAL_PAYMENT_LABELS = {
       STATUS: 'Status',
       ERROR_DESCRIPTION: 'Error Description',
       DISCARDED_TRANSACTION: 'Discarded Transaction',
-      APPROVAL_STATUS: 'Approval Status',
+      APPROVAL_STATUS: ' Status',
       ACTIONS: 'Actions',
     },
     STATUS_OPTIONS: {
@@ -352,7 +359,7 @@ export const MANUAL_PAYMENT_LABELS = {
       STATUS: 'Status',
       ERROR_DESCRIPTION: 'Error Description',
       DISCARDED_TRANSACTION: 'Discarded Transaction',
-      APPROVAL_STATUS: 'Approval Status',
+      APPROVAL_STATUS: ' Status',
       AMOUNT_INFO: 'Amount Information',
       ESCROW_BALANCE: 'Escrow Balance',
       CONSTRUCTION_BALANCE: 'Construction Balance',
@@ -373,6 +380,11 @@ export const MANUAL_PAYMENT_LABELS = {
       REJECT_PROMPT: 'Please provide a reason for rejection:',
       REJECT_ERROR: 'Failed to reject payment. Please try again.',
       REFRESH_ERROR: 'Error refreshing data',
+    },
+    BUTTONS: {
+      SAVE_NEXT: 'Save & Next',
+      SAVE_CONTINUE: 'Save & Continue',
+      SAVING: 'Saving...',
     },
   },
 } as const

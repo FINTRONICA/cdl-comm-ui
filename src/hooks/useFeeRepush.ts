@@ -50,7 +50,7 @@ export const useFeeRepush = (
       setLoading(true)
       setError(null)
 
-      // Fetch UI data and raw data in parallel
+      
       const [uiData, apiData] = await Promise.all([
         feeRepushService.getFeeRepushUIData(
           pagination.page,
@@ -82,10 +82,10 @@ export const useFeeRepush = (
     (newFilters: FeeRepushFilters) => {
 
       setFilters(newFilters)
-      // Reset to first page when filters change
+     
       setPagination((prev) => ({ ...prev, page: 0 }))
     },
-    [filters]
+    []
   )
 
   const updatePagination = useCallback(
@@ -100,7 +100,7 @@ export const useFeeRepush = (
         return newPagination
       })
     },
-    [] // Remove pagination from dependencies to avoid infinite re-renders
+    [] 
   )
 
   const retryPayment = useCallback(
@@ -109,17 +109,17 @@ export const useFeeRepush = (
       try {
         setError(null)
 
-        // Call retry payment service
+       
         await feeRepushService.retryFeePayment(id)
 
 
-        // Refetch data to show updated retry count and status
+
         await fetchFeeRepushData()
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to retry fee payment'
         setError(errorMessage)
-        throw err // Re-throw so calling component can handle UI feedback
+        throw err 
       }
     },
     [fetchFeeRepushData]
@@ -130,10 +130,10 @@ export const useFeeRepush = (
       try {
         setError(null)
 
-        // Call fee repush service using dedicated endpoint
+ 
         const result = await feeRepushService.feeRepush(id, request)
 
-        // Refetch data to show updated status
+       
         await fetchFeeRepushData()
 
         return result
@@ -141,7 +141,7 @@ export const useFeeRepush = (
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to repush fee'
         setError(errorMessage)
-        throw err // Re-throw so calling component can handle UI feedback
+        throw err 
       }
     },
     [fetchFeeRepushData]

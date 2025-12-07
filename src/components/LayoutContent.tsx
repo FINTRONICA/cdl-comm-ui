@@ -3,45 +3,41 @@
 import { usePathname } from 'next/navigation'
 import { useMemo, memo } from 'react'
 import { Sidebar } from './organisms/Sidebar'
-import { useAppInitialization } from '@/hooks/useAppInitialization'
+import { useAuthStore } from '@/store/authStore'
 
 const AUTHENTICATED_ROUTES = [
   '/dashboard',
   '/activities',
   '/entities',
-  '/entity',
-  '/entity/deal-primary',
-  '/entity/accounts',
-  '/entity/party-signatory',
-  '/entity/beneficiary',
-  '/entity/parameter',
-  '/entity/fees',
   '/transactions',
   '/transactions',
-  '/guarantee',
+  '/surety_bond',
   '/fee-reconciliation',
   '/reports',
   '/admin',
-  '/investors',
-  '/projects',
-  '/developers',
-  '/master-customers/customers',
-  '/master-customers/account-purpose',
-  '/master-customers/investment-master',
-  '/master-customers/business-segment',
-  '/master-customers/business-sub-segment',
-  '/master-customers/deal-type',
-  '/master-customers/deal-subtype',
-  '/master-customers/product-program',
-  '/master-customers/document',
-  '/master-customers/deal-segment',
-  '/master-customers/ledger-account',
-  '/master-customers/country-code',
-  '/master-customers/currency-code',
-  '/master-customers/beneficiary',
-  '/master-customers',
-  '/customers-deposit',
-  '/customers-payments',
+  '/capital-partner',
+  '/build-partner-assets',
+  '/build-partner',
+  '/master',
+  '/party',
+  '/investment',
+  '/business-segment',
+  '/business-sub-segment',
+  '/agreement-segment',
+  '/agreement-type',
+  '/agreement-sub-type',
+  '/product-program',
+  '/beneficiary',
+  '/general-ledger-account',
+  '/country',
+  '/currency',
+  '/agreement',
+  '/agreement-signatory',
+  '/agreement-parameter',
+  '/agreement-fee-schedule',
+  '/escrow-account',
+  '/payment-beneficiary',
+  '/payment-instruction',
   '/help',
 ]
 
@@ -51,15 +47,16 @@ interface LayoutContentProps {
 
 const LayoutContentComponent = ({ children }: LayoutContentProps) => {
   const pathname = usePathname()
-
-  useAppInitialization({
-    enableLabelLoading: true,
-    enableRetryOnFailure: true,
-    retryCount: 3,
-  })
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
 
   const shouldShowSidebar = useMemo(() => {
+    // Never show sidebar on login page
     if (pathname === '/login') {
+      return false
+    }
+
+    // Don't show sidebar if not authenticated, even on protected routes
+    if (!isAuthenticated) {
       return false
     }
 
@@ -76,21 +73,12 @@ const LayoutContentComponent = ({ children }: LayoutContentProps) => {
       }
       if (route === '/entities') {
         return (
-          pathname === '/entities/developers' ||
-          pathname === '/entities/projects' ||
-          pathname?.startsWith('/entities/developers/') ||
-          pathname?.startsWith('/entities/projects/')
-        )
-      }
-      if (route === '/entity') {
-        return (
-          pathname === '/entity/deal-primary' ||
-          pathname === '/entity/accounts' ||
-          pathname === '/entity/party-signatory' ||
-          pathname === '/entity/beneficiary' ||
-          pathname === '/entity/parameter' ||
-          pathname === '/entity/fees' ||
-          pathname?.startsWith('/entity/')
+          pathname === '/build-partner' ||
+          pathname === '/build-partner-assets' ||
+          pathname === '/capital-partner' ||
+          pathname?.startsWith('/build-partner/') ||
+          pathname?.startsWith('/build-partner-assets/') ||
+          pathname?.startsWith('/capital-partner/')
         )
       }
       if (route === '/transactions') {
@@ -103,16 +91,16 @@ const LayoutContentComponent = ({ children }: LayoutContentProps) => {
       }
       if (route === '/transactions') {
         return (
-          pathname === '/transactions/manual' || 
+          pathname === '/transactions/manual' ||
           pathname === '/transactions/tas' ||
           pathname?.startsWith('/transactions/')
         )
       }
-      if (route === '/guarantee') {
+      if (route === '/surety_bond') {
         return (
-          pathname === '/guarantee' ||
-          pathname === '/guarantee/new' ||
-          pathname?.startsWith('/guarantee/new/')
+          pathname === '/surety_bond' ||
+          pathname === '/surety_bond/new' ||
+          pathname?.startsWith('/surety_bond/new/')
         )
       }
       if (route === '/fee-reconciliation') {
@@ -120,46 +108,157 @@ const LayoutContentComponent = ({ children }: LayoutContentProps) => {
       }
       if (route === '/reports') {
         return (
-          pathname === '/reports/business' ||
-          pathname?.startsWith('/reports/')
+          pathname === '/reports/business' || pathname?.startsWith('/reports/')
         )
       }
       if (route === '/admin') {
         return (
           pathname === '/admin/bank-management' ||
-          pathname === '/admin/user-management' ||
-          pathname === '/admin/role-management' ||
-          pathname === '/admin/fee-types' ||
+          pathname === '/admin/stakeholder' ||
+          pathname === '/admin/entitlement' ||
+          pathname === '/admin/access-grant' ||
           pathname === '/admin/security' ||
           pathname?.startsWith('/admin/')
         )
       }
-      if (route === '/investors') {
-        return pathname === '/investors' || pathname?.startsWith('/investors/')
-      }
-      if (route === '/projects') {
-        return pathname === '/projects' || pathname?.startsWith('/projects/')
-      }
-      if (route === '/developers') {
-        return pathname === '/developers' || pathname?.startsWith('/developers/')
-      }
-      // Handle all master-customers routes
-      if (route.startsWith('/master-customers/')) {
-        return pathname === route || pathname?.startsWith(`${route}/`)
-      }
-      if (route === '/master-customers') {
-        return pathname === '/master-customers' || pathname?.startsWith('/master-customers/')
-      }
-      if (route === '/customers-deposit') {
+      if (route === '/build-partner') {
         return (
-          pathname === '/customers-deposit/deposit' ||
-          pathname?.startsWith('/customers-deposit/')
+          pathname === '/build-partner' ||
+          pathname?.startsWith('/build-partner/')
         )
       }
-      if (route === '/customers-payments') {
+      if (route === '/build-partner-assets') {
         return (
-          pathname === '/customers-payments/payment' ||
-          pathname?.startsWith('/customers-payments/')
+          pathname === '/build-partner-assets' ||
+          pathname?.startsWith('/build-partner-assets/')
+        )
+      }
+      if (route === '/capital-partner') {
+        return (
+          pathname === '/capital-partner' ||
+          pathname?.startsWith('/capital-partner/')
+        )
+      }
+      if (route === '/master') {
+        return (
+          pathname === '/master' ||
+          pathname === '/masters' ||
+          pathname?.startsWith('/master/') ||
+          pathname?.startsWith('/masters/') ||
+          pathname === '/party' ||
+          pathname === '/account-purpose' ||
+          pathname === '/investment' ||
+          pathname === '/business-segment' ||
+          pathname === '/business-sub-segment' ||
+          pathname === '/agreement-Type' ||
+          pathname === '/agreement-Sub-Type' ||
+          pathname === '/product' ||
+          pathname === '/agreement-segment' ||
+          pathname === '/general-ledger-account' ||
+          pathname === '/beneficiary' ||
+          pathname === '/country' ||
+          pathname === '/currency' ||
+          pathname?.startsWith('/party/') ||
+          pathname?.startsWith('/account-purpose/') ||
+          pathname?.startsWith('/investment/') ||
+          pathname?.startsWith('/business-segment/') ||
+          pathname?.startsWith('/business-sub-segment/') ||
+          pathname?.startsWith('/agreement-Type/') ||
+          pathname?.startsWith('/agreement-Sub-Type/') ||
+          pathname?.startsWith('/product/') ||
+          pathname?.startsWith('/agreement-segment/') ||
+          pathname?.startsWith('/general-ledger-account/') ||
+          pathname?.startsWith('/beneficiary/') ||
+          pathname?.startsWith('/country/') ||
+          pathname?.startsWith('/currency/')
+        )
+      }
+      if (route === '/party') {
+        return pathname === '/party' || pathname?.startsWith('/party/')
+      }
+      if (route === '/investment') {
+        return (
+          pathname === '/investment' || pathname?.startsWith('/investment/')
+        )
+      }
+      if (route === '/business-segment') {
+        return (
+          pathname === '/business-segment' ||
+          pathname?.startsWith('/business-segment/')
+        )
+      }
+      if (route === '/business-sub-segment') {
+        return (
+          pathname === '/business-sub-segment' ||
+          pathname?.startsWith('/business-sub-segment/')
+        )
+      }
+      if (route === '/agreement-segment') {
+        return (
+          pathname === '/agreement-segment' ||
+          pathname?.startsWith('/agreement-segment/')
+        )
+      }
+      if (route === '/agreement-type') {
+        return (
+          pathname === '/agreement-type' ||
+          pathname?.startsWith('/agreement-type/')
+        )
+      }
+      if (route === '/agreement-sub-type') {
+        return (
+          pathname === '/agreement-sub-type' ||
+          pathname?.startsWith('/agreement-sub-type/')
+        )
+      }
+      if (route === '/product-program') {
+        return (
+          pathname === '/product-program' ||
+          pathname?.startsWith('/product-program/')
+        )
+      }
+      if (route === '/beneficiary') {
+        return (
+          pathname === '/beneficiary' || pathname?.startsWith('/beneficiary/')
+        )
+      }
+      if (route === '/general-ledger-account') {
+        return (
+          pathname === '/general-ledger-account' ||
+          pathname?.startsWith('/general-ledger-account/')
+        )
+      }
+      if (route === '/country') {
+        return pathname === '/country' || pathname?.startsWith('/country/')
+      }
+      if (route === '/currency') {
+        return pathname === '/currency' || pathname?.startsWith('/currency/')
+      }
+      if (route === '/agreement') {
+        return pathname === '/agreement' || pathname?.startsWith('/agreement/')
+      }
+      if (route === '/agreement-signatory') {
+        return pathname === '/agreement-signatory' || pathname?.startsWith('/agreement-signatory/')
+      }
+      if (route === '/escrow-account') {
+        return pathname === '/escrow-account' || pathname?.startsWith('/escrow-account/')
+      }
+      if (route === '/agreement-parameter') {
+        return pathname === '/agreement-parameter' || pathname?.startsWith('/agreement-parameter/')
+      }
+      if (route === '/agreement-fee-schedule') {
+        return pathname === '/agreement-fee-schedule' || pathname?.startsWith('/agreement-fee-schedule/')
+      }
+      if (route === '/payment-beneficiary') {
+        return (
+          pathname === '/payment-beneficiary' ||
+          pathname?.startsWith('/payment-beneficiary/')
+        )
+      }
+      if (route === '/payment-instruction') {
+        return (
+          pathname === '/payment-instruction' ||
+          pathname?.startsWith('/payment-instruction/')
         )
       }
       if (route === '/help') {
@@ -169,11 +268,11 @@ const LayoutContentComponent = ({ children }: LayoutContentProps) => {
     })
 
     return isValidRoute
-  }, [pathname])
+  }, [pathname, isAuthenticated])
 
   if (shouldShowSidebar) {
     return (
-      <div className="flex h-screen bg-[#F3F4F6]">
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         <Sidebar />
         <div className="flex flex-col flex-1 overflow-hidden">{children}</div>
       </div>

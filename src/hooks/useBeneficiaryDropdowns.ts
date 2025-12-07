@@ -14,7 +14,7 @@ export const useBankNames = () => {
     queryFn: async () => {
       const rawBankNames = await BeneficiaryDropdownService.fetchBankNames()
       const processedBankNames = BeneficiaryDropdownService.processDropdownOptions(rawBankNames)
-      console.log('🔄 Processed Bank Names:', processedBankNames)
+      
       return processedBankNames
     },
     staleTime: STALE_TIME,
@@ -35,7 +35,7 @@ export const useTransferTypes = () => {
     queryFn: async () => {
       const rawTransferTypes = await BeneficiaryDropdownService.fetchTransferTypes()
       const processedTransferTypes = BeneficiaryDropdownService.processDropdownOptions(rawTransferTypes)
-      console.log('🔄 Processed Transfer Types:', processedTransferTypes)
+      
       return processedTransferTypes
     },
     staleTime: STALE_TIME,

@@ -64,8 +64,8 @@ export const ManualPaymentDataProvider: React.FC<ManualPaymentDataProviderProps>
     // Real Estate Assets hook
     const realEstateAssetsQuery = useRealEstateAssets(0, 20)
 
-    // Build Partners hook
-    const buildPartnersQuery = useBuildPartners(0, 100)
+    // Build Partners hook - fetch 1000 items at once (page 0, size 1000)
+    const buildPartnersQuery = useBuildPartners(0, 1000)
 
     // Account Balance hooks
     const accountBalances = useMultipleAccountBalances()

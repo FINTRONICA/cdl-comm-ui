@@ -130,7 +130,7 @@ export const safeString = (value: any, fallback: string = ''): string => {
     
     // Handle [object Object] case
     if (typeof value === 'object' && !Array.isArray(value)) {
-      console.warn('displayValue received object:', value)
+      // console.warn('displayValue received object:', value)
       return fallback
     }
     
@@ -140,7 +140,7 @@ export const safeString = (value: any, fallback: string = ''): string => {
       // Check if array contains objects
       const hasObjects = value.some(item => typeof item === 'object' && item !== null)
       if (hasObjects) {
-        console.warn('displayValue received array with objects:', value)
+        // console.warn('displayValue received array with objects:', value)
         return fallback
       }
       return value.join(', ')
@@ -150,13 +150,13 @@ export const safeString = (value: any, fallback: string = ''): string => {
     
     // Check for [object Object] string
     if (stringValue === '[object Object]') {
-      console.warn('displayValue received [object Object]:', value)
+      // console.warn('displayValue received [object Object]:', value)
       return fallback
     }
     
     // Check for other object-like strings
     if (stringValue.includes('[object ') && stringValue.includes(']')) {
-      console.warn('displayValue received object-like string:', value)
+      // console.warn('displayValue received object-like string:', value)
       return fallback
     }
     
@@ -209,7 +209,7 @@ export const safeString = (value: any, fallback: string = ''): string => {
       if (value.label) return String(value.label)
       if (value.id) return String(value.id)
       
-      console.warn('safeDisplayValue received unhandled object:', value)
+      // console.warn('safeDisplayValue received unhandled object:', value)
       return fallback
     }
     

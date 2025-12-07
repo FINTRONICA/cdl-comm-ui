@@ -9,6 +9,7 @@ import {
   Button,
   Typography,
   Paper,
+  useTheme,
 } from '@mui/material'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
@@ -32,41 +33,57 @@ const steps = [
 ]
 
 const ProjectDetailsStepper: React.FC = () => {
+  const theme = useTheme()
   const [activeStep, setActiveStep] = useState(0)
   const [projectData, setProjectData] = useState<ProjectData>({
-    sectionId: 'PROJ7102',
-    developerId: '12345677',
-    developerName: '',
-    masterDeveloperName: '',
-    projectName: '',
-    projectLocation: '',
-    projectAccountCif: '',
-    projectStatus: '',
-    projectAccountStatusDate: null,
-    projectRegistrationDate: null,
-    projectStartDate: null,
-    projectCompletionDate: null,
-    retention: '5.00',
-    additionalRetention: '8.00',
-    totalRetention: '13.00',
-    retentionEffectiveStartDate: dayjs('2022-03-31'),
-    projectManagementExpenses: '5.00',
-    marketingExpenses: '10.00',
-    realEstateBrokerExpense: '',
-    advertisingExpense: '',
-    landOwnerName: '',
-    projectCompletionPercentage: '',
-    currency: 'AED',
-    actualConstructionCost: '',
-    noOfUnits: '12',
-    remarks: '',
-    specialApproval: '',
-    paymentType: '',
-    managedBy: 'erm_checker1,erm_checker1,erm_checker1',
-    backupRef: 'Master ENBD_robust_maker1',
-    relationshipManager: '',
-    assistantRelationshipManager: '',
-    teamLeaderName: '',
+    reaId: 'PROJ7102',
+    reaCif: '',
+    reaName: '',
+    reaLocation: '',
+    reaReraNumber: '',
+    reaAccoutStatusDate: null,
+    reaAccStatusDate: null,
+    reaRegistrationDate: null,
+    reaStartDate: null,
+    reaCompletionDate: null,
+    reaRetentionPercent: '5.00',
+    reaAdditionalRetentionPercent: '8.00',
+    reaTotalRetentionPercent: '13.00',
+    reaRetentionEffectiveDate: dayjs('2022-03-31'),
+    reaManagementExpenses: '5.00',
+    reaMarketingExpenses: '10.00',
+    reaRealEstateBrokerExp: 0,
+    reaAdvertisementExp: 0,
+    reaLandOwnerName: '',
+    reaPercentComplete: '',
+    reaConstructionCost: 0,
+    reaNoOfUnits: 12,
+    reaRemarks: '',
+    reaSpecialApproval: '',
+    reaManagedBy: 'erm_checker1,erm_checker1,erm_checker1',
+    reaBackupUser: 'Master ENBD_robust_maker1',
+    reamprelationshipManagerName: '',
+    reaAssestRelshipManagerName: '',
+    reaTeamLeadName: '',
+    buildPartnerDTO: {
+      id: 0,
+    },
+    reaStatusDTO: {
+      id: 0,
+    },
+    reaTypeDTO: {
+      id: 0,
+    },
+    reaAccountStatusDTO: {
+      id: 0,
+    },
+    reaConstructionCostCurrencyDTO: {
+      id: 0,
+    },
+    status: null,
+    reaBlockPaymentTypeDTO: {
+      id: 0,
+    },
     accounts: [
       {
         trustAccountNumber: '102800280',
@@ -74,6 +91,27 @@ const ProjectDetailsStepper: React.FC = () => {
         dateOpened: dayjs('2025-06-30'),
         accountTitle: 'Account value',
         currency: 'Currency value',
+      },
+      {
+        trustAccountNumber: '',
+        ibanNumber: '',
+        dateOpened: null,
+        accountTitle: '',
+        currency: 'AED',
+      },
+      {
+        trustAccountNumber: '',
+        ibanNumber: '',
+        dateOpened: null,
+        accountTitle: '',
+        currency: 'AED',
+      },
+      {
+        trustAccountNumber: '',
+        ibanNumber: '',
+        dateOpened: null,
+        accountTitle: '',
+        currency: 'AED',
       },
     ],
     fees: [
@@ -86,6 +124,8 @@ const ProjectDetailsStepper: React.FC = () => {
         feePercentage: '2%',
         amount: '50,000',
         vatPercentage: '18%',
+        currency: 'AED',
+        debitAccount: '',
       },
       {
         feeType: 'Management Fee',
@@ -96,6 +136,8 @@ const ProjectDetailsStepper: React.FC = () => {
         feePercentage: '5%',
         amount: '1,25,000',
         vatPercentage: '5%',
+        currency: 'AED',
+        debitAccount: '',
       },
       {
         feeType: 'Maintenance',
@@ -106,6 +148,8 @@ const ProjectDetailsStepper: React.FC = () => {
         feePercentage: '2%',
         amount: '10,000',
         vatPercentage: '18%',
+        currency: 'AED',
+        debitAccount: '',
       },
     ],
     beneficiaries: [
@@ -167,6 +211,10 @@ const ProjectDetailsStepper: React.FC = () => {
       actualCost: '67,000.00',
       projectBudget: '',
     },
+    closureData: {
+      totalIncomeFund: '',
+      totalPayment: '',
+    },
   })
 
   const handleNext = () => {
@@ -184,17 +232,7 @@ const ProjectDetailsStepper: React.FC = () => {
   const renderStepContent = (step: number) => {
     switch (step) {
       case 0: // Project Details
-        return (
-          <Step1
-            initialData={projectData}
-            onDataChange={(data: any) => {
-              setProjectData((prev) => ({
-                ...prev,
-                ...data,
-              }))
-            }}
-          />
-        )
+        return <Step1 initialData={projectData} />
 
       case 1: // Documents (NEW STEP)
         const DocumentStep = () => {
@@ -208,7 +246,7 @@ const ProjectDetailsStepper: React.FC = () => {
             <FormProvider {...methods}>
               <DocumentUploadFactory
                 type="BUILD_PARTNER_ASSET"
-                entityId={(projectData as any).sectionId || 'temp_project_id'}
+                entityId={projectData.reaId || 'temp_project_id'}
                 isOptional={true}
                 onDocumentsChange={(documents: DocumentItem[]) => {
                   setProjectData((prev) => ({
@@ -290,14 +328,7 @@ const ProjectDetailsStepper: React.FC = () => {
         )
 
       case 7: // Project Closure (shifted from step 6)
-        return (
-          <Step7
-            projectEstimatedCost={
-              projectData.financialData.projectEstimatedCost
-            }
-            actualCost={projectData.financialData.actualCost}
-          />
-        )
+        return <Step7 />
 
       case 8: // Review (shifted from step 7)
         return <Step8 projectData={projectData} />
@@ -312,7 +343,13 @@ const ProjectDetailsStepper: React.FC = () => {
       <Box sx={{ width: '100%', p: 3 }}>
         {/* Header */}
         <Box mb={3}>
-          <Typography variant="h4" gutterBottom>
+          <Typography
+            variant="h4"
+            gutterBottom
+            sx={{
+              color: theme.palette.mode === 'dark' ? '#FFFFFF' : undefined,
+            }}
+          >
             Build Partner Assest Details
           </Typography>
           <Typography variant="body1" color="textSecondary">
@@ -384,8 +421,11 @@ const ProjectDetailsStepper: React.FC = () => {
                   fontSize: '14px',
                   lineHeight: '20px',
                   letterSpacing: 0,
-                  backgroundColor: '#2563EB',
-                  color: '#fff',
+                  backgroundColor: theme.palette.primary.main,
+                  color: theme.palette.primary.contrastText,
+                  '&:hover': {
+                    backgroundColor: theme.palette.primary.dark,
+                  },
                 }}
               >
                 {activeStep === steps.length - 1

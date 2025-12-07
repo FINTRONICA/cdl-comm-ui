@@ -1,24 +1,28 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { CapitalPartnerLabelsService } from '@/services/api/capitalPartnerLabelsService'
-import { useIsAuthenticated } from './useAuthQuery'
+import { useAppStore } from '@/store'
 
 /**
- * Hook to fetch capital partner labels from API
+ * Hook that reads from Zustand store (labels are pre-loaded by ComplianceProvider)
+ * No API calls are made here to avoid duplicate requests
  */
 export function useCapitalPartnerLabels() {
-  const { isAuthenticated } = useIsAuthenticated()
+  // Read labels from Zustand store (already loaded by ComplianceProvider)
+  const capitalPartnerLabels = useAppStore((state) => state.capitalPartnerLabels)
+  const capitalPartnerLabelsLoading = useAppStore((state) => state.capitalPartnerLabelsLoading)
+  const capitalPartnerLabelsError = useAppStore((state) => state.capitalPartnerLabelsError)
 
-  return useQuery({
-    queryKey: ['capitalPartnerLabels'],
-    queryFn: async () => {
-      const rawLabels = await CapitalPartnerLabelsService.fetchLabels()
-      return CapitalPartnerLabelsService.processLabels(rawLabels)
-    },
-    enabled: !!isAuthenticated,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
-    refetchOnWindowFocus: false,
-    retry: 3,
-  })
+  // Return React Query-compatible interface for backwards compatibility
+  return useMemo(
+    () => ({
+      data: capitalPartnerLabels,
+      isLoading: capitalPartnerLabelsLoading,
+      error: capitalPartnerLabelsError ? new Error(capitalPartnerLabelsError) : null,
+      isError: !!capitalPartnerLabelsError,
+      isSuccess: !capitalPartnerLabelsLoading && !!capitalPartnerLabels,
+    }),
+    [capitalPartnerLabels, capitalPartnerLabelsLoading, capitalPartnerLabelsError]
+  )
 }
 
 /**

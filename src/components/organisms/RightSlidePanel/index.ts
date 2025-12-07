@@ -5,5 +5,4 @@ export { RightSlideWorkflowDefinitionPanel } from './RightSlideWorkflowDefinitio
 export { RightSlideWorkflowStageTemplatePanel } from './RightSlideWorkflowStageTemplatePanel'
 export { RightSlideWorkflowAmountRulePanel } from './RightSlideWorkflowAmountRulePanel'
 export { RightSlideWorkflowAmountStageOverridePanel } from './RightSlideWorkflowAmountStageOverridePanel'
-export { RightSlideWorkflowTransactionStatePanel } from './RightSlideWorkflowTransactionStatePanel'
-export { RightSlidePaymentPanel } from './customerSlidePanel/RightSlidePayment'
+export{RightSlideWorkflowTransactionStatePanel} from './RightSlideWorkflowTransactionStatePanel'

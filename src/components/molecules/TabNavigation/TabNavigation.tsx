@@ -25,10 +25,10 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`relative w-[100%] font-sans text-sm leading-5 tracking-normal transition-colors duration-200 h-[48px] ${
+            className={`relative w-[100%] font-sans text-sm leading-5 tracking-normal transition-colors duration-200 h-[48px] cursor-pointer ${
               activeTab === tab.id
-                ? 'text-[#155DFC] border-b-2 border-[#2563EB] font-medium'
-                : 'text-[#1F2937] hover:text-[#155DFC] hover:font-medium border-b border-[#D1D5DB] font-normal'
+                ? 'text-[#155DFC] dark:text-blue-400 border-b-2 border-[#2563EB] dark:border-blue-400 font-medium'
+                : 'text-[#1F2937] dark:text-gray-300 hover:text-[#155DFC] dark:hover:text-blue-400 hover:font-medium border-b border-[#D1D5DB] dark:border-gray-700 font-normal'
             }`}
           >
             {tab.label}

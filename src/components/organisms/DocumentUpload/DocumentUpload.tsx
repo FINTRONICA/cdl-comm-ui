@@ -1,10 +1,9 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Button,
   Card,
   CardContent,
-  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -16,19 +15,14 @@ import {
   Alert,
   Snackbar,
   LinearProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  SelectChangeEvent,
 } from '@mui/material'
+import { alpha, useTheme } from '@mui/material/styles'
 import { TablePagination } from '../../molecules/TablePagination/TablePagination'
 import { FileUploadOutlined as FileUploadOutlinedIcon } from '@mui/icons-material'
 import { Eye, Pencil, Trash2 } from 'lucide-react'
 import { useFormContext } from 'react-hook-form'
+import { useDeleteConfirmation } from '../../../store/confirmationDialogStore'
+import { useAppTheme } from '@/hooks/useAppTheme'
 
 import {
   BaseDocument,
@@ -47,6 +41,7 @@ import {
 } from '../../../services/api/applicationSettingService'
 import { apiClient } from '../../../lib/apiClient'
 import { API_ENDPOINTS } from '../../../constants/apiEndpoints'
+import { UploadPopup } from './components/UploadPopup'
 
 interface DocumentUploadProps<
   T extends BaseDocument = BaseDocument,
@@ -64,7 +59,16 @@ const DocumentUpload = <
   formFieldName = 'documents',
 }: DocumentUploadProps<T, ApiResponse>) => {
   const { setValue, watch } = useFormContext()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const confirmDelete = useDeleteConfirmation()
+  const theme = useTheme()
+  const { isDark, colors } = useAppTheme()
+  const cardBackground = alpha(colors.background.card, isDark ? 0.92 : 0.85)
+  const tableHeaderBackground = alpha(
+    colors.background.secondary,
+    isDark ? 0.6 : 0.8
+  )
+  const tableRowHover = isDark ? alpha('#FFFFFF', 0.05) : alpha('#000000', 0.04)
+  const dividerColor = colors.border.primary
 
   // State management
   const [uploadedDocuments, setUploadedDocuments] = useState<T[]>([])
@@ -78,28 +82,13 @@ const DocumentUpload = <
   const [totalDocuments, setTotalDocuments] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(20)
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean
-    title: string
-    message: string
-    onConfirm: () => void
-  }>({
-    open: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-  })
 
-  const [documentTypeDialog, setDocumentTypeDialog] = useState<{
+  const [uploadPopup, setUploadPopup] = useState<{
     open: boolean
-    files: File[]
-    selectedDocumentType: string
     documentTypes: DropdownOption[]
     loading: boolean
   }>({
     open: false,
-    files: [],
-    selectedDocumentType: '',
     documentTypes: [],
     loading: false,
   })
@@ -170,49 +159,50 @@ const DocumentUpload = <
     }
   }, [uploadedDocuments, setValue, formFieldName])
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-
-    if (files.length === 0) return
-
-    setDocumentTypeDialog((prev) => ({
+  const handleUploadClick = async () => {
+    setUploadPopup((prev) => ({
       ...prev,
       open: true,
-      files,
       loading: true,
     }))
 
     try {
       const settingKey = config.documentTypeSettingKey || 'INVESTOR_ID_TYPE'
+      console.log('[DocumentUpload] Fetching document types for setting key:', settingKey)
+      
       const documentTypes =
         await applicationSettingService.getDropdownOptionsByKey(settingKey)
-      setDocumentTypeDialog((prev) => ({
-        ...prev,
-        documentTypes,
-        loading: false,
-      }))
+      
+      console.log('[DocumentUpload] Received document types:', documentTypes?.length || 0, documentTypes)
+      
+      // Only use fallback if we truly have no options
+      if (!documentTypes || documentTypes.length === 0) {
+        console.warn('[DocumentUpload] No document types found for setting key:', settingKey)
+        // Don't use fallback - let the user see that no types are available
+        setUploadPopup((prev) => ({
+          ...prev,
+          documentTypes: [],
+          loading: false,
+        }))
+      } else {
+        setUploadPopup((prev) => ({
+          ...prev,
+          documentTypes,
+          loading: false,
+        }))
+      }
     } catch (error) {
-      setDocumentTypeDialog((prev) => ({
+      console.error('[DocumentUpload] Error fetching document types:', error)
+      // On error, show empty array so user knows something went wrong
+      setUploadPopup((prev) => ({
         ...prev,
-        documentTypes: [{ id: 0, value: 'CP_OTHER', label: 'Other' }],
+        documentTypes: [],
         loading: false,
       }))
     }
   }
 
-  const handleDocumentTypeConfirm = async () => {
-    const { files, selectedDocumentType } = documentTypeDialog
-
-    if (!selectedDocumentType) {
-      setUploadError('Please select a document type')
-      return
-    }
-
-    setDocumentTypeDialog((prev) => ({ ...prev, open: false }))
+  const handlePopupUpload = async (files: File[], documentType: string) => {
     setIsUploading(true)
     setUploadError(null)
 
@@ -220,6 +210,23 @@ const DocumentUpload = <
       const newDocuments: T[] = []
 
       for (const file of files) {
+        // Final validation - ensure only supported file types
+        const fileExtension = '.' + file.name.toLowerCase().split('.').pop()
+        const allowedExtensions = [
+          '.pdf',
+          '.docx',
+          '.xlsx',
+          '.jpg',
+          '.jpeg',
+          '.png',
+        ]
+        if (!allowedExtensions.includes(fileExtension)) {
+          setUploadError(
+            `Only PDF, DOCX, XLSX, JPEG, PNG files are allowed. ${file.name} is not a supported file type.`
+          )
+          continue
+        }
+
         const validationResult = validateFile(file, uploadConfig)
         if (!validationResult.isValid) {
           setUploadError(validationResult.error || 'File validation failed')
@@ -256,7 +263,7 @@ const DocumentUpload = <
             const response = await config.documentService.uploadDocument(
               document.file!,
               config.entityId,
-              selectedDocumentType
+              documentType
             )
 
             const updatedDocument = config.mapApiToDocument(response)
@@ -314,10 +321,11 @@ const DocumentUpload = <
       }
     } finally {
       setIsUploading(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
+  }
+
+  const handlePopupClose = () => {
+    setUploadPopup((prev) => ({ ...prev, open: false }))
   }
 
   const handleDownload = async (doc: T) => {
@@ -371,12 +379,20 @@ const DocumentUpload = <
     document: T
   ) => {
     if (action.requiresConfirmation) {
-      setConfirmDialog({
-        open: true,
-        title: `Confirm ${action.label}`,
-        message:
-          action.confirmationMessage ||
-          `Are you sure you want to ${action.label.toLowerCase()} this document?`,
+      // Get document name for display
+      const documentName =
+        (document as any).name ||
+        (document as any).fileName ||
+        (document as any).documentName ||
+        'document'
+
+      // Use global delete confirmation dialog (same as build partner main page)
+      confirmDelete({
+        itemName: documentName,
+        itemId: (document as any).id?.toString(),
+        ...(action.confirmationMessage && {
+          message: action.confirmationMessage,
+        }),
         onConfirm: async () => {
           try {
             // If it's a delete action, call the DELETE API
@@ -397,9 +413,6 @@ const DocumentUpload = <
               )
               setValue(formFieldName, updatedDocuments)
 
-              // Show success message
-              setUploadSuccess('Document deleted successfully')
-
               // Call the original action handler if it exists
               if (action.onClick) {
                 await action.onClick(document)
@@ -419,39 +432,14 @@ const DocumentUpload = <
           } catch (error) {
             const errorMessage = `Failed to ${action.label.toLowerCase()} document. Please try again.`
             setUploadError(errorMessage)
-          } finally {
-            setConfirmDialog((prev) => ({ ...prev, open: false }))
+            throw error // Re-throw to keep dialog open on error
           }
         },
       })
     } else {
       try {
-        // If it's a delete action, call the DELETE API
-        if (action.key === 'delete' && document.id) {
-          const deleteUrl = API_ENDPOINTS.REAL_ESTATE_DOCUMENT.DELETE(
-            document.id
-          )
-          await apiClient.delete(deleteUrl)
-
-          // Remove the document from the local state
-          setUploadedDocuments((prev) =>
-            prev.filter((doc) => doc.id !== document.id)
-          )
-
-          // Update form value
-          const updatedDocuments = uploadedDocuments.filter(
-            (doc) => doc.id !== document.id
-          )
-          setValue(formFieldName, updatedDocuments)
-
-          // Show success message
-          setUploadSuccess('Document deleted successfully')
-
-          // Call the original action handler if it exists
-          if (action.onClick) {
-            await action.onClick(document)
-          }
-        } else if (action.key === 'download') {
+        // For actions without confirmation
+        if (action.key === 'download') {
           // Handle download action
           await handleDownload(document)
 
@@ -488,13 +476,15 @@ const DocumentUpload = <
     <Card
       sx={{
         boxShadow: 'none',
-        backgroundColor: '#FFFFFFBF',
+        backgroundColor: cardBackground,
         width: '84%',
         margin: '0 auto',
+        border: `1px solid ${dividerColor}`,
+        color: colors.text.primary,
         ...config.cardProps,
       }}
     >
-      <CardContent>
+      <CardContent sx={{ color: colors.text.primary }}>
         {config.isOptional && config.description && (
           <Typography
             variant="body2"
@@ -502,7 +492,7 @@ const DocumentUpload = <
               fontFamily: 'Outfit, sans-serif',
               fontWeight: 400,
               fontSize: '14px',
-              color: '#6A7282',
+              color: colors.text.secondary,
               mb: 3,
               textAlign: 'center',
             }}
@@ -528,37 +518,43 @@ const DocumentUpload = <
                 lineHeight: '28px',
                 letterSpacing: '0.15px',
                 verticalAlign: 'middle',
+                color: colors.text.primary,
               }}
             >
               {config.title || 'Document Management'}
             </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<FileUploadOutlinedIcon />}
-              onClick={handleUploadClick}
-              disabled={isUploading}
-              sx={{
-                textTransform: 'none',
-                fontFamily: 'Outfit, sans-serif',
-                fontWeight: 500,
-                fontStyle: 'normal',
-                fontSize: '14px',
-                lineHeight: '20px',
-                letterSpacing: '0px',
-              }}
-            >
-              {isUploading ? 'Uploading...' : 'Upload Documents'}
-            </Button>
+            {!config.isReadOnly && (
+              <Button
+                variant="outlined"
+                startIcon={<FileUploadOutlinedIcon />}
+                onClick={handleUploadClick}
+                disabled={!!isUploading}
+                sx={{
+                  textTransform: 'none',
+                  fontFamily: 'Outfit, sans-serif',
+                  fontWeight: 500,
+                  fontStyle: 'normal',
+                  fontSize: '14px',
+                  lineHeight: '20px',
+                  letterSpacing: '0px',
+                  borderColor: alpha(
+                    theme.palette.primary.main,
+                    isDark ? 0.4 : 0.6
+                  ),
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    borderColor: theme.palette.primary.main,
+                    backgroundColor: alpha(
+                      theme.palette.primary.main,
+                      isDark ? 0.12 : 0.08
+                    ),
+                  },
+                }}
+              >
+                {isUploading ? 'Uploading...' : 'Upload Documents'}
+              </Button>
+            )}
           </Box>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-            multiple={uploadConfig.multiple}
-            accept={uploadConfig.accept}
-          />
 
           {/* Progress Bar */}
           {isUploading && (
@@ -575,28 +571,37 @@ const DocumentUpload = <
 
           <TableContainer
             component={Paper}
-            sx={{ mt: 2, ...config.tableProps }}
+            sx={{
+              mt: 2,
+              backgroundColor: colors.background.card,
+              borderRadius: '16px',
+              border: `1px solid ${dividerColor}`,
+              boxShadow: 'none',
+              ...config.tableProps,
+            }}
           >
             <Table>
-              <TableHead>
+              <TableHead
+                sx={{
+                  backgroundColor: tableHeaderBackground,
+                  '& .MuiTableCell-root': {
+                    fontFamily: 'Outfit',
+                    fontWeight: 500,
+                    color: colors.text.secondary,
+                    borderBottom: `1px solid ${dividerColor}`,
+                  },
+                }}
+              >
                 <TableRow>
                   {config.columns.map((column) => (
                     <TableCell
                       key={column.key.toString()}
-                      sx={{
-                        fontFamily: 'Outfit',
-                        fontWeight: 'normal',
-                        width: column.width,
-                      }}
+                      sx={{ width: column.width }}
                     >
                       {column.label}
                     </TableCell>
                   ))}
-                  <TableCell
-                    sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
-                  >
-                    Available Actions
-                  </TableCell>
+                  <TableCell>Available Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -605,10 +610,15 @@ const DocumentUpload = <
                     <TableCell
                       colSpan={config.columns.length + 1}
                       align="center"
-                      sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                      sx={{
+                        fontFamily: 'Outfit',
+                        fontWeight: 'normal',
+                        color: colors.text.secondary,
+                        borderBottom: `1px solid ${dividerColor}`,
+                      }}
                     >
                       <LinearProgress sx={{ width: '100%', mb: 2 }} />
-                      Loading documents...
+                      Loading...
                     </TableCell>
                   </TableRow>
                 ) : uploadedDocuments.filter((doc) => doc.status !== 'failed')
@@ -616,85 +626,118 @@ const DocumentUpload = <
                   uploadedDocuments
                     .filter((doc) => doc.status !== 'failed')
                     .map((doc, index) => (
-                      <TableRow key={doc.id || index}>
+                      <TableRow
+                        key={doc.id || index}
+                        sx={{
+                          backgroundColor: colors.background.card,
+                          '&:hover': { backgroundColor: tableRowHover },
+                        }}
+                      >
                         {config.columns.map((column) => (
                           <TableCell
                             key={column.key.toString()}
-                            sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                            sx={{
+                              fontFamily: 'Outfit',
+                              fontWeight: 'normal',
+                              color: colors.text.primary,
+                              borderBottom: `1px solid ${alpha(dividerColor, 0.6)}`,
+                            }}
                           >
                             {renderCellValue(column, doc)}
                           </TableCell>
                         ))}
                         <TableCell
-                          sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                          sx={{
+                            fontFamily: 'Outfit',
+                            fontWeight: 'normal',
+                            color: colors.text.secondary,
+                            borderBottom: `1px solid ${alpha(dividerColor, 0.6)}`,
+                          }}
                         >
                           <div className="flex items-center gap-2">
-                            {config.actions.map((action) => {
-                              const isDisabled =
-                                doc.status === 'uploading' ||
-                                (action.disabled?.(doc) ?? false)
+                            {config.actions
+                              .filter((action) => {
+                                // Hide delete and edit actions in read-only mode
+                                if (
+                                  config.isReadOnly &&
+                                  (action.key === 'delete' ||
+                                    action.key === 'edit')
+                                ) {
+                                  return false
+                                }
+                                return true
+                              })
+                              .map((action) => {
+                                const isDisabled =
+                                  (config.isReadOnly &&
+                                    (action.key === 'delete' ||
+                                      action.key === 'edit')) ||
+                                  doc.status === 'uploading' ||
+                                  (action.disabled?.(doc) ?? false)
 
-                              const getButtonClass = () => {
-                                if (isDisabled) {
-                                  return 'p-1 transition-colors rounded cursor-not-allowed opacity-50'
+                                const getButtonClass = () => {
+                                  if (isDisabled) {
+                                    return 'p-1 transition-colors rounded cursor-not-allowed opacity-50 dark:opacity-40'
+                                  }
+
+                                  if (action.color === 'error') {
+                                    return 'p-1 transition-colors rounded cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20'
+                                  }
+
+                                  if (action.key === 'edit') {
+                                    return 'p-1 transition-colors rounded cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                                  }
+
+                                  return 'p-1 transition-colors rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700'
                                 }
 
-                                if (action.color === 'error') {
-                                  return 'p-1 transition-colors rounded cursor-pointer hover:bg-red-50'
+                                const getIconClass = () => {
+                                  if (isDisabled) {
+                                    return 'w-4 h-4 text-gray-300 dark:text-gray-500'
+                                  }
+
+                                  if (action.color === 'error') {
+                                    return 'w-4 h-4 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300'
+                                  }
+
+                                  if (action.key === 'edit') {
+                                    return 'w-4 h-4 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'
+                                  }
+
+                                  return 'w-4 h-4 text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100'
                                 }
 
-                                if (action.key === 'edit') {
-                                  return 'p-1 transition-colors rounded cursor-pointer hover:bg-blue-50'
-                                }
-
-                                return 'p-1 transition-colors rounded cursor-pointer hover:bg-gray-100'
-                              }
-
-                              const getIconClass = () => {
-                                if (isDisabled) {
-                                  return 'w-4 h-4 text-gray-300'
-                                }
-
-                                if (action.color === 'error') {
-                                  return 'w-4 h-4 text-red-600 hover:text-red-800'
-                                }
-
-                                if (action.key === 'edit') {
-                                  return 'w-4 h-4 text-blue-600 hover:text-blue-800'
-                                }
-
-                                return 'w-4 h-4 text-gray-500 hover:text-gray-700'
-                              }
-
-                              return (
-                                <button
-                                  key={action.key}
-                                  onClick={() => handleActionClick(action, doc)}
-                                  disabled={isDisabled}
-                                  className={getButtonClass()}
-                                  title={action.label}
-                                  data-row-action={action.key}
-                                >
-                                  {action.icon ? (
-                                    <div className={getIconClass()}>
-                                      {action.icon}
-                                    </div>
-                                  ) : (
-                                    <>
-                                      {action.key === 'view' && (
-                                        <Eye className={getIconClass()} />
-                                      )}
-                                      {action.key === 'edit' && (
-                                        <Pencil className={getIconClass()} />
-                                      )}
-                                      {action.key === 'delete' && (
-                                        <Trash2 className={getIconClass()} />
-                                      )}
-                                    </>
-                                  )}
-                                </button>
-                              )
-                            })}
+                                return (
+                                  <button
+                                    key={action.key}
+                                    onClick={() =>
+                                      handleActionClick(action, doc)
+                                    }
+                                    disabled={isDisabled}
+                                    className={getButtonClass()}
+                                    title={action.label}
+                                    data-row-action={action.key}
+                                  >
+                                    {action.icon ? (
+                                      <div className={getIconClass()}>
+                                        {action.icon}
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {action.key === 'view' && (
+                                          <Eye className={getIconClass()} />
+                                        )}
+                                        {action.key === 'edit' && (
+                                          <Pencil className={getIconClass()} />
+                                        )}
+                                        {action.key === 'delete' && (
+                                          <Trash2 className={getIconClass()} />
+                                        )}
+                                      </>
+                                    )}
+                                  </button>
+                                )
+                              })}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -702,7 +745,12 @@ const DocumentUpload = <
                 ) : (
                   <TableRow>
                     <TableCell
-                      sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                      sx={{
+                        fontFamily: 'Outfit',
+                        fontWeight: 'normal',
+                        color: colors.text.secondary,
+                        borderBottom: `1px solid ${alpha(dividerColor, 0.6)}`,
+                      }}
                       colSpan={config.columns.length + 1}
                       align="center"
                     >
@@ -725,38 +773,10 @@ const DocumentUpload = <
               endItem={endItem}
               onPageChange={handlePageChange}
               onRowsPerPageChange={handleRowsPerPageChange}
-              className="border-t border-gray-200"
+              className="border-t border-gray-200 dark:border-gray-700"
             />
           )}
         </Box>
-
-        {/* Confirmation Dialog */}
-        <Dialog
-          open={confirmDialog.open}
-          onClose={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}
-        >
-          <DialogTitle>{confirmDialog.title}</DialogTitle>
-          <DialogContent>
-            <Typography>{confirmDialog.message}</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() =>
-                setConfirmDialog((prev) => ({ ...prev, open: false }))
-              }
-              sx={{ fontFamily: 'Outfit' }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmDialog.onConfirm}
-              color="primary"
-              sx={{ fontFamily: 'Outfit' }}
-            >
-              Confirm
-            </Button>
-          </DialogActions>
-        </Dialog>
 
         {/* Success/Error Notifications */}
         <Snackbar
@@ -789,98 +809,21 @@ const DocumentUpload = <
           </Alert>
         </Snackbar>
 
-        {/* Document Type Selection Dialog */}
-        <Dialog
-          open={documentTypeDialog.open}
-          onClose={() =>
-            setDocumentTypeDialog((prev) => ({ ...prev, open: false }))
-          }
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle sx={{ fontFamily: 'Outfit' }}>
-            Select Document Type
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" sx={{ mb: 3, fontFamily: 'Outfit' }}>
-              Please select the type of document you are uploading:
-            </Typography>
-
-            {documentTypeDialog.files.length > 0 && (
-              <Box mb={2}>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ fontFamily: 'Outfit', mb: 1 }}
-                >
-                  Files to upload:
-                </Typography>
-                {documentTypeDialog.files.map((file, index) => (
-                  <Typography
-                    key={index}
-                    variant="body2"
-                    sx={{ fontFamily: 'Outfit', color: '#666' }}
-                  >
-                    • {file.name}
-                  </Typography>
-                ))}
-              </Box>
-            )}
-
-            {documentTypeDialog.loading ? (
-              <Box display="flex" justifyContent="center" py={2}>
-                <LinearProgress sx={{ width: '100%' }} />
-              </Box>
-            ) : (
-              <FormControl fullWidth sx={{ mt: 2 }}>
-                <InputLabel sx={{ fontFamily: 'Outfit' }}>
-                  Document Type
-                </InputLabel>
-                <Select
-                  value={documentTypeDialog.selectedDocumentType}
-                  onChange={(e: SelectChangeEvent) =>
-                    setDocumentTypeDialog((prev) => ({
-                      ...prev,
-                      selectedDocumentType: e.target.value,
-                    }))
-                  }
-                  label="Document Type"
-                  sx={{ fontFamily: 'Outfit' }}
-                >
-                  {documentTypeDialog.documentTypes.map((docType) => (
-                    <MenuItem
-                      key={docType.id}
-                      value={docType.id.toString()}
-                      sx={{ fontFamily: 'Outfit' }}
-                    >
-                      {docType.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() =>
-                setDocumentTypeDialog((prev) => ({ ...prev, open: false }))
-              }
-              sx={{ fontFamily: 'Outfit' }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDocumentTypeConfirm}
-              color="primary"
-              disabled={
-                !documentTypeDialog.selectedDocumentType ||
-                documentTypeDialog.loading
-              }
-              sx={{ fontFamily: 'Outfit' }}
-            >
-              Upload
-            </Button>
-          </DialogActions>
-        </Dialog>
+        {/* Upload Popup */}
+        <UploadPopup
+          open={uploadPopup.open}
+          onClose={handlePopupClose}
+          onUpload={handlePopupUpload}
+          documentTypes={uploadPopup.documentTypes}
+          loading={uploadPopup.loading}
+          accept={uploadConfig.accept || '.pdf,.docx,.xlsx,.jpg,.jpeg,.png'}
+          multiple={uploadConfig.multiple || true}
+          maxFiles={10}
+          maxSize={Math.round(
+            (uploadConfig.maxFileSize || 25 * 1024 * 1024) / (1024 * 1024)
+          )}
+          uploadConfig={uploadConfig}
+        />
       </CardContent>
     </Card>
   )

@@ -54,10 +54,10 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     <div className="relative" ref={dropdownRef}>
       {/* Main Profile Display - Always visible */}
       <div
-        className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
+        className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg px-2 py-1 transition-colors"
         onClick={handleDropdownToggle}
       >
-        <span className="text-sm text-gray-900 leading-3 font-medium">
+        <span className="text-sm text-gray-900 dark:text-gray-100 leading-3 font-medium">
           {name}
         </span>
         <div className="flex items-center gap-0">
@@ -67,7 +67,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
             size="md"
           />
           <ChevronDown
-            className={`w-4 h-4 ml-[5px] text-gray-600 -ml-1 transition-transform ${
+            className={`w-4 h-4 ml-[5px] text-gray-600 dark:text-gray-400 -ml-1 transition-transform ${
               isDropdownOpen ? 'rotate-180' : ''
             }`}
           />
@@ -76,9 +76,9 @@ export const UserProfile: React.FC<UserProfileProps> = ({
 
       {/* Dropdown Menu */}
       {isDropdownOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 py-2 z-50">
           {/* User Info Section - Shows name prominently */}
-          <div className="px-4 py-3 border-b border-gray-100">
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-3">
               <Avatar
                 {...(avatar && { src: avatar })}
@@ -86,20 +86,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({
                 size="sm"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                   {name}
                 </p>
                 {email && (
-                  <p className="text-xs text-gray-500 truncate">{email}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{email}</p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Logout Section */}
-          <div className="border-t border-gray-100 py-1">
+          <div className="border-t border-gray-100 dark:border-gray-700 py-1">
             <button
-              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
               onClick={handleLogout}
             >
               <LogOut className="w-4 h-4" />

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { z } from 'zod'
 import { useRouter } from 'next/navigation'
 import {
   Box,
@@ -20,26 +21,30 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material'
-import { Visibility, VisibilityOff, Language } from '@mui/icons-material'
-import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
+import { Visibility, VisibilityOff, Language, ExpandMore as ExpandMoreIcon } from '@mui/icons-material'
 import Image from 'next/image'
 import { useLoginWithLoader } from '@/hooks/useAuthQuery'
+import { UserSchemas } from '@/lib/validation/userSchemas'
 
 export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [language, setLanguage] = useState('en')
 
+  type LoginValues = z.infer<typeof UserSchemas.login> & { rememberMe: boolean }
+
   const searchParams = new URLSearchParams(
     typeof window !== 'undefined' ? window.location.search : ''
   )
   const redirectTo = searchParams.get('redirect') || '/dashboard'
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<LoginValues>({
     username: '',
     password: '',
     rememberMe: true,
   })
+
+  const [fieldErrors, setFieldErrors] = useState<{username?: string; password?: string}>({})
 
   const {
     login,
@@ -49,27 +54,52 @@ export default function LoginPage() {
     apiProgress,
     loadingStatus,
     error,
+    errorMessage,
   } = useLoginWithLoader()
 
+  // Check if user is already authenticated using cookies (not localStorage)
   useEffect(() => {
-    const token =
-      localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')
-    if (token) {
-      router.replace('/dashboard')
+    // Import getAuthCookies dynamically to avoid SSR issues
+    const checkAuth = async () => {
+      const { getAuthCookies } = await import('@/utils/cookieUtils')
+      const { token } = getAuthCookies()
+      if (token) {
+        router.replace('/dashboard')
+      }
     }
+    checkAuth()
   }, [router])
 
   const handleLanguageChange = (event: any) => {
     setLanguage(event.target.value)
   }
 
+  const validateField = (name: 'username' | 'password', value: string) => {
+    const partial = UserSchemas.login.pick({ [name]: true } as any)
+    const result = partial.safeParse({ [name]: value })
+    setFieldErrors(prev => ({ 
+      ...prev, 
+      [name]: result.success ? undefined : result.error.issues[0]?.message 
+    }))
+  }
+
   const handleInputChange =
     (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value
       setFormData((prev) => ({
         ...prev,
-        [field]: event.target.value,
+        [field]: value,
       }))
+      
+      // Clear error for this field when user starts typing
+      if (fieldErrors[field as keyof typeof fieldErrors]) {
+        setFieldErrors(prev => ({ ...prev, [field]: undefined }))
+      }
     }
+
+  const handleFieldBlur = (field: 'username' | 'password') => (event: React.FocusEvent<HTMLInputElement>) => {
+    validateField(field, event.target.value)
+  }
 
   const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -80,14 +110,33 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     try {
-      const result = await login({
+      // Validate form data with Zod
+      const parsed = UserSchemas.login.safeParse({
         username: formData.username,
         password: formData.password,
       })
-
-      if (result.token || result.access_token) {
-        router.push(redirectTo)
+      
+      if (!parsed.success) {
+        const errs: Record<string, string> = {}
+        parsed.error.issues.forEach(issue => {
+          if (issue.path[0]) {
+            errs[issue.path[0] as string] = issue.message
+          }
+        })
+        setFieldErrors(errs)
+        return
       }
+      
+      // Clear errors and proceed with login
+      setFieldErrors({})
+      await login(
+        {
+          username: formData.username,
+          password: formData.password,
+        },
+        redirectTo // Pass redirect URL to login hook
+      )
+      // Navigation will happen automatically after all data is loaded
     } catch (error: unknown) {}
   }
 
@@ -138,6 +187,7 @@ export default function LoginPage() {
   return (
     <Grid
       container
+      className="login-page-container"
       sx={{
         minHeight: '100vh',
         backgroundImage: 'url("/login-back.png")',
@@ -162,6 +212,7 @@ export default function LoginPage() {
             alignItems: 'stretch',
             justifyContent: 'space-between',
             boxShadow: 4,
+            
           }}
         >
           <Paper
@@ -202,7 +253,7 @@ export default function LoginPage() {
                     value={language}
                     onChange={handleLanguageChange}
                     displayEmpty
-                    IconComponent={KeyboardArrowDownIcon}
+                    IconComponent={ExpandMoreIcon}
                     inputProps={{ 'aria-label': 'Language' }}
                     startAdornment={
                       <InputAdornment position="start">
@@ -211,7 +262,7 @@ export default function LoginPage() {
                     }
                     sx={{
                       borderRadius: '8px',
-                      border: '2px solid #90CAF9',
+                      border: '1px solid #90CAF9',
                       backgroundColor: 'transparent',
                       color: '#2F80ED',
                       pl: 0.5,
@@ -221,6 +272,11 @@ export default function LoginPage() {
                       '& .MuiSelect-icon': {
                         color: '#2F80ED',
                         right: 8,
+                        fontSize: 20,
+                        strokeWidth: 0.5,
+                        '& path': {
+                          strokeWidth: 0.5,
+                        },
                       },
                       '& fieldset': {
                         border: 'none',
@@ -234,29 +290,40 @@ export default function LoginPage() {
                           </Typography>
                         )
                       }
-                      return selected === 'en' ? 'English' : 'Español'
+                      return 'English'
                     }}
                   >
                     <MenuItem value="en">English</MenuItem>
-                    <MenuItem value="es">Español</MenuItem>
                   </Select>
                 </FormControl>
               </Box>
             </Box>
 
-            <div style={{ marginTop: 8 }}>
-              Welcome back, please login to access your personal account
-            </div>
+            <Box sx={{ mt: 1 }}>
+              <Typography
+                sx={{
+                  // fontFamily: 'Outfit',
+                  fontWeight: 400,
+                  fontStyle: 'normal',
+                  fontSize: '16px',
+                  lineHeight: '100%',
+                  letterSpacing: 0,
+                  color: '#6A7282',
+                }}
+              >
+                 Welcome back, please login to access your personal account
+              </Typography>
+            </Box>
 
             {/* Error/Success Messages */}
-            {Boolean(error) && (
+            {(Boolean(errorMessage) || Boolean(error)) && (
               <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                {String((error as any)?.message || 'Login failed')}
+                {errorMessage || String((error as any)?.message || 'Login failed')}
               </Alert>
             )}
 
             {/* Form */}
-            <Box mt={3} onKeyPress={handleKeyPress}>
+            <Box mt={5}  onKeyPress={handleKeyPress}>
               <TextField
                 fullWidth
                 placeholder="Enter your username"
@@ -264,21 +331,27 @@ export default function LoginPage() {
                 type="text"
                 value={formData.username}
                 onChange={handleInputChange('username')}
+                onBlur={handleFieldBlur('username')}
                 disabled={isLoading}
-                InputLabelProps={{ sx: labelSx }}
+                error={Boolean(fieldErrors.username)}
+                helperText={fieldErrors.username || ' '}
+                slotProps={{ inputLabel: { shrink: true, sx: labelSx } }}
                 InputProps={{ sx: valueSx }}
                 sx={[commonFieldStyles, { mb: 2 }]}
               />
 
               <TextField
                 fullWidth
-                placeholder="••••••••"
+                placeholder="Enter password"
                 type={showPassword ? 'text' : 'password'}
                 label="Password"
                 value={formData.password}
                 onChange={handleInputChange('password')}
+                onBlur={handleFieldBlur('password')}
                 disabled={isLoading}
-                InputLabelProps={{ sx: labelSx }}
+                error={Boolean(fieldErrors.password)}
+                helperText={fieldErrors.password || ' '}
+                slotProps={{ inputLabel: { shrink: true, sx: labelSx } }}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -297,43 +370,7 @@ export default function LoginPage() {
                 sx={[commonFieldStyles, { mb: 2 }]}
               />
 
-              <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={3}
-              >
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={formData.rememberMe}
-                      onChange={handleCheckboxChange}
-                      disabled={isLoading}
-                    />
-                  }
-                  label="Remember me"
-                  sx={{
-                    '& .MuiFormControlLabel-label': {
-                      fontFamily: 'Outfit',
-                      fontSize: '14px',
-                      color: '#1E2939',
-                    },
-                  }}
-                />
-                <Button
-                  variant="text"
-                  sx={{
-                    fontSize: '14px',
-                    fontFamily: 'Outfit',
-                    textTransform: 'none',
-                  }}
-                  onClick={handleForgotPassword}
-                  disabled={isLoading}
-                >
-                  Forgot Password
-                </Button>
-              </Box>
+           
 
               <Button
                 fullWidth
@@ -351,6 +388,7 @@ export default function LoginPage() {
                   borderRadius: '24px',
                   height: '48px',
                   position: 'relative',
+                  mt: 3,
                 }}
               >
                 {isLoading ? (
@@ -366,7 +404,7 @@ export default function LoginPage() {
                     />
                     {isLoginLoading
                       ? 'Authenticating...'
-                      : `Loading data... (${apiProgress.completed}/${apiProgress.total})`}
+                      : `Loading... (${apiProgress.completed}/${apiProgress.total})`}
                   </>
                 ) : (
                   'Login'
@@ -385,7 +423,7 @@ export default function LoginPage() {
                       fontSize: '14px',
                     }}
                   >
-                    {loadingStatus || 'Loading application data...'}
+                    {loadingStatus || 'Loading...'}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Box sx={{ width: '100%' }}>
@@ -432,7 +470,8 @@ export default function LoginPage() {
           textAlign="center"
           display="block"
           mt={2}
-          color="text.secondary"
+          color="#364153"
+          fontSize="14px"
         >
           © 2025, Powered by <strong>Fintronika®</strong>
         </Typography>

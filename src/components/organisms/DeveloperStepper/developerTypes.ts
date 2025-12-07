@@ -127,7 +127,7 @@ export interface ProjectDetailsData {
   backupRef: string
   relationshipManager: string
   assistantRelationshipManager: string
-  teamLeaderName: string
+  mpteamLeaderName: string
 }
 
 export interface AccountData {
@@ -139,6 +139,7 @@ export interface AccountData {
 }
 
 export interface ContactData extends Record<string, unknown> {
+  id?: number | string
   name: string
   address: string
   email: string
@@ -153,6 +154,7 @@ export interface ContactData extends Record<string, unknown> {
 }
 
 export interface FeeData extends Record<string, unknown> {
+  id?: number | string
   feeType: string
   frequency: string
   debitAmount: string
@@ -176,6 +178,34 @@ export interface BeneficiaryData extends Record<string, unknown> {
   account: string
   buildPartnerDTO?: {
     id: number
+  }
+  bpbTransferTypeDTO?: {
+    id: number
+    settingKey: string
+    settingValue: string
+    languageTranslationId: {
+      id: number
+      configId: string
+      configValue: string
+      content: string | null
+      appLanguageCode: {
+        id: number
+        languageCode: string
+        nameKey: string
+        nameNativeValue: string
+        deleted: boolean
+        enabled: boolean
+        rtl: boolean
+      }
+      applicationModuleDTO: any
+      status: any
+      enabled: boolean
+      deleted: boolean
+    }
+    remarks: string | null
+    status: any
+    enabled: boolean
+    deleted: boolean
   }
 }
 

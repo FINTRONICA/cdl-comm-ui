@@ -15,10 +15,12 @@ import {
   Select,
   MenuItem,
   Grid,
+  FormHelperText,
 } from '@mui/material'
 import { Controller, useForm, FieldErrors } from 'react-hook-form'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
+import { toast } from 'react-hot-toast'
 import { getLabelByConfigId as getWorkflowStageTemplateLabel } from '@/constants/mappings/workflowMapping'
 
 import {
@@ -26,7 +28,11 @@ import {
   useUpdateWorkflowStageTemplate,
   useWorkflowStageTemplateForm,
 } from '@/hooks/workflow'
+import { getWorkflowStageTemplateValidationRules } from '@/lib/validation'
+import { useAuthStore } from '@/store/authStore'
 import type { WorkflowStageTemplate } from '@/services/api/workflowApi'
+import { alpha, useTheme } from '@mui/material/styles'
+import { buildPanelSurfaceTokens } from './panelTheme'
 
 interface RightSlideWorkflowStageTemplatePanelProps {
   isOpen: boolean
@@ -56,15 +62,21 @@ const DEFAULT_VALUES: StageTemplateFormData = {
   slaHours: 24,
   workflowDefinitionId: null,
 }
+// Styles will be defined inside component to access theme
 
 export const RightSlideWorkflowStageTemplatePanel: React.FC<
   RightSlideWorkflowStageTemplatePanelProps
 > = ({ isOpen, onClose, mode = 'add', templateData }) => {
+  const theme = useTheme()
+  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const createTemplate = useCreateWorkflowStageTemplate()
   const updateTemplate = useUpdateWorkflowStageTemplate()
+  const user = useAuthStore((s) => s.user)
 
   const { workflowDefinitionOptions, isLoading: formLoading } =
     useWorkflowStageTemplateForm()
+
+  const validationRules = getWorkflowStageTemplateValidationRules()
 
   const {
     control,
@@ -72,9 +84,11 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
     reset,
     formState: { isSubmitting: isFormSubmitting, isDirty },
     clearErrors,
+    trigger,
   } = useForm<StageTemplateFormData>({
     defaultValues: DEFAULT_VALUES,
     mode: 'onChange',
+    reValidateMode: 'onChange',
   })
 
   const isSubmitting =
@@ -84,10 +98,12 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
     formLoading
   const isViewMode = mode === 'view'
 
-  // Button state logic
   const isFormDirty = isDirty
   const canSave = isFormDirty && !isSubmitting && !isViewMode
   const canReset = isFormDirty && !isSubmitting && !isViewMode
+
+  const labelSx = tokens.label
+  const valueSx = tokens.value
 
   useEffect(() => {
     if (!isOpen) return
@@ -116,12 +132,10 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
     workflowDefinitionDTO: string | Record<string, unknown>
   ): number | null => {
     try {
-      // If it's already a number, return it
       if (typeof workflowDefinitionDTO === 'number') {
         return workflowDefinitionDTO
       }
 
-      // If it's an object with an id property
       if (
         workflowDefinitionDTO &&
         typeof workflowDefinitionDTO === 'object' &&
@@ -131,7 +145,6 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
         return isNaN(id) ? null : id
       }
 
-      // If it's a string, try to parse it
       if (typeof workflowDefinitionDTO === 'string') {
         const id = parseInt(workflowDefinitionDTO, 10)
         return isNaN(id) ? null : id
@@ -143,95 +156,87 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
     }
   }
 
-  const onSubmit = (data: StageTemplateFormData) => {
-    const workflowDefinitionDTO = data.workflowDefinitionId
-      ? String(data.workflowDefinitionId)
-      : ''
-
-    // Create payload with only the required fields for CREATE
-    const createPayload = {
-      stageOrder: data.stageOrder,
-      stageKey: data.stageKey.trim(),
-      keycloakGroup: data.keycloakGroup.trim(),
-      requiredApprovals: data.requiredApprovals,
-      name: data.name.trim(),
-      description: data.description.trim(),
-      slaHours: data.slaHours,
-      workflowDefinitionDTO: workflowDefinitionDTO,
-    }
-
-    if (mode === 'edit') {
-      if (templateData?.id) {
-        // Create update payload with only the required fields
-        const updatePayload = {
-          id: templateData.id.toString(),
-          stageOrder: data.stageOrder,
-          stageKey: data.stageKey.trim(),
-          keycloakGroup: data.keycloakGroup.trim(),
-          requiredApprovals: data.requiredApprovals,
-          name: data.name.trim(),
-          description: data.description.trim(),
-          slaHours: data.slaHours,
-          workflowDefinitionDTO: workflowDefinitionDTO,
-        }
-
-        updateTemplate.mutate(
-          { id: templateData.id.toString(), updates: updatePayload },
-          {
-            onSuccess: () => {
-              onClose()
-            },
-            onError: (err: Error | unknown) => {
-              console.log(err)
-            },
-          }
-        )
+  const onSubmit = async (data: StageTemplateFormData) => {
+    try {
+      const isValid = await trigger()
+      if (!isValid) {
+        return
       }
-    } else {
-      createTemplate.mutate(createPayload, {
-        onSuccess: () => {
-          onClose()
-        },
-        onError: (err: Error | unknown) => {
-          console.log(err)
-        },
-      })
+      const workflowDefinitionDTO = data.workflowDefinitionId
+        ? String(data.workflowDefinitionId)
+        : ''
+
+      // Create payload with only the required fields for CREATE
+      const createPayload = {
+        stageOrder: data.stageOrder,
+        stageKey: data.stageKey.trim(),
+        keycloakGroup: data.keycloakGroup.trim(),
+        requiredApprovals: data.requiredApprovals,
+        name: data.name.trim(),
+        description: data.description.trim(),
+        slaHours: data.slaHours,
+        workflowDefinitionDTO: workflowDefinitionDTO,
+        createdBy: user?.name || 'system',
+      }
+
+      if (mode === 'edit') {
+        if (templateData?.id) {
+          // Create update payload with only the required fields
+          const updatePayload = {
+            id: templateData.id.toString(),
+            stageOrder: data.stageOrder,
+            stageKey: data.stageKey.trim(),
+            keycloakGroup: data.keycloakGroup.trim(),
+            requiredApprovals: data.requiredApprovals,
+            name: data.name.trim(),
+            description: data.description.trim(),
+            slaHours: data.slaHours,
+            workflowDefinitionDTO: workflowDefinitionDTO,
+            updatedBy: user?.name || 'system',
+          }
+
+          updateTemplate.mutate(
+            { id: templateData.id.toString(), updates: updatePayload },
+            {
+              onSuccess: () => {
+                toast.success('Workflow stage template updated successfully!')
+                onClose()
+              },
+              onError: (err: Error | unknown) => {
+                const error = err as Error & {
+                  response?: { data?: { message?: string } }
+                }
+                const message =
+                  error?.response?.data?.message ||
+                  error?.message ||
+                  'Failed to update workflow stage template'
+                toast.error(message)
+              },
+            }
+          )
+        }
+      } else {
+        createTemplate.mutate(createPayload, {
+          onSuccess: () => {
+            toast.success('Workflow stage template created successfully!')
+            onClose()
+          },
+          onError: (err: Error | unknown) => {
+            const error = err as Error & {
+              response?: { data?: { message?: string } }
+            }
+            const message =
+              error?.response?.data?.message ||
+              error?.message ||
+              'Failed to create workflow stage template'
+            toast.error(message)
+          },
+        })
+      }
+    } catch (error) {
+      throw error
+    } finally {
     }
-  }
-
-  const commonFieldStyles = (hasError: boolean) => ({
-    '& .MuiOutlinedInput-root': {
-      height: '46px',
-      borderRadius: '8px',
-      '& fieldset': {
-        borderColor: hasError ? '#ef4444' : '#CAD5E2',
-        borderWidth: '1px',
-      },
-      '&:hover fieldset': {
-        borderColor: hasError ? '#ef4444' : '#CAD5E2',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: hasError ? '#ef4444' : '#2563EB',
-      },
-    },
-  })
-
-  const labelSx = {
-    fontSize: '14px',
-    fontWeight: 500,
-    color: '#374151',
-    '&.Mui-focused': {
-      color: '#2563EB',
-    },
-  }
-
-  const valueSx = {
-    fontSize: '14px',
-    color: '#111827',
-    '&::placeholder': {
-      color: '#9CA3AF',
-      opacity: 1,
-    },
   }
 
   const handleResetToLoaded = useCallback(() => {
@@ -255,47 +260,8 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
   }, [mode, templateData, reset, clearErrors])
 
   const onError = (errors: FieldErrors<StageTemplateFormData>) => {
-    console.log('Form validation errors:', errors)
+    console.log(errors)
   }
-
-  const renderTextField = (
-    name: keyof StageTemplateFormData,
-    label: string,
-    type: 'text' | 'number' = 'text',
-    gridSize: number = 12
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => (
-          <TextField
-            name={field.name}
-            value={field.value || ''}
-            type={type}
-            label={label}
-            fullWidth
-            disabled={isSubmitting || isViewMode}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{
-              sx: valueSx,
-            }}
-            sx={commonFieldStyles(false)}
-            onChange={(e) => {
-              const value =
-                type === 'number' ? Number(e.target.value) : e.target.value
-              if (type === 'number' && typeof value === 'number' && value < 0) {
-                field.onChange(0)
-              } else {
-                field.onChange(value)
-              }
-            }}
-            onBlur={field.onBlur}
-          />
-        )}
-      />
-    </Grid>
-  )
 
   type OptionItem = {
     label: string
@@ -306,70 +272,414 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
   const renderSelectField = (
     name: keyof StageTemplateFormData,
     label: string,
-    options: OptionItem[] | string[],
-    gridSize: number = 12,
+    options?: OptionItem[] | string[],
+    gridSize: number = 6,
+    showRedAsterisk: boolean = false,
     extraProps: {
       isLoading?: boolean
       disabled?: boolean
       onChange?: (value: string | number) => void
       placeholder?: string
     } = {}
-  ) => (
-    <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue={''}
-        render={({ field }) => (
-          <FormControl fullWidth>
-            <InputLabel sx={labelSx}>
-              {extraProps.placeholder ?? label}
-            </InputLabel>
+  ) => {
+    const resolvedOptions: OptionItem[] | string[] =
+      options && options.length > 0 ? options : []
 
-            <Select
-              {...field}
-              value={field.value ?? ''}
-              onChange={(e) => {
-                const val = (e.target as HTMLInputElement).value
-                field.onChange(val)
-                if (extraProps.onChange) extraProps.onChange(val)
-              }}
-              disabled={
-                !!extraProps.disabled ||
-                !!extraProps.isLoading ||
-                isSubmitting ||
-                isViewMode
-              }
-              label={extraProps.placeholder ?? label}
-              sx={{ ...commonFieldStyles(false), ...valueSx }}
-              IconComponent={KeyboardArrowDownIcon}
-            >
-              {extraProps.isLoading ? (
-                <MenuItem disabled>
-                  <CircularProgress size={16} sx={{ mr: 1 }} />
-                  Loading {label.toLowerCase()}...
-                </MenuItem>
-              ) : Array.isArray(options) && options.length > 0 ? (
-                options.map((opt) =>
-                  typeof opt === 'string' ? (
-                    <MenuItem key={opt} value={opt}>
-                      {opt}
+    return (
+      <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          defaultValue={''}
+          rules={validationRules[name] || {}}
+          render={({ field, fieldState }) => {
+            const hasError = !!fieldState.error
+
+            const fieldStyles = hasError
+              ? {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+              : {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.7)
+                          : '#CAD5E2',
+                      borderWidth: '1px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[300], 0.8)
+                          : '#94A3B8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.primary.main,
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+
+            const dynamicLabelSx = {
+              ...labelSx,
+              ...(hasError && {
+                color: theme.palette.error.main,
+                '& .MuiFormLabel-asterisk': {
+                  color: theme.palette.error.main,
+                },
+              }),
+              ...(showRedAsterisk && {
+                '& .MuiFormLabel-asterisk': {
+                  color: theme.palette.error.main,
+                },
+              }),
+              '&.Mui-focused': {
+                color: hasError
+                  ? theme.palette.error.main
+                  : theme.palette.primary.main,
+              },
+            }
+
+            return (
+              <FormControl
+                fullWidth
+                error={hasError}
+                disabled={!!extraProps.disabled || !!extraProps.isLoading}
+              >
+                <InputLabel
+                  sx={dynamicLabelSx}
+                  id={`${String(name)}-label`}
+                  required={true}
+                >
+                  {extraProps.placeholder ?? label}
+                </InputLabel>
+
+                <Select
+                  labelId={`${String(name)}-label`}
+                  id={`${String(name)}-select`}
+                  name={field.name}
+                  value={field.value ?? ''}
+                  onChange={(e) => {
+                    const val = (e.target as HTMLInputElement).value
+                    field.onChange(val)
+                    if (extraProps.onChange) extraProps.onChange(val)
+                  }}
+                  onBlur={field.onBlur}
+                  disabled={
+                    !!extraProps.disabled ||
+                    !!extraProps.isLoading ||
+                    isSubmitting ||
+                    isViewMode
+                  }
+                  label={extraProps.placeholder ?? label}
+                  sx={{
+                    ...valueSx,
+                    ...fieldStyles,
+                  }}
+                  IconComponent={KeyboardArrowDownIcon}
+                >
+                  {extraProps.isLoading ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={16} sx={{ mr: 1 }} />
+                      Loading {label.toLowerCase()}...
                     </MenuItem>
+                  ) : Array.isArray(resolvedOptions) &&
+                    resolvedOptions.length > 0 ? (
+                    resolvedOptions.map((opt) =>
+                      typeof opt === 'string' ? (
+                        <MenuItem key={opt} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ) : (
+                        <MenuItem key={opt.id ?? opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      )
+                    )
                   ) : (
-                    <MenuItem key={opt.id ?? opt.value} value={opt.value}>
-                      {opt.label}
+                    <MenuItem disabled>
+                      No {label.toLowerCase()} available
                     </MenuItem>
-                  )
-                )
-              ) : (
-                <MenuItem disabled>No {label.toLowerCase()} available</MenuItem>
-              )}
-            </Select>
-          </FormControl>
-        )}
-      />
-    </Grid>
-  )
+                  )}
+                </Select>
+
+                {hasError && (
+                  <FormHelperText>{fieldState.error?.message}</FormHelperText>
+                )}
+              </FormControl>
+            )
+          }}
+        />
+      </Grid>
+    )
+  }
+
+  const renderTextField = (
+    name: keyof StageTemplateFormData,
+    label: string,
+    type: 'text' | 'number' = 'text',
+    gridSize: number = 12,
+    required: boolean = true
+  ) => {
+    const fieldRules = validationRules[name] || {}
+
+    return (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={fieldRules}
+          render={({ field, fieldState }) => {
+            const hasError = !!fieldState.error
+
+            const fieldStyles = hasError
+              ? {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+              : {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.7)
+                          : '#CAD5E2',
+                      borderWidth: '1px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[300], 0.8)
+                          : '#94A3B8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.primary.main,
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+
+            const labelStyles = {
+              ...labelSx,
+              color: hasError ? theme.palette.error.main : tokens.label.color,
+              '& .MuiFormLabel-asterisk': {
+                color: required ? theme.palette.error.main : 'inherit',
+              },
+              '&.Mui-focused': {
+                color: hasError
+                  ? theme.palette.error.main
+                  : theme.palette.primary.main,
+              },
+            }
+
+            return (
+              <Box>
+                <TextField
+                  {...field}
+                  type={type}
+                  label={label}
+                  fullWidth
+                  disabled={isSubmitting || isViewMode}
+                  required={required}
+                  error={hasError}
+                  helperText={hasError ? fieldState.error?.message : ''}
+                  InputLabelProps={{ sx: labelStyles }}
+                  InputProps={{
+                    sx: valueSx,
+                    inputProps: {
+                      maxLength:
+                        name === 'description'
+                          ? 500
+                          : name === 'stageKey'
+                            ? 50
+                            : name === 'keycloakGroup'
+                              ? 100
+                              : name === 'name'
+                                ? 100
+                                : name === 'stageOrder'
+                                  ? 2
+                                  : name === 'requiredApprovals'
+                                    ? 2
+                                    : name === 'slaHours'
+                                      ? 4
+                                      : undefined,
+                    },
+                  }}
+                  sx={fieldStyles}
+                  onChange={(e) => {
+                    let value = e.target.value
+
+                    if (type === 'text') {
+                      if (name === 'name') {
+                        value = value.replace(/[0-9]/g, '').slice(0, 100)
+                      } else if (name === 'stageKey') {
+                        value = value
+                          .replace(/[0-9]/g, '')
+                          .replace(/[^A-Za-z_-]/g, '')
+                          .slice(0, 50)
+                      } else if (name === 'keycloakGroup') {
+                        value = value
+                          .replace(/[^A-Za-z0-9._-]/g, '')
+                          .slice(0, 100)
+                      } else if (name === 'description') {
+                        value = value.slice(0, 500)
+                      }
+                    } else if (type === 'number') {
+                      if (name === 'stageOrder') {
+                        if (value === '') {
+                          value = value
+                        } else {
+                          const numValue = parseInt(value)
+                          if (!isNaN(numValue)) {
+                            if (numValue > 10) {
+                              value = '10'
+                            } else if (numValue < 0 && value.length > 1) {
+                              value = '0'
+                            }
+                          }
+                        }
+                        value = value.slice(0, 2)
+                      } else if (name === 'requiredApprovals') {
+                        if (value === '') {
+                          value = value
+                        } else {
+                          const numValue = parseInt(value)
+                          if (!isNaN(numValue)) {
+                            if (numValue > 10) {
+                              value = '10'
+                            } else if (numValue < 0 && value.length > 1) {
+                              value = '0'
+                            }
+                          }
+                        }
+                        value = value.slice(0, 2)
+                      } else if (name === 'slaHours') {
+                        if (value === '') {
+                          value = value
+                        } else {
+                          const numValue = parseInt(value)
+                          if (!isNaN(numValue)) {
+                            if (numValue > 9999) {
+                              value = '9999'
+                            }
+                          }
+                        }
+                        value = value.slice(0, 4)
+                      }
+                    }
+
+                    const finalValue = type === 'number' ? Number(value) : value
+                    field.onChange(finalValue)
+                  }}
+                  onBlur={(e) => {
+                    let value = e.target.value
+
+                    if (name === 'stageKey') {
+                      value = value
+                        .replace(/[0-9]/g, '')
+                        .replace(/[^A-Za-z_-]/g, '')
+                      if (value !== e.target.value) {
+                        field.onChange(value)
+                      }
+                    }
+
+                    if (type === 'number') {
+                      if (name === 'stageOrder') {
+                        const numValue = parseInt(value) || 0
+                        if (numValue < 0) {
+                          value = '0'
+                        } else if (numValue > 10) {
+                          value = '10'
+                        }
+                      } else if (name === 'requiredApprovals') {
+                        const numValue = parseInt(value) || 0
+                        if (numValue < 0) {
+                          value = '0'
+                        } else if (numValue > 10) {
+                          value = '10'
+                        }
+                      } else if (name === 'slaHours') {
+                        const numValue = parseInt(value) || 0
+                        if (numValue < 1) {
+                          value = '1'
+                        } else if (numValue > 9999) {
+                          value = '9999'
+                        }
+                      }
+
+                      field.onChange(Number(value))
+                    }
+
+                    field.onBlur()
+                  }}
+                />
+              </Box>
+            )
+          }}
+        />
+      </Grid>
+    )
+  }
 
   const handleDrawerClose = (
     _event: React.KeyboardEvent | React.MouseEvent,
@@ -387,6 +697,7 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
       onClose={handleDrawerClose}
       PaperProps={{
         sx: {
+          ...tokens.paper,
           width: '460px',
           height: '100%',
           display: 'flex',
@@ -394,7 +705,13 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
         },
       }}
     >
-      <Box sx={{ p: 3, borderBottom: '1px solid #E5E7EB' }}>
+      <Box
+        sx={{
+          p: 3,
+          borderBottom: `1px solid ${tokens.dividerColor}`,
+          backgroundColor: tokens.paper.backgroundColor,
+        }}
+      >
         <Box
           sx={{
             display: 'flex',
@@ -408,62 +725,85 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
               fontSize: '20px',
               fontWeight: 500,
               fontStyle: 'normal',
+              color: theme.palette.text.primary,
             }}
           >
             {mode === 'edit'
               ? 'Edit Workflow Stage Template'
               : 'Add Workflow Stage Template '}
           </DialogTitle>
-          <IconButton onClick={onClose} size="small">
-            <CancelOutlinedIcon />
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+          >
+            <CancelOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
       </Box>
       <form onSubmit={handleSubmit(onSubmit, onError)}>
-        <DialogContent dividers>
+        <DialogContent
+          dividers
+          sx={{
+            borderColor: tokens.dividerColor,
+            backgroundColor: tokens.paper.backgroundColor as string,
+          }}
+        >
           <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
             {renderTextField(
               'name',
               getWorkflowStageTemplateLabel('CDL_ST_NAME'),
               'text',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'stageOrder',
               getWorkflowStageTemplateLabel('CDL_ST_ORDER'),
               'number',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'stageKey',
               getWorkflowStageTemplateLabel('CDL_ST_KEY'),
               'text',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'keycloakGroup',
               getWorkflowStageTemplateLabel('CDL_ST_GROUP'),
               'text',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'requiredApprovals',
               getWorkflowStageTemplateLabel('CDL_ST_REQUIRED_APPROVALS'),
               'number',
-              12
+              12,
+              true
             )}
             {renderTextField(
               'slaHours',
               getWorkflowStageTemplateLabel('CDL_ST_SLA_HOURS'),
               'number',
-              12
+              12,
+              true
             )}
 
             {renderTextField(
               'description',
               getWorkflowStageTemplateLabel('CDL_ST_DESCRIPTION'),
               'text',
-              12
+              12,
+              false
             )}
 
             {renderSelectField(
@@ -475,6 +815,7 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
                 id: option.id,
               })),
               12,
+              true,
               {
                 isLoading: formLoading,
                 disabled: isSubmitting || isViewMode,
@@ -491,6 +832,12 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
               left: 0,
               right: 0,
               padding: 2,
+              borderTop: `1px solid ${tokens.dividerColor}`,
+              backgroundColor: alpha(
+                theme.palette.background.paper,
+                theme.palette.mode === 'dark' ? 0.92 : 0.9
+              ),
+              backdropFilter: 'blur(10px)',
             }}
           >
             <Grid container spacing={2}>
@@ -513,6 +860,12 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
                     justifyContent: 'center',
                     gap: 1,
                     opacity: canReset ? 1 : 0.5,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
                   }}
                 >
                   Reset
@@ -538,13 +891,19 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
                     justifyContent: 'center',
                     gap: 1,
                     opacity: canSave ? 1 : 0.5,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
                   }}
                 >
                   {isSubmitting && (
                     <CircularProgress
                       size={20}
                       sx={{
-                        color: 'white',
+                        color: theme.palette.primary.contrastText,
                       }}
                     />
                   )}
@@ -562,60 +921,7 @@ export const RightSlideWorkflowStageTemplatePanel: React.FC<
             </Grid>
           </Box>
         )}
-        {/* {!isViewMode && (
-          <div className="relative left-0 right-0 p-2 top-5">
-            <div className="grid grid-cols-12 gap-2">
-              <div className="col-span-6">
-                <Button
-                  onClick={handleResetToLoaded}
-                  disabled={!canReset}
-                  className={`
-            w-full relative flex items-center justify-center gap-1
-            font-['Outfit',sans-serif] font-medium not-italic text-sm leading-5
-            ${canReset ? 'opacity-100' : 'opacity-50'}
-            bg-gray-200 text-black rounded px-4 py-2
-          `}
-                >
-                  Reset
-                </Button>
-              </div>
-
-              <div className="col-span-6">
-                <Button
-                  type="submit"
-                  disabled={!canSave}
-                  className={`
-            w-full relative flex items-center justify-center gap-1
-            font-['Outfit',sans-serif] font-medium not-italic text-sm leading-5
-            ${canSave ? 'opacity-100' : 'opacity-50'}
-            bg-blue-600 text-white rounded px-4 py-2
-          `}
-                >
-                  {isSubmitting && (
-                    <CircularProgress
-                      size={20}
-                      sx={{
-                        color: 'white',
-                      }}
-                    />
-                  )}
-                  {isSubmitting
-                    ? formLoading
-                      ? 'Loading...'
-                      : mode === 'edit'
-                        ? 'Updating...'
-                        : 'Creating...'
-                    : mode === 'edit'
-                      ? 'Update'
-                      : 'Save'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )} */}
       </form>
-
-      {/* All alerts and snackbars removed - silent error handling */}
     </Drawer>
   )
 }

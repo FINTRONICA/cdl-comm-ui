@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SessionManager } from '@/lib/sessionManager';
 import { AuditLogger, AuditEventType } from '@/lib/auditLogger';
+import { COOKIES } from '@/types/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,13 +29,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create response with cleared cookie
+    // Create response with cleared cookies
     const response = NextResponse.json({
       message: 'Logout successful'
     });
 
-    // Clear session cookie
+    // Clear all authentication cookies
     response.cookies.delete('session_id');
+    response.cookies.delete(COOKIES.AUTH_TOKEN);
+    response.cookies.delete(COOKIES.USER_TYPE);
+    response.cookies.delete(COOKIES.USER_NAME);
+    response.cookies.delete(COOKIES.USER_ID);
     
     return response;
   } catch (error) {

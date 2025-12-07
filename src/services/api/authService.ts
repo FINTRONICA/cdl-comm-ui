@@ -1,6 +1,8 @@
 import { apiClient } from '@/lib/apiClient'
 import type { User } from '@/types'
 import { API_ENDPOINTS, buildApiUrl } from '@/constants'
+import { EnhancedSessionService } from '@/services/enhancedSessionService'
+import { clearAuthCookies, getAuthCookies, setAuthCookies } from '@/utils/cookieUtils'
 
 // Authentication types
 export interface LoginCredentials {
@@ -33,6 +35,15 @@ export interface AuthResponse {
   refreshToken: string
   expiresAt: string
   permissions: string[]
+}
+
+// External API refresh response format
+export interface RefreshTokenResponse {
+  access_token: string
+  refresh_token: string
+  expires_in: number // seconds
+  refresh_expires_in: number // seconds
+  token_type: string
 }
 
 export interface PasswordResetRequest {
@@ -71,10 +82,12 @@ export class AuthService {
     const response = await apiClient.post<AuthResponse>(buildApiUrl(API_ENDPOINTS.AUTH.LOGIN), credentials)
     
     // Store tokens securely
-    this.storeTokens(response.token, response.refreshToken)
+    this.storeTokens(response.token, response.refreshToken, response.user)
     
     // Setup automatic token refresh
-    this.setupTokenRefresh(response.expiresAt)
+    if (response.expiresAt) {
+      this.setupTokenRefresh(response.expiresAt)
+    }
     
     return response
   }
@@ -83,7 +96,7 @@ export class AuthService {
   async register(userData: RegisterData): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>('/auth/register', userData)
     
-    this.storeTokens(response.token, response.refreshToken)
+    this.storeTokens(response.token, response.refreshToken, response.user)
     this.setupTokenRefresh(response.expiresAt)
     
     return response
@@ -102,20 +115,22 @@ export class AuthService {
   }
 
   // Refresh access token
-  async refreshToken(): Promise<AuthResponse> {
+  async refreshToken(): Promise<void> {
     const refreshToken = this.getRefreshToken()
     if (!refreshToken) {
       throw new Error('No refresh token available')
     }
 
-    const response = await apiClient.post<AuthResponse>('/auth/refresh', {
+    // Call external refresh API endpoint
+    const response = await apiClient.post<RefreshTokenResponse>('/auth/refresh', {
       refreshToken
     })
 
-    this.storeTokens(response.token, response.refreshToken)
-    this.setupTokenRefresh(response.expiresAt)
-
-    return response
+    // Store the new tokens
+    this.storeTokens(response.access_token, response.refresh_token)
+    
+    // Setup next refresh 1 minute before token expires
+    this.setupTokenRefreshFromSeconds(response.expires_in)
   }
 
   // Request password reset
@@ -167,28 +182,26 @@ export class AuthService {
   }
 
   // Private methods for token management
-  private storeTokens(token: string, refreshToken: string): void {
-    if (typeof window !== 'undefined') {
-      // Store in session storage for better security
-      sessionStorage.setItem('auth_token', token)
-      sessionStorage.setItem('refresh_token', refreshToken)
-    }
+  private storeTokens(token: string, refreshToken: string, user?: User): void {
+    if (typeof window === 'undefined') return
+
+    const existing = getAuthCookies()
+    const role = user?.role || existing.userType || 'user'
+    const name = user?.name || existing.userName || user?.email || 'user'
+    const identifier = user?.email || existing.userId || 'user'
+
+    setAuthCookies(token, role, name, identifier, refreshToken)
   }
 
   private clearTokens(): void {
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('auth_token')
-      sessionStorage.removeItem('refresh_token')
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('refresh_token')
-    }
+    if (typeof window === 'undefined') return
+    clearAuthCookies()
   }
 
   private getRefreshToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('refresh_token') || localStorage.getItem('refresh_token')
-    }
-    return null
+    if (typeof window === 'undefined') return null
+    const { refreshToken } = getAuthCookies()
+    return refreshToken
   }
 
   private setupTokenRefresh(expiresAt?: string): void {
@@ -210,6 +223,29 @@ export class AuthService {
           // Don't redirect - let middleware handle it
         })
       }, timeUntilExpiry)
+    }
+  }
+
+  private setupTokenRefreshFromSeconds(expiresInSeconds: number): void {
+    this.clearTokenRefresh()
+    
+    // Refresh 1 minute (60 seconds) before token expires
+    const refreshDelay = Math.max(0, (expiresInSeconds - 60) * 1000)
+
+    if (refreshDelay > 0) {
+      this.tokenRefreshTimer = setTimeout(() => {
+        // Only refresh if user is active
+        if (EnhancedSessionService.isUserActive()) {
+          this.refreshToken().catch((error) => {
+            // If refresh fails, log the error but don't redirect
+            // Let the middleware handle authentication redirects
+            console.warn('Token refresh failed:', error)
+            this.clearTokens()
+            // Don't redirect - let middleware handle it
+          })
+        } else {
+        }
+      }, refreshDelay)
     }
   }
 

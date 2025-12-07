@@ -37,18 +37,6 @@ export const useProjectLabels = () => {
       return labels['EN'];
     }
     
-    // Special debugging for CDL_BPA_STATUS only
-    if (configId === 'CDL_BPA_STATUS') {
-      console.log(`🔍 CDL_BPA_STATUS Debug:`, {
-        availableKeys: Object.keys(data).filter(key => key.includes('STATUS')),
-        allKeys: Object.keys(data),
-        hasCDL_BPA_STATUS: !!data['CDL_BPA_STATUS'],
-        cdlBpaStatusValue: data['CDL_BPA_STATUS']
-      });
-    }
-    
-    // If label not found in API, return fallback
-    console.info(`Label not found for ${configId}, using fallback: ${fallback}`);
     return fallback;
   };
   

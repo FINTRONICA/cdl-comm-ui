@@ -9,34 +9,32 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  FormHelperText,
   Button,
   Drawer,
   Box,
-  InputAdornment,
   Alert,
   Snackbar,
-  CircularProgress,
-  Typography,
 } from '@mui/material'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
+import { FormError } from '../../atoms/FormError'
+import { zodResolver } from '@hookform/resolvers/zod'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import { useSaveProjectIndividualBeneficiary } from '@/hooks/useProjects'
-import { validateAndSanitizeProjectBeneficiaryData } from '@/lib/validation/beneficiarySchemas'
+import {
+  useSaveProjectIndividualBeneficiary,
+  useUpdateProjectIndividualBeneficiary,
+} from '@/hooks/useProjects'
 import { useValidationStatus } from '@/hooks/useValidation'
-
-interface BeneficiaryFormData {
-  reaBeneficiaryId: string
-  reaBeneficiaryType: string | number
-  reaName: string
-  reaBankName: string | number
-  reaSwiftCode: string
-  reaRoutingCode: string
-  reaAccountNumber: string
-}
+// import { useProjectLabels } from '@/hooks/useProjectLabels'
+import { useBuildPartnerAssetLabelsWithUtils } from '@/hooks/useBuildPartnerAssetLabels'
+import {
+  projectBeneficiaryFormValidationSchema,
+  type ProjectBeneficiaryFormData,
+} from '@/lib/validation/projectBeneficiary.schema'
+import { alpha, useTheme } from '@mui/material/styles'
+import { buildPanelSurfaceTokens } from './panelTheme'
 
 interface RightSlidePanelProps {
   isOpen: boolean
@@ -58,19 +56,17 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
   isOpen,
   onClose,
   onBeneficiaryAdded,
-  title,
   editingBeneficiary,
-  bankNames: propBankNames,
   beneficiaryTypes: propBeneficiaryTypes,
   projectId,
-  buildPartnerId,
   dropdownsLoading: propDropdownsLoading,
   dropdownsError: propDropdownsError,
 }) => {
+  const theme = useTheme()
+  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  // Toast state
   const [toasts, setToasts] = useState<
     Array<{
       id: string
@@ -81,7 +77,10 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
   >([])
 
   const addBeneficiaryMutation = useSaveProjectIndividualBeneficiary()
+  const updateBeneficiaryMutation = useUpdateProjectIndividualBeneficiary()
 
+  const { getLabel } = useBuildPartnerAssetLabelsWithUtils()
+  const language = 'EN'
 
   const addToast = (message: string, type: 'success' | 'error') => {
     const newToast = {
@@ -92,7 +91,6 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
     }
     setToasts((prev) => [...prev, newToast])
 
-   
     setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== newToast.id))
     }, 4000)
@@ -102,14 +100,6 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }
 
- 
-  const bankNames = propBankNames || [
-    { id: 1, configId: 'SBI', configValue: 'SBI' },
-    { id: 2, configId: 'HDFC', configValue: 'HDFC' },
-    { id: 3, configId: 'ICICI', configValue: 'ICICI' },
-    { id: 4, configId: 'Axis Bank', configValue: 'Axis Bank' },
-  ]
-
   const beneficiaryTypes = propBeneficiaryTypes || [
     { id: 1, configId: 'Individual', configValue: 'Individual' },
     { id: 2, configId: 'Company', configValue: 'Company' },
@@ -118,63 +108,48 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
   const dropdownsLoading = propDropdownsLoading || false
   const dropdownsError = propDropdownsError || null
 
- 
   const {
-    isAccountValidating,
     accountValidationResult,
     accountValidationError,
-    validateAccount,
     resetAccountValidation,
-    isSwiftValidating,
     swiftValidationResult,
     swiftValidationError,
-    validateSwift,
     resetSwiftValidation,
   } = useValidationStatus()
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<BeneficiaryFormData>({
-    defaultValues: {
-      reaBeneficiaryId: editingBeneficiary?.reaBeneficiaryId || '',
-      reaBeneficiaryType: editingBeneficiary?.reaBeneficiaryType || '',
-      reaName: editingBeneficiary?.reaName || '',
-      reaBankName: editingBeneficiary?.reaBankName || '',
-      reaSwiftCode: editingBeneficiary?.reaSwiftCode || '',
-      reaRoutingCode: editingBeneficiary?.reaRoutingCode || '',
-      reaAccountNumber: editingBeneficiary?.reaAccountNumber || '',
-    },
-  })
+  const { control, handleSubmit, reset, trigger } =
+    useForm<ProjectBeneficiaryFormData>({
+      resolver: zodResolver(projectBeneficiaryFormValidationSchema),
+      mode: 'onChange', // Validate on every change
+      defaultValues: {
+        reaBeneficiaryId: editingBeneficiary?.reaBeneficiaryId || '',
+        reaBeneficiaryType: editingBeneficiary?.reaBeneficiaryType || '',
+        reaName: editingBeneficiary?.reaName || '',
+        reaBankName: editingBeneficiary?.reaBankName || '',
+        reaSwiftCode: editingBeneficiary?.reaSwiftCode || '',
+        reaRoutingCode: editingBeneficiary?.reaRoutingCode || '',
+        reaAccountNumber: editingBeneficiary?.reaAccountNumber || '',
+      },
+    })
 
   // Reset form when editing beneficiary changes
   React.useEffect(() => {
     if (editingBeneficiary) {
-      // Map display values back to IDs for editing
+      // Map display values back to IDs for editing (only for transfer type, bankName is now text)
       const beneficiaryType = beneficiaryTypes.find(
         (type: unknown) =>
           (type as { configValue: string }).configValue ===
           editingBeneficiary.reaBeneficiaryType
       )
-      const bankName = bankNames.find(
-        (bank: unknown) =>
-          (bank as { configValue: string }).configValue ===
-          editingBeneficiary.reaBankName
-      )
 
       reset({
         reaBeneficiaryId: editingBeneficiary.reaBeneficiaryId || '',
         reaBeneficiaryType:
-          (beneficiaryType as { id?: string })?.id ||
+          (beneficiaryType as { id?: string })?.id?.toString() ||
           editingBeneficiary.reaBeneficiaryType ||
           '',
         reaName: editingBeneficiary.reaName || '',
-        reaBankName:
-          (bankName as { id?: string })?.id ||
-          editingBeneficiary.reaBankName ||
-          '',
+        reaBankName: editingBeneficiary.reaBankName || '',
         reaSwiftCode: editingBeneficiary.reaSwiftCode || '',
         reaRoutingCode: editingBeneficiary.reaRoutingCode || '',
         reaAccountNumber: editingBeneficiary.reaAccountNumber || '',
@@ -243,64 +218,77 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
     }
   }, [swiftValidationError])
 
-  const onSubmit = async (data: BeneficiaryFormData) => {
-    
+  const onSubmit = async (data: ProjectBeneficiaryFormData) => {
     try {
       setErrorMessage(null)
       setSuccessMessage(null)
 
+      // Trigger validation to highlight required fields
+      const isValid = await trigger()
+
+      if (!isValid) {
+        return
+      }
+
       const beneficiaryData = {
+        // Include ID for updates
+        ...(editingBeneficiary?.id && {
+          id: parseInt(editingBeneficiary.id.toString()),
+        }),
         reabBeneficiaryId: data.reaBeneficiaryId,
         reabTranferTypeDTO: {
           id: parseInt(data.reaBeneficiaryType.toString()) || 0,
         },
         reabName: data.reaName,
-        reabBank: 
-          data.reaBankName,
+        reabBank: data.reaBankName,
         reabSwift: data.reaSwiftCode,
         reabRoutingCode: data.reaRoutingCode,
         reabBeneAccount: data.reaAccountNumber,
-        realEstateAssestDTO: [ {
-          id: projectId ? parseInt(projectId) : undefined,
-        }
-          
-      ],
+        realEstateAssestDTO: [
+          {
+            id: projectId ? parseInt(projectId) : undefined,
+          },
+        ],
+        // Add deleted and enabled fields when editing
+        ...(editingBeneficiary?.id && {
+          deleted: false,
+          enabled: true,
+        }),
       }
 
-      
-
-      await addBeneficiaryMutation.mutateAsync(
-        beneficiaryData,
-    
-      )
-
-      setSuccessMessage('Beneficiary added successfully!')
+      if (editingBeneficiary?.id) {
+        // Update existing beneficiary using PUT
+        await updateBeneficiaryMutation.mutateAsync({
+          id: editingBeneficiary.id.toString(),
+          beneficiaryData,
+        })
+        setSuccessMessage('Beneficiary updated successfully!')
+      } else {
+        // Add new beneficiary using POST
+        await addBeneficiaryMutation.mutateAsync(beneficiaryData)
+        setSuccessMessage('Beneficiary added successfully!')
+      }
 
       if (onBeneficiaryAdded) {
-        // Convert dropdown IDs to display names
         const beneficiaryTypeLabel =
-          (beneficiaryTypes.find(
-            (type: unknown) =>
-              (type as { id: string }).id === data.reaBeneficiaryType.toString()
-          ) as { configValue: string })?.configValue || `Type ${data.reaBeneficiaryType}`
-        const bankNameLabel =
-          (bankNames.find(
-            (bank: unknown) =>
-              (bank as { id: string }).id === data.reaBankName.toString()
-          ) as { configValue: string })?.configValue || `Bank ${data.reaBankName}`
+          (
+            beneficiaryTypes.find(
+              (type: unknown) =>
+                (type as { id: string }).id === data.reaBeneficiaryType
+            ) as { configValue: string }
+          )?.configValue || `Type ${data.reaBeneficiaryType}`
 
         const beneficiaryForForm = {
           // Map to table column names with display labels
           reaBeneficiaryId: data.reaBeneficiaryId,
           reaBeneficiaryType: beneficiaryTypeLabel,
           reaName: data.reaName,
-          reaBankName: bankNameLabel,
+          reaBankName: data.reaBankName, // Now a text field, use value directly
           reaSwiftCode: data.reaSwiftCode,
           reaRoutingCode: data.reaRoutingCode,
           reaAccountNumber: data.reaAccountNumber,
           // Keep original fields for reference
           reaBeneficiaryTypeId: data.reaBeneficiaryType,
-          reaBankNameId: data.reaBankName,
           realEstateAssetDTO: {
             id: projectId ? parseInt(projectId) : undefined,
           },
@@ -315,7 +303,6 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
         onClose()
       }, 1500)
     } catch (error: unknown) {
-      
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -334,105 +321,88 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
   }
 
   // Common styles for form components
-  const commonFieldStyles = {
-    '& .MuiOutlinedInput-root': {
+  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+
+  const selectStyles = React.useMemo(
+    () => ({
       height: '46px',
-      borderRadius: '8px',
-      '& fieldset': {
-        borderColor: '#CAD5E2',
-        borderWidth: '1px',
+      '& .MuiOutlinedInput-root': {
+        height: '46px',
+        borderRadius: '8px',
+        backgroundColor:
+          theme.palette.mode === 'dark'
+            ? alpha('#1E293B', 0.5) // Darker background for inputs in dark mode
+            : '#FFFFFF', // White background for inputs in light mode
+        '& fieldset': {
+          borderColor:
+            theme.palette.mode === 'dark'
+              ? alpha('#FFFFFF', 0.3) // White border with opacity for dark mode
+              : '#CAD5E2', // Light border for light mode
+          borderWidth: '1px',
+        },
+        '&:hover fieldset': {
+          borderColor:
+            theme.palette.mode === 'dark'
+              ? alpha('#FFFFFF', 0.5) // Brighter on hover for dark mode
+              : '#94A3B8', // Darker on hover for light mode
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: theme.palette.primary.main,
+        },
       },
-      '&:hover fieldset': {
-        borderColor: '#CAD5E2',
+      '& .MuiSelect-icon': {
+        color: theme.palette.mode === 'dark' ? '#FFFFFF' : '#666', // White icon in dark mode, gray in light mode
+        fontSize: '20px',
       },
-      '&.Mui-focused fieldset': {
-        borderColor: '#2563EB',
+      '& .MuiInputBase-input': {
+        color: theme.palette.mode === 'dark' ? '#FFFFFF' : '#111827', // White text in dark mode, dark text in light mode
       },
-    },
-  }
+    }),
+    [theme]
+  )
 
-  const errorFieldStyles = {
-    '& .MuiOutlinedInput-root': {
-      height: '46px',
-      borderRadius: '8px',
-      '& fieldset': {
-        borderColor: 'red',
-        borderWidth: '1px',
-      },
-    },
-  }
-
-  const selectStyles = {
-    height: '46px',
-    '& .MuiOutlinedInput-root': {
-      height: '46px',
-      borderRadius: '8px',
-      '& fieldset': {
-        borderColor: '#CAD5E2',
-        borderWidth: '1px',
-      },
-      '&:hover fieldset': {
-        borderColor: '#CAD5E2',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: '#2563EB',
-      },
-    },
-    '& .MuiSelect-icon': {
-      color: '#666',
-    },
-  }
-
-  const labelSx = {
-    color: '#6A7282',
-    fontFamily: 'Outfit',
-    fontWeight: 400,
-    fontStyle: 'normal',
-    fontSize: '12px',
-    letterSpacing: 0,
-  }
-
-  const valueSx = {
-    color: '#1E2939',
-    fontFamily: 'Outfit',
-    fontWeight: 400,
-    fontStyle: 'normal',
-    fontSize: '14px',
-    letterSpacing: 0,
-    wordBreak: 'break-word',
-  }
+  const labelSx = tokens.label
+  const valueSx = tokens.value
 
   const renderTextField = (
-    name: keyof BeneficiaryFormData,
+    name: keyof ProjectBeneficiaryFormData,
     label: string,
     defaultValue = '',
     gridSize: number = 6,
-    required = false
+    required = false,
+    maxLength?: number
   ) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
       <Controller
         name={name}
         control={control}
         defaultValue={defaultValue}
-        rules={required ? { required: `${label} is required` } : {}}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={label}
-            fullWidth
-            error={!!errors[name]}
-            helperText={errors[name]?.message?.toString() || ''}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={errors[name] ? errorFieldStyles : commonFieldStyles}
-          />
+        render={({ field, fieldState: { error } }) => (
+          <>
+            <TextField
+              {...field}
+              label={label}
+              fullWidth
+              required={required}
+              error={!!error}
+              inputProps={{ maxLength }}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={error ? errorFieldStyles : commonFieldStyles}
+            />
+            <FormError
+              error={(error?.message as string) || ''}
+              touched={true}
+            />
+          </>
         )}
       />
     </Grid>
   )
 
   const renderSelectField = (
-    name: keyof BeneficiaryFormData,
+    name: keyof ProjectBeneficiaryFormData,
     label: string,
     options: unknown[],
     gridSize: number = 6,
@@ -443,28 +413,33 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
       <Controller
         name={name}
         control={control}
-        rules={required ? { required: `${label} is required` } : {}}
         defaultValue={''}
-        render={({ field }) => (
-          <FormControl fullWidth error={!!errors[name]}>
+        render={({ field, fieldState: { error } }) => (
+          <FormControl fullWidth error={!!error} required={required}>
             <InputLabel sx={labelSx}>
-              {loading ? `Loading ${label}...` : label}
+              {loading ? `Loading...` : label}
             </InputLabel>
             <Select
               {...field}
-              label={loading ? `Loading ${label}...` : label}
+              label={loading ? `Loading...` : label}
               sx={{
                 ...selectStyles,
                 ...valueSx,
                 '& .MuiOutlinedInput-notchedOutline': {
-                  border: '1px solid #d1d5db',
+                  border:
+                    theme.palette.mode === 'dark'
+                      ? `1px solid ${alpha('#FFFFFF', 0.3)}`
+                      : '1px solid #d1d5db',
                   borderRadius: '6px',
                 },
                 '&:hover .MuiOutlinedInput-notchedOutline': {
-                  border: '1px solid #9ca3af',
+                  border:
+                    theme.palette.mode === 'dark'
+                      ? `1px solid ${alpha('#FFFFFF', 0.5)}`
+                      : '1px solid #9ca3af',
                 },
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  border: '2px solid #2563eb',
+                  border: `2px solid ${theme.palette.primary.main}`,
                 },
               }}
               IconComponent={KeyboardArrowDownIcon}
@@ -479,11 +454,10 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
                 </MenuItem>
               ))}
             </Select>
-            {errors[name] && (
-              <FormHelperText error>
-                {errors[name]?.message?.toString()}
-              </FormHelperText>
-            )}
+            <FormError
+              error={(error?.message as string) || ''}
+              touched={true}
+            />
           </FormControl>
         )}
       />
@@ -498,12 +472,11 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
         onClose={handleClose}
         PaperProps={{
           sx: {
+            ...tokens.paper,
             width: 460,
-            borderRadius: 3,
-            backgroundColor: 'rgba(255, 255, 255, 0.75)',
-            backdropFilter: 'blur(15px)',
-            border: '2px solid rgba(255, 255, 255, 0.3)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           },
         }}
       >
@@ -519,22 +492,59 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
             lineHeight: '28px',
             letterSpacing: '0.15px',
             verticalAlign: 'middle',
+            color: theme.palette.text.primary,
+            borderBottom: `1px solid ${tokens.dividerColor}`,
+            backgroundColor: tokens.paper.backgroundColor as string,
+            pr: 3,
+            pl: 3,
           }}
         >
-          Add Project Beneficiary Details
-          <IconButton onClick={handleClose}>
-            <CancelOutlinedIcon />
+          {getLabel(
+            'CDL_BPA_BENE_INFO',
+            language,
+            'Beneficiary Banking Details'
+          )}
+          <IconButton
+            onClick={handleClose}
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+          >
+            <CancelOutlinedIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
 
-        <form onSubmit={(e) => {
-          
-          handleSubmit(onSubmit)(e)
-        }}>
-          <DialogContent dividers>
+        <form
+          noValidate
+          onSubmit={(e) => {
+            handleSubmit(onSubmit)(e)
+          }}
+        >
+          <DialogContent
+            dividers
+            sx={{
+              borderColor: tokens.dividerColor,
+              backgroundColor: tokens.paper.backgroundColor as string,
+            }}
+          >
             {/* Show error if dropdowns fail to load */}
             {dropdownsError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert
+                severity="error"
+                variant="outlined"
+                sx={{
+                  mb: 2,
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(239, 68, 68, 0.08)'
+                      : 'rgba(254, 226, 226, 0.4)',
+                  borderColor: alpha(theme.palette.error.main, 0.4),
+                  color: theme.palette.error.main,
+                }}
+              >
                 Failed to load dropdown options. Please refresh the page.
               </Alert>
             )}
@@ -542,35 +552,64 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
               {renderTextField(
                 'reaBeneficiaryId',
-                'Beneficiary ID',
+                getLabel(
+                  'CDL_BPA_BENE_REFID',
+                  language,
+                  'Beneficiary Reference ID'
+                ),
                 '',
                 6,
-                true
+                true, // Required
+                16 // Max length
               )}
               {renderSelectField(
                 'reaBeneficiaryType',
-                'Beneficiary Type',
+                getLabel('CDL_BPA_BENE_TRANSFER', language, 'Transfer Method'),
                 beneficiaryTypes,
                 6,
-                true,
+                true, // Required
                 dropdownsLoading
               )}
-              {renderTextField('reaName', 'Name', '', 12, true)}
+              {renderTextField(
+                'reaName',
+                getLabel(
+                  'CDL_BPA_BENE_NAME',
+                  language,
+                  'Beneficiary Full Name'
+                ),
+                '',
+                12,
+                true, // Required
+                35 // Max length
+              )}
               {renderTextField(
                 'reaBankName',
-                'Bank Name',
+                getLabel('CDL_BPA_BENE_BANK', language, 'Bank Name'),
                 '',
                 6,
-                true,
+                true // Required
               )}
-              {renderTextField('reaSwiftCode', 'SWIFT Code', '', 6, true)}
-              {renderTextField('reaRoutingCode', 'Routing Code', '', 6, true)}
+              {renderTextField(
+                'reaSwiftCode',
+                getLabel('CDL_BPA_BENE_BIC', language, 'SWIFT/BIC Code'),
+                '',
+                6,
+                true // Required
+              )}
+              {renderTextField(
+                'reaRoutingCode',
+                getLabel('CDL_BPA_BENE_ROUTING', language, 'Routing Number'),
+                '',
+                6,
+                true, // Required
+                10 // Max length
+              )}
               {renderTextField(
                 'reaAccountNumber',
-                'Account Number',
+                getLabel('CDL_BPA_BENE_ACC', language, 'Bank Account Number'),
                 '',
                 6,
-                true
+                true // Required
               )}
             </Grid>
           </DialogContent>
@@ -582,6 +621,12 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
               left: 0,
               right: 0,
               padding: 2,
+              display: 'flex',
+              gap: 2,
+              borderTop: `1px solid ${tokens.dividerColor}`,
+              backgroundColor: tokens.paper.backgroundColor as string,
+              backdropFilter: 'blur(10px)',
+              zIndex: 10,
             }}
           >
             <Grid container spacing={2}>
@@ -591,7 +636,9 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
                   variant="outlined"
                   onClick={handleClose}
                   disabled={
-                    addBeneficiaryMutation.isPending || dropdownsLoading
+                    addBeneficiaryMutation.isPending ||
+                    updateBeneficiaryMutation.isPending ||
+                    dropdownsLoading
                   }
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
@@ -600,9 +647,14 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
+                    borderWidth: '1px',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : undefined,
                   }}
                 >
-                  Cancel
+                  {getLabel('CDL_BPA_CANCEL', language, 'Cancel')}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
@@ -612,11 +664,11 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
                   color="primary"
                   type="submit"
                   disabled={
-                    addBeneficiaryMutation.isPending || dropdownsLoading
+                    addBeneficiaryMutation.isPending ||
+                    updateBeneficiaryMutation.isPending ||
+                    dropdownsLoading
                   }
-                  onClick={() => {
-                    
-                  }}
+                  onClick={() => {}}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -624,11 +676,38 @@ export const RightSlideProjectBeneficiaryDetailsPanel: React.FC<
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
-                    backgroundColor: '#2563EB',
-                    color: '#fff',
+                    backgroundColor: theme.palette.primary.main,
+                    color: theme.palette.primary.contrastText,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? theme.palette.primary.main
+                          : 'transparent',
+                    },
+                    '&:disabled': {
+                      backgroundColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.5)
+                          : theme.palette.grey[300],
+                      color: theme.palette.text.disabled,
+                    },
                   }}
                 >
-                  {addBeneficiaryMutation.isPending ? 'Adding...' : 'Add'}
+                  {addBeneficiaryMutation.isPending ||
+                  updateBeneficiaryMutation.isPending
+                    ? editingBeneficiary?.id
+                      ? getLabel('CDL_BPA_UPDATING', language, 'Updating...')
+                      : getLabel('CDL_BPA_ADDING', language, 'Adding...')
+                    : editingBeneficiary?.id
+                      ? getLabel('CDL_BPA_UPDATE', language, 'Update')
+                      : getLabel('CDL_BPA_ADD', language, 'Add')}
                 </Button>
               </Grid>
             </Grid>

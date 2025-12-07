@@ -9,6 +9,7 @@ import {
   MenuItem,
   InputAdornment,
   Typography,
+  useTheme,
 } from '@mui/material'
 import { Controller, FieldError, Control } from 'react-hook-form'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
@@ -76,18 +77,19 @@ export const FormField: React.FC<FormFieldProps> = ({
   minRows,
   // gridSize, // Removed unused parameter
 }) => {
+  const theme = useTheme()
   const fieldError = error
   const hasError = !!fieldError
   const isCompact = size === 'small'
 
   const fieldStyles = hasError
-    ? errorFieldStyles
+    ? errorFieldStyles(theme)
     : isCompact
-      ? compactFieldStyles
-      : commonFieldStyles
+      ? compactFieldStyles(theme)
+      : commonFieldStyles(theme)
 
-  const labelStyles = isCompact ? compactLabelSx : labelSx
-  const valueStyles = isCompact ? compactValueSx : valueSx
+  const labelStyles = isCompact ? compactLabelSx(theme) : labelSx(theme)
+  const valueStyles = isCompact ? compactValueSx(theme) : valueSx(theme)
 
   const renderField = ({ field }: any) => {
     const commonProps = {
@@ -122,7 +124,7 @@ export const FormField: React.FC<FormFieldProps> = ({
               {...field}
               label={label + (required ? '*' : '')}
               disabled={disabled}
-              sx={{ ...selectStyles, ...valueStyles }}
+              sx={[selectStyles(theme), valueStyles]}
               onChange={(e) => {
                 field.onChange(e)
                 onChange?.(e.target.value)
@@ -148,7 +150,7 @@ export const FormField: React.FC<FormFieldProps> = ({
 
       case 'date':
         const StyledCalendarIcon = (props: any) => (
-          <props.icon {...props} sx={calendarIconSx} />
+          <props.icon {...props} sx={calendarIconSx(theme)} />
         )
 
         return (

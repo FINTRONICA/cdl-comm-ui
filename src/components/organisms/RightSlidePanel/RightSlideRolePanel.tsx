@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -9,51 +9,51 @@ import {
   Box,
   Alert,
   CircularProgress,
-} from "@mui/material";
-import { roleService } from '@/services/api/roleService';
-import { useRoleManagementLabelApi } from '@/hooks/useRoleManagementLabelApi';
-import { getRoleManagementLabel } from '@/constants/mappings/roleManagementMapping';
-import { useAppStore } from '@/store';
+} from '@mui/material'
+import { alpha, useTheme } from '@mui/material/styles'
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
+import { roleService } from '@/services/api/roleService'
+import { useRoleManagementLabelApi } from '@/hooks/useRoleManagementLabelApi'
+import { getRoleManagementLabel } from '@/constants/mappings/roleManagementMapping'
+import { useAppStore } from '@/store'
+import { buildPanelSurfaceTokens } from './panelTheme'
 interface RoleData {
-  id?: string;
-  name: string;
+  id?: string
+  name: string
 }
 
 interface RightSlideRolePanelProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave?: (roleName: string, roleData?: RoleData) => void;
-  mode?: "add" | "edit" | "view";
-  userData?: RoleData | undefined;
-  onSuccess?: (role: any) => void;
-  onError?: (error: string) => void;
-  onSwitchToEdit?: () => void;
+  isOpen: boolean
+  onClose: () => void
+  onSave?: (roleName: string, roleData?: RoleData) => void
+  mode?: 'add' | 'edit' | 'view'
+  userData?: RoleData | undefined
+  onSuccess?: (role: any) => void
+  onError?: (error: string) => void
+  onSwitchToEdit?: () => void
 }
-
 
 export const RightSlideRolePanel: React.FC<RightSlideRolePanelProps> = ({
   isOpen,
   onClose,
   onSave,
-  mode = "add",
+  mode = 'add',
   userData,
   onSuccess,
   onError,
   onSwitchToEdit,
 }) => {
-  const [selectedRole, setSelectedRole] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const theme = useTheme()
+  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
 
   // Get current language from store
   const currentLanguage = useAppStore((state) => state.language) || 'EN'
 
   // Role Management Label API
-  const {
-    getLabel: getLabelFromApi,
-    isLoading: labelsLoading,
-    error: labelsError
-  } = useRoleManagementLabelApi()
+  const { getLabel: getLabelFromApi } = useRoleManagementLabelApi()
 
   // Dynamic label function
   const getRoleLabelDynamic = React.useCallback(
@@ -70,49 +70,72 @@ export const RightSlideRolePanel: React.FC<RightSlideRolePanelProps> = ({
     [getLabelFromApi, currentLanguage]
   )
 
+  // Common styles for form components
+  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
+
+  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+
+  const labelSx = tokens.label
+
+  const valueSx = tokens.value
+
+  const buttonBaseStyles = React.useMemo(
+    () => ({
+      fontFamily: 'Outfit, sans-serif',
+      fontWeight: 500,
+      fontStyle: 'normal',
+      fontSize: '14px',
+      lineHeight: '20px',
+      letterSpacing: '0.01em',
+      borderRadius: '8px',
+      textTransform: 'none' as const,
+      height: '44px',
+    }),
+    []
+  )
+
   useEffect(() => {
-    if ((mode === "edit" || mode === "view") && userData) {
-      setSelectedRole(userData.name);
+    if ((mode === 'edit' || mode === 'view') && userData) {
+      setSelectedRole(userData.name)
     } else {
-      setSelectedRole("");
+      setSelectedRole('')
     }
-    setError(null); // Clear error when panel opens
-  }, [mode, userData, isOpen]);
+    setError(null) // Clear error when panel opens
+  }, [mode, userData, isOpen])
 
   const handleSave = async () => {
     if (!selectedRole.trim()) {
-      setError(`${getRoleLabelDynamic('CDL_ROLE_NAME')} is required`);
-      return;
+      setError(`${getRoleLabelDynamic('CDL_ROLE_NAME')} is required`)
+      return
     }
 
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
-      if (mode === "edit" && userData) {
+      if (mode === 'edit' && userData) {
         // Update existing role
         const updatedRole = await roleService.updateRole(userData.name, {
           name: selectedRole.trim(),
-        });
-        
-        onSuccess?.(updatedRole);
-        onSave?.(selectedRole, userData);
-        onClose();
-        setSelectedRole("");
+        })
+
+        onSuccess?.(updatedRole)
+        onClose()
+        setSelectedRole('')
       } else {
         // Create new role - let parent handle the API call
-        onSave?.(selectedRole);
-        onClose();
-        setSelectedRole("");
+        onSave?.(selectedRole)
+        onClose()
+        setSelectedRole('')
       }
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to save role';
-      setError(errorMessage);
-      onError?.(errorMessage);
+      const errorMessage = err.message || 'Failed to save role'
+      setError(errorMessage)
+      onError?.(errorMessage)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Drawer
@@ -121,51 +144,94 @@ export const RightSlideRolePanel: React.FC<RightSlideRolePanelProps> = ({
       onClose={onClose}
       PaperProps={{
         sx: {
-          width: "460px",
-          height: 'calc(100vh - 48px)',
-          maxHeight: 'calc(100vh - 48px)',
-          borderRadius: '12px',
-          background: '#FFFFFFE5',
-          boxShadow: '-8px 0px 8px 0px #62748E14',
-          padding: '24px',
-          marginTop: "24px",
-          marginBottom: "12px",
-          marginRight: "12px",
-          overflow: 'auto',
+          ...tokens.paper,
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
-
       <DialogTitle
-        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: "36px", paddingLeft: "4px", paddingTop: 0, paddingBottom: 0, paddingRight: 0 }}>
-
-        <span className="font-sans font-medium text-lg leading-7 tracking-0 text-[#1E2939]">
-          {mode === "edit" ? getRoleLabelDynamic(' CDL_EDIT_ROLE') : mode === "view" ? `${getRoleLabelDynamic(' CDL_ROLE_VIEW_ONLY')}` : getRoleLabelDynamic('CDL_ADD_NEW_ROLE')}
-        </span>
-        <IconButton onClick={onClose}>
-          <img src="/close.svg" alt="close" />
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontFamily: 'Outfit, sans-serif',
+          fontWeight: 500,
+          fontStyle: 'normal',
+          fontSize: '20px',
+          lineHeight: '28px',
+          letterSpacing: '0.15px',
+          verticalAlign: 'middle',
+          color: theme.palette.text.primary,
+          borderBottom: `1px solid ${tokens.dividerColor}`,
+          backgroundColor: tokens.paper.backgroundColor as string,
+          pr: 3,
+          pl: 3,
+        }}
+      >
+        {mode === 'edit'
+          ? getRoleLabelDynamic('CDL_EDIT_ROLE')
+          : mode === 'view'
+            ? getRoleLabelDynamic('CDL_ROLE_VIEW_ONLY')
+            : getRoleLabelDynamic('CDL_ADD_NEW_ROLE')}
+        <IconButton
+          onClick={onClose}
+          sx={{
+            color: theme.palette.text.secondary,
+            '&:hover': {
+              backgroundColor: theme.palette.action.hover,
+            },
+          }}
+        >
+          <CancelOutlinedIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
 
-      <DialogContent dividers sx={{ p: 0, pt: "16px" }}>
+      <DialogContent
+        dividers
+        sx={{
+          p: 0,
+          pt: '16px',
+          px: 3,
+          borderColor: tokens.dividerColor,
+          backgroundColor: tokens.paper.backgroundColor as string,
+        }}
+      >
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert
+            severity="error"
+            variant="outlined"
+            sx={{
+              mb: 2,
+              backgroundColor:
+                theme.palette.mode === 'dark'
+                  ? 'rgba(239, 68, 68, 0.08)'
+                  : 'rgba(254, 226, 226, 0.4)',
+              borderColor: alpha(theme.palette.error.main, 0.4),
+              color: theme.palette.error.main,
+            }}
+          >
             {error}
           </Alert>
         )}
-        
+
         <TextField
           fullWidth
           label={getRoleLabelDynamic('CDL_ROLE_NAME')}
           value={selectedRole}
           onChange={(e) => {
-            setSelectedRole(e.target.value);
-            if (error) setError(null); // Clear error when user starts typing
+            setSelectedRole(e.target.value)
+            if (error) setError(null) // Clear error when user starts typing
           }}
-          disabled={loading || mode === "view"}
+          disabled={loading || mode === 'view'}
           error={!!error}
-          helperText={error || (mode === "view" ? `${getRoleLabelDynamic('CDL_VIEW_ONLY')}` : getRoleLabelDynamic('CDL_ROLE_NAME_HELPER'))}
-          sx={{ mb: 2 }}
+          helperText={
+            error ||
+            (mode === 'view' ? getRoleLabelDynamic('CDL_VIEW_ONLY') : undefined)
+          }
+          sx={error ? errorFieldStyles : commonFieldStyles}
+          InputLabelProps={{ sx: labelSx }}
+          InputProps={{ sx: valueSx }}
         />
       </DialogContent>
 
@@ -178,36 +244,89 @@ export const RightSlideRolePanel: React.FC<RightSlideRolePanelProps> = ({
           padding: 2,
           display: 'flex',
           gap: 2,
+          borderTop: `1px solid ${tokens.dividerColor}`,
+          backgroundColor: alpha(
+            theme.palette.background.paper,
+            theme.palette.mode === 'dark' ? 0.92 : 0.9
+          ),
         }}
       >
-        {mode === "view" && onSwitchToEdit ? (
+        {mode === 'view' && onSwitchToEdit ? (
           <Button
+            fullWidth
             variant="outlined"
             onClick={onSwitchToEdit}
-            color="primary"
-            fullWidth
-            size="large"
+            sx={{
+              ...buttonBaseStyles,
+              borderWidth: '1px',
+              borderColor:
+                theme.palette.mode === 'dark'
+                  ? theme.palette.primary.main
+                  : tokens.dividerColor,
+              color: theme.palette.text.primary,
+              backgroundColor:
+                theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.background.default, 0.6)
+                  : 'transparent',
+              '&:hover': {
+                borderColor: theme.palette.primary.main,
+                backgroundColor:
+                  theme.palette.mode === 'dark'
+                    ? alpha(theme.palette.primary.main, 0.15)
+                    : alpha(theme.palette.primary.main, 0.08),
+              },
+            }}
           >
-            { ` ${getRoleLabelDynamic(' CDL_EDIT')}`}
+            {getRoleLabelDynamic('CDL_EDIT')}
           </Button>
-        ) : mode !== "view" ? (
+        ) : mode !== 'view' ? (
           <Button
+            fullWidth
             variant="contained"
             onClick={handleSave}
-            color="primary"
-            fullWidth
-            size="large"
             disabled={loading || !selectedRole.trim()}
-            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
-          >
-            {loading 
-              ? (mode === 'edit' ? getRoleLabelDynamic('CDL_SAVING') : getRoleLabelDynamic('CDL_CREATING')) 
-              : (mode === 'edit' ? getRoleLabelDynamic('CDL_SAVE') : ` ${getRoleLabelDynamic('CDL_ADD_NEW_ROLE')} `)
+            startIcon={
+              loading ? <CircularProgress size={20} color="inherit" /> : null
             }
+            sx={{
+              ...buttonBaseStyles,
+              backgroundColor: theme.palette.primary.main,
+              color: theme.palette.primary.contrastText,
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor:
+                theme.palette.mode === 'dark'
+                  ? theme.palette.primary.main
+                  : 'transparent',
+              boxShadow: 'none',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark,
+                borderColor:
+                  theme.palette.mode === 'dark'
+                    ? theme.palette.primary.main
+                    : 'transparent',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+              },
+              '&:disabled': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.35),
+                borderColor:
+                  theme.palette.mode === 'dark'
+                    ? alpha(theme.palette.primary.main, 0.5)
+                    : 'transparent',
+                color: alpha(theme.palette.common.white, 0.7),
+              },
+            }}
+          >
+            {loading
+              ? mode === 'edit'
+                ? getRoleLabelDynamic('CDL_SAVING')
+                : getRoleLabelDynamic('CDL_CREATING')
+              : mode === 'edit'
+                ? getRoleLabelDynamic('CDL_SAVE')
+                : getRoleLabelDynamic('CDL_ADD_NEW_ROLE')}
           </Button>
         ) : null}
       </Box>
-
     </Drawer>
-  );
-};
+  )
+}

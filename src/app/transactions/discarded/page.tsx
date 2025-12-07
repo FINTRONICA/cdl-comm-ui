@@ -10,7 +10,7 @@ import { useDiscardedTransactionsUI } from '@/hooks'
 import { useLabelConfigApi } from '@/hooks/useLabelConfigApi'
 import { getDiscardedTransactionLabel } from '@/constants/mappings/discardedTransactionMapping'
 import { useSidebarConfig } from '@/hooks/useSidebarConfig'
-import { Tooltip } from '@mui/material'
+import { GlobalLoading, GlobalError } from '@/components/atoms'
 
 // Define the transaction data structure to match UI
 interface TransactionData extends Record<string, unknown> {
@@ -134,9 +134,9 @@ const DiscardedTransactionPage: React.FC = () => {
   // Handle API pagination - when user changes page in table
   const handlePageChange = (newPage: number) => {
     // Check if we're dealing with filtered/searched data
-    const hasActiveSearch = Object.values(search).some((value) => value.trim())
+    const hasSearch = Object.values(search).some((value) => value.trim())
 
-    if (hasActiveSearch) {
+    if (hasSearch) {
       // Use local pagination for searched data
       localHandlePageChange(newPage)
     } else {
@@ -153,17 +153,19 @@ const DiscardedTransactionPage: React.FC = () => {
   }
 
   // Determine which pagination values to use
-  const effectiveTotalRows = Object.values(search).some((value) => value.trim())
-    ? localTotalRows
-    : apiTotal
-  const effectiveTotalPages = Object.values(search).some((value) =>
-    value.trim()
-  )
-    ? localTotalPages
-    : apiTotalPages
-  const effectivePage = Object.values(search).some((value) => value.trim())
-    ? localPage
-    : currentApiPage
+  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+
+  // Calculate effective startItem and endItem based on pagination type
+  const effectiveStartItem = hasActiveSearch
+    ? startItem
+    : (currentApiPage - 1) * currentApiSize + 1
+  const effectiveEndItem = hasActiveSearch
+    ? endItem
+    : Math.min(currentApiPage * currentApiSize, apiTotal)
 
   // Define table columns with dynamic labels
   const tableColumns = [
@@ -323,17 +325,8 @@ const DiscardedTransactionPage: React.FC = () => {
   if (isLoading || labelsLoading) {
     return (
       <DashboardLayout title={discardedTitle}>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">
-              {isLoading && labelsLoading
-                ? 'Loading transactions and labels...'
-                : isLoading
-                  ? 'Loading transactions...'
-                  : 'Loading labels...'}
-            </p>
-          </div>
+        <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full">
+          <GlobalLoading fullHeight />
         </div>
       </DashboardLayout>
     )
@@ -342,57 +335,13 @@ const DiscardedTransactionPage: React.FC = () => {
   if (error || labelsError) {
     return (
       <DashboardLayout title={discardedTitle}>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="text-red-600 mb-4">
-              <svg
-                className="w-12 h-12 mx-auto"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {error && labelsError
-                ? 'Error Loading Transactions and Labels'
-                : error
-                  ? 'Error Loading Transactions'
-                  : 'Error Loading Labels'}
-            </h3>
-            <p className="text-gray-600 mb-4">Please try refreshing the page</p>
-            <div className="text-left text-xs bg-red-50 p-4 rounded border max-w-md mx-auto">
-              <p>
-                <strong>Error Details:</strong>
-              </p>
-              {error && (
-                <div className="mb-2">
-                  <p>
-                    <strong>Transactions:</strong>{' '}
-                    {error.message || 'Unknown error'}
-                  </p>
-                </div>
-              )}
-              {labelsError && (
-                <div className="mb-2">
-                  <p>
-                    <strong>Labels:</strong> {labelsError}
-                  </p>
-                </div>
-              )}
-              {process.env.NODE_ENV === 'development' && (
-                <pre className="mt-2 text-xs">
-                  {JSON.stringify({ error, labelsError }, null, 2)}
-                </pre>
-              )}
-            </div>
-          </div>
+        <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full">
+          <GlobalError
+            error={error?.message || labelsError || 'Unknown error'}
+            onRetry={() => window.location.reload()}
+            title="Error loading discarded transactions"
+            fullHeight
+          />
         </div>
       </DashboardLayout>
     )
@@ -408,20 +357,9 @@ const DiscardedTransactionPage: React.FC = () => {
       )}
 
       <DashboardLayout title={discardedTitle}>
-        <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
-          {/* Sticky Header Section */}
-          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] border-b border-gray-200 rounded-t-2xl">
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 py-3.5 px-4">
-              {/* <button className="flex items-center h-8 py-1.5 gap-1 px-2.5 text-[#155DFC] font-sans font-medium text-[14px] hover:bg-blue-50 rounded-md transition-colors">
-                <img src="/fetch icon.svg" alt="fetch icon" />
-                Fetch Details
-              </button> */}
-            </div>
-          </div>
-
+        <div className="bg-white/75 dark:bg-gray-800/80 rounded-xl flex flex-col h-full pt-2">
           {/* Table Container with Fixed Pagination */}
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="bg-white/75 dark:bg-gray-800/80 flex-1 flex flex-col min-h-0">
             <div className="flex-1 overflow-auto">
               <ExpandableDataTable<TransactionData>
                 data={paginated}
@@ -433,8 +371,8 @@ const DiscardedTransactionPage: React.FC = () => {
                   rowsPerPage: rowsPerPage,
                   totalRows: effectiveTotalRows,
                   totalPages: effectiveTotalPages,
-                  startItem,
-                  endItem,
+                  startItem: effectiveStartItem,
+                  endItem: effectiveEndItem,
                 }}
                 onPageChange={handlePageChange}
                 onRowsPerPageChange={handleRowsPerPageChange}

@@ -18,9 +18,5 @@ export * from './controllers/userController';
 // Store
 export * from './store/authStore';
 
-// Components
-export * from './components/SessionTracker';
-export * from './components/SessionWarning';
-
 // Hooks
 export * from './hooks/useLogin';

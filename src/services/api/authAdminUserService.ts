@@ -216,7 +216,7 @@ class AuthAdminUserService {
     
     // The new API returns users with roles and groups structure
     const response = await apiClient.get<GetUsersWithRolesAndGroupsResponse>(url)
-    console.log('****New API Response*****', response)
+   
     
     // Transform the direct array response to paginated format
     const allUsers = Array.isArray(response) ? response : []

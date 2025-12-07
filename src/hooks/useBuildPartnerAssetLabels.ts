@@ -1,22 +1,26 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { BuildPartnerAssetLabelsService } from '@/services/api/buildPartnerAssetLabelsService'
-import { useIsAuthenticated } from './useAuthQuery'
+import { useAppStore } from '@/store'
 
-// Hook that uses the proper BuildPartnerAssetLabelsService
+// Hook that reads from Zustand store (labels are pre-loaded by ComplianceProvider)
+// No API calls are made here to avoid duplicate requests
 export function useBuildPartnerAssetLabels() {
-  const { isAuthenticated } = useIsAuthenticated()
+  // Read labels from Zustand store (already loaded by ComplianceProvider)
+  const buildPartnerAssetLabels = useAppStore((state) => state.buildPartnerAssetLabels)
+  const buildPartnerAssetLabelsLoading = useAppStore((state) => state.buildPartnerAssetLabelsLoading)
+  const buildPartnerAssetLabelsError = useAppStore((state) => state.buildPartnerAssetLabelsError)
 
-  return useQuery({
-    queryKey: ['buildPartnerAssetLabels'],
-    queryFn: async () => {
-      const rawLabels = await BuildPartnerAssetLabelsService.fetchLabels()
-      return BuildPartnerAssetLabelsService.processLabels(rawLabels)
-    },
-    enabled: !!isAuthenticated,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
-    refetchOnWindowFocus: false,
-    retry: 3,
-  })
+  // Return React Query-compatible interface for backwards compatibility
+  return useMemo(
+    () => ({
+      data: buildPartnerAssetLabels,
+      isLoading: buildPartnerAssetLabelsLoading,
+      error: buildPartnerAssetLabelsError ? new Error(buildPartnerAssetLabelsError) : null,
+      isError: !!buildPartnerAssetLabelsError,
+      isSuccess: !buildPartnerAssetLabelsLoading && !!buildPartnerAssetLabels,
+    }),
+    [buildPartnerAssetLabels, buildPartnerAssetLabelsLoading, buildPartnerAssetLabelsError]
+  )
 }
 
 export function useBuildPartnerAssetLabelsWithUtils() {

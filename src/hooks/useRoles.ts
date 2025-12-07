@@ -11,7 +11,7 @@ import { useIsAuthenticated } from './useAuthQuery'
 export const ROLES_QUERY_KEY = 'roles'
 
 // Hook to fetch all roles with pagination and filters
-export function useRoles(page = 0, size = 20, search?: string) {
+export function useRoles(page = 0, size = 999, search?: string) {
   return useQuery({
     queryKey: [ROLES_QUERY_KEY, { page, size, search }],
     queryFn: async () => {

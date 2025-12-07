@@ -1,4 +1,4 @@
-import { CapitalPartnerRequest } from '../services/api/capitalPartnerService'
+// import { CapitalPartnerRequest } from '../services/api/capitalPartnerService'
 
 // Interface for Step1 form data
 export interface Step1FormData {
@@ -14,7 +14,7 @@ export interface Step1FormData {
   idExpiryDate: any // Dayjs object
   nationality: string
   accountContact: string
-  mobileNumber: string
+  mpmobileNumber: string
   email: string
 }
 
@@ -74,22 +74,7 @@ export function mapStep1ToCapitalPartnerPayload(
   }
 
   // Create the OptionDTO structure with only non-null values
-  const createOptionDTO = (option?: DropdownOption) => {
-    if (!option) return undefined
-
-    const dto: any = {
-      id: option.id,
-    }
-
-    // Only add non-null/non-undefined values
-    if (option.enabled !== undefined && option.enabled !== null) {
-      dto.enabled = option.enabled
-    } else {
-      dto.enabled = false // Default value
-    }
-
-    return dto
-  }
+  // Helper kept for future extension; not used currently after payload simplification
 
   // Build the payload with only non-empty values
   const payload: any = {}
@@ -123,8 +108,8 @@ export function mapStep1ToCapitalPartnerPayload(
     payload.capitalPartnerTelephoneNo = formData.accountContact
   }
 
-  if (formData.mobileNumber) {
-    payload.capitalPartnerMobileNo = formData.mobileNumber
+  if (formData.mpmobileNumber) {
+    payload.capitalPartnerMobileNo = formData.mpmobileNumber
   }
 
   if (formData.email) {
@@ -165,27 +150,6 @@ export function mapStep1ToCapitalPartnerPayload(
 /**
  * Validates Step1 form data before mapping
  */
-export function validateStep1Data(formData: Step1FormData): string[] {
-  const errors: string[] = []
-
-  if (!formData.investorType) {
-    errors.push('Investor Type is required')
-  }
-  if (!formData.investorId) {
-    errors.push('Investor ID is required')
-  }
-  if (!formData.investorFirstName) {
-    errors.push('Investor Name is required')
-  }
-  if (!formData.investorLastName) {
-    errors.push('Last Name is required')
-  }
-  if (!formData.investorIdType) {
-    errors.push('Investor ID Type is required')
-  }
-  if (!formData.nationality) {
-    errors.push('Nationality is required')
-  }
-
-  return errors
-}
+// Step 1 validation is now handled exclusively by Zod schema in
+// `src/lib/validation/capitalPartnerSchemas.ts` and enforced in
+// `InvestorStepper/steps/Step1.tsx`.

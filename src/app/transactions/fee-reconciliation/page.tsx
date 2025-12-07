@@ -11,15 +11,21 @@ import { getFeeRepushLabel } from '@/constants/mappings/feeRepushMapping'
 import { useFeeRepushLabelsWithCache } from '@/hooks/useFeeRepushLabelsWithCache'
 import { useAppStore } from '@/store'
 import { RotateCcw } from 'lucide-react'
+import {
+  useSuccessNotification,
+  useErrorNotification,
+} from '@/store/notificationStore'
 
 // Import the fee repush UI data type from the service
 import type { FeeRepushUIData } from '@/services/api/feeRepushService'
 import { useSidebarConfig } from '@/hooks/useSidebarConfig'
+import { GlobalLoading, GlobalError } from '@/components/atoms'
 
 // Extend the type to satisfy Record<string, unknown> constraint
 interface FeeRepushTableData extends FeeRepushUIData, Record<string, unknown> {}
 
 const statusOptions = [
+  'Success',
   'Failed',
   'Pending',
   'Approved',
@@ -32,10 +38,11 @@ const statusOptions = [
 const FeeRepushPage: React.FC = () => {
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
 
-  // Get current language from store
   const currentLanguage = useAppStore((state) => state.language)
 
-  // Fetch fee repush data using the hook with dynamic pagination
+  const showSuccess = useSuccessNotification()
+  const showError = useErrorNotification()
+
   const {
     data: feeRepushData,
     loading: feeRepushLoading,
@@ -45,9 +52,8 @@ const FeeRepushPage: React.FC = () => {
     feeRepush,
     updatePagination,
     pagination,
-  } = useFeeRepush(0, 20) // Start with page 0, size 20
+  } = useFeeRepush(0, 20)
 
-  // Fetch fee repush labels from API with cache
   const {
     data: feeRepushLabels,
     labelMap: feeRepushLabelMap,
@@ -56,17 +62,14 @@ const FeeRepushPage: React.FC = () => {
     getLabel: getFeeRepushLabelFromAPI,
   } = useFeeRepushLabelsWithCache(currentLanguage)
 
-  // Create dynamic label getter function that prioritizes API labels
   const getFeeRepushLabelDynamic = React.useCallback(
     (configId: string): string => {
       const fallbackLabel = getFeeRepushLabel(configId)
 
-      // First try to get from API labels
       if (feeRepushLabelMap && feeRepushLabelMap[configId]) {
         return feeRepushLabelMap[configId]
       }
 
-      // Use hook's getLabel method as secondary option
       if (getFeeRepushLabelFromAPI) {
         const apiLabel = getFeeRepushLabelFromAPI(configId)
         if (apiLabel !== configId) {
@@ -79,18 +82,17 @@ const FeeRepushPage: React.FC = () => {
     [feeRepushLabelMap, getFeeRepushLabelFromAPI]
   )
 
-  // Define table columns with dynamic labels using API-based configIds
   const tableColumns = [
     {
       key: 'projectName',
-      label: getFeeRepushLabelDynamic('CDL_FEE_BPA_NAME'), // API: "Build Partner Assets Name"
+      label: getFeeRepushLabelDynamic('CDL_FEE_BPA_NAME'),
       type: 'text' as const,
       width: 'w-48',
       sortable: true,
     },
     {
       key: 'feeType',
-      label: getFeeRepushLabelDynamic('CDL_FEE_TYPE'), // API: "Fee Type"
+      label: getFeeRepushLabelDynamic('CDL_FEE_TYPE'),
       type: 'text' as const,
       width: 'w-48',
       sortable: true,
@@ -189,10 +191,14 @@ const FeeRepushPage: React.FC = () => {
   const handleRetryPayment = async (row: FeeRepushTableData) => {
     try {
       await retryPayment(row.id)
-      alert(`Payment retry initiated for: ${row.projectName} - ${row.feeType}`)
+      showSuccess(
+        'Payment Retry Initiated',
+        `${row.projectName} - ${row.feeType}`
+      )
     } catch (error) {
-      alert(
-        `Failed to retry payment: ${error instanceof Error ? error.message : 'Unknown error'}`
+      showError(
+        'Payment Retry Failed',
+        error instanceof Error ? error.message : 'Unknown error occurred'
       )
     }
   }
@@ -205,10 +211,11 @@ const FeeRepushPage: React.FC = () => {
 
     try {
       await feeRepush(row.id)
-      alert(`Fee repush initiated for: ${row.projectName} - ${row.feeType}`)
+      showSuccess('Fee Repush Initiated', `${row.projectName} - ${row.feeType}`)
     } catch (error) {
-      alert(
-        `Failed to repush fee: ${error instanceof Error ? error.message : 'Unknown error'}`
+      showError(
+        'Fee Repush Failed',
+        error instanceof Error ? error.message : 'Unknown error occurred'
       )
     }
   }
@@ -375,34 +382,31 @@ const FeeRepushPage: React.FC = () => {
       )}
 
       <DashboardLayout title={feeRepushTitle}>
-        <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
+        <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full rounded-t-2xl">
           {/* Sticky Header Section */}
-          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] border-b border-gray-200 rounded-t-2xl">
-            {/* Action Buttons */}
+          {/* Action Buttons */}
+          {/* <div className="sticky top-0 z-10 bg-white/75 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
             <PageActionButtons
               entityType="feeRepush"
               showButtons={{ addNew: true }}
             />
-          </div>
+          </div> */}
 
           {/* Loading and Error States */}
           {(feeRepushLoading || labelsLoading) && (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-gray-500">Loading...</div>
+            <div className="flex-1 flex items-center justify-center rounded-t-2xl">
+              <GlobalLoading fullHeight />
             </div>
           )}
 
           {(feeRepushError || labelsError) && (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-red-500">
-                Error loading data: {feeRepushError || labelsError}
-              </div>
-              <button
-                onClick={refetchFeeRepush}
-                className="ml-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Retry
-              </button>
+            <div className="flex-1 flex items-center justify-center rounded-t-2xl">
+              <GlobalError
+                error={feeRepushError || labelsError || 'Unknown error'}
+                onRetry={refetchFeeRepush}
+                title="Error loading data"
+                fullHeight
+              />
             </div>
           )}
 
@@ -412,7 +416,7 @@ const FeeRepushPage: React.FC = () => {
             !feeRepushError &&
             !labelsError && (
               <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex-1 overflow-auto">
+                <div className="flex-1 overflow-auto rounded-t-2xl">
                   <PermissionAwareDataTable<FeeRepushTableData>
                     data={paginated}
                     columns={tableColumns}

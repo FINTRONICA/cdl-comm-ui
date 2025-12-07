@@ -17,22 +17,48 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { GlobalLoading } from '@/components/atoms'
 import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { Controller, useFormContext } from 'react-hook-form'
+import { FormError } from '../../../atoms/FormError'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { idService } from '../../../../services/api/developerIdService'
 import { useApplicationSettings } from '../../../../hooks/useApplicationSettings'
-import { BuildPartnerService } from '../../../../services/api/buildPartnerService'
 import { useRealEstateAssets } from '../../../../hooks/useRealEstateAssets'
 import { useEnabledFinancialInstitutionsDropdown } from '../../../../hooks/useFinancialInstitutions'
-import { useSuretyBondTranslationsByPattern } from '../../../../hooks/useSuretyBondTranslations'
+import { useSuretyBondLabelsWithCache } from '@/hooks/useSuretyBondLabelsWithCache'
+import { getSuretyBondLabel } from '@/constants/mappings/suretyBondMapping'
+import { useAppStore } from '@/store'
 import { useSuretyBond } from '../../../../hooks/useSuretyBonds'
 import dayjs from 'dayjs'
+
+// Hook to detect dark mode
+const useIsDarkMode = () => {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+
+    checkTheme()
+
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  return isDark
+}
 
 interface Step1Props {
   savedId?: string | null
@@ -41,26 +67,24 @@ interface Step1Props {
 }
 
 const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
-  // Form context
-  const { control, setValue, watch } = useFormContext()
+  const {
+    control,
+    setValue,
+    watch,
+    trigger,
+    formState: { errors },
+  } = useFormContext()
 
-  // State for guarantee reference ID generation
   const [guaranteeRefId, setGuaranteeRefId] = useState<string>('')
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
-
-  // State for developer names and build partners
-  const [developerNames, setDeveloperNames] = useState<string[]>([])
-
-  // State for real estate assets
   const [realEstateAssets, setRealEstateAssets] = useState<any[]>([])
+  const isDarkMode = useIsDarkMode()
 
-  // Use application settings hooks
   const { data: guaranteeTypes, loading: guaranteeTypesLoading } =
     useApplicationSettings('SURETY_BOND_TYPE')
   const { data: guaranteeStatuses, loading: guaranteeStatusesLoading } =
     useApplicationSettings('SURETY_BOND_STATUS')
 
-  // Use financial institutions hook for issuer banks with pagination
   const {
     dropdownOptions: issuerBankOptions,
     loading: issuerBanksLoading,
@@ -69,60 +93,37 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     totalElements: totalBanks,
   } = useEnabledFinancialInstitutionsDropdown()
 
-  // Use surety bond translations for labels
-  const { translations: sbTranslations, loading: sbTranslationsLoading } =
-    useSuretyBondTranslationsByPattern('CDL_SB_')
+  const language = useAppStore((s) => s.language) || 'EN'
+  const { getLabel } = useSuretyBondLabelsWithCache(language)
 
-  // Fetch surety bond data by ID if in edit mode or view mode
   const {
     suretyBond,
     loading: suretyBondLoading,
     error: suretyBondError,
   } = useSuretyBond((isEditMode || isViewMode) && savedId ? savedId : '')
 
-  // Real estate assets hook
   const { assets, loading: assetsLoading } = useRealEstateAssets(0, 20)
 
-  // Fetch developer names from BuildPartnerService
-  useEffect(() => {
-    const fetchDeveloperNames = async () => {
-      try {
-        const service = new BuildPartnerService()
-        const res = await service.getBuildPartners(0, 100)
-        const partners = res?.content || []
-        const names = partners
-          .map((bp: any) => bp.bpName)
-          .filter((name: string | null) => !!name)
-        setDeveloperNames(names)
-      } catch (e) {
-        setDeveloperNames([])
-      }
-    }
-    fetchDeveloperNames()
-  }, [])
-
-  // Populate real estate assets
   useEffect(() => {
     if (assets.length > 0) {
       setRealEstateAssets(assets)
     }
   }, [assets])
 
-  // Function to generate new guarantee reference ID
   const handleGenerateGuaranteeRefId = async () => {
     try {
       setIsGeneratingId(true)
       const newIdResponse = idService.generateNewId('GUA')
       setGuaranteeRefId(newIdResponse.id)
-      setValue('guaranteeRefNo', newIdResponse.id)
+      setValue('guaranteeRefNo', newIdResponse.id, { shouldValidate: true })
+      trigger('guaranteeRefNo')
     } catch (error) {
-      console.error('Error generating guarantee reference ID:', error)
+      throw error
     } finally {
       setIsGeneratingId(false)
     }
   }
 
-  // Initialize guarantee reference ID from form value
   useEffect(() => {
     const currentId = watch('guaranteeRefNo')
     if (currentId && currentId !== guaranteeRefId) {
@@ -130,17 +131,14 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     }
   }, [watch, guaranteeRefId])
 
-  // Helper function to get translated label
-  const getTranslatedLabel = (configId: string, fallback: string): string => {
-    if (sbTranslationsLoading || !sbTranslations.length) {
-      return fallback
-    }
-
-    const translation = sbTranslations.find((t) => t.configId === configId)
-    return translation?.configValue || fallback
+  const getTranslatedLabel = (configId: string, fallback?: string): string => {
+    return getLabel(
+      configId,
+      language,
+      fallback ?? getSuretyBondLabel(configId)
+    )
   }
 
-  // Handle data prepopulation when in edit mode or view mode
   useEffect(() => {
     if (
       (isEditMode || isViewMode) &&
@@ -160,17 +158,25 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
           'guaranteeDate',
           suretyBond.suretyBondDate ? dayjs(suretyBond.suretyBondDate) : null
         )
-        setValue('projectCif', '') // This would need to be fetched from the real estate asset
+        // Set project CIF from the real estate asset data
+        setValue('projectCif', suretyBond.realEstateAssestDTO?.reaCif || '')
         setValue(
           'projectName',
           suretyBond.realEstateAssestDTO?.id?.toString() || ''
         )
+        // Set Build Partner Name from realEstateAssestDTO.buildPartnerDTO.bpName
         setValue(
           'developerName',
-          suretyBond.buildPartnerDTO?.id?.toString() || ''
+          suretyBond.realEstateAssestDTO?.buildPartnerDTO?.bpName || ''
         )
         setValue('openEndedGuarantee', suretyBond.suretyBondOpenEnded || false)
-        setValue('projectCompletionDate', null) // This would need to be fetched from the real estate asset
+        // Set project completion date from the real estate asset
+        setValue(
+          'projectCompletionDate',
+          suretyBond.realEstateAssestDTO?.reaCompletionDate
+            ? dayjs(suretyBond.realEstateAssestDTO.reaCompletionDate)
+            : null
+        )
         setValue('noOfAmendments', suretyBond.suretyBondNoOfAmendment || '')
         setValue(
           'guaranteeExpirationDate',
@@ -187,14 +193,13 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
           suretyBond.suretyBondNewReadingAmendment || ''
         )
         setValue('issuerBank', suretyBond.issuerBankDTO?.id?.toString() || '')
-        setValue('status', '')
+        setValue('status', suretyBond.suretyBondStatusDTO?.id?.toString() || '')
       } catch (error) {
-        console.error('Step1: Failed to prepopulate form data:', error)
+        throw error
       }
     }
   }, [isEditMode, isViewMode, savedId, suretyBond, suretyBondLoading, setValue])
 
-  // Watch for project name changes and auto-populate CIF and completion date
   useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === 'projectName' && value.projectName) {
@@ -202,37 +207,55 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
           (asset) => asset.id === parseInt(value.projectName)
         )
         if (selectedAsset) {
-          // Auto-populate CIF
+          // Auto-populate Build Partner Assets CIF
           if (selectedAsset.reaCif) {
-            setValue('projectCif', selectedAsset.reaCif)
+            setValue('projectCif', selectedAsset.reaCif, {
+              shouldValidate: true,
+            })
+            trigger('projectCif')
           }
-          // Auto-populate project completion date
+
+          // Auto-populate Completion Date
           if (selectedAsset.reaCompletionDate) {
             setValue(
               'projectCompletionDate',
-              dayjs(selectedAsset.reaCompletionDate)
+              dayjs(selectedAsset.reaCompletionDate),
+              { shouldValidate: true }
             )
+            trigger('projectCompletionDate')
+          }
+
+          // Auto-populate Build Partner Name from realEstateAssestDTO.buildPartnerDTO.bpName
+          if (selectedAsset.buildPartnerDTO?.bpName) {
+            setValue('developerName', selectedAsset.buildPartnerDTO.bpName, {
+              shouldValidate: true,
+            })
+            trigger('developerName')
           }
         }
       }
     })
     return () => subscription.unsubscribe()
-  }, [watch, setValue, realEstateAssets])
+  }, [watch, setValue, realEstateAssets, trigger])
 
-  // Common styles
   const commonFieldStyles = {
     '& .MuiOutlinedInput-root': {
       height: '46px',
       borderRadius: '8px',
+      backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+      color: isDarkMode ? '#F9FAFB' : '#111827',
       '& fieldset': {
-        borderColor: '#CAD5E2',
+        borderColor: isDarkMode ? '#334155' : '#CAD5E2',
         borderWidth: '1px',
       },
       '&:hover fieldset': {
-        borderColor: '#CAD5E2',
+        borderColor: isDarkMode ? '#475569' : '#CAD5E2',
       },
       '&.Mui-focused fieldset': {
         borderColor: '#2563EB',
+      },
+      '& input': {
+        color: isDarkMode ? '#F9FAFB' : '#111827',
       },
     },
   }
@@ -242,17 +265,22 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     '& .MuiOutlinedInput-root': {
       height: '48px',
       borderRadius: '12px',
-      backgroundColor: '#FFFFFF',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+      color: isDarkMode ? '#F9FAFB' : '#111827',
+      boxShadow: isDarkMode
+        ? '0 1px 3px rgba(0, 0, 0, 0.3)'
+        : '0 1px 3px rgba(0, 0, 0, 0.1)',
       transition: 'all 0.2s ease-in-out',
       '& fieldset': {
-        borderColor: '#E2E8F0',
+        borderColor: isDarkMode ? '#334155' : '#E2E8F0',
         borderWidth: '1.5px',
         transition: 'border-color 0.2s ease-in-out',
       },
       '&:hover fieldset': {
-        borderColor: '#3B82F6',
-        boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)',
+        borderColor: isDarkMode ? '#475569' : '#3B82F6',
+        boxShadow: isDarkMode
+          ? '0 2px 8px rgba(59, 130, 246, 0.25)'
+          : '0 2px 8px rgba(59, 130, 246, 0.15)',
       },
       '&.Mui-focused fieldset': {
         borderColor: '#2563EB',
@@ -261,7 +289,7 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
       },
     },
     '& .MuiSelect-icon': {
-      color: '#64748B',
+      color: isDarkMode ? '#94A3B8' : '#64748B',
       fontSize: '20px',
       transition: 'color 0.2s ease-in-out',
       right: '12px',
@@ -281,21 +309,26 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     '& .MuiOutlinedInput-root': {
       height: '46px',
       borderRadius: '8px',
+      backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+      color: isDarkMode ? '#F9FAFB' : '#111827',
       '& fieldset': {
-        borderColor: '#CAD5E2',
+        borderColor: isDarkMode ? '#334155' : '#CAD5E2',
         borderWidth: '1px',
       },
       '&:hover fieldset': {
-        borderColor: '#CAD5E2',
+        borderColor: isDarkMode ? '#475569' : '#CAD5E2',
       },
       '&.Mui-focused fieldset': {
         borderColor: '#2563EB',
       },
+      '& input': {
+        color: isDarkMode ? '#F9FAFB' : '#111827',
+      },
     },
   }
 
-  const labelSx = {
-    color: '#374151',
+  const getLabelSx = () => ({
+    color: isDarkMode ? '#9CA3AF' : '#374151',
     fontFamily:
       'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontWeight: 500,
@@ -307,12 +340,12 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
       color: '#2563EB',
     },
     '&.MuiFormLabel-filled': {
-      color: '#374151',
+      color: isDarkMode ? '#9CA3AF' : '#374151',
     },
-  }
+  })
 
   const valueSx = {
-    color: '#111827',
+    color: isDarkMode ? '#F9FAFB' : '#111827',
     fontFamily:
       'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontWeight: 400,
@@ -346,71 +379,97 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     label: string,
     gridSize = 6,
     defaultValue = '',
-    isRequired = false
+    required = false,
+    disabled = false,
+    helperText = ''
   ) => {
-    const validationRules: any = {}
-
-    if (isRequired && !isViewMode) {
-      validationRules.required = `${label} is required`
-    }
-
-    if (name === 'guaranteeAmount' || name === 'newReading') {
-      validationRules.pattern = {
-        value: /^\d+(\.\d{1,2})?$/,
-        message:
-          'Please enter a valid amount (numbers and up to 2 decimal places)',
-      }
-      validationRules.min = {
-        value: 0,
-        message: 'Amount must be greater than or equal to 0',
-      }
-    }
-
     return (
       <Grid key={name} size={{ xs: 12, md: gridSize }}>
         <Controller
           name={name}
           control={control}
-          rules={validationRules}
           defaultValue={defaultValue}
-          render={({ field, fieldState: { error } }) => (
-            <TextField
-              {...field}
-              label={label}
-              fullWidth
-              disabled={!!isViewMode}
-              error={!!error && !isViewMode}
-              helperText={isViewMode ? '' : error?.message}
-              InputLabelProps={{ sx: labelSx }}
-              InputProps={{
-                sx: {
-                  ...valueSx,
+          render={({ field }) => (
+            <>
+              <TextField
+                {...field}
+                label={label}
+                required={required}
+                fullWidth
+                disabled={disabled || !!isViewMode}
+                error={!!errors[name] && !isViewMode}
+                helperText={helperText || (errors[name]?.message as string)}
+                InputLabelProps={{
+                  sx: {
+                    ...getLabelSx(),
+                    '& .MuiFormLabel-asterisk': {
+                      color: '#6A7282 !important',
+                      fontSize: 'inherit',
+                      fontWeight: 'bold',
+                    },
+                    ...(!!errors[name] &&
+                      !isViewMode && {
+                        color: '#d32f2f',
+                        '&.Mui-focused': {
+                          color: '#d32f2f',
+                        },
+                        '&.MuiFormLabel-filled': {
+                          color: '#d32f2f',
+                        },
+                      }),
+                  },
+                }}
+                InputProps={{
+                  sx: {
+                    ...valueSx,
+                    ...(isViewMode && {
+                      backgroundColor: isDarkMode ? '#0F172A' : '#F9FAFB',
+                      color: isDarkMode ? '#94A3B8' : '#6B7280',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: isDarkMode ? '#1E293B' : '#E5E7EB',
+                      },
+                      '& input': {
+                        color: isDarkMode ? '#94A3B8' : '#6B7280',
+                      },
+                    }),
+                  },
+                }}
+                sx={{
+                  ...commonFieldStyles,
                   ...(isViewMode && {
-                    backgroundColor: '#F9FAFB',
-                    color: '#6B7280',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#E5E7EB',
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#E5E7EB',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#E5E7EB',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#E5E7EB',
+                      },
                     },
                   }),
-                },
-              }}
-              sx={{
-                ...commonFieldStyles,
-                ...(isViewMode && {
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      borderColor: '#E5E7EB',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#E5E7EB',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#E5E7EB',
-                    },
-                  },
-                }),
-              }}
-            />
+
+                  ...(!!errors[name] &&
+                    !isViewMode && {
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#d32f2f',
+                          borderWidth: '1px',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#d32f2f',
+                          borderWidth: '1px',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#d32f2f',
+                          borderWidth: '1px',
+                        },
+                      },
+                    }),
+                }}
+              />
+            </>
           )}
         />
       </Grid>
@@ -420,7 +479,8 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
   const renderGuaranteeRefIdField = (
     name: string,
     label: string,
-    gridSize: number = 6
+    gridSize: number = 6,
+    required: boolean = false
   ) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
       <Controller
@@ -428,52 +488,85 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
         control={control}
         defaultValue=""
         render={({ field }) => (
-          <TextField
-            {...field}
-            fullWidth
-            label={label}
-            value={guaranteeRefId}
-            onChange={(e) => {
-              setGuaranteeRefId(e.target.value)
-              field.onChange(e)
-            }}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end" sx={{ mr: 0 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleGenerateGuaranteeRefId}
-                    disabled={isGeneratingId || !!isViewMode}
-                    sx={{
-                      color: '#FFFFFF',
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      background: '#2563EB',
-                      '&:hover': {
-                        background: '#1D4ED8',
+          <>
+            <TextField
+              {...field}
+              fullWidth
+              label={label}
+              required={required}
+              value={guaranteeRefId}
+              onChange={(e) => {
+                setGuaranteeRefId(e.target.value)
+                field.onChange(e)
+              }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end" sx={{ mr: 0 }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<RefreshIcon />}
+                      onClick={handleGenerateGuaranteeRefId}
+                      disabled={isGeneratingId || !!isViewMode || !!isEditMode}
+                      sx={{
+                        color: '#FFFFFF',
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        background: '#2563EB',
+                        '&:hover': {
+                          background: '#1D4ED8',
+                        },
+                        minWidth: '100px',
+                        height: '32px',
+                        fontFamily: 'Outfit, sans-serif',
+                        fontWeight: 500,
+                        fontStyle: 'normal',
+                        fontSize: '11px',
+                        lineHeight: '14px',
+                        letterSpacing: '0.3px',
+                        px: 1,
+                      }}
+                    >
+                      {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                    </Button>
+                  </InputAdornment>
+                ),
+                sx: valueSx,
+              }}
+              InputLabelProps={{
+                sx: {
+                  ...getLabelSx(),
+                  '& .MuiFormLabel-asterisk': {
+                    color: '#6A7282 !important',
+                    fontSize: 'inherit',
+                    fontWeight: 'bold',
+                  },
+                },
+              }}
+              sx={{
+                ...commonFieldStyles,
+
+                ...(!!errors[name] &&
+                  !isViewMode && {
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#d32f2f',
+                        borderWidth: '1px',
                       },
-                      minWidth: '100px',
-                      height: '32px',
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '11px',
-                      lineHeight: '14px',
-                      letterSpacing: '0.3px',
-                      px: 1,
-                    }}
-                  >
-                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
-                  </Button>
-                </InputAdornment>
-              ),
-              sx: valueSx,
-            }}
-            InputLabelProps={{ sx: labelSx }}
-            sx={commonFieldStyles}
-          />
+                      '&:hover fieldset': {
+                        borderColor: '#d32f2f',
+                        borderWidth: '1px',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#d32f2f',
+                        borderWidth: '1px',
+                      },
+                    },
+                  }),
+              }}
+            />
+            <FormError error={errors[name]?.message as string} touched={true} />
+          </>
         )}
       />
     </Grid>
@@ -484,185 +577,250 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     label: string,
     options: any[],
     gridSize = 6,
-    isRequired = true
+    required = false
   ) => {
-    const validationRules: any = {}
-
-    if (isRequired && !isViewMode) {
-      validationRules.required = `${label} is required`
-    }
-
     return (
       <Grid key={name} size={{ xs: 12, md: gridSize }}>
         <Controller
           name={name}
           control={control}
-          rules={validationRules}
           defaultValue={''}
-          render={({ field, fieldState: { error } }) => (
-            <FormControl fullWidth error={!!error && !isViewMode}>
-              <InputLabel sx={labelSx}>{label}</InputLabel>
-              <Select
-                {...field}
-                label={label}
-                disabled={!!isViewMode}
+          render={({ field }) => (
+            <>
+              <FormControl
+                fullWidth
+                error={!!errors[name] && !isViewMode}
                 sx={{
-                  ...selectStyles,
-                  ...valueSx,
-                  ...(isViewMode && {
-                    backgroundColor: '#F9FAFB',
-                    color: '#6B7280',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#E5E7EB',
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#E5E7EB',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#E5E7EB',
-                    },
-                  }),
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    border: '1px solid #9ca3af',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    border: '2px solid #2563eb',
+                  '& .MuiFormLabel-asterisk': {
+                    color: '#6A7282 !important',
                   },
                 }}
-                IconComponent={isViewMode ? () => null : KeyboardArrowDownIcon}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                      border: '1px solid #E5E7EB',
-                      marginTop: '8px',
-                      minHeight: '120px',
-                      maxHeight: '300px',
-                      overflow: 'auto',
-                      '& .MuiMenuItem-root': {
-                        padding: '12px 16px',
-                        fontSize: '14px',
-                        fontFamily:
-                          'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                        color: '#374151',
-                        transition: 'all 0.2s ease-in-out',
-                        '&:hover': {
-                          backgroundColor: '#F3F4F6',
-                          color: '#111827',
+              >
+                <InputLabel
+                  required={required}
+                  sx={{
+                    ...getLabelSx(),
+                    '& .MuiFormLabel-asterisk': {
+                      color: '#6A7282 !important',
+                      fontSize: 'inherit',
+                      fontWeight: 'bold',
+                    },
+                    '&.MuiInputLabel-root .MuiFormLabel-asterisk': {
+                      color: '#6A7282 !important',
+                    },
+                    '&.MuiFormLabel-root .MuiFormLabel-asterisk': {
+                      color: '#6A7282 !important',
+                    },
+                    '&.MuiInputLabel-asterisk': {
+                      color: '#6A7282 !important',
+                    },
+                    ...(!!errors[name] &&
+                      !isViewMode && {
+                        color: '#d32f2f',
+                        '&.Mui-focused': {
+                          color: '#d32f2f',
                         },
-                        '&.Mui-selected': {
-                          backgroundColor: '#EBF4FF',
-                          color: '#2563EB',
-                          fontWeight: 500,
+                      }),
+                  }}
+                >
+                  {label}
+                </InputLabel>
+                <Select
+                  {...field}
+                  label={label}
+                  required={required}
+                  disabled={!!isViewMode}
+                  sx={{
+                    ...selectStyles,
+                    ...valueSx,
+                    ...(isViewMode && {
+                      backgroundColor: isDarkMode ? '#0F172A' : '#F9FAFB',
+                      color: isDarkMode ? '#94A3B8' : '#6B7280',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: isDarkMode ? '#1E293B' : '#E5E7EB',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: isDarkMode ? '#1E293B' : '#E5E7EB',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: isDarkMode ? '#1E293B' : '#E5E7EB',
+                      },
+                    }),
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      border: isDarkMode
+                        ? '1px solid #334155'
+                        : '1px solid #d1d5db',
+                      borderRadius: '6px',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      border: isDarkMode
+                        ? '1px solid #475569'
+                        : '1px solid #9ca3af',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      border: '1px solid #2563eb',
+                    },
+
+                    ...(!!errors[name] &&
+                      !isViewMode && {
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          border: '1px solid #d32f2f',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          border: '1px solid #d32f2f',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          border: '1px solid #d32f2f',
+                        },
+                      }),
+                  }}
+                  IconComponent={
+                    isViewMode ? () => null : KeyboardArrowDownIcon
+                  }
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        borderRadius: '12px',
+                        boxShadow: isDarkMode
+                          ? '0 14px 28px rgba(15, 23, 42, 0.7)'
+                          : '0 10px 25px rgba(0, 0, 0, 0.1)',
+                        border: isDarkMode
+                          ? '1px solid #2E3A4F'
+                          : '1px solid #E5E7EB',
+                        backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF',
+                        marginTop: '8px',
+                        minHeight: '120px',
+                        maxHeight: '300px',
+                        overflow: 'auto',
+                        '& .MuiMenuItem-root': {
+                          padding: '12px 16px',
+                          fontSize: '14px',
+                          fontFamily:
+                            'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                          color: isDarkMode ? '#F8FAFC' : '#374151',
+                          transition: 'all 0.2s ease-in-out',
                           '&:hover': {
-                            backgroundColor: '#DBEAFE',
+                            backgroundColor: isDarkMode ? '#273248' : '#F3F4F6',
+                            color: isDarkMode ? '#FFFFFF' : '#111827',
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: isDarkMode ? '#303E5F' : '#EBF4FF',
+                            color: isDarkMode ? '#FFFFFF' : '#2563EB',
+                            fontWeight: 500,
+                            '&:hover': {
+                              backgroundColor: isDarkMode
+                                ? '#364566'
+                                : '#DBEAFE',
+                            },
                           },
                         },
                       },
                     },
-                  },
-                }}
-              >
-                <MenuItem value="" disabled>
-                  -- Select --
-                </MenuItem>
-                {options.map((opt, index) => {
-                  // Handle special options like "Load More"
-                  if (opt.settingValue === '__LOAD_MORE__') {
+                  }}
+                >
+                  <MenuItem value="" disabled>
+                    -- Select --
+                  </MenuItem>
+                  {options.map((opt, index) => {
+                    if (opt.settingValue === '__LOAD_MORE__') {
+                      return (
+                        <MenuItem
+                          key={opt.id || `option-${index}`}
+                          value=""
+                          onClick={loadMoreBanks}
+                          sx={{
+                            fontSize: '14px',
+                            fontFamily:
+                              'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                            color: isDarkMode ? '#BFDBFE' : '#2563EB',
+                            fontWeight: 'bold',
+                            backgroundColor: isDarkMode ? '#303E5F' : '#EBF4FF',
+                            '&:hover': {
+                              backgroundColor: isDarkMode
+                                ? '#364566'
+                                : '#DBEAFE',
+                              color: isDarkMode ? '#E0F2FE' : '#1D4ED8',
+                            },
+                          }}
+                        >
+                          {opt.displayName}
+                          {hasMoreBanks && (
+                            <span
+                              style={{
+                                marginLeft: '8px',
+                                fontSize: '12px',
+                                color: isDarkMode ? '#94A3B8' : '#6B7280',
+                              }}
+                            >
+                              (
+                              {totalBanks -
+                                issuerBankOptions.filter(
+                                  (o: any) =>
+                                    o.settingValue !== '__LOAD_MORE__' &&
+                                    o.settingValue !== '__LOADING__'
+                                ).length}{' '}
+                              more)
+                            </span>
+                          )}
+                        </MenuItem>
+                      )
+                    }
+
+                    if (opt.settingValue === '__LOADING__') {
+                      return (
+                        <MenuItem
+                          key={opt.id || `option-${index}`}
+                          value=""
+                          disabled
+                          sx={{
+                            fontSize: '14px',
+                            fontFamily:
+                              'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                            color: isDarkMode ? '#94A3B8' : '#6B7280',
+                          }}
+                        >
+                          {opt.displayName}
+                        </MenuItem>
+                      )
+                    }
+
                     return (
                       <MenuItem
-                        key={opt.id || `option-${index}`}
-                        value=""
-                        onClick={loadMoreBanks}
+                        key={opt.id || opt || `option-${index}`}
+                        value={String(opt.id || opt.settingValue || opt || '')}
                         sx={{
                           fontSize: '14px',
                           fontFamily:
                             'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                          color: '#2563EB',
-                          fontWeight: 'bold',
-                          backgroundColor: '#EBF4FF',
+                          color: isDarkMode ? '#F8FAFC' : '#374151',
+                          transition: 'all 0.2s ease-in-out',
                           '&:hover': {
-                            backgroundColor: '#DBEAFE',
-                            color: '#1D4ED8',
+                            backgroundColor: isDarkMode ? '#273248' : '#F3F4F6',
+                            color: isDarkMode ? '#FFFFFF' : '#111827',
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: isDarkMode ? '#303E5F' : '#EBF4FF',
+                            color: isDarkMode ? '#FFFFFF' : '#2563EB',
+                            fontWeight: 500,
+                            '&:hover': {
+                              backgroundColor: isDarkMode
+                                ? '#364566'
+                                : '#DBEAFE',
+                            },
                           },
                         }}
                       >
-                        {opt.displayName}
-                        {hasMoreBanks && (
-                          <span
-                            style={{
-                              marginLeft: '8px',
-                              fontSize: '12px',
-                              color: '#6B7280',
-                            }}
-                          >
-                            (
-                            {totalBanks -
-                              issuerBankOptions.filter(
-                                (o: any) =>
-                                  o.settingValue !== '__LOAD_MORE__' &&
-                                  o.settingValue !== '__LOADING__'
-                              ).length}{' '}
-                            more)
-                          </span>
-                        )}
+                        {opt.displayName || opt.name || opt}
                       </MenuItem>
                     )
-                  }
-
-                  if (opt.settingValue === '__LOADING__') {
-                    return (
-                      <MenuItem
-                        key={opt.id || `option-${index}`}
-                        value=""
-                        disabled
-                        sx={{
-                          fontSize: '14px',
-                          fontFamily:
-                            'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                          color: '#6B7280',
-                        }}
-                      >
-                        {opt.displayName}
-                      </MenuItem>
-                    )
-                  }
-
-                  return (
-                    <MenuItem
-                      key={opt.id || opt || `option-${index}`}
-                      value={String(opt.id || opt.settingValue || opt || '')}
-                      sx={{
-                        fontSize: '14px',
-                        fontFamily:
-                          'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                        color: '#374151',
-                        transition: 'all 0.2s ease-in-out',
-                        '&:hover': {
-                          backgroundColor: '#F3F4F6',
-                          color: '#111827',
-                        },
-                        '&.Mui-selected': {
-                          backgroundColor: '#EBF4FF',
-                          color: '#2563EB',
-                          fontWeight: 500,
-                          '&:hover': {
-                            backgroundColor: '#DBEAFE',
-                          },
-                        },
-                      }}
-                    >
-                      {opt.displayName || opt.name || opt}
-                    </MenuItem>
-                  )
-                })}
-              </Select>
-            </FormControl>
+                  })}
+                </Select>
+              </FormControl>
+              <FormError
+                error={errors[name]?.message as string}
+                touched={true}
+              />
+            </>
           )}
         />
       </Grid>
@@ -675,41 +833,73 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     gridSize: number = 6
   ) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <div className="text-sm">{label}</div>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue={false}
-        render={({ field }) => (
-          <FormControlLabel
-            control={
-              <Checkbox
-                {...field}
-                checked={!!field.value}
-                disabled={!!isViewMode}
-                sx={{
-                  color: isViewMode ? '#D1D5DB' : '#CAD5E2',
-                  '&.Mui-checked': {
-                    color: isViewMode ? '#9CA3AF' : '#2563EB',
-                  },
-                }}
-              />
-            }
-            label="Yes"
-            sx={{
-              '& .MuiFormControlLabel-label': {
-                fontFamily: 'Outfit, sans-serif',
-                fontStyle: 'normal',
-                fontSize: '14px',
-                lineHeight: '24px',
-                letterSpacing: '0.5px',
-                verticalAlign: 'middle',
-                color: isViewMode ? '#6B7280' : 'inherit',
-              },
-            }}
-          />
-        )}
-      />
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '46px' }}
+      >
+        <Typography
+          sx={{
+            fontFamily: 'Outfit, sans-serif',
+            fontWeight: 500,
+            fontSize: '13px',
+            color: isDarkMode ? '#9CA3AF' : '#374151',
+            letterSpacing: '0.025em',
+            minWidth: 'fit-content',
+          }}
+        >
+          {label}
+        </Typography>
+        <Controller
+          name={name}
+          control={control}
+          defaultValue={false}
+          render={({ field }) => (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  {...field}
+                  checked={!!field.value}
+                  disabled={!!isViewMode}
+                  sx={{
+                    color: isViewMode
+                      ? isDarkMode
+                        ? '#64748B'
+                        : '#D1D5DB'
+                      : isDarkMode
+                        ? '#64748B'
+                        : '#CAD5E2',
+                    '&.Mui-checked': {
+                      color: isViewMode
+                        ? isDarkMode
+                          ? '#64748B'
+                          : '#9CA3AF'
+                        : '#2563EB',
+                    },
+                  }}
+                />
+              }
+              label="Yes"
+              sx={{
+                margin: 0,
+                '& .MuiFormControlLabel-label': {
+                  fontFamily: 'Outfit, sans-serif',
+                  fontStyle: 'normal',
+                  fontSize: '14px',
+                  lineHeight: '24px',
+                  letterSpacing: '0.5px',
+                  verticalAlign: 'middle',
+                  color: isViewMode
+                    ? isDarkMode
+                      ? '#94A3B8'
+                      : '#6B7280'
+                    : isDarkMode
+                      ? '#F9FAFB'
+                      : 'inherit',
+                },
+              }}
+            />
+          )}
+        />
+      </Box>
     </Grid>
   )
 
@@ -717,106 +907,143 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     name: string,
     label: string,
     gridSize: number = 6,
-    isRequired = false
+    required: boolean = false
   ) => {
-    const validationRules: any = {}
-
-    if (isRequired && !isViewMode) {
-      validationRules.required = `${label} is required`
-    }
-
     return (
       <Grid key={name} size={{ xs: 12, md: gridSize }}>
         <Controller
           name={name}
           control={control}
-          rules={validationRules}
           defaultValue={null}
-          render={({ field, fieldState: { error } }) => (
-            <DatePicker
-              label={label}
-              value={field.value}
-              onChange={field.onChange}
-              format="DD/MM/YYYY"
-              disabled={!!isViewMode}
-              slots={{
-                openPickerIcon: isViewMode ? () => null : StyledCalendarIcon,
-              }}
-              slotProps={{
-                textField: {
-                  fullWidth: true,
-                  error: !!error && !isViewMode,
-                  helperText: isViewMode ? '' : error?.message,
-                  sx: {
-                    ...datePickerStyles,
-                    ...(isViewMode && {
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: '#F9FAFB',
-                        color: '#6B7280',
-                        '& fieldset': {
-                          borderColor: '#E5E7EB',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#E5E7EB',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#E5E7EB',
-                        },
-                      },
-                    }),
-                  },
-                  InputLabelProps: { sx: labelSx },
-                  InputProps: {
+          render={({ field }) => (
+            <>
+              <DatePicker
+                label={label}
+                value={field.value}
+                onChange={field.onChange}
+                format="DD/MM/YYYY"
+                disabled={!!isViewMode}
+                slots={{
+                  openPickerIcon: isViewMode ? () => null : StyledCalendarIcon,
+                }}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: required,
+                    error: !!errors[name] && !isViewMode,
+                    helperText: '',
                     sx: {
-                      ...valueSx,
+                      ...datePickerStyles,
                       ...(isViewMode && {
-                        color: '#6B7280',
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: isDarkMode ? '#0F172A' : '#F9FAFB',
+                          color: isDarkMode ? '#94A3B8' : '#6B7280',
+                          '& fieldset': {
+                            borderColor: isDarkMode ? '#1E293B' : '#E5E7EB',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: isDarkMode ? '#1E293B' : '#E5E7EB',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: isDarkMode ? '#1E293B' : '#E5E7EB',
+                          },
+                          '& input': {
+                            color: isDarkMode ? '#94A3B8' : '#6B7280',
+                          },
+                        },
                       }),
+
+                      ...(!!errors[name] &&
+                        !isViewMode && {
+                          '& .MuiOutlinedInput-root': {
+                            '& fieldset': {
+                              borderColor: '#d32f2f',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: '#d32f2f',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#d32f2f',
+                            },
+                          },
+                        }),
                     },
-                    style: { height: '46px' },
+                    InputLabelProps: {
+                      required: required,
+                      sx: {
+                        ...getLabelSx(),
+                        '& .MuiFormLabel-asterisk': {
+                          color: '#6A7282 !important',
+                          fontSize: 'inherit',
+                          fontWeight: 'bold',
+                        },
+                        '&.MuiInputLabel-root .MuiFormLabel-asterisk': {
+                          color: '#6A7282 !important',
+                        },
+                        '&.MuiFormLabel-root .MuiFormLabel-asterisk': {
+                          color: '#6A7282 !important',
+                        },
+                        '&.MuiInputLabel-asterisk': {
+                          color: '#6A7282 !important',
+                        },
+                        ...(!!errors[name] &&
+                          !isViewMode && {
+                            color: '#d32f2f',
+                            '&.Mui-focused': {
+                              color: '#d32f2f',
+                            },
+                          }),
+                      },
+                    },
+                    InputProps: {
+                      sx: {
+                        ...valueSx,
+                        ...(isViewMode && {
+                          color: isDarkMode ? '#94A3B8' : '#6B7280',
+                        }),
+                      },
+                      style: { height: '46px' },
+                    },
                   },
-                },
-              }}
-            />
+                }}
+              />
+              <FormError
+                error={errors[name]?.message as string}
+                touched={true}
+              />
+            </>
           )}
         />
       </Grid>
     )
   }
 
-  // Show loading state while fetching surety bond data in edit mode or view mode
   if ((isEditMode || isViewMode) && suretyBondLoading) {
     return (
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Card
           sx={{
             boxShadow: 'none',
-            backgroundColor: '#FFFFFFBF',
+            backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+            border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
             width: '84%',
             margin: '0 auto',
           }}
         >
           <CardContent>
             <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              minHeight="200px"
+              sx={{
+                backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+                borderRadius: '16px',
+                margin: '0 auto',
+                width: '100%',
+                height: '200px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <Box textAlign="center">
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  {getTranslatedLabel(
-                    'CDL_SB_LOADING',
-                    'Loading Surety Bond Details...'
-                  )}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {getTranslatedLabel(
-                    'CDL_SB_LOADING_DESC',
-                    'Please wait while we fetch the data'
-                  )}
-                </Typography>
-              </Box>
+              <GlobalLoading fullHeight className="min-h-[200px]" />
             </Box>
           </CardContent>
         </Card>
@@ -824,14 +1051,14 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
     )
   }
 
-  // Show error state if there's an error fetching surety bond data in edit mode or view mode
   if ((isEditMode || isViewMode) && suretyBondError) {
     return (
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Card
           sx={{
             boxShadow: 'none',
-            backgroundColor: '#FFFFFFBF',
+            backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+            border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
             width: '84%',
             margin: '0 auto',
           }}
@@ -845,15 +1072,14 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
             >
               <Box textAlign="center">
                 <Typography variant="h6" color="error" sx={{ mb: 2 }}>
-                  {getTranslatedLabel(
-                    'CDL_SB_ERROR',
-                    'Error Loading Surety Bond'
-                  )}
+                  {getTranslatedLabel('CDL_SB_ERROR')}
                 </Typography>
                 <Typography
                   variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2 }}
+                  sx={{
+                    mb: 2,
+                    color: isDarkMode ? '#CBD5E1' : 'text.secondary',
+                  }}
                 >
                   {suretyBondError}
                 </Typography>
@@ -862,7 +1088,7 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
                   onClick={() => window.location.reload()}
                   sx={{ textTransform: 'none' }}
                 >
-                  {getTranslatedLabel('CDL_SB_RETRY', 'Try Again')}
+                  {getTranslatedLabel('CDL_SB_RETRY')}
                 </Button>
               </Box>
             </Box>
@@ -877,7 +1103,8 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
       <Card
         sx={{
           boxShadow: 'none',
-          backgroundColor: '#FFFFFFBF',
+          backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+          border: isDarkMode ? '1px solid #334155' : '1px solid #E5E7EB',
           width: '84%',
           margin: '0 auto',
         }}
@@ -886,37 +1113,28 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
           <Grid container rowSpacing={4} columnSpacing={2}>
             {renderGuaranteeRefIdField(
               'guaranteeRefNo',
-              getTranslatedLabel(
-                'CDL_SB_REF_NO',
-                'Guarantee Reference Number*'
-              ),
-              6
+              getTranslatedLabel('CDL_SB_REF_NO'),
+              6,
+              true
             )}
             {renderSelectField(
               'guaranteeType',
-              getTranslatedLabel('CDL_SB_TYPE', 'Guarantee Type*'),
+              getTranslatedLabel('CDL_SB_TYPE'),
               guaranteeTypesLoading
-                ? [{ id: 'loading', displayName: 'Loading guarantee types...' }]
+                ? [{ id: 'loading', displayName: 'Loading...' }]
                 : guaranteeTypes || [],
               6,
               true
             )}
             {renderDatePickerField(
               'guaranteeDate',
-              getTranslatedLabel('CDL_SB_DATE', 'Guarantee Date*'),
+              getTranslatedLabel('CDL_SB_DATE'),
               6,
-              true
-            )}
-            {renderTextField(
-              'projectCif',
-              getTranslatedLabel('CDL_SB_BPA_CIF', 'Project CIF*'),
-              6,
-              '',
               true
             )}
             {renderSelectField(
               'projectName',
-              getTranslatedLabel('CDL_SB_BPA_NAME', 'Project Name*'),
+              getTranslatedLabel('CDL_SB_BPA_NAME'),
               assetsLoading
                 ? [{ id: 'loading', displayName: 'Loading...' }]
                 : realEstateAssets.length > 0
@@ -931,72 +1149,70 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
                   : [
                       {
                         id: 'no-projects',
-                        displayName: 'No projects available',
+                        displayName: 'No Build Partner Assets available',
                       },
                     ],
               6,
               true
             )}
-            {renderSelectField(
-              'developerName',
-              getTranslatedLabel('CDL_SB_BP_NAME', 'Build Partner Name*'),
-              developerNames.length > 0
-                ? developerNames.map((name) => ({
-                    id: name,
-                    displayName: name,
-                  }))
-                : [{ id: 'loading', displayName: 'Loading build partners...' }],
+            {renderTextField(
+              'projectCif',
+              getTranslatedLabel('CDL_SB_BPA_CIF'),
               6,
-              true
+              '',
+              true,
+              true,
+              'Auto-filled when Build Partner Assets is selected'
+            )}
+            {renderTextField(
+              'developerName',
+              getTranslatedLabel('CDL_SB_BP_NAME'),
+              6,
+              '',
+              true,
+              true,
+              'Auto-filled when Build Partner Assets is selected'
             )}
             {renderCheckboxField(
               'openEndedGuarantee',
-              getTranslatedLabel('CDL_SB_OPEN_ENDED', 'Open Ended Guarantee'),
+              getTranslatedLabel('CDL_SB_OPEN_ENDED'),
               3
             )}
             {renderDatePickerField(
               'projectCompletionDate',
-              getTranslatedLabel(
-                'CDL_SB_BPA_COMPLETION_DATE',
-                'Project completion date'
-              ),
-              3
+              getTranslatedLabel('CDL_SB_BPA_COMPLETION_DATE'),
+              3,
+              !!watch('openEndedGuarantee')
             )}
             {renderTextField(
               'noOfAmendments',
-              getTranslatedLabel('CDL_SB_NO_OF_AMEND', 'No of Amendments'),
+              getTranslatedLabel('CDL_SB_NO_OF_AMEND'),
               3
             )}
             {renderDatePickerField(
               'guaranteeExpirationDate',
-              getTranslatedLabel(
-                'CDL_SB_EXPIARY_DATE',
-                'Guarantee Expiration Date*'
-              ),
+              getTranslatedLabel('CDL_SB_EXPIARY_DATE'),
               3,
-              true
+              !watch('openEndedGuarantee')
             )}
             {renderTextField(
               'guaranteeAmount',
-              getTranslatedLabel('CDL_SB_AMOUNT', 'Guarantee Amount*'),
+              getTranslatedLabel('CDL_SB_AMOUNT'),
               4,
               '',
               true
             )}
             {renderTextField(
               'suretyBondNewReadingAmendment',
-              getTranslatedLabel(
-                'CDL_SB_NEW_READING',
-                'New Reading (Amendments)'
-              ),
+              getTranslatedLabel('CDL_SB_NEW_READING'),
               4,
               ''
             )}
             {renderSelectField(
               'issuerBank',
-              getTranslatedLabel('CDL_SB_BANK', 'Issuer Bank*'),
+              getTranslatedLabel('CDL_SB_BANK'),
               issuerBanksLoading
-                ? [{ id: 'loading', displayName: 'Loading banks...' }]
+                ? [{ id: 'loading', displayName: 'Loading...' }]
                 : issuerBankOptions.length > 0
                   ? issuerBankOptions.map((option: any) => ({
                       id: option.id,
@@ -1009,17 +1225,16 @@ const Step1 = ({ savedId, isEditMode, isViewMode }: Step1Props) => {
             )}
             {renderSelectField(
               'status',
-              getTranslatedLabel('CDL_SB_STATUS', 'Status*'),
+              getTranslatedLabel('CDL_SB_STATUS'),
               guaranteeStatusesLoading
                 ? [
                     {
                       id: 'loading',
-                      displayName: 'Loading guarantee statuses...',
+                      displayName: 'Loading...',
                     },
                   ]
                 : guaranteeStatuses || [],
-              4,
-              true
+              4
             )}
           </Grid>
         </CardContent>

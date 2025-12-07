@@ -45,7 +45,7 @@ export interface ProjectDetails {
   backupRef: string
   relationshipManager: string
   assistantRelationshipManager: string
-  teamLeaderName: string
+  mpteamLeaderName: string
   // Developer fields
   developerCif: string
   developerId: string
@@ -197,9 +197,9 @@ export function useProjectReview(projectId: string) {
           specialApproval: projectDetailsResult.reaSpecialApproval || '',
           managedBy: projectDetailsResult.reaManagedBy || '',
           backupRef: projectDetailsResult.reaBackupUser || '',
-          relationshipManager: projectDetailsResult.reaRelationshipManagerName || '',
+          relationshipManager: projectDetailsResult.reamprelationshipManagerName || '',
           assistantRelationshipManager: projectDetailsResult.reaAssestRelshipManagerName || '',
-          teamLeaderName: projectDetailsResult.reaTeamLeadName || '',
+          mpteamLeaderName: projectDetailsResult.reaTeamLeadName || '',
           // Developer fields
           developerCif: projectDetailsResult.buildPartnerDTO?.bpCifrera || '',
           developerId: projectDetailsResult.buildPartnerDTO?.bpDeveloperId || '',
@@ -237,7 +237,15 @@ export function useProjectReview(projectId: string) {
         const mappedBeneficiaries: BeneficiaryData[] = Array.isArray(beneficiariesResult) ? beneficiariesResult.map((ben: any) => ({
           id: ben.id?.toString() || '',
           beneficiaryId: ben.reabBeneficiaryId || '',
-          beneficiaryType: ben.reabType || '',
+          // Use Transfer Type DTO label if available; fallback to stored string
+          beneficiaryType:
+            // Handle both API spellings: reabTransferTypeDTO and reabTranferTypeDTO
+            ben.reabTransferTypeDTO?.languageTranslationId?.configValue ||
+            ben.reabTransferTypeDTO?.settingValue ||
+            ben.reabTranferTypeDTO?.languageTranslationId?.configValue ||
+            ben.reabTranferTypeDTO?.settingValue ||
+            ben.reabType ||
+            '',
           name: ben.reabName || '',
           bankName: ben.reabBank || '',
           swiftCode: ben.reabSwift || '',
@@ -255,7 +263,8 @@ export function useProjectReview(projectId: string) {
         const mappedDocuments: DocumentData[] = Array.isArray(documentsResult) ? documentsResult.map((doc: any) => ({
           id: doc.id?.toString() || '',
           fileName: doc.documentName || '',
-          documentType: doc.documentTypeDTO?.settingValue || '',
+          // Prefer human-friendly configValue; fall back to settingValue
+          documentType: doc.documentTypeDTO?.languageTranslationId?.configValue || doc.documentTypeDTO?.settingValue || '',
           uploadDate: doc.uploadDate || '',
           fileSize: parseInt(doc.documentSize || '0'),
         })) : []

@@ -122,8 +122,14 @@ export class JWTParser {
     const parsed = this.parseToken(token)
     if (!parsed) return true
 
+    // Ensure exp exists and is a valid number
+    const exp = parsed.payload.exp
+    if (exp === undefined || exp === null || typeof exp !== 'number') {
+      return true // Treat invalid tokens as expired for security
+    }
+
     const currentTime = Math.floor(Date.now() / 1000)
-    return parsed.payload.exp < currentTime
+    return exp < currentTime
   }
 
 
@@ -204,8 +210,15 @@ export class JWTParser {
     // Add padding if needed
     const padded = base64 + '='.repeat((4 - base64.length % 4) % 4)
     
-    // Decode
-    return atob(padded)
+    // Decode - use Buffer for Node.js/Edge Runtime compatibility
+    // Fallback to atob for browser environments
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(padded, 'base64').toString('utf-8')
+    } else if (typeof atob !== 'undefined') {
+      return atob(padded)
+    } else {
+      throw new Error('No base64 decoding method available')
+    }
   }
 
 

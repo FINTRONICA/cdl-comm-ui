@@ -1,0 +1,1 @@
+export { GlobalEmpty } from './GlobalEmpty'

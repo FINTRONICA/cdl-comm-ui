@@ -20,29 +20,17 @@ class DiscardedTransactionLabelsService {
    */
   static async fetchLabels(): Promise<DiscardedTransactionLabelResponse[]> {
     try {
-      console.log('🔧 DiscardedTransactionLabelsService.fetchLabels Called')
+      
 
       const response = await apiClient.get<DiscardedTransactionLabelResponse[]>(
         buildApiUrl(API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.TRANSCATIONS_LABEL)
       )
 
-      console.log('✅ DiscardedTransactionLabelsService.fetchLabels Success:', {
-        hasResponse: !!response,
-        labelsCount: response?.length || 0,
-        sampleLabel: response?.[0],
-        timestamp: new Date().toISOString(),
-      })
+     
 
       return response || []
     } catch (error) {
-      console.error(
-        '❌ DiscardedTransactionLabelsService.fetchLabels Failed:',
-        {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          errorType: error instanceof Error ? error.name : 'Unknown',
-          timestamp: new Date().toISOString(),
-        }
-      )
+      
       throw error
     }
   }
@@ -53,10 +41,7 @@ class DiscardedTransactionLabelsService {
   static processLabels(
     rawLabels: DiscardedTransactionLabelResponse[]
   ): ProcessedDiscardedTransactionLabels {
-    console.log('🔧 DiscardedTransactionLabelsService.processLabels Called:', {
-      rawLabelsCount: rawLabels?.length || 0,
-      timestamp: new Date().toISOString(),
-    })
+    
 
     const processed = rawLabels.reduce(
       (acc: ProcessedDiscardedTransactionLabels, label) => {
@@ -72,12 +57,7 @@ class DiscardedTransactionLabelsService {
       {}
     )
 
-    console.log('✅ DiscardedTransactionLabelsService.processLabels Success:', {
-      processedKeysCount: Object.keys(processed).length,
-      sampleKey: Object.keys(processed)[0],
-      sampleValue: Object.values(processed)[0],
-      timestamp: new Date().toISOString(),
-    })
+   
 
     return processed
   }

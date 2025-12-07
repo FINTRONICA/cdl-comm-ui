@@ -1,9 +1,4 @@
 import React from 'react'
-import {
-  Visibility as VisibilityIcon,
-  Download as DownloadIcon,
-  Delete as DeleteIcon,
-} from '@mui/icons-material'
 
 import {
   DocumentItem,
@@ -16,7 +11,8 @@ import {
   TableColumn,
   DocumentAction,
 } from '../types'
-import { formatDate, previewFile, downloadFile } from '../utils'
+import { formatDate, downloadFile } from '../utils'
+import { Download, Trash2 } from 'lucide-react'
 
 // Service adapter for build partner documents
 export const buildPartnerDocumentService: DocumentService<
@@ -40,6 +36,7 @@ export const buildPartnerDocumentService: DocumentService<
     return buildPartnerService.uploadBuildPartnerDocument(
       file,
       buildPartnerId,
+      'BUILD_PARTNER',
       documentType
     )
   },
@@ -143,23 +140,23 @@ export const buildPartnerColumns: TableColumn<DocumentItem>[] = [
 
 // Document actions configuration for build partner documents
 export const buildPartnerActions: DocumentAction<DocumentItem>[] = [
-  {
-    key: 'view',
-    label: 'View',
-    icon: <VisibilityIcon fontSize="small" />,
-    onClick: (document: DocumentItem) => {
-      if (document.file) {
-        previewFile(document.file)
-      } else if (document.url) {
-        window.open(document.url, '_blank')
-      }
-    },
-    disabled: (document: DocumentItem) => !document.file && !document.url,
-  },
+  // {
+  //   key: 'view',
+  //   label: 'View',
+  //   icon: <VisibilityIcon fontSize="small" />,
+  //   onClick: (document: DocumentItem) => {
+  //     if (document.file) {
+  //       previewFile(document.file)
+  //     } else if (document.url) {
+  //       window.open(document.url, '_blank')
+  //     }
+  //   },
+  //   disabled: (document: DocumentItem) => !document.file && !document.url,
+  // },
   {
     key: 'download',
     label: 'Download',
-    icon: <DownloadIcon fontSize="small" />,
+    icon: <Download className="w-4 h-4" />,
     onClick: (document: DocumentItem) => {
       if (document.file) {
         downloadFile(document.file, document.name)
@@ -178,15 +175,12 @@ export const buildPartnerActions: DocumentAction<DocumentItem>[] = [
   {
     key: 'delete',
     label: 'Delete',
-    icon: <DeleteIcon fontSize="small" />,
+    icon: <Trash2 className="w-4 h-4" />,
     color: 'error' as const,
     requiresConfirmation: true,
     confirmationMessage:
       'Are you sure you want to delete this document? This action cannot be undone.',
     onClick: async (document: DocumentItem) => {
-      // Note: This would need to be implemented in the parent component
-      // as it requires updating the local state
-      console.log('Delete document:', document.id)
     },
   },
 ]
@@ -198,6 +192,7 @@ export const createBuildPartnerDocumentConfig = (
     title?: string
     description?: string
     isOptional?: boolean
+    isReadOnly?: boolean
     onDocumentsChange?: (documents: DocumentItem[]) => void
     onUploadSuccess?: (documents: DocumentItem[]) => void
     onUploadError?: (error: string) => void
@@ -231,6 +226,7 @@ export const createBuildPartnerDocumentConfig = (
       options?.description ||
       'This step is optional. You can upload supporting documents or skip to complete the process.',
     isOptional: options?.isOptional ?? true,
+    isReadOnly: options?.isReadOnly ?? false,
     columns: buildPartnerColumns,
     actions,
   }

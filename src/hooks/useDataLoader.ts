@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface UseDataLoaderOptions {
   cacheKey?: string
@@ -33,7 +33,10 @@ export function useDataLoader<T>(
   const [data, setData] = useState<T[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [retryAttempts, setRetryAttempts] = useState(0)
+
+  // Track timeout for cleanup
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
 
   // Check cache first
   const getCachedData = useCallback(() => {
@@ -47,11 +50,13 @@ export function useDataLoader<T>(
       }
 
       // Check localStorage cache
-      const cached = localStorage.getItem(cacheKey)
-      if (cached) {
-        const { data: cachedData, timestamp } = JSON.parse(cached)
-        if (Date.now() - timestamp < cacheTime) {
-          return cachedData
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          const { data: cachedData, timestamp } = JSON.parse(cached)
+          if (Date.now() - timestamp < cacheTime) {
+            return cachedData
+          }
         }
       }
     } catch (err) {
@@ -83,49 +88,72 @@ export function useDataLoader<T>(
   }, [cacheKey])
 
   // Load data with retry logic
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (attempt: number = 0) => {
+    // Clear any pending timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+
     try {
-      setLoading(true)
-      setError(null)
+      if (isMountedRef.current) {
+        setLoading(true)
+        setError(null)
+      }
 
       // Check cache first
       const cachedData = getCachedData()
       if (cachedData) {
-        setData(cachedData)
-        setLoading(false)
+        if (isMountedRef.current) {
+          setData(cachedData)
+          setLoading(false)
+        }
         return
       }
 
       // Load fresh data
       const result = await dataLoader()
-      setData(result)
-      saveToCache(result)
-      setRetryAttempts(0)
+      
+      if (isMountedRef.current) {
+        setData(result)
+        saveToCache(result)
+      }
     } catch (err) {
+      if (!isMountedRef.current) return
+      
       const errorMessage = err instanceof Error ? err.message : 'Failed to load data'
       setError(errorMessage)
       
       // Retry logic
-      if (retryAttempts < retryCount) {
-        setRetryAttempts(prev => prev + 1)
-        setTimeout(() => {
-          loadData()
+      if (attempt < retryCount) {
+        timeoutRef.current = setTimeout(() => {
+          loadData(attempt + 1)
         }, retryDelay)
       }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
-  }, [dataLoader, getCachedData, saveToCache, retryAttempts, retryCount, retryDelay])
+  }, [dataLoader, getCachedData, saveToCache, retryCount, retryDelay])
 
   // Initial load
   useEffect(() => {
-    loadData()
+    isMountedRef.current = true
+    loadData(0)
+    
+    return () => {
+      isMountedRef.current = false
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
   }, [loadData])
 
   // Refetch function
   const refetch = useCallback(() => {
-    setRetryAttempts(0)
-    loadData()
+    loadData(0)
   }, [loadData])
 
   return {
@@ -159,7 +187,7 @@ export function preloadData<T>(
         data: result,
         timestamp: Date.now(),
       })
-      console.log(`Preloaded data for: ${cacheKey}`)
+     
     } catch (error) {
       console.warn(`Failed to preload data for: ${cacheKey}`, error)
     }

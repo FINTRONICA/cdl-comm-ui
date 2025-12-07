@@ -8,6 +8,8 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { JWTParser } from '@/utils/jwtParser';
 import { JWTPayload } from '@/types/auth';
+import { getAuthCookies } from '@/utils/cookieUtils';
+import { displayValue } from './nullHandling'
 
 // Status utilities
 export * from './statusUtils'
@@ -371,7 +373,8 @@ export { JWTParser } from '@/utils/jwtParser';
  * @returns Decoded JWT payload or null if not found/invalid
  */
 export const decodeStoredJWT = (): JWTPayload | null => {
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+  if (typeof window === 'undefined') return null;
+  const { token } = getAuthCookies();
   if (!token) return null;
   
   const parsed = JWTParser.parseToken(token);
@@ -383,7 +386,8 @@ export const decodeStoredJWT = (): JWTPayload | null => {
  * @returns User info from JWT or null if not found/invalid
  */
 export const getCurrentUserFromJWT = (): { name: any; email: any; role: string; issuedAt: Date; expiresAt: Date } | null => {
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+  if (typeof window === 'undefined') return null;
+  const { token } = getAuthCookies();
   if (!token) return null;
   
   const userInfo = JWTParser.extractUserInfo(token);
@@ -395,7 +399,8 @@ export const getCurrentUserFromJWT = (): { name: any; email: any; role: string; 
  * @returns True if expired or invalid, false otherwise
  */
 export const isCurrentJWTExpired = (): boolean => {
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+  if (typeof window === 'undefined') return true;
+  const { token } = getAuthCookies();
   if (!token) return true;
   
   return JWTParser.isExpired(token);
@@ -407,7 +412,8 @@ export const isCurrentJWTExpired = (): boolean => {
  * @returns True if expiring soon, false otherwise
  */
 export const isCurrentJWTExpiringSoon = (minutes: number = 5): boolean => {
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+  if (typeof window === 'undefined') return true;
+  const { token } = getAuthCookies();
   if (!token) return true;
   
   return JWTParser.isExpiringSoon(token, minutes);
@@ -435,4 +441,37 @@ export function generateDeveloperId(): string {
 
 export function generateReaId(): string {
   return generateId('REA');
+}
+
+
+// Utility function to format date as "DD/MM/YYYY"
+export const formatDateOnly = (dateString: string | number | null | undefined): string => {
+  if (!dateString || dateString === '-' || dateString === 'null') {
+    return '-'
+  }
+  try {
+    const date = new Date(dateString.toString())
+    
+    if (isNaN(date.getTime())) {
+      return displayValue(dateString)
+    }
+    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  } catch {
+    return displayValue(dateString)
+  }
+}
+
+// Utility function to truncate words "ABC DEF GHI JKL MNO PQR STU VWX YZ" to "ABC DEF GHI..."
+export function truncateWords(
+  value: string | number | null | undefined,
+  maxWords: number = 15
+): string {
+  const text = displayValue(value).trim()
+  if (!text || text === '-') return ''
+  const words = text.split(/\s+/)
+  if (words.length <= maxWords) return text
+  return words.slice(0, maxWords).join(' ') + '...'
 }

@@ -171,6 +171,7 @@ export const useUIActions = () => {
 // 🏦 BANKING COMPLIANCE: Labels selectors - session-only, no persistence
 export const useLabels = () => {
   const sidebarLabels = useAppStore((state) => state.sidebarLabels)
+  const partyLabels = useAppStore((state) => state.partyLabels)
   const buildPartnerLabels = useAppStore((state) => state.buildPartnerLabels)
   const capitalPartnerLabels = useAppStore(
     (state) => state.capitalPartnerLabels
@@ -184,42 +185,13 @@ export const useLabels = () => {
   const workflowAmountRuleLabels = useAppStore((state) => state.workflowAmountRuleLabels)
   const workflowAmountStageOverrideLabels = useAppStore((state) => state.workflowAmountStageOverrideLabels)
   const workflowRequestedLabels = useAppStore((state) => state.workflowRequestedLabels)
-  // Master Customer labels - Customer Master module
-  const customerMasterLabels = useAppStore((state) => state.customerMasterLabels)
-  // Master Customer labels - Account Purpose module
-  const accountPurposeLabels = useAppStore((state) => state.accountPurposeLabels)
-  // Master Customer labels - Investment Master module
-  const investmentMasterLabels = useAppStore((state) => state.investmentMasterLabels)
-  // Master Customer labels - Business Segment module
-  const businessSegmentLabels = useAppStore((state) => state.businessSegmentLabels)
-  // Master Customer labels - Business Sub Segment module
-  const businessSubSegmentLabels = useAppStore((state) => state.businessSubSegmentLabels)
-  // Master Customer labels - Deal Type module
-  const dealTypeLabels = useAppStore((state) => state.dealTypeLabels)
-  // Master Customer labels - Deal Subtype module
-  const dealSubtypeLabels = useAppStore((state) => state.dealSubtypeLabels)
-  // Master Customer labels - Product Program module
-  const productProgramLabels = useAppStore((state) => state.productProgramLabels)
-  // Master Customer labels - Beneficiary module
-  const beneficiaryLabels = useAppStore((state) => state.beneficiaryLabels)
-  // Master Customer labels - Document module
-  const documentLabels = useAppStore((state) => state.documentLabels)
-  // Master Customer labels - Deal Segment module
-  const dealSegmentLabels = useAppStore((state) => state.dealSegmentLabels)
-  // Master Customer labels - Ledger Account module
-  const ledgerAccountLabels = useAppStore((state) => state.ledgerAccountLabels)
-  // Master Customer labels - Country Code module
-  const countryCodeLabels = useAppStore((state) => state.countryCodeLabels)
-  // Master Customer labels - Currency Code module
-  const currencyCodeLabels = useAppStore((state) => state.currencyCodeLabels)
   const allLabelsLoading = useAppStore((state) => state.allLabelsLoading)
   const allLabelsError = useAppStore((state) => state.allLabelsError)
-  // Customer field configuration
-  const customerFieldConfig = useAppStore((state) => state.customerFieldConfig)
 
   return useMemo(
     () => ({
       sidebarLabels,
+      partyLabels,
       buildPartnerLabels,
       capitalPartnerLabels,
       buildPartnerAssetLabels,
@@ -229,33 +201,17 @@ export const useLabels = () => {
       workflowAmountRuleLabels,
       workflowAmountStageOverrideLabels,
       workflowRequestedLabels,
-      // Master Customer labels
-      customerMasterLabels,
-      accountPurposeLabels,
-      investmentMasterLabels,
-      businessSegmentLabels,
-      businessSubSegmentLabels,
-      dealTypeLabels,
-      dealSubtypeLabels,
-      productProgramLabels,
-      beneficiaryLabels,
-      documentLabels,
-      dealSegmentLabels,
-      ledgerAccountLabels,
-      countryCodeLabels,
-      currencyCodeLabels,
       allLabelsLoading,
       allLabelsError,
-      // Customer field configuration
-      customerFieldConfig,
     }),
-    [sidebarLabels, buildPartnerLabels, capitalPartnerLabels, buildPartnerAssetLabels, workflowActionLabels, allLabelsLoading, allLabelsError, workflowDefinitionLabels, workflowStageTemplateLabels, workflowAmountRuleLabels, workflowAmountStageOverrideLabels, workflowRequestedLabels, customerMasterLabels, accountPurposeLabels, investmentMasterLabels, businessSegmentLabels, businessSubSegmentLabels, dealTypeLabels, dealSubtypeLabels, productProgramLabels, beneficiaryLabels, documentLabels, dealSegmentLabels, ledgerAccountLabels, countryCodeLabels, currencyCodeLabels, customerFieldConfig]
+    [sidebarLabels, partyLabels, buildPartnerLabels, capitalPartnerLabels, buildPartnerAssetLabels, workflowActionLabels, allLabelsLoading, allLabelsError, workflowDefinitionLabels, workflowStageTemplateLabels, workflowAmountRuleLabels, workflowAmountStageOverrideLabels, workflowRequestedLabels]
 
   )
 }
 
 export const useLabelsLoadingState = () => {
   const sidebarLabelsLoading = useAppStore((state) => state.sidebarLabelsLoading)
+  const partyLabelsLoading = useAppStore((state) => state.partyLabelsLoading)
   const buildPartnerLabelsLoading = useAppStore((state) => state.buildPartnerLabelsLoading)
   const capitalPartnerLabelsLoading = useAppStore((state) => state.capitalPartnerLabelsLoading)
   const buildPartnerAssetLabelsLoading = useAppStore((state) => state.buildPartnerAssetLabelsLoading)
@@ -265,40 +221,13 @@ export const useLabelsLoadingState = () => {
   const workflowAmountRuleLabelsLoading = useAppStore((state) => state.workflowAmountRuleLabelsLoading)
   const workflowAmountStageOverrideLabelsLoading = useAppStore((state) => state.workflowAmountStageOverrideLabelsLoading)
   const workflowRequestedLabelsLoading = useAppStore((state) => state.workflowRequestedLabelsLoading)
-  // Master Customer loading states - Customer Master module
-  const customerMasterLabelsLoading = useAppStore((state) => state.customerMasterLabelsLoading)
-  // Master Customer loading states - Account Purpose module
-  const accountPurposeLabelsLoading = useAppStore((state) => state.accountPurposeLabelsLoading)
-  // Master Customer loading states - Investment Master module
-  const investmentMasterLabelsLoading = useAppStore((state) => state.investmentMasterLabelsLoading)
-  // Master Customer loading states - Business Segment module
-  const businessSegmentLabelsLoading = useAppStore((state) => state.businessSegmentLabelsLoading)
-  // Master Customer loading states - Business Sub Segment module
-  const businessSubSegmentLabelsLoading = useAppStore((state) => state.businessSubSegmentLabelsLoading)
-  // Master Customer loading states - Deal Type module
-  const dealTypeLabelsLoading = useAppStore((state) => state.dealTypeLabelsLoading)
-  // Master Customer loading states - Deal Subtype module
-  const dealSubtypeLabelsLoading = useAppStore((state) => state.dealSubtypeLabelsLoading)
-  // Master Customer loading states - Product Program module
-  const productProgramLabelsLoading = useAppStore((state) => state.productProgramLabelsLoading)
-  // Master Customer loading states - Beneficiary module
-  const beneficiaryLabelsLoading = useAppStore((state) => state.beneficiaryLabelsLoading)
-  // Master Customer loading states - Document module
-  const documentLabelsLoading = useAppStore((state) => state.documentLabelsLoading)
-  // Master Customer loading states - Deal Segment module
-  const dealSegmentLabelsLoading = useAppStore((state) => state.dealSegmentLabelsLoading)
-  // Master Customer loading states - Ledger Account module
-  const ledgerAccountLabelsLoading = useAppStore((state) => state.ledgerAccountLabelsLoading)
-  // Master Customer loading states - Country Code module
-  const countryCodeLabelsLoading = useAppStore((state) => state.countryCodeLabelsLoading)
-  // Master Customer loading states - Currency Code module
-  const currencyCodeLabelsLoading = useAppStore((state) => state.currencyCodeLabelsLoading)
 
   const getLoadingStatus = useAppStore((state) => state.getLoadingStatus)
 
   return useMemo(
     () => ({
       sidebarLabelsLoading,
+      partyLabelsLoading,
       buildPartnerLabelsLoading,
       capitalPartnerLabelsLoading,
       buildPartnerAssetLabelsLoading,
@@ -308,25 +237,10 @@ export const useLabelsLoadingState = () => {
       workflowAmountRuleLabelsLoading,
       workflowAmountStageOverrideLabelsLoading,
       workflowRequestedLabelsLoading,
-      // Master Customer loading states
-      customerMasterLabelsLoading,
-      accountPurposeLabelsLoading,
-      investmentMasterLabelsLoading,
-      businessSegmentLabelsLoading,
-      businessSubSegmentLabelsLoading,
-      dealTypeLabelsLoading,
-      dealSubtypeLabelsLoading,
-      productProgramLabelsLoading,
-      beneficiaryLabelsLoading,
-      documentLabelsLoading,
-      dealSegmentLabelsLoading,
-      ledgerAccountLabelsLoading,
-      countryCodeLabelsLoading,
-      currencyCodeLabelsLoading,
 
       getLoadingStatus,
     }),
-    [sidebarLabelsLoading, buildPartnerLabelsLoading, capitalPartnerLabelsLoading, buildPartnerAssetLabelsLoading, workflowActionLabelsLoading, workflowDefinitionLabelsLoading, workflowStageTemplateLabelsLoading, workflowAmountRuleLabelsLoading, workflowAmountStageOverrideLabelsLoading, workflowRequestedLabelsLoading, customerMasterLabelsLoading, accountPurposeLabelsLoading, investmentMasterLabelsLoading, businessSegmentLabelsLoading, businessSubSegmentLabelsLoading, dealTypeLabelsLoading, dealSubtypeLabelsLoading, productProgramLabelsLoading, beneficiaryLabelsLoading, documentLabelsLoading, dealSegmentLabelsLoading, ledgerAccountLabelsLoading, countryCodeLabelsLoading, currencyCodeLabelsLoading, getLoadingStatus]
+    [sidebarLabelsLoading, partyLabelsLoading, buildPartnerLabelsLoading, capitalPartnerLabelsLoading, buildPartnerAssetLabelsLoading, workflowActionLabelsLoading, workflowDefinitionLabelsLoading, workflowStageTemplateLabelsLoading, workflowAmountRuleLabelsLoading, workflowAmountStageOverrideLabelsLoading, workflowRequestedLabelsLoading, getLoadingStatus]
 
   )
 }
@@ -340,6 +254,11 @@ export const useLabelsActions = () => {
   const setSidebarLabelsError = useAppStore(
     (state) => state.setSidebarLabelsError
   )
+
+  // Party actions
+  const setPartyLabels = useAppStore((state) => state.setPartyLabels)
+  const setPartyLabelsLoading = useAppStore((state) => state.setPartyLabelsLoading)
+  const setPartyLabelsError = useAppStore((state) => state.setPartyLabelsError)
 
   // Build partner actions
   const setBuildPartnerLabels = useAppStore(
@@ -406,83 +325,9 @@ export const useLabelsActions = () => {
   const setWorkflowRequestedLabelsLoading = useAppStore((state) => state.setWorkflowRequestedLabelsLoading)
   const setWorkflowRequestedLabelsError = useAppStore((state) => state.setWorkflowRequestedLabelsError)
 
-  // Master Customer actions - Customer Master module
-  const setCustomerMasterLabels = useAppStore((state) => state.setCustomerMasterLabels)
-  const setCustomerMasterLabelsLoading = useAppStore((state) => state.setCustomerMasterLabelsLoading)
-  const setCustomerMasterLabelsError = useAppStore((state) => state.setCustomerMasterLabelsError)
-
-  // Master Customer actions - Account Purpose module
-  const setAccountPurposeLabels = useAppStore((state) => state.setAccountPurposeLabels)
-  const setAccountPurposeLabelsLoading = useAppStore((state) => state.setAccountPurposeLabelsLoading)
-  const setAccountPurposeLabelsError = useAppStore((state) => state.setAccountPurposeLabelsError)
-
-  // Master Customer actions - Investment Master module
-  const setInvestmentMasterLabels = useAppStore((state) => state.setInvestmentMasterLabels)
-  const setInvestmentMasterLabelsLoading = useAppStore((state) => state.setInvestmentMasterLabelsLoading)
-  const setInvestmentMasterLabelsError = useAppStore((state) => state.setInvestmentMasterLabelsError)
-
-  // Master Customer actions - Business Segment module
-  const setBusinessSegmentLabels = useAppStore((state) => state.setBusinessSegmentLabels)
-  const setBusinessSegmentLabelsLoading = useAppStore((state) => state.setBusinessSegmentLabelsLoading)
-  const setBusinessSegmentLabelsError = useAppStore((state) => state.setBusinessSegmentLabelsError)
-
-  // Master Customer actions - Business Sub Segment module
-  const setBusinessSubSegmentLabels = useAppStore((state) => state.setBusinessSubSegmentLabels)
-  const setBusinessSubSegmentLabelsLoading = useAppStore((state) => state.setBusinessSubSegmentLabelsLoading)
-  const setBusinessSubSegmentLabelsError = useAppStore((state) => state.setBusinessSubSegmentLabelsError)
-
-  // Master Customer actions - Deal Type module
-  const setDealTypeLabels = useAppStore((state) => state.setDealTypeLabels)
-  const setDealTypeLabelsLoading = useAppStore((state) => state.setDealTypeLabelsLoading)
-  const setDealTypeLabelsError = useAppStore((state) => state.setDealTypeLabelsError)
-
-  // Master Customer actions - Deal Subtype module
-  const setDealSubtypeLabels = useAppStore((state) => state.setDealSubtypeLabels)
-  const setDealSubtypeLabelsLoading = useAppStore((state) => state.setDealSubtypeLabelsLoading)
-  const setDealSubtypeLabelsError = useAppStore((state) => state.setDealSubtypeLabelsError)
-
-  // Master Customer actions - Product Program module
-  const setProductProgramLabels = useAppStore((state) => state.setProductProgramLabels)
-  const setProductProgramLabelsLoading = useAppStore((state) => state.setProductProgramLabelsLoading)
-  const setProductProgramLabelsError = useAppStore((state) => state.setProductProgramLabelsError)
-
-  // Master Customer actions - Beneficiary module
-  const setBeneficiaryLabels = useAppStore((state) => state.setBeneficiaryLabels)
-  const setBeneficiaryLabelsLoading = useAppStore((state) => state.setBeneficiaryLabelsLoading)
-  const setBeneficiaryLabelsError = useAppStore((state) => state.setBeneficiaryLabelsError)
-
-  // Master Customer actions - Document module
-  const setDocumentLabels = useAppStore((state) => state.setDocumentLabels)
-  const setDocumentLabelsLoading = useAppStore((state) => state.setDocumentLabelsLoading)
-  const setDocumentLabelsError = useAppStore((state) => state.setDocumentLabelsError)
-
-  // Master Customer actions - Deal Segment module
-  const setDealSegmentLabels = useAppStore((state) => state.setDealSegmentLabels)
-  const setDealSegmentLabelsLoading = useAppStore((state) => state.setDealSegmentLabelsLoading)
-  const setDealSegmentLabelsError = useAppStore((state) => state.setDealSegmentLabelsError)
-
-  // Master Customer actions - Ledger Account module
-  const setLedgerAccountLabels = useAppStore((state) => state.setLedgerAccountLabels)
-  const setLedgerAccountLabelsLoading = useAppStore((state) => state.setLedgerAccountLabelsLoading)
-  const setLedgerAccountLabelsError = useAppStore((state) => state.setLedgerAccountLabelsError)
-
-  // Master Customer actions - Country Code module
-  const setCountryCodeLabels = useAppStore((state) => state.setCountryCodeLabels)
-  const setCountryCodeLabelsLoading = useAppStore((state) => state.setCountryCodeLabelsLoading)
-  const setCountryCodeLabelsError = useAppStore((state) => state.setCountryCodeLabelsError)
-
-  // Master Customer actions - Currency Code module
-  const setCurrencyCodeLabels = useAppStore((state) => state.setCurrencyCodeLabels)
-  const setCurrencyCodeLabelsLoading = useAppStore((state) => state.setCurrencyCodeLabelsLoading)
-  const setCurrencyCodeLabelsError = useAppStore((state) => state.setCurrencyCodeLabelsError)
-
   // Global actions
   const setAllLabelsLoading = useAppStore((state) => state.setAllLabelsLoading)
   const setAllLabelsError = useAppStore((state) => state.setAllLabelsError)
-
-  // Customer field configuration actions
-  const setCustomerFieldConfig = useAppStore((state) => state.setCustomerFieldConfig)
-  const getCustomerFieldLabel = useAppStore((state) => state.getCustomerFieldLabel)
 
   // Utility actions
   const clearAllLabels = useAppStore((state) => state.clearAllLabels)
@@ -498,6 +343,11 @@ export const useLabelsActions = () => {
       setSidebarLabels,
       setSidebarLabelsLoading,
       setSidebarLabelsError,
+
+      // Party
+      setPartyLabels,
+      setPartyLabelsLoading,
+      setPartyLabelsError,
 
       // Build partner
       setBuildPartnerLabels,
@@ -547,83 +397,9 @@ export const useLabelsActions = () => {
       setWorkflowRequestedLabelsLoading,
       setWorkflowRequestedLabelsError,
 
-      // Master Customer - Customer Master module
-      setCustomerMasterLabels,
-      setCustomerMasterLabelsLoading,
-      setCustomerMasterLabelsError,
-
-      // Master Customer - Account Purpose module
-      setAccountPurposeLabels,
-      setAccountPurposeLabelsLoading,
-      setAccountPurposeLabelsError,
-
-      // Master Customer - Investment Master module
-      setInvestmentMasterLabels,
-      setInvestmentMasterLabelsLoading,
-      setInvestmentMasterLabelsError,
-
-      // Master Customer - Business Segment module
-      setBusinessSegmentLabels,
-      setBusinessSegmentLabelsLoading,
-      setBusinessSegmentLabelsError,
-
-      // Master Customer - Business Sub Segment module
-      setBusinessSubSegmentLabels,
-      setBusinessSubSegmentLabelsLoading,
-      setBusinessSubSegmentLabelsError,
-
-      // Master Customer - Deal Type module
-      setDealTypeLabels,
-      setDealTypeLabelsLoading,
-      setDealTypeLabelsError,
-
-      // Master Customer - Deal Subtype module
-      setDealSubtypeLabels,
-      setDealSubtypeLabelsLoading,
-      setDealSubtypeLabelsError,
-
-      // Master Customer - Product Program module
-      setProductProgramLabels,
-      setProductProgramLabelsLoading,
-      setProductProgramLabelsError,
-
-      // Master Customer - Beneficiary module
-      setBeneficiaryLabels,
-      setBeneficiaryLabelsLoading,
-      setBeneficiaryLabelsError,
-
-      // Master Customer - Document module
-      setDocumentLabels,
-      setDocumentLabelsLoading,
-      setDocumentLabelsError,
-
-      // Master Customer - Deal Segment module
-      setDealSegmentLabels,
-      setDealSegmentLabelsLoading,
-      setDealSegmentLabelsError,
-
-      // Master Customer - Ledger Account module
-      setLedgerAccountLabels,
-      setLedgerAccountLabelsLoading,
-      setLedgerAccountLabelsError,
-
-      // Master Customer - Country Code module
-      setCountryCodeLabels,
-      setCountryCodeLabelsLoading,
-      setCountryCodeLabelsError,
-
-      // Master Customer - Currency Code module
-      setCurrencyCodeLabels,
-      setCurrencyCodeLabelsLoading,
-      setCurrencyCodeLabelsError,
-
       // Global
       setAllLabelsLoading,
       setAllLabelsError,
-
-      // Customer field configuration
-      setCustomerFieldConfig,
-      getCustomerFieldLabel,
 
       // Utilities
       clearAllLabels,
@@ -635,6 +411,9 @@ export const useLabelsActions = () => {
     [
       // Sidebar
       setSidebarLabels, setSidebarLabelsLoading, setSidebarLabelsError,
+
+      // Party
+      setPartyLabels, setPartyLabelsLoading, setPartyLabelsError,
       // Build partner
       setBuildPartnerLabels, setBuildPartnerLabelsLoading, setBuildPartnerLabelsError,
       // Capital partner
@@ -653,38 +432,8 @@ export const useLabelsActions = () => {
       setWorkflowAmountStageOverrideLabels, setWorkflowAmountStageOverrideLabelsLoading, setWorkflowAmountStageOverrideLabelsError,
       // Workflow Requested
       setWorkflowRequestedLabels, setWorkflowRequestedLabelsLoading, setWorkflowRequestedLabelsError,
-      // Master Customer - Customer Master module
-      setCustomerMasterLabels, setCustomerMasterLabelsLoading, setCustomerMasterLabelsError,
-      // Master Customer - Account Purpose module
-      setAccountPurposeLabels, setAccountPurposeLabelsLoading, setAccountPurposeLabelsError,
-      // Master Customer - Investment Master module
-      setInvestmentMasterLabels, setInvestmentMasterLabelsLoading, setInvestmentMasterLabelsError,
-      // Master Customer - Business Segment module
-      setBusinessSegmentLabels, setBusinessSegmentLabelsLoading, setBusinessSegmentLabelsError,
-      // Master Customer - Business Sub Segment module
-      setBusinessSubSegmentLabels, setBusinessSubSegmentLabelsLoading, setBusinessSubSegmentLabelsError,
-      // Master Customer - Deal Type module
-      setDealTypeLabels, setDealTypeLabelsLoading, setDealTypeLabelsError,
-      // Master Customer - Deal Subtype module
-      setDealSubtypeLabels, setDealSubtypeLabelsLoading, setDealSubtypeLabelsError,
-      // Master Customer - Product Program module
-      setProductProgramLabels, setProductProgramLabelsLoading, setProductProgramLabelsError,
-      // Master Customer - Beneficiary module
-      setBeneficiaryLabels, setBeneficiaryLabelsLoading, setBeneficiaryLabelsError,
-      // Master Customer - Document module
-      setDocumentLabels, setDocumentLabelsLoading, setDocumentLabelsError,
-      // Master Customer - Deal Segment module
-      setDealSegmentLabels, setDealSegmentLabelsLoading, setDealSegmentLabelsError,
-      // Master Customer - Ledger Account module
-      setLedgerAccountLabels, setLedgerAccountLabelsLoading, setLedgerAccountLabelsError,
-      // Master Customer - Country Code module
-      setCountryCodeLabels, setCountryCodeLabelsLoading, setCountryCodeLabelsError,
-      // Master Customer - Currency Code module
-      setCurrencyCodeLabels, setCurrencyCodeLabelsLoading, setCurrencyCodeLabelsError,
       // Global & utilities
       setAllLabelsLoading, setAllLabelsError,
-      // Customer field configuration
-      setCustomerFieldConfig, getCustomerFieldLabel,
       clearAllLabels, getLabel, hasLabels, getAvailableLanguages,
     ]
   )

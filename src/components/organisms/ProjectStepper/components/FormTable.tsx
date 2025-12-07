@@ -14,6 +14,8 @@ import {
   Button,
   Typography,
   Toolbar,
+  useTheme,
+  alpha,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -60,6 +62,7 @@ export const FormTable: React.FC<FormTableProps> = ({
   showActions = true,
   sx,
 }) => {
+  const theme = useTheme()
   const formContext = useFormContext()
 
   // Early return if form context is not available
@@ -122,7 +125,14 @@ export const FormTable: React.FC<FormTableProps> = ({
     <Box sx={sx}>
       {title && (
         <Toolbar sx={{ px: 0, py: 1 }}>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              flexGrow: 1,
+              fontWeight: 600,
+              color: theme.palette.mode === 'dark' ? '#FFFFFF' : undefined,
+            }}
+          >
             {title}
           </Typography>
           <Button
@@ -140,11 +150,23 @@ export const FormTable: React.FC<FormTableProps> = ({
 
       <TableContainer
         component={Paper}
-        sx={{ boxShadow: 'none', borderRadius: '8px' }}
+        sx={{
+          boxShadow: 'none',
+          borderRadius: '8px',
+          backgroundColor: theme.palette.mode === 'dark' 
+            ? alpha(theme.palette.background.paper, 0.75) 
+            : '#FFFFFF',
+        }}
       >
         <Table>
           <TableHead>
-            <TableRow>
+            <TableRow
+              sx={{
+                backgroundColor: theme.palette.mode === 'dark' 
+                  ? alpha(theme.palette.background.paper, 0.5) 
+                  : alpha('#F9FAFB', 0.8),
+              }}
+            >
               {editableColumns.map((column) => (
                 <TableCell
                   key={column.name}
@@ -152,6 +174,9 @@ export const FormTable: React.FC<FormTableProps> = ({
                     fontWeight: 600,
                     width: column.width,
                     minWidth: column.width || 120,
+                    color: theme.palette.mode === 'dark' 
+                      ? theme.palette.text.primary 
+                      : theme.palette.text.primary,
                   }}
                 >
                   {column.label}
@@ -159,7 +184,15 @@ export const FormTable: React.FC<FormTableProps> = ({
                 </TableCell>
               ))}
               {showActions && (
-                <TableCell sx={{ fontWeight: 600, width: 100 }}>
+                <TableCell
+                  sx={{
+                    fontWeight: 600,
+                    width: 100,
+                    color: theme.palette.mode === 'dark' 
+                      ? theme.palette.text.primary 
+                      : theme.palette.text.primary,
+                  }}
+                >
                   Actions
                 </TableCell>
               )}
@@ -178,9 +211,26 @@ export const FormTable: React.FC<FormTableProps> = ({
               </TableRow>
             ) : (
               tableRows.map((row: FieldArrayWithId, rowIndex: number) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? alpha('#FFFFFF', 0.05) 
+                        : alpha('#000000', 0.02),
+                    },
+                  }}
+                >
                   {editableColumns.map((column) => (
-                    <TableCell key={column.name} sx={{ py: 1 }}>
+                    <TableCell
+                      key={column.name}
+                      sx={{
+                        py: 1,
+                        color: theme.palette.mode === 'dark' 
+                          ? theme.palette.text.primary 
+                          : theme.palette.text.primary,
+                      }}
+                    >
                       <FormField
                         name={`${name}.${rowIndex}.${column.name}`}
                         control={control}

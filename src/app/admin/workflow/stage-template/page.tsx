@@ -1,4 +1,3 @@
-// pages/admin/workflow/stage-template/page.tsx
 'use client'
 import dynamic from 'next/dynamic'
 import React, { useCallback, useState, useMemo } from 'react'
@@ -8,31 +7,32 @@ import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import { Spinner } from '@/components/atoms/Spinner'
+import { GlobalLoading } from '@/components/atoms'
 import { useAppStore } from '@/store'
+import { toast } from 'react-hot-toast'
 import {
   mapWorkflowStageTemplateData,
   WorkflowStageTemplateResponse,
   type WorkflowStageTemplate,
 } from '@/services/api/workflowApi'
-import { CommentModal } from '@/components/molecules'
 import {
   useBuildWorkflowStageTemplateLabelsWithCache,
   useDeleteWorkflowStageTemplate,
   useWorkflowStageTemplates,
 } from '@/hooks/workflow'
+import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 import { RightSlideWorkflowStageTemplatePanel } from '@/components/organisms/RightSlidePanel/RightSlideWorkflowStageTemplatePanel'
 
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
   onRetry,
 }) => (
-  <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50">
+  <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
     <div className="w-full max-w-md text-center">
       <div className="mb-8">
-        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-red-100 rounded-full">
+        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-red-100 dark:bg-red-500/20 rounded-full">
           <svg
-            className="w-12 h-12 text-red-600"
+            className="w-12 h-12 text-red-600 dark:text-red-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -45,19 +45,19 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
             />
           </svg>
         </div>
-        <h1 className="mb-4 text-2xl font-semibold text-gray-900">
+        <h1 className="mb-4 text-2xl font-semibold text-gray-900 dark:text-white">
           Failed to load developers
         </h1>
-        <p className="mb-4 text-gray-600">
+        <p className="mb-4 text-gray-600 dark:text-gray-200">
           {error.message ||
             'An error occurred while loading the data. Please try again.'}
         </p>
         {process.env.NODE_ENV === 'development' && (
           <details className="text-left">
-            <summary className="text-sm font-medium text-gray-600 cursor-pointer">
+            <summary className="text-sm font-medium text-gray-600 dark:text-gray-200 cursor-pointer">
               Error Details (Development)
             </summary>
-            <pre className="p-4 mt-2 overflow-auto text-xs text-gray-500 bg-gray-100 rounded">
+            <pre className="p-4 mt-2 overflow-auto text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 rounded">
               {error.stack}
             </pre>
           </details>
@@ -66,7 +66,7 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="w-full px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+          className="w-full px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
         >
           Try Again
         </button>
@@ -76,11 +76,11 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
 )
 
 const LoadingSpinner: React.FC = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50">
-    <div className="text-center">
-      <Spinner size="lg" />
+  <DashboardLayout title="Stage Template">
+    <div className="bg-white/75 dark:bg-[#1E293B] rounded-2xl flex flex-col h-full">
+      <GlobalLoading fullHeight />
     </div>
-  </div>
+  </DashboardLayout>
 )
 
 const statusOptions = ['Active', 'Inactive']
@@ -116,14 +116,11 @@ type ViewRow = {
   slaHours: React.ReactNode
   workflowDefinition: React.ReactNode
   status: React.ReactNode
-  createdBy: React.ReactNode
   createdAt: React.ReactNode
   actions: React.ReactNode
 }
 
 const WorkflowStageTemplatesPageImpl: React.FC = () => {
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteIds, setDeleteIds] = useState<(string | number)[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
@@ -143,6 +140,7 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
   } = useWorkflowStageTemplates(currentPage, pageSize)
 
   const deleteMutation = useDeleteWorkflowStageTemplate()
+  const confirmDelete = useDeleteConfirmation()
 
   const workflowStageTemplatesData: WorkflowStageTemplateRow[] = useMemo(() => {
     if (!apiResponse?.content) {
@@ -185,17 +183,28 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
           workflowDefinitionName: workflowDefinitionName,
           workflowDefinitionVersion: workflowDefinitionVersion,
           status: status,
-          createdBy: uiData.createdBy ? uiData.createdBy : 'system',
-          createdAt: new Date().toISOString(),
-          updatedBy: undefined,
-          updatedAt: undefined,
+          createdBy: uiData.createdBy || 'system',
+          createdAt: uiData.createdAt || new Date().toISOString(),
+          updatedBy: uiData.updatedBy || undefined,
+          updatedAt: uiData.updatedAt || undefined,
         }
 
         return rowData
       }
     )
 
-    return mappedData
+    const sortedData = mappedData.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime()
+      const dateB = new Date(b.createdAt || 0).getTime()
+
+      if (dateA !== dateB) {
+        return dateB - dateA
+      }
+
+      return parseInt(b.id) - parseInt(a.id)
+    })
+
+    return sortedData
   }, [apiResponse])
 
   const getWorkflowStageTemplateLabelDynamic = useCallback(
@@ -211,76 +220,6 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
     },
     [workflowStageTemplateLabels, currentLanguage, getLabel]
   )
-
-  const confirmDelete = async () => {
-    if (isDeleting || (deleteMutation as { isPending?: boolean })?.isPending) {
-      return
-    }
-
-    if (!deleteIds?.length) {
-      setIsDeleteModalOpen(false)
-      return
-    }
-
-    setIsDeleting(true)
-
-    try {
-      for (const id of Array.from(new Set(deleteIds))) {
-        try {
-          if (
-            typeof (
-              deleteMutation as {
-                mutateAsync?: (id: string) => Promise<unknown>
-              }
-            ).mutateAsync === 'function'
-          ) {
-            await (
-              deleteMutation as {
-                mutateAsync: (id: string) => Promise<unknown>
-              }
-            ).mutateAsync(id.toString())
-          } else if (
-            typeof (deleteMutation as { mutate?: (id: string) => void })
-              .mutate === 'function'
-          ) {
-            ;(deleteMutation as { mutate: (id: string) => void }).mutate(
-              id.toString()
-            )
-          } else if (
-            typeof (window as { deleteApi?: (id: string) => Promise<unknown> })
-              .deleteApi === 'function'
-          ) {
-            const win = window as unknown as {
-              deleteApi?: (id: string) => Promise<unknown>
-            }
-            if (typeof win.deleteApi === 'function') {
-              await win.deleteApi(id.toString())
-            } else {
-              throw new Error(
-                'No delete function available (mutateAsync/mutate/deleteApi)'
-              )
-            }
-          }
-        } catch (innerErr) {
-          console.log(innerErr)
-        }
-      }
-
-      if (typeof refetch === 'function') {
-        try {
-          await refetch()
-        } catch (refetchErr) {
-          console.log(refetchErr)
-        }
-      }
-    } catch (err) {
-      console.log(err)
-    } finally {
-      setIsDeleteModalOpen(false)
-      setDeleteIds([])
-      setIsDeleting(false)
-    }
-  }
 
   const tableColumns = [
     {
@@ -356,15 +295,15 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
         displayValue(value),
     },
 
-    {
-      key: 'createdBy',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_CREATED_BY'),
-      type: 'text' as const,
-      width: 'w-32',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
+    // {
+    //   key: 'createdBy',
+    //   label: getWorkflowStageTemplateLabelDynamic('CDL_ST_CREATED_BY'),
+    //   type: 'text' as const,
+    //   width: 'w-32',
+    //   sortable: true,
+    //   render: (value: string | number | null | undefined) =>
+    //     displayValue(value),
+    // },
     {
       key: 'createdAt',
       label: getWorkflowStageTemplateLabelDynamic('CDL_ST_CREATED_AT'),
@@ -403,7 +342,6 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
       'slaHours',
       'workflowDefinitionDTO',
       'workflowDefinitionName',
-      'createdBy',
       'createdAt',
       'status',
     ],
@@ -424,22 +362,43 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
   ) => {
     if (arg && 'stopPropagation' in arg) arg.stopPropagation()
 
-    const singleId =
-      arg && typeof (arg as ViewRow)?.id === 'string'
-        ? (arg as ViewRow).id
-        : (arg as WorkflowStageTemplateRow)?.id
+    if (isDeleting || (deleteMutation as { isPending?: boolean })?.isPending) {
+      return
+    }
 
-    const ids: (string | number)[] =
-      typeof singleId === 'string' || typeof singleId === 'number'
-        ? [singleId]
-        : selectedRows
-            .map((idx: number) => viewRows[idx]?._raw?.id)
-            .filter((v: string | undefined): v is string => v !== undefined)
+    let row: WorkflowStageTemplateRow | undefined
 
-    if (!ids.length) return
+    if (arg && typeof arg === 'object' && !('stopPropagation' in arg)) {
+      if ('_raw' in arg) {
+        row = (arg as ViewRow)._raw
+      } else {
+        row = arg as WorkflowStageTemplateRow
+      }
+    }
 
-    setDeleteIds(ids)
-    setIsDeleteModalOpen(true)
+    if (!row || !row.id) return
+
+    confirmDelete({
+      itemName: `workflow stage template: ${row.name}`,
+      itemId: row.id.toString(),
+      onConfirm: async () => {
+        try {
+          setIsDeleting(true)
+          await deleteMutation.mutateAsync(row.id.toString())
+          refetch()
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error occurred'
+          console.error(
+            `Failed to delete workflow stage template: ${errorMessage}`
+          )
+          toast.error(`Failed to delete: ${errorMessage}`)
+          throw error
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+    })
   }
 
   const handleRowClick = (row: WorkflowStageTemplateRow) => {
@@ -476,45 +435,7 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
     return <ErrorMessage error={error} onRetry={refetch} />
   }
 
-  //   if (!workflowStageTemplatesData.length) {
-  //     return (
-  //       <div className="flex items-center justify-center min-h-screen bg-gray-50">
-  //         <div className="text-center">
-  //           <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full">
-  //             <svg
-  //               className="w-12 h-12 text-gray-400"
-  //               fill="none"
-  //               viewBox="0 0 24 24"
-  //               stroke="currentColor"
-  //             >
-  //               <path
-  //                 strokeLinecap="round"
-  //                 strokeLinejoin="round"
-  //                 strokeWidth={2}
-  //                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-  //               />
-  //             </svg>
-  //           </div>
-  //           <h3 className="mb-2 text-lg font-medium text-gray-900">
-  //             No workflow stage templates found
-  //           </h3>
-  //           <p className="mb-6 text-gray-600">
-  //             There are no workflow stage templates available at the moment.
-  //           </p>
-  //           <button
-  //             onClick={() => {
-  //  }}
-  //             className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-  //           >
-  //             Add New Workflow Stage Template
-  //           </button>
-  //         </div>
-  //       </div>
-  //     )
-  //   }
-
   const viewRows: ViewRow[] = paginatedData.map((row) => {
-    console.log('row', row)
     return {
       _raw: row,
       id: row.id?.toString(),
@@ -632,131 +553,6 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
     }
   })
 
-  const renderExpandedContent = (row: ViewRow) => {
-    const rawData = row._raw
-    return (
-      <div className="grid grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <h4 className="mb-4 text-sm font-semibold text-gray-900">
-            {getWorkflowStageTemplateLabelDynamic('CDL_ST_DETAILS')}
-          </h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic('CDL_ST_NAME')}:
-              </span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData?.name)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic('CDL_ST_ORDER')}:
-              </span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.stageOrder)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic('CDL_ST_KEY')}:
-              </span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.stageKey)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic('CDL_ST_GROUP')}:
-              </span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.keycloakGroup)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic(
-                  'CDL_ST_REQUIRED_APPROVALS'
-                )}
-                :
-              </span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.requiredApprovals)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic('CDL_ST_SLA_HOURS')}:
-              </span>
-              <span className="ml-2 font-medium text-gray-800">
-                {displayValue(rawData.slaHours)}h
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic('CDL_ST_CREATED_AT')}:
-              </span>
-              <span className="ml-2 font-medium text-gray-800">
-                {rawData?.createdAt
-                  ? (() => {
-                      const date = new Date(rawData.createdAt)
-                      const day = date.getDate()
-                      const month = date.toLocaleString('en-US', {
-                        month: 'long',
-                      })
-                      const year = date.getFullYear()
-                      const hours = date.getHours()
-                      const minutes = date
-                        .getMinutes()
-                        .toString()
-                        .padStart(2, '0')
-                      const ampm = hours >= 12 ? 'PM' : 'AM'
-                      const displayHours = hours % 12 || 12
-                      return `${day} ${month} ${year} ${displayHours}:${minutes} ${ampm}`
-                    })()
-                  : displayValue(rawData?.createdAt)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h4 className="mb-4 text-sm font-semibold text-gray-900">
-            Additional Information
-          </h4>
-          <div className="space-y-4 text-sm">
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic('CDL_ST_DESCRIPTION')}:
-              </span>
-              <div className="p-3 mt-2 rounded-lg bg-gray-50">
-                <p className="text-gray-800">
-                  {displayValue(rawData.description)}
-                </p>
-              </div>
-            </div>
-            <div>
-              <span className="text-gray-600">
-                {getWorkflowStageTemplateLabelDynamic(
-                  'CDL_ST_WORKFLOW_DEFINITION'
-                )}
-                :
-              </span>
-              <div className="mt-2">
-                <span className="inline-flex items-center px-3 py-1 text-sm font-medium text-purple-800 bg-purple-100 rounded-full">
-                  {displayValue(
-                    rawData.workflowDefinitionName ||
-                      rawData.workflowDefinitionDTO
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
       <RightSlideWorkflowStageTemplatePanel
@@ -772,8 +568,8 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
       <DashboardLayout
         title={getWorkflowStageTemplateLabelDynamic('Workflow Stage Templates')}
       >
-        <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
-          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] border-b border-gray-200 rounded-t-2xl">
+        <div className="bg-white/75 dark:bg-[#1E293B] rounded-2xl flex flex-col h-full">
+          <div className="sticky top-0 z-10 bg-white/75 dark:bg-[#1E293B] border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
             <PageActionButtons
               entityType="workflowStageTemplate"
               customActionButtons={[]}
@@ -806,7 +602,6 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
                 onRowSelectionChange={handleRowSelectionChange}
                 expandedRows={expandedRows}
                 onRowExpansionChange={handleRowExpansionChange}
-                renderExpandedContent={renderExpandedContent}
                 statusOptions={statusOptions}
                 onRowClick={() => {}}
                 onRowDelete={handleRowDelete}
@@ -818,27 +613,6 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
           </div>
         </div>
       </DashboardLayout>
-
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Workflow Stage Templates"
-        message={`Are you sure you want to delete`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => setIsDeleteModalOpen(false),
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
     </>
   )
 }
@@ -848,9 +622,11 @@ const WorkflowStageTemplatesPageClient = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
-      </div>
+      <DashboardLayout title="Stage Template">
+        <div className="bg-white/75 dark:bg-[#1E293B] rounded-2xl flex flex-col h-full">
+          <GlobalLoading fullHeight />
+        </div>
+      </DashboardLayout>
     ),
   }
 )

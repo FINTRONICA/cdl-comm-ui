@@ -48,7 +48,7 @@ export interface FeeRepushRecord {
     reaMarketingExpenses?: string
     reaAccoutStatusDate?: string
     reaTeamLeadName?: string
-    reaRelationshipManagerName?: string
+    reamprelationshipManagerName?: string
     reaAssestRelshipManagerName?: string
     reaRealEstateBrokerExp?: number
     reaAdvertisementExp?: number

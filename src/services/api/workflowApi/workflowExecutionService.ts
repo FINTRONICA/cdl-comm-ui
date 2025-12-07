@@ -92,7 +92,7 @@ export class WorkflowExecutionService {
         await apiClient.get<PaginatedResponse<WorkflowExecution>>(url)
       return result
     } catch (error) {
-      console.log(error)
+      console.error(error)
       throw error
     }
   }
@@ -104,7 +104,7 @@ export class WorkflowExecutionService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      console.error(error)
       throw error
     }
   }
@@ -125,7 +125,7 @@ export class WorkflowExecutionService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      console.error(error)
       throw error
     }
   }
@@ -139,7 +139,7 @@ export class WorkflowExecutionService {
       const result = await apiClient.put<WorkflowExecution>(url, updates)
       return result
     } catch (error) {
-      console.log(error)
+      console.error(error)
       throw error
     }
   }
@@ -152,7 +152,7 @@ export class WorkflowExecutionService {
     try {
       await apiClient.delete<void>(url, { data: deletePayload })
     } catch (error) {
-      console.log(error)
+      console.error(error)
       throw error
     }
   }

@@ -15,7 +15,7 @@ export const useFeeCategories = () => {
     queryFn: async () => {
       const rawCategories = await FeeDropdownService.fetchFeeCategories()
       const processedCategories = FeeDropdownService.processFeeCategories(rawCategories)
-      console.log('🔄 Processed Fee Categories:', processedCategories)
+      
       return processedCategories
     },
     staleTime: STALE_TIME,
@@ -66,13 +66,13 @@ export const useCurrencies = () => {
 }
 
 /**
- * Hook to fetch country codes from API (uses same endpoint as currencies)
+ * Hook to fetch country codes from API
  */
 export const useCountryCodes = () => {
   return useQuery({
     queryKey: ['countryCodes'],
     queryFn: async () => {
-      const rawCountryCodes = await FeeDropdownService.fetchCurrencies()
+      const rawCountryCodes = await FeeDropdownService.fetchCountries()
       return FeeDropdownService.processDropdownOptions(rawCountryCodes)
     },
     staleTime: STALE_TIME,

@@ -47,9 +47,7 @@ export function useDiscardedTransactionLabelsWithCache() {
     isFetching: discardedTransactionLabelsLoading,
     isSuccess: !!discardedTransactionLabels,
     refetch: () => {
-      console.log(
-        '🏦 [COMPLIANCE] Refetch requested - handled by compliance loader'
-      )
+      
       return Promise.resolve({ data: discardedTransactionLabels })
     },
 

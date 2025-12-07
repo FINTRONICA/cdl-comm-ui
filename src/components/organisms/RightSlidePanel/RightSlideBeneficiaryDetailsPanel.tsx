@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -9,7 +9,6 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  FormHelperText,
   Button,
   Drawer,
   Box,
@@ -18,15 +17,26 @@ import {
   Snackbar,
   CircularProgress,
   Typography,
+  OutlinedInput,
 } from '@mui/material'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
+import { FormError } from '../../atoms/FormError'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import { useSaveBuildPartnerBeneficiary } from '@/hooks/useBuildPartners'
-import { validateAndSanitizeBeneficiaryData } from '@/lib/validation/beneficiarySchemas'
+import {
+  useSaveBuildPartnerBeneficiary,
+  useBuildPartnerBeneficiaryById,
+} from '@/hooks/useBuildPartners'
 import { useValidationStatus } from '@/hooks/useValidation'
+import { validateAndSanitizeBeneficiaryData } from '@/lib/validation/beneficiarySchemas'
+import { DeveloperStep5Schema } from '@/lib/validation/developerSchemas'
+import { useBuildPartnerLabelsWithCache } from '@/hooks/useBuildPartnerLabelsWithCache'
+import { getBuildPartnerLabel } from '@/constants/mappings/buildPartnerMapping'
+import { useAppStore } from '@/store'
+import { alpha, useTheme } from '@mui/material/styles'
+import { buildPanelSurfaceTokens } from './panelTheme'
 
 interface BeneficiaryFormData {
   bpbBeneficiaryId: string
@@ -42,7 +52,14 @@ interface RightSlidePanelProps {
   isOpen: boolean
   onClose: () => void
   onBeneficiaryAdded?: (beneficiary: BeneficiaryFormData) => void
+  onBeneficiaryUpdated?: (
+    beneficiary: BeneficiaryFormData,
+    index: number
+  ) => void
   title?: string
+  mode?: 'add' | 'edit'
+  beneficiaryData?: any
+  beneficiaryIndex?: number
   editingBeneficiary?: BeneficiaryFormData | null
   bankNames?: unknown[]
   beneficiaryTypes?: unknown[]
@@ -57,7 +74,11 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
   isOpen,
   onClose,
   onBeneficiaryAdded,
+  onBeneficiaryUpdated,
   title,
+  mode = 'add',
+  beneficiaryData,
+  beneficiaryIndex,
   editingBeneficiary,
   bankNames: propBankNames,
   beneficiaryTypes: propBeneficiaryTypes,
@@ -65,6 +86,10 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
   dropdownsLoading: propDropdownsLoading,
   dropdownsError: propDropdownsError,
 }) => {
+  const theme = useTheme()
+  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  // Use beneficiaryData if provided (new prop), otherwise fall back to editingBeneficiary (legacy)
+  const dataToEdit = beneficiaryData || editingBeneficiary
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -79,6 +104,11 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
   >([])
 
   const addBeneficiaryMutation = useSaveBuildPartnerBeneficiary()
+
+  // Fetch full beneficiary data when in edit mode
+  const { data: apiBeneficiaryData } = useBuildPartnerBeneficiaryById(
+    mode === 'edit' && dataToEdit?.id ? dataToEdit.id : null
+  )
 
   // Toast utility functions
   const addToast = (message: string, type: 'success' | 'error') => {
@@ -116,6 +146,20 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
   const dropdownsLoading = propDropdownsLoading || false
   const dropdownsError = propDropdownsError || null
 
+  // Dynamic labels: same pattern used in Step4 & Contact Details
+  const { data: buildPartnerLabels, getLabel } =
+    useBuildPartnerLabelsWithCache()
+  const currentLanguage = useAppStore((state) => state.language) || 'EN'
+  const getBuildPartnerLabelDynamic = useCallback(
+    (configId: string): string => {
+      const fallback = getBuildPartnerLabel(configId)
+      if (buildPartnerLabels)
+        return getLabel(configId, currentLanguage, fallback)
+      return fallback
+    },
+    [buildPartnerLabels, currentLanguage, getLabel]
+  )
+
   // Validation hooks
   const {
     isAccountValidating,
@@ -134,50 +178,53 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
     control,
     handleSubmit,
     reset,
+    trigger,
     formState: { errors },
   } = useForm<BeneficiaryFormData>({
     defaultValues: {
-      bpbBeneficiaryId: editingBeneficiary?.bpbBeneficiaryId || '',
-      bpbBeneficiaryType: editingBeneficiary?.bpbBeneficiaryType || '',
-      bpbName: editingBeneficiary?.bpbName || '',
-      bpbBankName: editingBeneficiary?.bpbBankName || '',
-      bpbSwiftCode: editingBeneficiary?.bpbSwiftCode || '',
-      bpbRoutingCode: editingBeneficiary?.bpbRoutingCode || '',
-      bpbAccountNumber: editingBeneficiary?.bpbAccountNumber || '',
+      bpbBeneficiaryId: dataToEdit?.bpbBeneficiaryId || '',
+      bpbBeneficiaryType: dataToEdit?.bpbBeneficiaryType || '',
+      bpbName: dataToEdit?.bpbName || '',
+      bpbBankName: dataToEdit?.bpbBankName || '',
+      bpbSwiftCode: dataToEdit?.bpbSwiftCode || '',
+      bpbRoutingCode: dataToEdit?.bpbRoutingCode || '',
+      bpbAccountNumber: dataToEdit?.bpbAccountNumber || '',
     },
+    mode: 'onChange', // Enable real-time validation
   })
 
   // Reset form when editing beneficiary changes
   React.useEffect(() => {
-    if (editingBeneficiary) {
+    if (isOpen && mode === 'edit' && (apiBeneficiaryData || dataToEdit)) {
+      // Use API data if available, otherwise use table data
+      const dataToUse: any = apiBeneficiaryData || dataToEdit
+
+      // Wait for dropdowns to load
+      if (dropdownsLoading) {
+        return
+      }
+
       // Map display values back to IDs for editing
       const beneficiaryType = beneficiaryTypes.find(
         (type: unknown) =>
           (type as { configValue: string }).configValue ===
-          editingBeneficiary.bpbBeneficiaryType
+          dataToUse.bpbBeneficiaryType
       )
-      const bankName = bankNames.find(
-        (bank: unknown) =>
-          (bank as { configValue: string }).configValue ===
-          editingBeneficiary.bpbBankName
-      )
-
       reset({
-        bpbBeneficiaryId: editingBeneficiary.bpbBeneficiaryId || '',
+        bpbBeneficiaryId: dataToUse.bpbBeneficiaryId || '',
         bpbBeneficiaryType:
           (beneficiaryType as { id?: string })?.id ||
-          editingBeneficiary.bpbBeneficiaryType ||
+          dataToUse.bpbBeneficiaryType ||
           '',
-        bpbName: editingBeneficiary.bpbName || '',
-        bpbBankName:
-          (bankName as { id?: string })?.id ||
-          editingBeneficiary.bpbBankName ||
-          '',
-        bpbSwiftCode: editingBeneficiary.bpbSwiftCode || '',
-        bpbRoutingCode: editingBeneficiary.bpbRoutingCode || '',
-        bpbAccountNumber: editingBeneficiary.bpbAccountNumber || '',
+        bpbName: dataToUse.bpbName || '',
+        bpbBankName: dataToUse.bpbBankName || '',
+        bpbSwiftCode: dataToUse.bpbSwiftCode || '',
+        bpbRoutingCode: dataToUse.bpbRoutingCode || '',
+        bpbAccountNumber: dataToUse.bpbAccountNumber || '',
       })
-    } else {
+      // Don't reset validation in edit mode - keep existing validations
+    } else if (isOpen && mode === 'add') {
+      // Reset form for add mode
       reset({
         bpbBeneficiaryId: '',
         bpbBeneficiaryType: '',
@@ -187,8 +234,35 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
         bpbRoutingCode: '',
         bpbAccountNumber: '',
       })
+      // Reset validation states when opening in add mode
+      resetAccountValidation()
+      resetSwiftValidation()
+    } else if (!isOpen) {
+      // Reset everything when closing
+      reset({
+        bpbBeneficiaryId: '',
+        bpbBeneficiaryType: '',
+        bpbName: '',
+        bpbBankName: '',
+        bpbSwiftCode: '',
+        bpbRoutingCode: '',
+        bpbAccountNumber: '',
+      })
+      resetAccountValidation()
+      resetSwiftValidation()
     }
-  }, [editingBeneficiary, reset])
+  }, [
+    isOpen,
+    mode,
+    apiBeneficiaryData,
+    dataToEdit,
+    bankNames,
+    beneficiaryTypes,
+    dropdownsLoading,
+    reset,
+    resetAccountValidation,
+    resetSwiftValidation,
+  ])
 
   // Watch for validation results and show toasts
   useEffect(() => {
@@ -241,90 +315,234 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
     }
   }, [swiftValidationError])
 
+  // Validation function using DeveloperStep5Schema
+  const validateBeneficiaryField = (
+    fieldName: string,
+    value: any,
+    allValues: BeneficiaryFormData
+  ) => {
+    try {
+      // Simple required checks first so empty required fields show errors immediately
+      const requiredFields: Record<string, string> = {
+        bpbBeneficiaryId: 'Beneficiary ID is required',
+        bpbBeneficiaryType: 'Beneficiary Type is required',
+        bpbName: 'Name is required',
+        bpbBankName: 'Bank is required',
+        bpbAccountNumber: 'Account Number is required',
+        bpbSwiftCode: 'SWIFT Code is required',
+      }
+
+      if (requiredFields[fieldName]) {
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return requiredFields[fieldName]
+        }
+      }
+      // Skip validation for dropdown fields since they come from backend
+      const dropdownFields = ['bpbBeneficiaryType']
+      if (dropdownFields.includes(fieldName)) {
+        return true
+      }
+
+      // Transform form data to match DeveloperStep5Schema format
+      const beneficiaryForValidation = {
+        beneficiaries: [
+          {
+            id: allValues.bpbBeneficiaryId,
+            transferType: allValues.bpbBeneficiaryType,
+            name: allValues.bpbName,
+            bankName: allValues.bpbBankName,
+            account: allValues.bpbAccountNumber,
+            swiftCode: allValues.bpbSwiftCode,
+            routingCode: allValues.bpbRoutingCode || '',
+            buildPartnerDTO: {
+              id: buildPartnerId ? parseInt(buildPartnerId) : undefined,
+            },
+          },
+        ],
+      }
+
+      // Validate using DeveloperStep5Schema
+      const result = DeveloperStep5Schema.safeParse(beneficiaryForValidation)
+
+      if (result.success) {
+        return true
+      } else {
+        // Map form field names to schema field names
+        const fieldMapping: Record<string, string> = {
+          bpbBeneficiaryId: 'id',
+          bpbBeneficiaryType: 'transferType',
+          bpbName: 'name',
+          bpbBankName: 'bankName',
+          bpbAccountNumber: 'account',
+          bpbSwiftCode: 'swiftCode',
+          bpbRoutingCode: 'routingCode',
+        }
+
+        const schemaFieldName = fieldMapping[fieldName]
+        if (!schemaFieldName) return true
+
+        // Find the specific field error
+        const fieldError = result.error.issues.find(
+          (issue) =>
+            issue.path.includes('beneficiaries') &&
+            issue.path.includes(0) &&
+            issue.path.includes(schemaFieldName)
+        )
+
+        return fieldError ? fieldError.message : true
+      }
+    } catch (error) {
+      return true // Return true on error to avoid blocking the form
+    }
+  }
+
   const onSubmit = async (data: BeneficiaryFormData) => {
-    
     try {
       setErrorMessage(null)
       setSuccessMessage(null)
 
+      // Check if dropdown data is still loading
+      if (dropdownsLoading) {
+        setErrorMessage(
+          'Please wait for dropdown options to load before submitting.'
+        )
+        return
+      }
+
+      // Validate form fields individually to provide better error messages
+      const isValid = await trigger()
+
+      if (!isValid) {
+        // Get specific validation errors for text fields only
+        const errors = []
+        if (!data.bpbBeneficiaryId) errors.push('Beneficiary ID is required')
+        if (!data.bpbBeneficiaryType)
+          errors.push('Beneficiary Type is required')
+        if (!data.bpbName) errors.push('Name is required')
+        if (!data.bpbBankName) errors.push('Bank is required')
+        if (!data.bpbAccountNumber) errors.push('Account Number is required')
+        if (!data.bpbSwiftCode) errors.push('SWIFT Code is required')
+
+        if (errors.length > 0) {
+          setErrorMessage(
+            `Please fill in the required fields: ${errors.join(', ')}`
+          )
+        }
+        return
+      }
+
       // Validate and sanitize form data
       const validatedData = validateAndSanitizeBeneficiaryData(data)
-     
 
-      // Transform form data to API format - matching backend expectations
-      const beneficiaryData = {
+      const isEditing =
+        mode === 'edit' && (dataToEdit?.id || (apiBeneficiaryData as any)?.id)
+      const beneficiaryId = isEditing
+        ? (apiBeneficiaryData as any)?.id || dataToEdit?.id
+        : undefined
+
+      let beneficiaryData: any
+
+      if (isEditing && apiBeneficiaryData) {
+        // For updates, use the complete API data structure and update only the changed fields
+        beneficiaryData = {
+          ...(apiBeneficiaryData as any), // Include all original fields
+          bpbBeneficiaryId: validatedData.bpbBeneficiaryId,
+          bpbBeneficiaryType: validatedData.bpbBeneficiaryType,
+          bpbName: validatedData.bpbName,
+          bpbBankName: validatedData.bpbBankName,
+          bpbSwiftCode: validatedData.bpbSwiftCode,
+          bpbRoutingCode: validatedData.bpbRoutingCode || '',
+          bpbAccountNumber: validatedData.bpbAccountNumber,
+          enabled: true,
+          deleted: false,
+          // Add transfer type DTO with selected ID
+          bpbTransferTypeDTO: {
+            id: parseInt(String(validatedData.bpbBeneficiaryType)) || 41,
+          },
+          // Simplify buildPartnerDTO to just the ID
+          buildPartnerDTO: [
+            {
+              id:
+                (apiBeneficiaryData as any).buildPartnerDTO?.[0]?.id ||
+                (buildPartnerId ? parseInt(buildPartnerId) : undefined),
+            },
+          ],
+        }
+      } else {
+        // For new beneficiaries, use the standard structure
+        beneficiaryData = {
+          bpbBeneficiaryId: validatedData.bpbBeneficiaryId,
+          bpbBeneficiaryType: validatedData.bpbBeneficiaryType,
+          bpbName: validatedData.bpbName,
+          bpbBankName: validatedData.bpbBankName,
+          bpbSwiftCode: validatedData.bpbSwiftCode,
+          bpbRoutingCode: validatedData.bpbRoutingCode || '',
+          bpbAccountNumber: validatedData.bpbAccountNumber,
+          enabled: true,
+          // Add transfer type DTO with selected ID
+          bpbTransferTypeDTO: {
+            id: parseInt(String(validatedData.bpbBeneficiaryType)) || 41,
+          },
+          buildPartnerDTO: [
+            {
+              id: buildPartnerId ? parseInt(buildPartnerId) : undefined,
+            },
+          ],
+        }
+      }
+
+      await addBeneficiaryMutation.mutateAsync({
+        data: beneficiaryData,
+        isEditing: isEditing,
+        developerId: buildPartnerId,
+        beneficiaryId: beneficiaryId,
+      } as any)
+
+      setSuccessMessage(
+        isEditing
+          ? 'Beneficiary updated successfully!'
+          : 'Beneficiary added successfully!'
+      )
+
+      // Map IDs to display values for the callback
+      const beneficiaryType = beneficiaryTypes.find(
+        (type: unknown) =>
+          (type as { id: string }).id === data.bpbBeneficiaryType
+      )
+
+      const beneficiaryForForm = {
         bpbBeneficiaryId: validatedData.bpbBeneficiaryId,
-        bpbBeneficiaryType: validatedData.bpbBeneficiaryType,
+        bpbBeneficiaryType:
+          (beneficiaryType as { configValue?: string })?.configValue ||
+          String(data.bpbBeneficiaryType),
         bpbName: validatedData.bpbName,
         bpbBankName: validatedData.bpbBankName,
         bpbSwiftCode: validatedData.bpbSwiftCode,
         bpbRoutingCode: validatedData.bpbRoutingCode || '',
         bpbAccountNumber: validatedData.bpbAccountNumber,
         enabled: true,
-        buildPartnerDTO: [
-          {
-            id: buildPartnerId ? parseInt(buildPartnerId) : undefined,
-          }
-          
-      ]
       }
 
-     
-      await addBeneficiaryMutation.mutateAsync({
-        data: beneficiaryData,
-        isEditing: false, // false for adding new beneficiary
-        developerId: buildPartnerId,
-      })
-     
-
-      setSuccessMessage(
-        editingBeneficiary
-          ? 'Beneficiary updated successfully!'
-          : 'Beneficiary added successfully!'
-      )
-
-      if (onBeneficiaryAdded) {
-        
-        // Map IDs to display values for the callback
-        const beneficiaryType = beneficiaryTypes.find(
-          (type: unknown) =>
-            (type as { id: string }).id === data.bpbBeneficiaryType
-        )
-        const bankName = bankNames.find(
-          (bank: unknown) => (bank as { id: string }).id === data.bpbBankName
-        )
-
-        const beneficiaryForForm = {
-          bpbBeneficiaryId: validatedData.bpbBeneficiaryId,
-          bpbBeneficiaryType:
-            (beneficiaryType as { configValue?: string })?.configValue ||
-            String(data.bpbBeneficiaryType),
-          bpbName: validatedData.bpbName,
-          bpbBankName:
-            (bankName as { configValue?: string })?.configValue ||
-            String(data.bpbBankName),
-          bpbSwiftCode: validatedData.bpbSwiftCode,
-          bpbRoutingCode: validatedData.bpbRoutingCode || '',
-          bpbAccountNumber: validatedData.bpbAccountNumber,
-          enabled: true,
-        }
-
-       
+      // Call appropriate callback based on mode
+      if (
+        mode === 'edit' &&
+        onBeneficiaryUpdated &&
+        beneficiaryIndex !== null &&
+        beneficiaryIndex !== undefined
+      ) {
+        onBeneficiaryUpdated(beneficiaryForForm, beneficiaryIndex)
+      } else if (onBeneficiaryAdded) {
         onBeneficiaryAdded(beneficiaryForForm)
-        
       }
 
-      // Reset form and close after a short delay
       setTimeout(() => {
         reset()
         onClose()
       }, 1500)
     } catch (error: unknown) {
-     
       let errorMessage = 'Failed to add beneficiary. Please try again.'
 
       if (error instanceof Error) {
-        // Handle validation errors
         if (error.message.includes('validation')) {
           errorMessage = 'Please check your input and try again.'
         } else {
@@ -345,7 +563,6 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
     onClose()
   }
 
-  // Validation functions
   const handleValidateAccount = (accountNumber: string) => {
     if (!accountNumber.trim()) {
       setErrorMessage('Please enter an account number to validate')
@@ -368,103 +585,74 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
     })
   }
 
-  // Common styles for form components
-  const commonFieldStyles = {
-    '& .MuiOutlinedInput-root': {
+  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+  const labelSx = tokens.label
+  const valueSx = tokens.value
+
+  const selectStyles = React.useMemo(
+    () => ({
       height: '46px',
       borderRadius: '8px',
-      '& fieldset': {
-        borderColor: '#CAD5E2',
+      backgroundColor: alpha('#1E293B', 0.5), // Darker background for inputs
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: alpha('#FFFFFF', 0.3), // White border with opacity
         borderWidth: '1px',
       },
-      '&:hover fieldset': {
-        borderColor: '#CAD5E2',
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: alpha('#FFFFFF', 0.5), // Brighter on hover
       },
-      '&.Mui-focused fieldset': {
-        borderColor: '#2563EB',
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: theme.palette.primary.main,
       },
-    },
-  }
-
-  const errorFieldStyles = {
-    '& .MuiOutlinedInput-root': {
-      height: '46px',
-      borderRadius: '8px',
-      '& fieldset': {
-        borderColor: 'red',
-        borderWidth: '1px',
+      '& .MuiSelect-icon': {
+        color: '#FFFFFF', // White icon
       },
-    },
-  }
-
-  const selectStyles = {
-    height: '46px',
-    '& .MuiOutlinedInput-root': {
-      height: '46px',
-      borderRadius: '8px',
-      '& fieldset': {
-        borderColor: '#CAD5E2',
-        borderWidth: '1px',
+      '& .MuiInputBase-input': {
+        color: '#FFFFFF', // White text in inputs
       },
-      '&:hover fieldset': {
-        borderColor: '#CAD5E2',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: '#2563EB',
-      },
-    },
-    '& .MuiSelect-icon': {
-      color: '#666',
-    },
-  }
-
-  const labelSx = {
-    color: '#6A7282',
-    fontFamily: 'Outfit',
-    fontWeight: 400,
-    fontStyle: 'normal',
-    fontSize: '12px',
-    letterSpacing: 0,
-  }
-
-  const valueSx = {
-    color: '#1E2939',
-    fontFamily: 'Outfit',
-    fontWeight: 400,
-    fontStyle: 'normal',
-    fontSize: '14px',
-    letterSpacing: 0,
-    wordBreak: 'break-word',
-  }
+    }),
+    [theme]
+  )
 
   const renderTextField = (
     name: keyof BeneficiaryFormData,
     label: string,
     defaultValue = '',
-    gridSize: number = 6
+    gridSize: number = 6,
+    required = false
   ) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
       <Controller
         name={name}
         control={control}
         defaultValue={defaultValue}
+        rules={{
+          validate: (value, formValues) =>
+            validateBeneficiaryField(name, value, formValues),
+        }}
         render={({ field }) => (
-          <TextField
-            {...field}
-            label={label}
-            fullWidth
-            error={!!errors[name]}
-            helperText={errors[name]?.message?.toString() || ''}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={errors[name] ? errorFieldStyles : commonFieldStyles}
-          />
+          <>
+            <TextField
+              {...field}
+              label={label}
+              fullWidth
+              required={required}
+              error={!!errors[name]}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={errors[name] ? errorFieldStyles : commonFieldStyles}
+            />
+            <FormError
+              error={(errors[name]?.message as string) || ''}
+              touched={true}
+            />
+          </>
         )}
       />
     </Grid>
   )
 
-  // New render function for API-driven dropdowns
   const renderApiSelectField = (
     name: keyof BeneficiaryFormData,
     label: string,
@@ -477,16 +665,34 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
       <Controller
         name={name}
         control={control}
-        rules={required ? { required: `${label} is required` } : {}}
+        rules={{
+          validate: (value, formValues) =>
+            validateBeneficiaryField(name, value, formValues),
+        }}
         defaultValue={''}
         render={({ field }) => (
-          <FormControl fullWidth error={!!errors[name]}>
+          <FormControl fullWidth error={!!errors[name]} required={required}>
             <InputLabel sx={labelSx}>
-              {loading ? `Loading ${label}...` : label}
+              {loading
+                ? getBuildPartnerLabelDynamic('CDL_COMMON_LOADING')
+                : label}
             </InputLabel>
             <Select
               {...field}
-              label={loading ? `Loading ${label}...` : label}
+              input={
+                <OutlinedInput
+                  label={
+                    loading
+                      ? getBuildPartnerLabelDynamic('CDL_COMMON_LOADING')
+                      : label
+                  }
+                />
+              }
+              label={
+                loading
+                  ? getBuildPartnerLabelDynamic('CDL_COMMON_LOADING')
+                  : label
+              }
               sx={{ ...selectStyles, ...valueSx }}
               IconComponent={KeyboardArrowDownIcon}
               disabled={loading}
@@ -500,11 +706,10 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
                 </MenuItem>
               ))}
             </Select>
-            {errors[name] && (
-              <FormHelperText error>
-                {errors[name]?.message?.toString()}
-              </FormHelperText>
-            )}
+            <FormError
+              error={(errors[name]?.message as string) || ''}
+              touched={true}
+            />
           </FormControl>
         )}
       />
@@ -515,7 +720,8 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
     name: keyof BeneficiaryFormData,
     label: string,
     buttonText: string,
-    gridSize: number = 6
+    gridSize: number = 6,
+    required = false
   ) => {
     const isAccountField = name === 'bpbAccountNumber'
     const isSwiftField = name === 'bpbSwiftCode'
@@ -532,91 +738,112 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
           name={name}
           control={control}
           defaultValue=""
+          rules={{
+            validate: (value, formValues) =>
+              validateBeneficiaryField(name, value, formValues),
+          }}
           render={({ field }) => (
-            <TextField
-              {...field}
-              fullWidth
-              label={label}
-              error={
-                !!errors[name] ||
-                !!(validationResult && !validationResult.isValid)
-              }
-              helperText={
-                errors[name]?.message?.toString() ||
-                (validationResult && !validationResult.isValid
-                  ? validationResult.message
-                  : '') ||
-                (validationResult && validationResult.isValid
-                  ? '✓ Valid'
-                  : '') ||
-                ''
-              }
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Button
-                      variant="contained"
-                      disabled={
-                        isValidating || !String(field.value || '').trim()
-                      }
-                      sx={{
-                        color: validationResult?.isValid
-                          ? '#059669'
-                          : '#2563EB',
-                        borderRadius: '24px',
-                        textTransform: 'none',
-                        background: validationResult?.isValid
-                          ? '#D1FAE5'
-                          : 'var(--UIColors-Blue-100, #DBEAFE)',
-                        boxShadow: 'none',
-                        '&:hover': {
-                          background: validationResult?.isValid
-                            ? '#A7F3D0'
-                            : '#D0E3FF',
-                          boxShadow: 'none',
-                        },
-                        '&:disabled': {
-                          background: '#F3F4F6',
-                          color: '#9CA3AF',
-                        },
-                        minWidth: '120px',
-                        height: '36px',
-                        fontFamily: 'Outfit, sans-serif',
-                        fontWeight: 500,
-                        fontStyle: 'normal',
-                        fontSize: '14px',
-                        lineHeight: '24px',
-                        letterSpacing: '0.5px',
-                        verticalAlign: 'middle',
-                      }}
-                      onClick={() => {
-                        const fieldValue = String(field.value || '')
-                        if (isAccountField) {
-                          handleValidateAccount(fieldValue)
-                        } else if (isSwiftField) {
-                          handleValidateBIC(fieldValue)
+            <>
+              <TextField
+                {...field}
+                fullWidth
+                label={label}
+                required={required}
+                error={
+                  !!errors[name] ||
+                  !!(validationResult && !validationResult.isValid)
+                }
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Button
+                        variant="contained"
+                        disabled={
+                          isValidating || !String(field.value || '').trim()
                         }
-                      }}
-                    >
-                      {isValidating ? (
-                        <CircularProgress size={16} sx={{ color: 'inherit' }} />
-                      ) : validationResult?.isValid ? (
-                        '✓ Valid'
-                      ) : (
-                        buttonText
-                      )}
-                    </Button>
-                  </InputAdornment>
-                ),
-                sx: valueSx,
-              }}
-              InputLabelProps={{ sx: labelSx }}
-              sx={
-                errors[name] || (validationResult && !validationResult.isValid)
-                  ? errorFieldStyles
-                  : commonFieldStyles
-              }
-            />
+                        sx={{
+                          color: validationResult?.isValid
+                            ? theme.palette.success.dark
+                            : theme.palette.primary.main,
+                          borderRadius: '24px',
+                          textTransform: 'none',
+                          background: validationResult?.isValid
+                            ? theme.palette.mode === 'dark'
+                              ? alpha(theme.palette.success.main, 0.2)
+                              : '#D1FAE5'
+                            : theme.palette.mode === 'dark'
+                              ? alpha(theme.palette.primary.main, 0.2)
+                              : '#DBEAFE',
+                          boxShadow: 'none',
+                          '&:hover': {
+                            background: validationResult?.isValid
+                              ? theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.success.main, 0.3)
+                                : '#A7F3D0'
+                              : theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.primary.main, 0.3)
+                                : '#D0E3FF',
+                            boxShadow: 'none',
+                          },
+                          '&:disabled': {
+                            background:
+                              theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.grey[700], 0.5)
+                                : '#F3F4F6',
+                            color: theme.palette.text.disabled,
+                          },
+                          minWidth: '120px',
+                          height: '36px',
+                          fontFamily: 'Outfit, sans-serif',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '14px',
+                          lineHeight: '24px',
+                          letterSpacing: '0.5px',
+                          verticalAlign: 'middle',
+                        }}
+                        onClick={() => {
+                          const fieldValue = String(field.value || '')
+                          if (isAccountField) {
+                            handleValidateAccount(fieldValue)
+                          } else if (isSwiftField) {
+                            handleValidateBIC(fieldValue)
+                          }
+                        }}
+                      >
+                        {isValidating ? (
+                          <CircularProgress
+                            size={16}
+                            sx={{ color: 'inherit' }}
+                          />
+                        ) : validationResult?.isValid ? (
+                          '✓ Valid'
+                        ) : (
+                          buttonText
+                        )}
+                      </Button>
+                    </InputAdornment>
+                  ),
+                  sx: valueSx,
+                }}
+                InputLabelProps={{ sx: labelSx }}
+                sx={
+                  errors[name] ||
+                  (validationResult && !validationResult.isValid)
+                    ? errorFieldStyles
+                    : commonFieldStyles
+                }
+              />
+              <FormError
+                error={
+                  (errors[name]?.message as string) ||
+                  (validationResult && !validationResult.isValid
+                    ? String(validationResult.message)
+                    : '')
+                }
+                touched={true}
+              />
+            </>
           )}
         />
       </Grid>
@@ -631,12 +858,11 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
         onClose={onClose}
         PaperProps={{
           sx: {
+            ...tokens.paper,
             width: 460,
-            borderRadius: 3,
-            backgroundColor: 'rgba(255, 255, 255, 0.75)',
-            backdropFilter: 'blur(15px)',
-            border: '2px solid rgba(255, 255, 255, 0.3)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           },
         }}
       >
@@ -652,13 +878,26 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
             lineHeight: '28px',
             letterSpacing: '0.15px',
             verticalAlign: 'middle',
+            borderBottom: `1px solid ${tokens.dividerColor}`,
+            backgroundColor: tokens.paper.backgroundColor,
+            color: theme.palette.text.primary,
+            pr: 3,
+            pl: 3,
           }}
         >
-          {editingBeneficiary
-            ? 'Edit Beneficiary Details'
-            : 'Add Beneficiary Details'}
-          <IconButton onClick={onClose}>
-            <CancelOutlinedIcon />
+          {mode === 'edit'
+            ? `${getBuildPartnerLabelDynamic('CDL_COMMON_UPDATE')} ${getBuildPartnerLabelDynamic('CDL_BP_BENE_INFO')}`
+            : `${getBuildPartnerLabelDynamic('CDL_COMMON_ADD')} ${getBuildPartnerLabelDynamic('CDL_BP_BENE_INFO')}`}
+          <IconButton
+            onClick={onClose}
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+          >
+            <CancelOutlinedIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
 
@@ -704,84 +943,86 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
           ))}
         </Box>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogContent dividers>
+        <form noValidate onSubmit={handleSubmit(onSubmit)}>
+          <DialogContent
+            dividers
+            sx={{
+              borderColor: tokens.dividerColor,
+              backgroundColor: tokens.paper.backgroundColor as string,
+            }}
+          >
             {/* Show error if dropdowns fail to load */}
             {dropdownsError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert
+                severity="error"
+                variant="outlined"
+                sx={{
+                  mb: 2,
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(239, 68, 68, 0.08)'
+                      : 'rgba(254, 226, 226, 0.4)',
+                  borderColor: alpha(theme.palette.error.main, 0.4),
+                  color: theme.palette.error.main,
+                }}
+              >
                 Failed to load dropdown options. Please refresh the page.
               </Alert>
             )}
 
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
-              {title === 'Beneficiary' ? (
-                <>
-                  {renderTextField(
-                    'bpbBeneficiaryId',
-                    'Beneficiary ID',
-                    '1234'
-                  )}
-                  {renderApiSelectField(
-                    'bpbBeneficiaryType',
-                    'Beneficiary Type*',
-                    beneficiaryTypes.length > 0 ? beneficiaryTypes : [],
-                    6,
-                    true,
-                    dropdownsLoading
-                  )}
-                </>
-              ) : (
-                <>
-                  {renderApiSelectField(
-                    'bpbBeneficiaryType',
-                    'Beneficiary Type*',
-                    beneficiaryTypes.length > 0 ? beneficiaryTypes : [],
-                    6,
-                    true,
-                    dropdownsLoading
-                  )}
-                  {renderTextField(
-                    'bpbBeneficiaryId',
-                    'Beneficiary ID*',
-                    '1234'
-                  )}
-                </>
+              {renderTextField(
+                'bpbBeneficiaryId',
+                getBuildPartnerLabelDynamic('CDL_BP_BENE_REF'),
+                '1234',
+                6,
+                true
+              )}
+              {renderApiSelectField(
+                'bpbBeneficiaryType',
+                getBuildPartnerLabelDynamic('CDL_BP_BENE_PAYMODE'),
+                beneficiaryTypes.length > 0 ? beneficiaryTypes : [],
+                6,
+                true,
+                dropdownsLoading
               )}
 
-              {renderTextField('bpbName', 'Name*')}
+              {renderTextField(
+                'bpbName',
+                getBuildPartnerLabelDynamic('CDL_BP_BENE_NAME'),
+                '',
+                6,
+                true
+              )}
 
-              {title === 'Beneficiary' ? (
-                <>
-                  {renderApiSelectField(
-                    'bpbBankName',
-                    'Bank*',
-                    bankNames.length > 0 ? bankNames : [],
-                    6,
-                    true,
-                    dropdownsLoading
-                  )}
-                </>
-              ) : (
-                <>{renderTextField('bpbBankName', 'Bank*', 'SBI')}</>
+              {renderTextField(
+                'bpbBankName',
+                getBuildPartnerLabelDynamic('CDL_BP_BENE_BANK'),
+                '',
+                6,
+                true
               )}
 
               {renderTextField(
                 'bpbRoutingCode',
-                'Routing Code',
+                getBuildPartnerLabelDynamic('CDL_BP_BENE_ROUTING'),
                 '',
-                title === 'Beneficiary' ? 12 : 6
-              )}
-              {renderTextFieldWithButton(
-                'bpbAccountNumber',
-                'Account Number/IBAN*',
-                'Validate Account',
-                12
+                12,
+                false
               )}
               {renderTextFieldWithButton(
                 'bpbSwiftCode',
-                'Swift/BIC*',
-                'Validate BIC',
-                12
+                getBuildPartnerLabelDynamic('CDL_BP_BENE_BIC'),
+                getBuildPartnerLabelDynamic('CDL_COMMON_VALIDATE_BIC'),
+                12,
+                true
+              )}
+              {renderTextFieldWithButton(
+                'bpbAccountNumber',
+                getBuildPartnerLabelDynamic('CDL_BP_BENE_ACCOUNT'),
+                getBuildPartnerLabelDynamic('CDL_COMMON_VALIDATE_ACCOUNT'),
+                12,
+                true
               )}
             </Grid>
           </DialogContent>
@@ -793,6 +1034,15 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
               left: 0,
               right: 0,
               padding: 2,
+              display: 'flex',
+              gap: 2,
+              borderTop: `1px solid ${tokens.dividerColor}`,
+              backgroundColor: alpha(
+                theme.palette.background.paper,
+                theme.palette.mode === 'dark' ? 0.92 : 0.9
+              ),
+              backdropFilter: 'blur(10px)',
+              zIndex: 10,
             }}
           >
             <Grid container spacing={2}>
@@ -811,9 +1061,14 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
+                    borderWidth: '1px',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : undefined,
                   }}
                 >
-                  Cancel
+                  {getBuildPartnerLabelDynamic('CDL_COMMON_CANCEL')}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
@@ -832,17 +1087,41 @@ export const RightSlideBeneficiaryDetailsPanel: React.FC<
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
-                    backgroundColor: '#2563EB',
-                    color: '#fff',
+                    backgroundColor: theme.palette.primary.main,
+                    color: theme.palette.primary.contrastText,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? theme.palette.primary.main
+                          : 'transparent',
+                    },
+                    '&:disabled': {
+                      backgroundColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.5)
+                          : theme.palette.grey[300],
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.primary.main, 0.5)
+                          : 'transparent',
+                      color: theme.palette.text.disabled,
+                    },
                   }}
                 >
                   {addBeneficiaryMutation.isPending
-                    ? editingBeneficiary
-                      ? 'Updating...'
-                      : 'Adding...'
-                    : editingBeneficiary
-                      ? 'Update'
-                      : 'Add'}
+                    ? mode === 'edit'
+                      ? getBuildPartnerLabelDynamic('CDL_COMMON_UPDATING')
+                      : getBuildPartnerLabelDynamic('CDL_COMMON_ADDING')
+                    : mode === 'edit'
+                      ? getBuildPartnerLabelDynamic('CDL_COMMON_UPDATE')
+                      : getBuildPartnerLabelDynamic('CDL_COMMON_ADD')}
                 </Button>
               </Grid>
             </Grid>

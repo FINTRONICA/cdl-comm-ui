@@ -56,7 +56,7 @@ export function useBuildWorkflowAmountStageOverrideLabelsWithCache() {
     cacheStatus: workflowAmountStageOverrideLabels
       ? 'cached'
       : workflowAmountStageOverrideLabelsLoading
-        ? 'loading'
+        ? 'Loading...'
         : 'fresh',
   }
 }

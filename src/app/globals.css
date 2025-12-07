@@ -1,4 +1,5 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #f9fafb;
@@ -19,6 +20,7 @@
   --input: #e5e7eb;
   --ring: #3b82f6;
   --radius: 0.5rem;
+  --workflow-table-bg: #ffffff;
 }
 
 @theme inline {
@@ -42,26 +44,25 @@
   --font-sans: var(--font-outfit);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --card: #1e293b;
-    --card-foreground: #f1f5f9;
-    --primary: #3b82f6;
-    --primary-foreground: #ffffff;
-    --secondary: #1e293b;
-    --secondary-foreground: #f1f5f9;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --accent: #1e293b;
-    --accent-foreground: #f1f5f9;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --border: #334155;
-    --input: #334155;
-    --ring: #3b82f6;
-  }
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #f1f5f9;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #334155;
+  --input: #334155;
+  --ring: #3b82f6;
+  --workflow-table-bg: #1e2938;
 }
 
 /* * {
@@ -69,8 +70,7 @@
 } */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  /* Background and color now handled by Tailwind classes in layout.tsx */
   font-family: var(--font-sans), system-ui, sans-serif;
   font-feature-settings:
     'rlig' 1,
@@ -85,6 +85,58 @@ body {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Custom scrollbar styling for light theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  border: 1px solid #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Custom scrollbar styling for dark theme */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+  border: 1px solid #1e293b;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.dark * {
+  scrollbar-color: #475569 #1e293b;
 }
 
 /* Recharts responsive container fix */
@@ -114,4 +166,185 @@ body {
     transform: translateX(100%);
     opacity: 0;
   }
+}
+
+/* Fix autofill bluish background - Light mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #1E2939 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Fix autofill bluish background - Dark mode */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.bg-workflow-table {
+  background-color: var(--workflow-table-bg);
+}
+
+/* Material-UI TextField autofill styling - Light mode */
+.MuiTextField-root input:-webkit-autofill,
+.MuiTextField-root input:-webkit-autofill:hover,
+.MuiTextField-root input:-webkit-autofill:focus,
+.MuiTextField-root input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #1E2939 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Material-UI TextField autofill styling - Dark mode */
+.dark .MuiTextField-root input:-webkit-autofill,
+.dark .MuiTextField-root input:-webkit-autofill:hover,
+.dark .MuiTextField-root input:-webkit-autofill:focus,
+.dark .MuiTextField-root input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Material-UI OutlinedInput autofill styling - Light mode */
+.MuiOutlinedInput-root input:-webkit-autofill,
+.MuiOutlinedInput-root input:-webkit-autofill:hover,
+.MuiOutlinedInput-root input:-webkit-autofill:focus,
+.MuiOutlinedInput-root input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #1E2939 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Material-UI OutlinedInput autofill styling - Dark mode */
+.dark .MuiOutlinedInput-root input:-webkit-autofill,
+.dark .MuiOutlinedInput-root input:-webkit-autofill:hover,
+.dark .MuiOutlinedInput-root input:-webkit-autofill:focus,
+.dark .MuiOutlinedInput-root input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Login page inputs - Force light mode autofill (exclude from dark mode) */
+.dark .login-page-container input:-webkit-autofill,
+.dark .login-page-container input:-webkit-autofill:hover,
+.dark .login-page-container input:-webkit-autofill:focus,
+.dark .login-page-container input:-webkit-autofill:active,
+.dark .login-page-container .MuiTextField-root input:-webkit-autofill,
+.dark .login-page-container .MuiTextField-root input:-webkit-autofill:hover,
+.dark .login-page-container .MuiTextField-root input:-webkit-autofill:focus,
+.dark .login-page-container .MuiTextField-root input:-webkit-autofill:active,
+.dark .login-page-container .MuiOutlinedInput-root input:-webkit-autofill,
+.dark .login-page-container .MuiOutlinedInput-root input:-webkit-autofill:hover,
+.dark .login-page-container .MuiOutlinedInput-root input:-webkit-autofill:focus,
+.dark .login-page-container .MuiOutlinedInput-root input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #1E2939 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Login page inputs - Force light mode border colors (exclude from dark mode) */
+.dark .login-page-container .MuiOutlinedInput-root fieldset {
+  border-color: #CAD5E2 !important;
+}
+
+.dark .login-page-container .MuiOutlinedInput-root:hover fieldset {
+  border-color: #CAD5E2 !important;
+}
+
+.dark .login-page-container .MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: #2563EB !important;
+}
+
+.dark .login-page-container .MuiOutlinedInput-root.Mui-error fieldset {
+  border-color: #d32f2f !important;
+}
+
+.dark .login-page-container .MuiOutlinedInput-root.Mui-error:hover fieldset {
+  border-color: #d32f2f !important;
+}
+
+.dark .login-page-container .MuiOutlinedInput-root.Mui-error.Mui-focused fieldset {
+  border-color: #d32f2f !important;
+}
+
+/* Login page labels - Force light mode text colors (exclude from dark mode) */
+.dark .login-page-container .MuiInputLabel-root {
+  color: #6A7282 !important;
+}
+
+.dark .login-page-container .MuiInputLabel-root.Mui-focused {
+  color: #6A7282 !important;
+}
+
+.dark .login-page-container .MuiInputLabel-root.Mui-error {
+  color: #d32f2f !important;
+}
+
+.dark .login-page-container .MuiInputLabel-root.Mui-disabled {
+  color: #6A7282 !important;
+}
+
+/* Login page input text - Force light mode text colors */
+.dark .login-page-container .MuiOutlinedInput-root input {
+  color: #1E2939 !important;
+}
+
+.dark .login-page-container .MuiOutlinedInput-root textarea {
+  color: #1E2939 !important;
+}
+
+.dark .login-page-container .MuiInputBase-input {
+  color: #1E2939 !important;
+}
+
+/* Login page icon buttons - Force light mode colors (exclude from dark mode) */
+.dark .login-page-container .MuiIconButton-root {
+  color: #CAD5E2 !important;
+}
+
+.dark .login-page-container .MuiIconButton-root:hover {
+  color: #94A3B8 !important;
+  background-color: rgba(202, 213, 226, 0.1) !important;
+}
+
+.dark .login-page-container .MuiIconButton-root.Mui-disabled {
+  color: rgba(202, 213, 226, 0.5) !important;
+}
+
+/* Login page buttons - Force light mode colors (exclude from dark mode) */
+.dark .login-page-container .MuiButton-contained {
+  background-color: #2563EB !important;
+  color: #ffffff !important;
+}
+
+.dark .login-page-container .MuiButton-contained:hover {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+.dark .login-page-container .MuiButton-contained.Mui-disabled {
+  background-color: rgba(37, 99, 235, 0.5) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Login page error alert - Force light mode colors (exclude from dark mode) */
+.dark .login-page-container .MuiAlert-root.MuiAlert-standardError {
+  background-color: #ffebee !important;
+  color: #c62828 !important;
+}
+
+.dark .login-page-container .MuiAlert-root.MuiAlert-standardError .MuiAlert-icon {
+  color: #c62828 !important;
+}
+
+.dark .login-page-container .MuiAlert-root.MuiAlert-standardError .MuiAlert-message {
+  color: #c62828 !important;
 }

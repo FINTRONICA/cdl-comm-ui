@@ -24,13 +24,14 @@ export const Select: React.FC<SelectProps> = ({
     : ''
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation()
     if (onChange) {
       onChange(e.target.value)
     }
   }
 
   return (
-    <div className="relative">
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <select
         value={value}
         onChange={handleChange}

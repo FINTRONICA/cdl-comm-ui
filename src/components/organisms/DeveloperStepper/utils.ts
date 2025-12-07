@@ -55,7 +55,7 @@ export const processContactData = (contactStepData: any): ContactData[] => {
   const mapContactItem = (contact: any): ContactData => ({
     ...contact,
     name: `${contact.bpcFirstName || ''} ${contact.bpcLastName || ''}`.trim() || 'N/A',
-    address: `${contact.bpcContactAddressLine1 || ''} ${contact.bpcContactAddressLine2 || ''}`.trim() || 'N/A',
+    address: `${contact.bpcContactmpaddressLine1 || ''} ${contact.bpcContactmpaddressLine2 || ''}`.trim() || 'N/A',
     email: contact.bpcContactEmail || 'N/A',
     pobox: contact.bpcContactPoBox || 'N/A',
     countrycode: contact.bpcCountryMobCode || 'N/A',
@@ -86,10 +86,10 @@ export const processFeeData = (feesStepData: any): FeeData[] => {
     Frequency: fee.bpFeeFrequencyDTO?.languageTranslationId?.configValue || 'N/A',
     DebitAmount: fee.debitAmount?.toString() || 'N/A',
     Feetobecollected: fee.feeCollectionDate 
-      ? formatDate(fee.feeCollectionDate, 'MMM DD, YYYY') 
+      ? formatDate(fee.feeCollectionDate, 'DD/MM/YYYY') 
       : 'N/A',
     NextRecoveryDate: fee.feeNextRecoveryDate 
-      ? formatDate(fee.feeNextRecoveryDate, 'MMM DD, YYYY') 
+      ? formatDate(fee.feeNextRecoveryDate, 'DD/MM/YYYY') 
       : 'N/A',
     FeePercentage: fee.feePercentage?.toString() || 'N/A',
     Amount: fee.totalAmount?.toString() || 'N/A',
@@ -131,9 +131,8 @@ export const processBeneficiaryData = (beneficiaryStepData: any): BeneficiaryDat
 
 
 export const processStepData = (activeStep: number, stepStatus: any): any => {
-  console.log("🔄 UTILS - Processing step data for step", activeStep, "stepStatus:", stepStatus)
+
   const currentStepData = stepStatus.stepData[`step${activeStep + 1}`]
-  console.log("🔄 UTILS - Current step data:", currentStepData)
   if (!currentStepData) return {}
 
   let processedData: any = {}

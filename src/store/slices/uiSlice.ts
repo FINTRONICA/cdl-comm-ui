@@ -37,7 +37,6 @@ export const uiSlice: StateCreator<UISlice> = (set, get) => ({
   
   setTheme: (theme) => {
     set({ theme })
-    // DOM manipulation should be handled in the ThemeProvider component
   },
   
   setLanguage: (language) => set({ language }),

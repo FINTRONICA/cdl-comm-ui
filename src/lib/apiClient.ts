@@ -28,59 +28,13 @@ export interface ApiErrorResponse {
   requestId?: string
 }
 
-class RequestQueue {
-  private queue: Array<() => Promise<void>> = []
-  private processing = false
-  private rateLimit = 100
-  private requestCount = 0
-  private lastReset = Date.now()
-
-  async add<T>(request: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.queue.push(async () => {
-        try {
-          const result = await request()
-          resolve(result)
-        } catch (error) {
-          reject(error)
-        }
-      })
-      this.processQueue()
-    })
-  }
-
-  private async processQueue() {
-    if (this.processing) return
-    this.processing = true
-
-    while (this.queue.length > 0) {
-      // Reset counter if a minute has passed
-      if (Date.now() - this.lastReset > 60000) {
-        this.requestCount = 0
-        this.lastReset = Date.now()
-      }
-
-      // Check rate limit
-      if (this.requestCount >= this.rateLimit) {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        continue
-      }
-
-      const request = this.queue.shift()
-      if (request) {
-        this.requestCount++
-        await request()
-      }
-    }
-
-    this.processing = false
-  }
-}
+// Removed RequestQueue - allows parallel requests for better performance
+// Rate limiting should be handled by the backend API
+// If needed, consider using axios-rate-limit or p-limit libraries
 
 // Enhanced API Client
 export class ApiClient {
   private client: AxiosInstance
-  private queue: RequestQueue
   private retryAttempts = 3
   private retryDelay = 1000
 
@@ -96,7 +50,6 @@ export class ApiClient {
       },
     })
 
-    this.queue = new RequestQueue()
     this.setupInterceptors()
   }
 
@@ -104,11 +57,9 @@ export class ApiClient {
     // Request Interceptor
     this.client.interceptors.request.use(
       (config) => {
-        const finalUrl = `${config.baseURL || ''}${config.url || ''}`
         const token = this.getAuthToken()
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
-        } else {
         }
         config.headers['X-Request-ID'] = this.generateRequestId()
         config.headers['X-Timestamp'] = new Date().toISOString()
@@ -120,9 +71,6 @@ export class ApiClient {
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
         this.validateJsonResponse(response)
-
-        // Log successful responses for audit
-        this.logResponse(response)
         return response
       },
       async (error: AxiosError<ApiErrorResponse>) => {
@@ -148,22 +96,6 @@ export class ApiClient {
     return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  private isSensitiveOperation(config: AxiosRequestConfig): boolean {
-    const sensitivePaths = [
-      '/transactions',
-
-      '/accounts',
-      '/transfers',
-      '/withdrawals',
-      '/deposits',
-    ]
-    return sensitivePaths.some((path) => config.url?.includes(path))
-  }
-
-  private logResponse(response: AxiosResponse) {
-    const { status, config } = response
-  }
-
   private validateJsonResponse(response: AxiosResponse) {
     const contentType = response.headers['content-type'] || ''
     const method = response.config.method?.toUpperCase()
@@ -185,8 +117,6 @@ export class ApiClient {
     if (response.status >= 200 && response.status < 300) {
       // Allow plain text responses for DELETE operations (soft delete endpoints return plain text)
       if (method === 'DELETE' && typeof response.data === 'string') {
-        // For DELETE operations, plain text responses are acceptable
-        console.log(`✅ DELETE operation successful: ${response.data}`)
         return
       }
 
@@ -205,7 +135,7 @@ export class ApiClient {
   private async handleError(
     error: AxiosError<ApiErrorResponse>
   ): Promise<never> {
-    const { response, config } = error
+    const { response } = error
     const errorResponse = response?.data
 
     if (errorResponse?.code) {
@@ -266,8 +196,6 @@ export class ApiClient {
     // Clear auth cookies using the proper utility
     if (typeof window !== 'undefined') {
       clearAuthCookies()
-      localStorage.removeItem('auth_token')
-      sessionStorage.removeItem('auth_token')
     }
 
     // Use Next.js router instead of window.location.href
@@ -299,14 +227,12 @@ export class ApiClient {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
-  // Public API methods
+  // Public API methods - now execute in parallel for better performance
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return this.queue.add(async () => {
-      const response = await this.retryRequest(() =>
-        this.client.get<T>(url, config)
-      )
-      return response.data
-    })
+    const response = await this.retryRequest(() =>
+      this.client.get<T>(url, config)
+    )
+    return response.data
   }
 
   async post<T>(
@@ -314,13 +240,10 @@ export class ApiClient {
     data?: unknown,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    return this.queue.add(async () => {
-      const finalUrl = `${this.client.defaults.baseURL}${url}`
-      const response = await this.retryRequest(() =>
-        this.client.post<T>(url, data, config)
-      )
-      return response.data
-    })
+    const response = await this.retryRequest(() =>
+      this.client.post<T>(url, data, config)
+    )
+    return response.data
   }
 
   async put<T>(
@@ -328,12 +251,10 @@ export class ApiClient {
     data?: unknown,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    return this.queue.add(async () => {
-      const response = await this.retryRequest(() =>
-        this.client.put<T>(url, data, config)
-      )
-      return response.data
-    })
+    const response = await this.retryRequest(() =>
+      this.client.put<T>(url, data, config)
+    )
+    return response.data
   }
 
   async patch<T>(
@@ -341,21 +262,17 @@ export class ApiClient {
     data?: unknown,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    return this.queue.add(async () => {
-      const response = await this.retryRequest(() =>
-        this.client.patch<T>(url, data, config)
-      )
-      return response.data
-    })
+    const response = await this.retryRequest(() =>
+      this.client.patch<T>(url, data, config)
+    )
+    return response.data
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return this.queue.add(async () => {
-      const response = await this.retryRequest(() =>
-        this.client.delete<T>(url, config)
-      )
-      return response.data
-    })
+    const response = await this.retryRequest(() =>
+      this.client.delete<T>(url, config)
+    )
+    return response.data
   }
 
   // Download file method that returns full response for accessing headers
@@ -363,15 +280,13 @@ export class ApiClient {
     url: string,
     config?: AxiosRequestConfig
   ): Promise<AxiosResponse> {
-    return this.queue.add(async () => {
-      const response = await this.retryRequest(() =>
-        this.client.get(url, {
-          ...config,
-          responseType: 'blob',
-        })
-      )
-      return response
-    })
+    const response = await this.retryRequest(() =>
+      this.client.get(url, {
+        ...config,
+        responseType: 'blob',
+      })
+    )
+    return response
   }
 }
 

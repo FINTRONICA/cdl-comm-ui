@@ -1,3 +1,5 @@
+'use client'
+
 import React, {
   useState,
   forwardRef,
@@ -11,7 +13,6 @@ import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 import { CapitalPartnerResponse } from '@/types/capitalPartner'
 import {
   mapStep1ToCapitalPartnerPayload,
-  validateStep1Data,
   type Step1FormData,
 } from '../../../../utils/capitalPartnerMapper'
 import { Refresh as RefreshIcon } from '@mui/icons-material'
@@ -29,7 +30,6 @@ import {
   Card,
   CardContent,
   FormControl,
-  FormHelperText,
   Grid,
   InputAdornment,
   InputLabel,
@@ -37,6 +37,7 @@ import {
   Select,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
@@ -44,6 +45,9 @@ import { Controller, useFormContext } from 'react-hook-form'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs from 'dayjs'
+import { CapitalPartnerStep1Schema } from '@/lib/validation'
+import { FormError } from '../../../atoms/FormError'
+import { alpha } from '@mui/material/styles'
 
 interface Step1Props {
   onSaveAndNext?: (data: any) => void
@@ -65,12 +69,26 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
       control,
       watch,
       setValue,
+      trigger,
       formState: { errors },
     } = useFormContext()
 
     // Get labels from API
     const { getLabel } = useCapitalPartnerLabelsApi()
     const currentLanguage = useAppStore((state) => state.language)
+
+    const theme = useTheme()
+    const isDark = theme.palette.mode === 'dark'
+    const textPrimary = isDark ? '#FFFFFF' : '#1E2939'
+    const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
+    const neutralBorder = isDark ? alpha('#FFFFFF', 0.3) : '#CAD5E2'
+    const neutralBorderHover = isDark ? alpha('#FFFFFF', 0.5) : '#CAD5E2'
+    const focusBorder = theme.palette.primary.main
+    const viewModeBorder = isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB'
+    const viewModeBg = isDark
+      ? alpha(theme.palette.background.paper, 0.25)
+      : '#F9FAFB'
+    const selectIconColor = isDark ? alpha('#FFFFFF', 0.7) : '#666'
 
     const [investorId, setInvestorId] = useState<string>('')
     const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
@@ -102,6 +120,12 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
       {},
       {
         enabled: Boolean(isEditMode && capitalPartnerId),
+        // Disable caching to always fetch fresh data
+        gcTime: 0,
+        staleTime: 0,
+        // Always refetch when component mounts
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: false,
       }
     )
 
@@ -160,7 +184,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
           existingCapitalPartnerData.capitalPartnerTelephoneNo || ''
         )
         setValue(
-          'mobileNumber',
+          'mpmobileNumber',
           existingCapitalPartnerData.capitalPartnerMobileNo || ''
         )
         setValue('email', existingCapitalPartnerData.capitalPartnerEmail || '')
@@ -186,7 +210,13 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
         setIsGeneratingId(true)
         const newIdResponse = investorIdService.generateNewId()
         setInvestorId(newIdResponse.id)
-        setValue('investorId', newIdResponse.id)
+        // Update RHF state and re-validate so any prior error clears immediately
+        setValue('investorId', newIdResponse.id, {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        })
+        await trigger('investorId')
       } catch (error) {
       } finally {
         setIsGeneratingId(false)
@@ -195,6 +225,8 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
     const handleSaveAndNext = async () => {
       try {
         setSaveError(null)
+
+        // Build current form data for schema validation and payload mapping
         const formData: Step1FormData = {
           investorType: watch('investorType'),
           investorId: watch('investorId'),
@@ -208,14 +240,19 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
           idExpiryDate: watch('idExpiryDate'),
           nationality: watch('nationality'),
           accountContact: watch('accountContact'),
-          mobileNumber: watch('mobileNumber'),
+          mpmobileNumber: watch('mpmobileNumber'),
           email: watch('email'),
         }
-        const validationErrors = validateStep1Data(formData)
-        if (validationErrors.length > 0) {
-          setSaveError(validationErrors.join(', '))
+
+        const zodResult = CapitalPartnerStep1Schema.safeParse(formData)
+        if (!zodResult.success) {
+          await trigger()
+
           return
         }
+
+        await trigger()
+
         const payload = mapStep1ToCapitalPartnerPayload(
           formData,
           investorTypes,
@@ -273,73 +310,106 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
       }),
       [handleSaveAndNext]
     )
-    const commonFieldStyles = {
-      '& .MuiOutlinedInput-root': {
-        height: '46px',
-        borderRadius: '8px',
-        '& fieldset': {
-          borderColor: '#CAD5E2',
-          borderWidth: '1px',
+    const commonFieldStyles = React.useMemo(
+      () => ({
+        '& .MuiOutlinedInput-root': {
+          height: '46px',
+          borderRadius: '8px',
+          backgroundColor: isDark
+            ? alpha(theme.palette.background.paper, 0.3)
+            : '#FFFFFF',
+          '& fieldset': {
+            borderColor: neutralBorder,
+            borderWidth: '1px',
+          },
+          '&:hover fieldset': {
+            borderColor: neutralBorderHover,
+          },
+          '&.Mui-focused fieldset': {
+            borderColor: focusBorder,
+          },
         },
-        '&:hover fieldset': {
-          borderColor: '#CAD5E2',
-        },
-        '&.Mui-focused fieldset': {
-          borderColor: '#2563EB',
-        },
-      },
-    }
+      }),
+      [focusBorder, isDark, neutralBorder, neutralBorderHover, theme]
+    )
 
-    const selectStyles = {
-      height: '46px',
-      '& .MuiOutlinedInput-root': {
+    const selectStyles = React.useMemo(
+      () => ({
         height: '46px',
-        borderRadius: '8px',
-        '& fieldset': {
-          borderColor: '#CAD5E2',
-          borderWidth: '1px',
+        '& .MuiOutlinedInput-root': {
+          height: '46px',
+          borderRadius: '8px',
+          backgroundColor: isDark
+            ? alpha(theme.palette.background.paper, 0.3)
+            : '#FFFFFF',
+          '& fieldset': {
+            borderColor: neutralBorder,
+            borderWidth: '1px',
+          },
+          '&:hover fieldset': {
+            borderColor: neutralBorderHover,
+          },
+          '&.Mui-focused fieldset': {
+            borderColor: focusBorder,
+          },
         },
-        '&:hover fieldset': {
-          borderColor: '#CAD5E2',
+        '& .MuiSelect-icon': {
+          color: selectIconColor,
         },
-        '&.Mui-focused fieldset': {
-          borderColor: '#2563EB',
-        },
-      },
-      '& .MuiSelect-icon': {
-        color: '#666',
-      },
-    }
+      }),
+      [
+        focusBorder,
+        isDark,
+        neutralBorder,
+        neutralBorderHover,
+        selectIconColor,
+        theme,
+      ]
+    )
 
-    const datePickerStyles = {
-      height: '46px',
-      '& .MuiOutlinedInput-root': {
+    const datePickerStyles = React.useMemo(
+      () => ({
         height: '46px',
-        borderRadius: '8px',
-        '& fieldset': {
-          borderColor: '#CAD5E2',
-          borderWidth: '1px',
+        '& .MuiOutlinedInput-root': {
+          height: '46px',
+          borderRadius: '8px',
+          backgroundColor: isDark
+            ? alpha(theme.palette.background.paper, 0.3)
+            : '#FFFFFF',
+          '& fieldset': {
+            borderColor: neutralBorder,
+            borderWidth: '1px',
+          },
+          '&:hover fieldset': {
+            borderColor: neutralBorderHover,
+          },
+          '&.Mui-focused fieldset': {
+            borderColor: focusBorder,
+          },
         },
-        '&:hover fieldset': {
-          borderColor: '#CAD5E2',
-        },
-        '&.Mui-focused fieldset': {
-          borderColor: '#2563EB',
-        },
-      },
-    }
+      }),
+      [focusBorder, isDark, neutralBorder, neutralBorderHover, theme]
+    )
 
-    const labelSx = {
-      color: '#6A7282',
-      fontFamily: 'Outfit',
-      fontWeight: 400,
+    const getLabelSx = () => ({
+      color: textPrimary,
+      fontFamily:
+        'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontWeight: 500,
       fontStyle: 'normal',
-      fontSize: '12px',
-      letterSpacing: 0,
-    }
+      fontSize: '13px',
+      letterSpacing: '0.025em',
+      marginBottom: '4px',
+      '&.Mui-focused': {
+        color: theme.palette.primary.main,
+      },
+      '&.MuiFormLabel-filled': {
+        color: textPrimary,
+      },
+    })
 
     const valueSx = {
-      color: '#1E2939',
+      color: textPrimary,
       fontFamily: 'Outfit',
       fontWeight: 400,
       fontStyle: 'normal',
@@ -369,7 +439,8 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
       name: string,
       configId: string,
       fallbackLabel: string,
-      defaultValue = ''
+      defaultValue = '',
+      required = false
     ) => {
       const label = getLabel(configId, currentLanguage, fallbackLabel)
       return (
@@ -379,15 +450,74 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
             control={control}
             defaultValue={defaultValue}
             render={({ field }) => (
-              <TextField
-                {...field}
-                label={label}
-                fullWidth
-                disabled={isViewMode}
-                InputLabelProps={{ sx: labelSx }}
-                InputProps={{ sx: valueSx }}
-                sx={commonFieldStyles}
-              />
+              <>
+                <TextField
+                  {...field}
+                  label={label}
+                  fullWidth
+                  required={required}
+                  disabled={isViewMode}
+                  error={!!errors[name] && !isViewMode}
+                  InputLabelProps={{
+                    sx: {
+                      ...getLabelSx(),
+                      ...(!!errors[name] &&
+                        !isViewMode && {
+                          color: theme.palette.error.main,
+                          '&.Mui-focused': { color: theme.palette.error.main },
+                          '&.MuiFormLabel-filled': {
+                            color: theme.palette.error.main,
+                          },
+                        }),
+                    },
+                  }}
+                  InputProps={{
+                    sx: {
+                      ...valueSx,
+                      ...(isViewMode && {
+                        backgroundColor: viewModeBg,
+                        color: textSecondary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: viewModeBorder,
+                        },
+                      }),
+                    },
+                  }}
+                  sx={{
+                    ...commonFieldStyles,
+                    ...(isViewMode && {
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': { borderColor: viewModeBorder },
+                        '&:hover fieldset': { borderColor: viewModeBorder },
+                        '&.Mui-focused fieldset': {
+                          borderColor: viewModeBorder,
+                        },
+                      },
+                    }),
+                    ...(!!errors[name] &&
+                      !isViewMode && {
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': {
+                            borderColor: theme.palette.error.main,
+                            borderWidth: '1px',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: theme.palette.error.main,
+                            borderWidth: '1px',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: theme.palette.error.main,
+                            borderWidth: '1px',
+                          },
+                        },
+                      }),
+                  }}
+                />
+                <FormError
+                  error={errors[name]?.message as string}
+                  touched={true}
+                />
+              </>
             )}
           />
         </Grid>
@@ -397,7 +527,8 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
     const renderInvestorIdField = (
       name: string,
       label: string,
-      gridSize: number = 6
+      gridSize: number = 6,
+      required: boolean = false
     ) => (
       <Grid key={name} size={{ xs: 12, md: gridSize }}>
         <Controller
@@ -405,53 +536,82 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
           control={control}
           defaultValue=""
           render={({ field }) => (
-            <TextField
-              {...field}
-              fullWidth
-              label={label}
-              value={investorId}
-              disabled={isViewMode}
-              onChange={(e) => {
-                setInvestorId(e.target.value)
-                field.onChange(e)
-              }}
-              InputProps={{
-                endAdornment: !isViewMode ? (
-                  <InputAdornment position="end" sx={{ mr: 0 }}>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<RefreshIcon />}
-                      onClick={handleGenerateNewId}
-                      disabled={isGeneratingId}
-                      sx={{
-                        color: '#FFFFFF',
-                        borderRadius: '8px',
-                        textTransform: 'none',
-                        background: '#2563EB',
-                        '&:hover': {
-                          background: '#1D4ED8',
+            <>
+              <TextField
+                {...field}
+                fullWidth
+                label={label}
+                value={investorId}
+                required={required}
+                disabled={isViewMode}
+                error={!!errors[name] && !isViewMode}
+                onChange={(e) => {
+                  setInvestorId(e.target.value)
+                  field.onChange(e)
+                }}
+                InputProps={{
+                  endAdornment: !isViewMode ? (
+                    <InputAdornment position="end" sx={{ mr: 0 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleGenerateNewId}
+                        disabled={
+                          isGeneratingId || isViewMode || (isEditMode ?? false)
+                        }
+                        sx={{
+                          color: theme.palette.primary.contrastText,
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          background: theme.palette.primary.main,
+                          '&:hover': {
+                            background: theme.palette.primary.dark,
+                          },
+                          minWidth: '100px',
+                          height: '32px',
+                          fontFamily: 'Outfit, sans-serif',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '11px',
+                          lineHeight: '14px',
+                          letterSpacing: '0.3px',
+                          px: 1,
+                        }}
+                      >
+                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                      </Button>
+                    </InputAdornment>
+                  ) : undefined,
+                  sx: valueSx,
+                }}
+                InputLabelProps={{ sx: getLabelSx() }}
+                sx={{
+                  ...commonFieldStyles,
+                  ...(!!errors[name] &&
+                    !isViewMode && {
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: theme.palette.error.main,
+                          borderWidth: '1px',
                         },
-                        minWidth: '100px',
-                        height: '32px',
-                        fontFamily: 'Outfit, sans-serif',
-                        fontWeight: 500,
-                        fontStyle: 'normal',
-                        fontSize: '11px',
-                        lineHeight: '14px',
-                        letterSpacing: '0.3px',
-                        px: 1,
-                      }}
-                    >
-                      {isGeneratingId ? 'Generating...' : 'Generate ID'}
-                    </Button>
-                  </InputAdornment>
-                ) : undefined,
-                sx: valueSx,
-              }}
-              InputLabelProps={{ sx: labelSx }}
-              sx={commonFieldStyles}
-            />
+                        '&:hover fieldset': {
+                          borderColor: theme.palette.error.main,
+                          borderWidth: '1px',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: theme.palette.error.main,
+                          borderWidth: '1px',
+                        },
+                      },
+                    }),
+                }}
+              />
+              <FormError
+                error={errors[name]?.message as string}
+                touched={true}
+              />
+            </>
           )}
         />
       </Grid>
@@ -464,7 +624,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
       fallbackLabel: string,
       options: { id: number; displayName: string; settingValue: string }[],
       gridSize: number = 6,
-      required = false,
+      _required = false,
       loading = false
     ) => {
       const label = getLabel(configId, currentLanguage, fallbackLabel)
@@ -473,46 +633,74 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
           <Controller
             name={name}
             control={control}
-            rules={required ? { required: `${label} is required` } : {}}
+            rules={{}}
             defaultValue={''}
             render={({ field }) => (
-              <FormControl fullWidth error={!!errors[name]}>
-                <InputLabel sx={labelSx}>
-                  {loading ? `Loading ${label}...` : label}
-                </InputLabel>
-                <Select
-                  {...field}
-                  label={loading ? `Loading ${label}...` : label}
-                  // sx={{ ...selectStyles, ...valueSx }}
+              <>
+                <FormControl
+                  fullWidth
+                  error={!!errors[name] && !isViewMode}
+                  required={_required}
                   sx={{
-                    ...selectStyles,
-                    ...valueSx,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      border: '1px solid #9ca3af',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      border: '2px solid #2563eb',
+                    '& .MuiFormLabel-asterisk': {
+                      color: `${textSecondary} !important`,
                     },
                   }}
-                  IconComponent={KeyboardArrowDownIcon}
-                  disabled={loading || isViewMode}
                 >
-                  {options.map((option) => (
-                    <MenuItem key={option.id} value={option.settingValue}>
-                      {option.displayName}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {errors[name] && (
-                  <FormHelperText error>
-                    {errors[name]?.message?.toString()}
-                  </FormHelperText>
-                )}
-              </FormControl>
+                  <InputLabel sx={getLabelSx()}>
+                    {loading ? `Loading...` : label}
+                  </InputLabel>
+                  <Select
+                    {...field}
+                    label={loading ? `Loading...` : label}
+                    sx={{
+                      ...selectStyles,
+                      ...valueSx,
+                      ...(isViewMode && {
+                        backgroundColor: viewModeBg,
+                        color: textSecondary,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: viewModeBorder,
+                        },
+                      }),
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        border: `1px solid ${neutralBorder}`,
+                        borderRadius: '6px',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        border: `1px solid ${neutralBorderHover}`,
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        border: `2px solid ${focusBorder}`,
+                      },
+                      ...(!!errors[name] &&
+                        !isViewMode && {
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            border: `1px solid ${theme.palette.error.main}`,
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            border: `1px solid ${theme.palette.error.main}`,
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            border: `1px solid ${theme.palette.error.main}`,
+                          },
+                        }),
+                    }}
+                    IconComponent={KeyboardArrowDownIcon}
+                    disabled={loading || isViewMode}
+                  >
+                    {options.map((option) => (
+                      <MenuItem key={option.id} value={option.settingValue}>
+                        {option.displayName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormError
+                  error={errors[name]?.message as string}
+                  touched={true}
+                />
+              </>
             )}
           />
         </Grid>
@@ -558,20 +746,25 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
         <Card
           sx={{
             boxShadow: 'none',
-            backgroundColor: '#FFFFFFBF',
+            backgroundColor: isDark
+              ? alpha(theme.palette.background.paper, 0.35)
+              : '#FFFFFFBF',
             width: '84%',
             margin: '0 auto',
+            color: textPrimary,
           }}
         >
-          <CardContent>
+          <CardContent sx={{ color: textPrimary }}>
             {(investorTypesError || idTypesError || countriesError) && (
               <Box
                 sx={{
                   mb: 2,
                   p: 1,
-                  bgcolor: '#fef2f2',
+                  bgcolor: isDark
+                    ? alpha(theme.palette.error.main, 0.15)
+                    : '#fef2f2',
                   borderRadius: 1,
-                  border: '1px solid #ef4444',
+                  border: `1px solid ${alpha(theme.palette.error.main, 0.4)}`,
                 }}
               >
                 <Typography variant="body2" color="error">
@@ -585,13 +778,15 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                 sx={{
                   mb: 2,
                   p: 1,
-                  bgcolor: '#fef2f2',
+                  bgcolor: isDark
+                    ? alpha(theme.palette.error.main, 0.15)
+                    : '#fef2f2',
                   borderRadius: 1,
-                  border: '1px solid #ef4444',
+                  border: `1px solid ${alpha(theme.palette.error.main, 0.4)}`,
                 }}
               >
                 <Typography variant="body2" color="error">
-                  ⚠️ {saveError}
+                  ⚠️ 123{saveError} 456
                 </Typography>
               </Box>
             )}
@@ -600,7 +795,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
               {renderApiSelectField(
                 'investorType',
                 'CDL_CP_TYPE',
-                'Investor Type*',
+                'Investor Type',
                 investorTypes?.length
                   ? investorTypes
                   : getFallbackOptions('investorType'),
@@ -610,22 +805,26 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
               )}
               {renderInvestorIdField(
                 'investorId',
-                getLabel('CDL_CP_REFID', currentLanguage, 'Investor ID*')
+                getLabel('CDL_CP_REFID', currentLanguage, 'Investor ID'),
+                6,
+                true
               )}
               {renderTextField(
                 'investorFirstName',
                 'CDL_CP_FIRSTNAME',
-                'Investor Name*'
+                'Investor Name',
+                '',
+                true
               )}
               {renderTextField(
                 'investorMiddleName',
                 'CDL_CP_MIDDLENAME',
-                'Middle Name*'
+                'Middle Name'
               )}
               {renderTextField(
                 'investorLastName',
                 'CDL_CP_LASTNAME',
-                'Last Name*'
+                'Last Name'
               )}
               {renderTextField(
                 'arabicName',
@@ -640,7 +839,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
               {renderApiSelectField(
                 'investorIdType',
                 'CDL_CP_ID_TYPE',
-                'Investor ID Type*',
+                'Investor ID Type',
                 idTypes?.length
                   ? idTypes
                   : getFallbackOptions('investorIdType'),
@@ -648,51 +847,72 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                 true,
                 loadingIdTypes
               )}
-              {renderTextField('idNumber', 'CDL_CP_DOC_NO', 'ID No.')}
+              {renderTextField('idNumber', 'CDL_CP_DOC_NO', 'ID No.', '', true)}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Controller
                   name="idExpiryDate"
                   control={control}
                   defaultValue={null}
                   render={({ field }) => (
-                    <DatePicker
-                      label={getLabel(
-                        'CDL_CP_ID_EXP',
-                        currentLanguage,
-                        'ID Expiry Date'
-                      )}
-                      value={field.value}
-                      onChange={field.onChange}
-                      format="DD/MM/YYYY"
-                      disabled={isViewMode}
-                      slots={{
-                        openPickerIcon: StyledCalendarIcon,
-                      }}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          error: !!errors.idExpiryDate,
-                          sx: datePickerStyles,
-                          InputLabelProps: { sx: labelSx },
-                          InputProps: {
-                            sx: valueSx,
-                            style: { height: '46px' },
+                    <>
+                      <DatePicker
+                        label={getLabel(
+                          'CDL_CP_ID_EXP',
+                          currentLanguage,
+                          'ID Expiry Date'
+                        )}
+                        value={field.value}
+                        onChange={field.onChange}
+                        format="DD/MM/YYYY"
+                        disabled={isViewMode}
+                        slots={{ openPickerIcon: StyledCalendarIcon }}
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            error: !!errors.idExpiryDate && !isViewMode,
+                            helperText: '',
+                            sx: {
+                              ...datePickerStyles,
+                              ...(!!errors.idExpiryDate &&
+                                !isViewMode && {
+                                  '& .MuiOutlinedInput-root': {
+                                    '& fieldset': {
+                                      borderColor: theme.palette.error.main,
+                                    },
+                                    '&:hover fieldset': {
+                                      borderColor: theme.palette.error.main,
+                                    },
+                                    '&.Mui-focused fieldset': {
+                                      borderColor: theme.palette.error.main,
+                                    },
+                                  },
+                                }),
+                            },
+                            InputLabelProps: { sx: getLabelSx() },
+                            InputProps: {
+                              sx: valueSx,
+                              style: { height: '46px' },
+                            },
                           },
-                        },
-                      }}
-                    />
+                        }}
+                      />
+                      <FormError
+                        error={(errors as any).idExpiryDate?.message as string}
+                        touched={true}
+                      />
+                    </>
                   )}
                 />
               </Grid>
               {renderApiSelectField(
                 'nationality',
                 'CDL_CP_NATIONALITY',
-                'Nationality*',
+                'Nationality',
                 countries?.length
                   ? countries
                   : getFallbackOptions('nationality'),
                 6,
-                true,
+                false,
                 loadingCountries
               )}
               {renderTextField(
@@ -702,7 +922,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                 ''
               )}
               {renderTextField(
-                'mobileNumber',
+                'mpmobileNumber',
                 'CDL_CP_MOBILE',
                 'Mobile Number',
                 ''

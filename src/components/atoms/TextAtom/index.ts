@@ -1,3 +1,3 @@
 // src/components/atoms/TextAtom/index.ts
 
-export { default } from './TextAtom';
+export { TextAtom as default } from './TextAtom';

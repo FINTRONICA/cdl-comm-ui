@@ -64,7 +64,7 @@ export function useBuildWorkflowStageTemplateLabelsWithCache() {
     cacheStatus: workflowStageTemplateLabels
       ? 'cached'
       : workflowStageTemplateLabelsLoading
-        ? 'loading'
+        ? 'Loading...'
         : 'fresh',
   }
 }

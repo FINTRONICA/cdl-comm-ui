@@ -32,7 +32,7 @@ export function useReactiveLocalStorage<T>(
       const item = window.localStorage.getItem(key)
       return item ? serializer.parse(item) : initialValue
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error)
+      
       return initialValue
     }
   }, [key, initialValue, serializer])
@@ -54,7 +54,7 @@ export function useReactiveLocalStorage<T>(
         }))
       }
     } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error)
+      throw error
     }
   }, [key, storedValue, serializer])
 
@@ -67,9 +67,9 @@ export function useReactiveLocalStorage<T>(
           try {
             const newValue = serializer.parse(e.newValue)
             setStoredValue(newValue)
-            console.log(`🔄 [ReactiveLocalStorage] Updated "${key}" from storage event:`, newValue)
+            
           } catch (error) {
-            console.error(`Error parsing storage event for key "${key}":`, error)
+            throw error
           }
         }
       }
@@ -77,7 +77,7 @@ export function useReactiveLocalStorage<T>(
       // Handle custom events (same-tab changes)
       if (e instanceof CustomEvent && e.detail?.key === key) {
         setStoredValue(e.detail.value)
-        console.log(`🔄 [ReactiveLocalStorage] Updated "${key}" from custom event:`, e.detail.value)
+        
       }
     }
 
@@ -124,11 +124,13 @@ export function useLocalStorageListener<T = unknown>(
   useEffect(() => {
     let oldValue: T | null = null
     
-    try {
-      const item = localStorage.getItem(key)
-      oldValue = item ? JSON.parse(item) : null
-    } catch (error) {
-      console.error(`Error reading initial value for key "${key}":`, error)
+    if (typeof window !== 'undefined') {
+      try {
+        const item = localStorage.getItem(key)
+        oldValue = item ? JSON.parse(item) : null
+      } catch (error) {
+        throw error
+      }
     }
 
     const handleStorageChange = (e: StorageEvent | CustomEvent) => {
@@ -141,7 +143,7 @@ export function useLocalStorageListener<T = unknown>(
           callback(newValue, oldValue)
           oldValue = newValue
         } catch (error) {
-          console.error(`Error parsing storage event for key "${key}":`, error)
+          throw error
         }
       }
       

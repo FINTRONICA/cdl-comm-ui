@@ -1,6 +1,7 @@
 import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 import apiClient from '@/lib/apiClient'
 import { getAuthCookies } from '@/utils/cookieUtils'
+import { toast } from 'react-hot-toast'
 
 export interface WorkflowStageTemplateLabelResponse {
   id: number
@@ -53,7 +54,7 @@ export class WorkflowStageTemplateLabelsService {
 
       return labels
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw new Error(ERROR_MESSAGE)
     }
   }
@@ -105,7 +106,7 @@ export class WorkflowStageTemplateLabelsService {
 
       return Array.from(languages)
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       return [DEFAULT_LANGUAGE]
     }
   }

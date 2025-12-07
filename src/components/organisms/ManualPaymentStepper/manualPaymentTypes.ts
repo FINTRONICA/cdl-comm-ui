@@ -33,7 +33,7 @@ export interface ProjectDetailsData {
   backupRef: string
   relationshipManager: string
   assistantRelationshipManager: string
-  teamLeaderName: string
+  mpteamLeaderName: string
 }
 
 export interface AccountData {

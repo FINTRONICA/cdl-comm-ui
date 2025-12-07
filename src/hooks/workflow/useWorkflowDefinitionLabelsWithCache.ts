@@ -49,7 +49,7 @@ export function useWorkflowDefinitionLabelsWithCache() {
     cacheStatus: workflowDefinitionLabels
       ? 'cached'
       : workflowDefinitionLabelsLoading
-        ? 'loading'
+        ? 'Loading...'
         : 'fresh',
   }
 }

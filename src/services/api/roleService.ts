@@ -32,11 +32,11 @@ class RoleService {
    */
   async createRole(data: CreateRoleRequest): Promise<CreateRoleResponse> {
     try {
-      const response = await apiClient.post(
+      const response = await apiClient.post<CreateRoleResponse>(
         API_ENDPOINTS.AUTH_ADMIN_USER.CREATE_ROLE,
         data
-      ) as { data: CreateRoleResponse };
-      return response.data;
+      )
+      return response
     } catch (error: any) {
       if (error.response?.status === 409) {
         throw new Error(error.response.data.error || 'Role already exists');
@@ -74,10 +74,10 @@ class RoleService {
    */
   async getRoleByName(roleName: string): Promise<Role> {
     try {
-      const response = await apiClient.get(
+      const response = await apiClient.get<Role>(
         API_ENDPOINTS.AUTH_ADMIN_USER.GET_ROLE_BY_NAME(roleName)
-      ) as { data: Role };
-      return response.data;
+      )
+      return response
     } catch (error: any) {
       if (error.response?.status === 404) {
         throw new Error('Role not found');
@@ -91,11 +91,27 @@ class RoleService {
    */
   async updateRole(roleName: string, data: UpdateRoleRequest): Promise<Role> {
     try {
-      const response = await apiClient.put(
-        API_ENDPOINTS.AUTH_ADMIN_USER.GET_ROLE_BY_NAME(roleName),
+      const endpoint = data.name
+        ? API_ENDPOINTS.AUTH_ADMIN_USER.UPDATE_ROLE_NAME(roleName, data.name)
+        : API_ENDPOINTS.AUTH_ADMIN_USER.GET_ROLE_BY_NAME(roleName)
+
+      const response = await apiClient.put<Role | { data?: Role } | { message?: string }>(
+        endpoint,
         data
-      ) as { data: Role };
-      return response.data;
+      )
+
+      if (response && typeof response === 'object') {
+        if ('data' in response && response.data) {
+          return response.data as Role
+        }
+
+        if ('name' in response && typeof response.name === 'string') {
+          return response as Role
+        }
+      }
+
+      const lookupName = data.name ?? roleName
+      return await this.getRoleByName(lookupName)
     } catch (error: any) {
       if (error.response?.status === 404) {
         throw new Error('Role not found');

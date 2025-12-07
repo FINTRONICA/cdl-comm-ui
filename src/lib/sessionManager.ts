@@ -33,7 +33,7 @@ export class SessionManager {
 
   private static readonly DEFAULT_CONFIG: SessionConfig = {
     maxSessionsPerUser: 5,
-    sessionTimeoutMinutes: 480, // 8 hours
+    sessionTimeoutMinutes: 30, // 30 minutes to match backend
     idleTimeoutMinutes: 30,
     secureCookies: true,
     httpOnly: true,
@@ -343,10 +343,6 @@ export class SessionManager {
     expiredSessions.forEach(sessionId => {
       this.destroySession(sessionId);
     });
-
-    if (expiredSessions.length > 0) {
-      console.log(`Cleaned up ${expiredSessions.length} expired sessions`);
-    }
   }
 
   // Get session statistics

@@ -1,13 +1,17 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { DashboardLayout } from '../../../../components/templates/DashboardLayout'
 import { Button } from '../../../../components/atoms/Button'
 import { Input } from '../../../../components/atoms/Input'
 import { TextField } from '@mui/material'
 import { usePendingTransaction } from '@/hooks'
 import type { PendingTransaction } from '@/services/api/pendingTransactionService'
+import { GlobalLoading } from '@/components/atoms'
+import { usePendingTransactionLabelApi } from '@/hooks/usePendingTransactionLabelApi'
+import { getPendingTransactionLabel } from '@/constants/mappings/pendingTransactionMapping'
 
 // Define the transaction data structure to match API response
 interface TransactionData {
@@ -27,6 +31,19 @@ interface TransactionData {
   currencyCode: string
   branchCode: string
   paymentRefNo: string
+  // Additional fields from API response
+  transactionId?: string
+  valueDateTime?: string
+  postedDateTime?: string
+  processingDateTime?: string
+  postedBranchCode?: string
+  customField1?: string
+  customField2?: string
+  transactionParticular1?: string
+  transactionParticular2?: string
+  transactionParticularRemark1?: string
+  primaryUnitHolderFullName?: string
+  subBucketIdentifier?: string
 }
 
 // Define split amount data structure
@@ -35,8 +52,6 @@ interface SplitAmountData {
   receivableCategory: string
   receivableSubCategory: string
   unitNoOqoodFormat: string
-  investorName: string
-  buildingName: string
   depositMode: string
   chequeNumber: string
 }
@@ -45,26 +60,54 @@ interface SplitAmountData {
 const mapApiToTransactionData = (
   apiData: PendingTransaction
 ): TransactionData => {
+  const formatDateTime = (dateTime: string | null | undefined): string => {
+    if (!dateTime) return '—'
+    try {
+      return new Date(dateTime).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return dateTime
+    }
+  }
+
   return {
     id: apiData.id,
     tranReference:
-      apiData.ptfiTransactionRefId || apiData.ptfiTransactionId || '—',
-    projectName: apiData.realEstateAssestDTO?.reaName || '—',
-    developerName: apiData.realEstateAssestDTO?.reaManagedBy || '—',
-    narration: apiData.ptfiNarration || '—',
-    tranDate: apiData.ptfiTransactionDate
-      ? new Date(apiData.ptfiTransactionDate).toLocaleDateString('en-GB')
+      apiData.transactionReferenceNumber || apiData.unReconTransactionId || '—',
+    transactionId: apiData.unReconTransactionId || '—',
+    projectName: (apiData.escrowAgreementDTO as { clientNameDTO?: { partyFullName?: string } } | null)?.clientNameDTO?.partyFullName || '—',
+    developerName: (apiData.escrowAgreementDTO as { clientNameDTO?: { relationshipManagerName?: string } } | null)?.clientNameDTO?.relationshipManagerName || '—',
+    narration: apiData.transactionNarration || '—',
+    tranDate: apiData.transactionDateTime
+      ? new Date(apiData.transactionDateTime).toLocaleDateString('en-GB')
       : '—',
-    unitNoOqoodFormat: apiData.ptfiUnitRefNumber || '—',
-    tasUpdate: String(apiData.ptfiTasUpdate),
-    tranAmount: apiData.ptfiAmount || 0,
-    retentionToBeTaken: apiData.ptfiRetentionAmount ? 'YES' : 'NO',
-    status: mapPaymentStatusToStatus(apiData.ptfiTasPaymentStatus),
-    description: apiData.ptfiDescription || '—',
-    totalAmount: apiData.ptfiTotalAmount || 0,
-    currencyCode: apiData.ptfiCurrencyCode || 'AED',
-    branchCode: apiData.ptfiBranchCode || '—',
-    paymentRefNo: apiData.ptfiPaymentRefNo || '—',
+    unitNoOqoodFormat: apiData.subBucketIdentifier || '—',
+    tasUpdate: String(apiData.tasUpdateRequestedFlag || apiData.tasUpdateAppliedFlag || false),
+    tranAmount: apiData.transactionAmount || 0,
+    retentionToBeTaken: 'NO', // Not available in new API response
+    status: mapPaymentStatusToStatus(apiData.tasPaymentStatusCode),
+    description: apiData.transactionDescription || '—',
+    totalAmount: apiData.totalTransactionAmount || 0,
+    currencyCode: apiData.currencyCode || 'AED',
+    branchCode: apiData.branchIdentifierCode || '—',
+    paymentRefNo: apiData.paymentReferenceNumber || '—',
+    // Additional fields
+    valueDateTime: formatDateTime(apiData.valueDateTime),
+    postedDateTime: formatDateTime(apiData.postedDateTime),
+    processingDateTime: formatDateTime(apiData.processingDateTime),
+    postedBranchCode: apiData.postedBranchIdentifierCode || '—',
+    customField1: apiData.customField1 || '—',
+    customField2: apiData.customField2 || '—',
+    transactionParticular1: apiData.transactionParticular1 || '—',
+    transactionParticular2: apiData.transactionParticular2 || '—',
+    transactionParticularRemark1: apiData.transactionParticularRemark1 || '—',
+    primaryUnitHolderFullName: apiData.primaryUnitHolderFullName || '—',
+    subBucketIdentifier: apiData.subBucketIdentifier || '—',
   }
 }
 
@@ -73,9 +116,11 @@ const mapPaymentStatusToStatus = (paymentStatus: string | null): string => {
   switch (paymentStatus?.toUpperCase()) {
     case 'PENDING':
     case 'INCOMPLETE':
+    case 'INITIATED':
       return 'Pending Allocation'
     case 'IN_REVIEW':
     case 'REVIEW':
+    case 'IN_PROGRESS':
       return 'In Review'
     case 'REJECTED':
     case 'FAILED':
@@ -96,8 +141,6 @@ const getInitialSplitAmountData = (): SplitAmountData[] => {
       receivableCategory: '',
       receivableSubCategory: '',
       unitNoOqoodFormat: '',
-      investorName: '',
-      buildingName: '',
       depositMode: '',
       chequeNumber: '',
     },
@@ -125,6 +168,24 @@ const UnallocatedTransactionDetailsPage: React.FC<{
     error,
   } = usePendingTransaction(resolvedParams.id)
 
+  // Label API hook for dynamic labels
+  const {
+    getLabel: getLabelFromApi,
+    isLoading: labelsLoading,
+  } = usePendingTransactionLabelApi()
+
+  // Get dynamic label with fallback
+  const getPaymentPlanLabel = React.useCallback(
+    (configId: string): string => {
+      const apiLabel = getLabelFromApi(configId, 'EN')
+      if (apiLabel !== configId) {
+        return apiLabel
+      }
+      return getPendingTransactionLabel(configId)
+    },
+    [getLabelFromApi]
+  )
+
   // Map API data to display format
   const transaction = apiTransaction
     ? mapApiToTransactionData(apiTransaction)
@@ -137,8 +198,6 @@ const UnallocatedTransactionDetailsPage: React.FC<{
       receivableCategory: '',
       receivableSubCategory: '',
       unitNoOqoodFormat: '',
-      investorName: '',
-      buildingName: '',
       depositMode: '',
       chequeNumber: '',
     }
@@ -174,7 +233,7 @@ const UnallocatedTransactionDetailsPage: React.FC<{
   }, 0)
 
   // Validate split amount against transaction amount
-  const validateSplitAmount = () => {
+  const validateSplitAmount = useCallback(() => {
     if (transaction && totalSplitAmount > transaction.tranAmount) {
       setValidationError(
         'The total split amount can not be more than the Tran Amount'
@@ -184,7 +243,7 @@ const UnallocatedTransactionDetailsPage: React.FC<{
       setValidationError('')
       return true
     }
-  }
+  }, [transaction, totalSplitAmount])
 
   // Check if validation passes
   const isValidationPassed = transaction
@@ -196,17 +255,14 @@ const UnallocatedTransactionDetailsPage: React.FC<{
     if (transaction) {
       validateSplitAmount()
     }
-  }, [totalSplitAmount, transaction])
+  }, [totalSplitAmount, transaction, validateSplitAmount])
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || labelsLoading) {
     return (
       <DashboardLayout title="Transaction Details">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
-          </div>
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
         </div>
       </DashboardLayout>
     )
@@ -217,7 +273,7 @@ const UnallocatedTransactionDetailsPage: React.FC<{
     return (
       <DashboardLayout title="Transaction Error">
         <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <div className="text-red-600 mb-4">
+          <div className="mb-4 text-red-600">
             <svg
               className="w-12 h-12 mx-auto"
               fill="none"
@@ -232,10 +288,10 @@ const UnallocatedTransactionDetailsPage: React.FC<{
               />
             </svg>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+          <h2 className="mb-4 text-2xl font-semibold text-gray-900">
             Error Loading...
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="mb-6 text-gray-600">
             {error.message || 'Unable to load transaction details'}
           </p>
           <Button
@@ -254,10 +310,10 @@ const UnallocatedTransactionDetailsPage: React.FC<{
     return (
       <DashboardLayout title="Transaction Not Found">
         <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+          <h2 className="mb-4 text-2xl font-semibold text-gray-900">
             Transaction Not Found
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="mb-6 text-gray-600">
             The transaction you&apos;re looking for doesn&apos;t exist.
           </p>
           <Button
@@ -277,119 +333,119 @@ const UnallocatedTransactionDetailsPage: React.FC<{
 
   return (
     <DashboardLayout title="Pending Transaction">
-      <div className="bg-[#FFFFFFBF] py-4 px-6 rounded-2xl">
-        <div className=" flex flex-col gap-12">
+      <div className="px-6 py-4 bg-white/75 dark:bg-slate-900/70 rounded-2xl">
+        <div className="flex flex-col gap-12 ">
           <div className="flex flex-col gap-6">
-            <div className="mt-5 pt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
+            <div className="grid grid-cols-1 gap-6 pt-2 mt-5 sm:grid-cols-2 lg:grid-cols-4 ">
               <div className="flex flex-col gap-1">
                 <div className="h-[17px]">
-                  <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                  <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-slate-400">
                     Trans Reference:
                   </p>
                 </div>
                 <div className="h-[25px]">
-                  <p className="font-sans font-normal text-xl leading-none tracking-[0%] align-middle text-[#1E2939]">
+                  <p className="font-sans font-normal text-xl leading-none tracking-[0%] align-middle text-gray-900 dark:text-slate-100">
                     {transaction.tranReference}
                   </p>
                 </div>
               </div>
               <div className="flex flex-col gap-1">
                 <div className="h-[17px]">
-                  <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                  <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-slate-400">
                     Project Name
                   </p>
                 </div>
                 <div className="h-[25px]">
-                  <p className="font-sans font-normal text-xl leading-none tracking-[0%] align-middle text-[#1E2939]">
+                  <p className="font-sans font-normal text-xl leading-none tracking-[0%] align-middle text-gray-900 dark:text-slate-100">
                     {transaction.projectName}
                   </p>
                 </div>
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <div className="py-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-6 py-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-slate-400">
                       Developer Name:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-slate-100">
                       {transaction.developerName}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-slate-400">
                       Narration:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-slate-100">
                       [&quot;{transaction.narration}&quot;]
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-slate-400">
                       TAS Update:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-slate-100">
                       {transaction.tasUpdate}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-slate-400">
                       5% Retention to be Taken:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-slate-100">
                       {transaction.retentionToBeTaken}
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="py-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-6 py-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
                       Tran Date:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
                       {transaction.tranDate}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
                       Unit No. Oqood Format:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
                       {transaction.unitNoOqoodFormat}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
                       Tran Amount:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
                       {formatNumber(transaction.tranAmount)}{' '}
                       {transaction.currencyCode}
                     </p>
@@ -397,63 +453,213 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
                       Total Amount:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
                       {formatNumber(transaction.totalAmount)}{' '}
                       {transaction.currencyCode}
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="py-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-6 py-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Transaction ID:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.transactionId || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
                       Payment Reference:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
                       {transaction.paymentRefNo}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
                       Branch Code:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
                       {transaction.branchCode}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Posted Branch Code:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.postedBranchCode || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6 py-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Value Date & Time:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.valueDateTime || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Posted Date & Time:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.postedDateTime || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Processing Date & Time:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.processingDateTime || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Primary Unit Holder:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.primaryUnitHolderFullName || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6 py-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Transaction Particular 1:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.transactionParticular1 || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Transaction Particular 2:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.transactionParticular2 || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Transaction Particular Remark 1:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.transactionParticularRemark1 || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Custom Field 1:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.customField1 || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6 py-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Custom Field 2:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.customField2 || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
+                      Sub Bucket Identifier:
+                    </p>
+                  </div>
+                  <div className="h-[25px]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
+                      {transaction.subBucketIdentifier || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-[17px]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
                       Description:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
                       {transaction.description}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="h-[17px]">
-                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-[#4A5565]">
+                    <p className="font-sans font-normal text-xs leading-none tracking-[0%] text-gray-600 dark:text-gray-400">
                       Status:
                     </p>
                   </div>
                   <div className="h-[25px]">
-                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-[#1E2939]">
+                    <p className="font-sans font-normal text-[16px] leading-none tracking-[0%] align-middle text-gray-900 dark:text-gray-100">
                       {transaction.status}
                     </p>
                   </div>
@@ -461,57 +667,51 @@ const UnallocatedTransactionDetailsPage: React.FC<{
               </div>
             </div>
           </div>
-          <div className="gap-4 flex flex-col">
-            <div className="px-4 flex items-center justify-end">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-end px-4">
               <button
                 onClick={addPaymentPlanRow}
-                className="w-[161px] h-8 gap-1.5 opacity-100 py-1.5 px-2.5 rounded-md border border-[#2563EB] flex   text-[#2563EB] font-sans  text-sm  font-medium leading-5 tracking-[0%]"
+                className="w-[161px] h-8 gap-1.5 opacity-100 py-1.5 px-2.5 rounded-md border border-blue-600 dark:border-blue-500 flex text-blue-600 dark:text-blue-300 font-sans text-sm font-medium leading-5 tracking-[0%] hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
               >
-                <img src="/circle-plus-blue.svg" alt="plus icon" />
+                <Image src="/circle-plus-blue.svg" alt="plus icon" width={16} height={16} />
                 Add Payment Plan
               </button>
             </div>
             <div>
-              <div className="border-b border-black">
-                <div className="grid grid-cols-9 gap-4 px-4 py-3 ">
-                  <div className="text-sm font-medium text-gray-900">
-                    Split Amount*
+              <div className="border-b border-gray-200 dark:border-slate-700">
+                <div className="grid grid-cols-7 gap-4 px-4 py-3">
+                  <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    {getPaymentPlanLabel('CDL_SPLIT_AMOUNT')}*
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Receivable Category*
+                  <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    {getPaymentPlanLabel('CDL_RECEIVABLE_CATEGORY')}*
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Receivable Sub Category*
+                  <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    {getPaymentPlanLabel('CDL_RECEIVABLE_SUB_CATEGORY')}*
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Unit no. Oqood Format
+                  <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    {getPaymentPlanLabel('CDL_UNIT_NO_OQOOD_FORMAT')}
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Capital Partner Name
+                  <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    {getPaymentPlanLabel('CDL_DEPOSIT_MODE')}
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Building Name
+                  <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    {getPaymentPlanLabel('CDL_CHEQUE_NUMBER')}
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Deposit Mode
-                  </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Cheque Number
-                  </div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                     Action
                   </div>
                 </div>
               </div>
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-slate-700">
                 {splitAmountData.map((item, index) => (
                   <div
                     key={index}
-                    className="grid grid-cols-9 gap-4 px-4 py-3 hover:bg-gray-50 "
+                    className="grid grid-cols-7 gap-4 px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/60"
                   >
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-slate-100">
                       <Input
-                        placeholder="Split Amount"
+                        placeholder={getPaymentPlanLabel('CDL_SPLIT_AMOUNT')}
                         className="h-8 text-sm"
                         value={item.splitAmount}
                         onChange={(value) =>
@@ -520,9 +720,9 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                         type="number"
                       />
                     </div>
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-slate-100">
                       <Input
-                        placeholder="Receivable Category"
+                        placeholder={getPaymentPlanLabel('CDL_RECEIVABLE_CATEGORY')}
                         className="h-8 text-sm"
                         value={item.receivableCategory}
                         onChange={(value) =>
@@ -534,9 +734,9 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                         }
                       />
                     </div>
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-slate-100">
                       <Input
-                        placeholder="Receivable Sub Category"
+                        placeholder={getPaymentPlanLabel('CDL_RECEIVABLE_SUB_CATEGORY')}
                         className="h-8 text-sm"
                         value={item.receivableSubCategory}
                         onChange={(value) =>
@@ -548,9 +748,9 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                         }
                       />
                     </div>
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-slate-100">
                       <Input
-                        placeholder="Unit no. Oqood Format"
+                        placeholder={getPaymentPlanLabel('CDL_UNIT_NO_OQOOD_FORMAT')}
                         className="h-8 text-sm"
                         value={item.unitNoOqoodFormat}
                         onChange={(value) =>
@@ -562,29 +762,9 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                         }
                       />
                     </div>
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-slate-100">
                       <Input
-                        placeholder="Capital Partner Name"
-                        className="h-8 text-sm"
-                        value={item.investorName}
-                        onChange={(value) =>
-                          updateSplitAmountField(index, 'investorName', value)
-                        }
-                      />
-                    </div>
-                    <div className="text-sm text-gray-900">
-                      <Input
-                        placeholder="Building Name"
-                        className="h-8 text-sm"
-                        value={item.buildingName}
-                        onChange={(value) =>
-                          updateSplitAmountField(index, 'buildingName', value)
-                        }
-                      />
-                    </div>
-                    <div className="text-sm text-gray-900">
-                      <Input
-                        placeholder="Deposit Mode"
+                        placeholder={getPaymentPlanLabel('CDL_DEPOSIT_MODE')}
                         className="h-8 text-sm"
                         value={item.depositMode}
                         onChange={(value) =>
@@ -592,9 +772,9 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                         }
                       />
                     </div>
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-slate-100">
                       <Input
-                        placeholder="Cheque Number"
+                        placeholder={getPaymentPlanLabel('CDL_CHEQUE_NUMBER')}
                         className="h-8 text-sm"
                         value={item.chequeNumber}
                         onChange={(value) =>
@@ -605,12 +785,14 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                     <div className="flex items-center">
                       <button
                         onClick={() => removePaymentPlanRow(index)}
-                        className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center hover:bg-red-200"
+                        className="flex items-center justify-center w-8 h-8 transition-colors bg-red-100 rounded-full dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30"
                         disabled={splitAmountData.length === 1}
                       >
-                        <img
+                        <Image
                           src="/close.svg"
                           alt="remove"
+                          width={16}
+                          height={16}
                           className="w-4 h-4"
                         />
                       </button>
@@ -618,12 +800,12 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                   </div>
                 ))}
               </div>
-              <div className="bg-gray-50 border-t border-gray-200 px-4 py-3">
-                <div className="text-sm font-medium text-gray-900">
+              <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 dark:bg-slate-900/60 dark:border-slate-700">
+                <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                   Total Split Amount: {formatNumber(totalSplitAmount)}
                 </div>
                 {!isValidationPassed && (
-                  <div className="mt-2 text-sm text-red-600 font-medium">
+                  <div className="mt-2 text-sm font-medium text-red-600 dark:text-red-400">
                     {validationError}
                   </div>
                 )}
@@ -643,6 +825,23 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                   height: '46px',
                   borderRadius: '8px',
                   border: '1px solid #CAD5E2',
+                  backgroundColor: 'transparent',
+                  color: 'inherit',
+                },
+                '& .MuiOutlinedInput-root.Mui-focused fieldset': {
+                  borderColor: '#2563EB',
+                },
+                '& .MuiOutlinedInput-root fieldset': {
+                  borderColor: 'rgba(148, 163, 184, 0.4)',
+                },
+                '& .MuiOutlinedInput-root:hover fieldset': {
+                  borderColor: '#2563EB',
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'rgba(148, 163, 184, 0.8)',
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: '#2563EB',
                 },
               }}
             />
@@ -656,10 +855,10 @@ const UnallocatedTransactionDetailsPage: React.FC<{
                 }
               }}
               disabled={!isValidationPassed}
-              className={`h-8 gap-1.5 py-1.5 px-2.5 rounded-md border flex font-sans text-sm font-medium leading-5 tracking-[0%] ${
+              className={`h-8 gap-1.5 py-1.5 px-2.5 rounded-md border flex font-sans text-sm font-medium leading-5 tracking-[0%] transition-colors ${
                 isValidationPassed
-                  ? 'opacity-100 border-[#2563EB] text-[#2563EB] hover:bg-blue-50'
-                  : 'opacity-50 border-gray-300 text-gray-400 cursor-not-allowed'
+                  ? 'opacity-100 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                  : 'opacity-50 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'
               }`}
             >
               Submit

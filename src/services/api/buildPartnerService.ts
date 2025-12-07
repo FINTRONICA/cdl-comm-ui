@@ -170,16 +170,48 @@ export const mapBuildPartnerToUIData = (
 }
 
 export interface BuildPartnerContactData {
+  id?: number | string
   bpcFirstName: string
   bpcLastName: string
   bpcContactEmail: string
-  bpcContactAddressLine1: string
-  bpcContactAddressLine2: string
+  bpcContactmpaddressLine1: string
+  bpcContactmpaddressLine2: string
   bpcContactPoBox: string
   bpcCountryMobCode: string
   bpcContactTelNo: string
   bpcContactMobNo: string
   bpcContactFaxNo: string
+  enabled?: boolean
+  deleted?: boolean | null
+  workflowStatus?: string | null
+  buildPartnerDTO?: {
+    id?: number
+  }
+}
+
+// API Response interface for contact data (includes nested buildPartnerDTO)
+export interface BuildPartnerContactResponse {
+  id: number
+  bpcContactName: string | null
+  bpcFirstName: string
+  bpcLastName: string
+  bpcContactTelCode: string | null
+  bpcContactTelNo: string
+  bpcCountryMobCode: string
+  bpcContactMobNo: string
+  bpcContactEmail: string
+  bpcContactAddress: string | null
+  bpcContactmpaddressLine1: string
+  bpcContactmpaddressLine2: string
+  bpcContactPoBox: string
+  bpcContactFaxNo: string
+  enabled: boolean
+  workflowStatus: string | null
+  deleted: boolean | null
+  buildPartnerDTO?: {
+    id: number
+    [key: string]: any
+  }
 }
 
 export interface BuildPartnerFeesData {
@@ -193,6 +225,7 @@ export interface BuildPartnerFeesData {
 }
 
 export interface BuildPartnerIndividualFeeData {
+  id?: number | string
   bpFeeCategoryDTO: {
     id: number
   }
@@ -209,6 +242,9 @@ export interface BuildPartnerIndividualFeeData {
   feePercentage: number
   vatPercentage: number
   bpFeeCurrencyDTO: {
+    id: number
+  }
+  buildPartnerDTO?: {
     id: number
   }
 }
@@ -259,6 +295,24 @@ export interface BuildPartnerFeeResponse {
     enabled?: boolean
     deleted?: boolean | null
   }
+  bpAccountTypeDTO?: {
+    id?: number
+    settingKey?: string
+    settingValue?: string
+    languageTranslationId?: {
+      id?: number
+      configId?: string
+      configValue?: string
+      content?: string | null
+      status?: string | null
+      enabled?: boolean
+      deleted?: boolean | null
+    }
+    remarks?: string | null
+    status?: string | null
+    enabled?: boolean
+    deleted?: boolean | null
+  }
   bpFeeCurrencyDTO?: {
     id?: number
     settingKey?: string
@@ -285,6 +339,7 @@ export interface FeeUIData extends Record<string, unknown> {
   feeType: string
   frequency: string
   debitAmount: string
+  debitAccount?: string
   feeToBeCollected: string
   nextRecoveryDate: string
   feePercentage: string
@@ -393,7 +448,7 @@ export class BuildPartnerService {
       ...apiFilters,
     }
     const queryString = new URLSearchParams(params).toString()
-    const url = `${buildApiUrl(API_ENDPOINTS.BUILD_PARTNER.FIND_ALL)}&${queryString}`
+    const url = `${buildApiUrl(API_ENDPOINTS.BUILD_PARTNER.GET_ALL)}&${queryString}`
 
     try {
       const result = await apiClient.get<PaginatedResponse<BuildPartner>>(url)
@@ -421,6 +476,31 @@ export class BuildPartnerService {
       const url = buildApiUrl(API_ENDPOINTS.BUILD_PARTNER_CONTACT.GET_BY_ID(id))
 
       const result = await apiClient.get(url)
+
+      return result
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // Get contacts with pagination
+  async getBuildPartnerContactsPaginated(
+    buildPartnerId: string,
+    page = 0,
+    size = 20
+  ): Promise<PaginatedResponse<BuildPartnerContactResponse>> {
+    try {
+      const url = buildApiUrl(
+        API_ENDPOINTS.BUILD_PARTNER_CONTACT.GET_BY_ID(buildPartnerId)
+      )
+      const params = buildPaginationParams(page, size)
+      const queryString = new URLSearchParams(params).toString()
+      const finalUrl = `${url}&${queryString}`
+
+      const result =
+        await apiClient.get<PaginatedResponse<BuildPartnerContactResponse>>(
+          finalUrl
+        )
 
       return result
     } catch (error) {
@@ -461,11 +541,44 @@ export class BuildPartnerService {
     }
   }
 
+  // Get fees with pagination
+  async getBuildPartnerFeesPaginated(
+    buildPartnerId: string,
+    page = 0,
+    size = 20
+  ): Promise<PaginatedResponse<FeeUIData>> {
+    try {
+      const url = buildApiUrl(
+        API_ENDPOINTS.BUILD_PARTNER_FEES.GET_BY_ID(buildPartnerId)
+      )
+      const params = buildPaginationParams(page, size)
+      const queryString = new URLSearchParams(params).toString()
+      const finalUrl = `${url}&${queryString}`
+
+      const result =
+        await apiClient.get<PaginatedResponse<BuildPartnerFeeResponse>>(
+          finalUrl
+        )
+
+      // Transform the fees in the content array
+      const transformedContent = result.content.map((fee) =>
+        this.mapFeeResponseToUIData(fee)
+      )
+
+      return {
+        content: transformedContent,
+        page: result.page,
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
   async getBuildPartnerByCif(cif: string): Promise<BuildPartner> {
     try {
       const params = { bpCifrera: cif }
       const queryString = new URLSearchParams(params).toString()
-      const url = `${buildApiUrl(API_ENDPOINTS.BUILD_PARTNER.FIND_ALL)}?${queryString}`
+      const url = `${buildApiUrl(API_ENDPOINTS.BUILD_PARTNER.GET_ALL)}?${queryString}`
 
       const result = await apiClient.get<PaginatedResponse<BuildPartner>>(url)
 
@@ -530,7 +643,6 @@ export class BuildPartnerService {
 
   async deleteBuildPartner(id: string): Promise<void> {
     try {
-
       await apiClient.delete<string>(
         buildApiUrl(API_ENDPOINTS.BUILD_PARTNER.SOFT_DELETE(id))
       )
@@ -551,7 +663,6 @@ export class BuildPartnerService {
     isEditing = false,
     developerId?: string
   ): Promise<StepSaveResponse> {
-
     if (isEditing && developerId) {
       // Use PUT for editing existing details - include buildPartnerDTO in data
       const url = buildApiUrl(API_ENDPOINTS.BUILD_PARTNER.UPDATE(developerId))
@@ -576,24 +687,69 @@ export class BuildPartnerService {
     isEditing = false,
     developerId?: string
   ): Promise<StepSaveResponse> {
-
-    if (isEditing && developerId) {
-      // Use POST for editing existing contact - add id to existing buildPartnerDTO structure
-      const url = buildApiUrl(API_ENDPOINTS.BUILD_PARTNER_CREATE.CONTACT_SAVE)
+    if (isEditing && data.id) {
+      // Use PUT for updating existing contact with ID
+      const url = buildApiUrl(
+        API_ENDPOINTS.BUILD_PARTNER_CONTACT.UPDATE(data.id.toString())
+      )
+      // Destructure to remove any existing buildPartnerDTO to avoid sending nested data
+      const { buildPartnerDTO, ...contactDataWithoutBuildPartner } = data
       const requestData = {
-        ...data,
-        buildPartnerDTO: { id: parseInt(developerId) },
+        ...contactDataWithoutBuildPartner,
+        // Preserve workflow-related fields from original data
+        enabled: true,
+        deleted: false,
+        workflowStatus: data.workflowStatus ?? null,
+        buildPartnerDTO: { id: parseInt(developerId || '0') },
       }
 
-      const response = await apiClient.post<StepSaveResponse>(url, requestData)
+      const response = await apiClient.put<StepSaveResponse>(url, requestData)
       return response
     } else {
       // Use POST for creating new contact
       const url = buildApiUrl(API_ENDPOINTS.BUILD_PARTNER_CREATE.CONTACT_SAVE)
+      // Destructure to remove any existing buildPartnerDTO to avoid sending nested data
+      const { buildPartnerDTO, ...contactDataWithoutBuildPartner } = data
+      const requestData = {
+        ...contactDataWithoutBuildPartner,
+        buildPartnerDTO: developerId
+          ? { id: parseInt(developerId) }
+          : undefined,
+      }
 
-      const response = await apiClient.post<StepSaveResponse>(url, data)
+      const response = await apiClient.post<StepSaveResponse>(url, requestData)
       return response
     }
+  }
+
+  async deleteBuildPartnerContact(contactId: string | number): Promise<void> {
+    const url = buildApiUrl(
+      API_ENDPOINTS.BUILD_PARTNER_CONTACT.SOFT_DELETE(contactId.toString())
+    )
+    await apiClient.delete(url)
+  }
+
+  async getBuildPartnerContactById(
+    contactId: string
+  ): Promise<BuildPartnerContactResponse> {
+    const url = buildApiUrl(`/build-partner-contact/${contactId}`)
+    const response = await apiClient.get<BuildPartnerContactResponse>(url)
+    return response
+  }
+
+  async deleteBuildPartnerFee(feeId: string | number): Promise<void> {
+    const url = buildApiUrl(
+      API_ENDPOINTS.BUILD_PARTNER_FEES.SOFT_DELETE(feeId.toString())
+    )
+    await apiClient.delete(url)
+  }
+
+  async getBuildPartnerFeeById(feeId: string | number): Promise<unknown> {
+    const url = buildApiUrl(
+      API_ENDPOINTS.BUILD_PARTNER_FEES.GET_FEE_BY_ID(feeId.toString())
+    )
+    const response = await apiClient.get(url)
+    return response
   }
 
   async saveBuildPartnerFees(
@@ -601,13 +757,14 @@ export class BuildPartnerService {
     isEditing = false,
     developerId?: string
   ): Promise<StepSaveResponse> {
-
     if (isEditing && developerId) {
       // Use POST for editing existing fees - wrap data with isEditing and developerId
       const url = buildApiUrl(API_ENDPOINTS.BUILD_PARTNER_CREATE.FEES_SAVE)
+      // Destructure to remove any existing buildPartnerDTO to avoid sending nested data
+      const { buildPartnerDTO, ...feesDataWithoutBuildPartner } = data as any
       const requestData = {
         data: {
-          ...data,
+          ...feesDataWithoutBuildPartner,
           buildPartnerDTO: { id: parseInt(developerId) },
         },
         isEditing: false,
@@ -630,27 +787,27 @@ export class BuildPartnerService {
     isEditing = false,
     developerId?: string
   ): Promise<unknown> {
-
     try {
-      if (isEditing && developerId) {
-        // Use POST for editing existing individual fee - wrap data with isEditing and developerId
+      const feeId = (data as any).id
+
+      if (isEditing && feeId) {
+        // Use PUT for updating existing individual fee
+        const url = buildApiUrl(
+          API_ENDPOINTS.BUILD_PARTNER_FEES.UPDATE(feeId.toString())
+        )
+        // Destructure to remove any existing buildPartnerDTO to avoid sending nested data
+        const { buildPartnerDTO, ...feeDataWithoutBuildPartner } = data as any
         const requestData = {
-          data: {
-            ...data,
-            buildPartnerDTO: { id: parseInt(developerId) },
-          },
-          isEditing: false,
-          developerId: developerId,
+          ...feeDataWithoutBuildPartner,
+          enabled: true,
+          deleted: false,
+          buildPartnerDTO: { id: parseInt(developerId || '0') },
         }
 
-        const result = await apiClient.post(
-          buildApiUrl(API_ENDPOINTS.BUILD_PARTNER_FEES.SAVE),
-          requestData
-        )
+        const result = await apiClient.put(url, requestData)
         return result
       } else {
-        // Use POST for creating new individual fee - send data directly
-
+        // Use POST for creating new individual fee
         const result = await apiClient.post(
           buildApiUrl(API_ENDPOINTS.BUILD_PARTNER_FEES.SAVE),
           data
@@ -665,28 +822,44 @@ export class BuildPartnerService {
   async saveBuildPartnerBeneficiary(
     data: BuildPartnerBeneficiaryData,
     isEditing = false,
-    developerId?: string
+    developerId?: string,
+    beneficiaryId?: string | number
   ): Promise<StepSaveResponse> {
-
-    if (isEditing && developerId) {
-      // Use POST for editing existing beneficiary - add id to existing buildPartnerDTO structure
+    if (isEditing && beneficiaryId) {
+      // Use PUT for editing existing beneficiary
       const url = buildApiUrl(
-        API_ENDPOINTS.BUILD_PARTNER_CREATE.BENEFICIARY_SAVE
+        API_ENDPOINTS.BUILD_PARTNER_BENEFICIARY.UPDATE(String(beneficiaryId))
       )
+      // Destructure to remove any existing buildPartnerDTO or buildPartnerId to avoid sending nested data
+      const { buildPartnerDTO, buildPartnerId, ...beneficiaryDataClean } =
+        data as any
       const requestData = {
-        ...data,
-        buildPartnerDTO: { id: parseInt(developerId) },
+        ...beneficiaryDataClean,
+        enabled: true,
+        deleted: false,
+        ...(developerId && {
+          buildPartnerDTO: [{ id: parseInt(developerId) }],
+        }),
       }
 
-      const response = await apiClient.post<StepSaveResponse>(url, requestData)
+      const response = await apiClient.put<StepSaveResponse>(url, requestData)
       return response
     } else {
       // Use POST for creating new beneficiary
       const url = buildApiUrl(
         API_ENDPOINTS.BUILD_PARTNER_CREATE.BENEFICIARY_SAVE
       )
+      // Destructure to remove any existing buildPartnerDTO or buildPartnerId to avoid sending nested data
+      const { buildPartnerDTO, buildPartnerId, ...beneficiaryDataClean } =
+        data as any
+      const requestData = {
+        ...beneficiaryDataClean,
+        ...(developerId && {
+          buildPartnerDTO: [{ id: parseInt(developerId) }],
+        }),
+      }
 
-      const response = await apiClient.post<StepSaveResponse>(url, data)
+      const response = await apiClient.post<StepSaveResponse>(url, requestData)
       return response
     }
   }
@@ -703,10 +876,54 @@ export class BuildPartnerService {
         API_ENDPOINTS.BUILD_PARTNER_BENEFICIARY.GET_BY_ID(buildPartnerId)
       )
 
-      const response =
-        await apiClient.get<BuildPartnerBeneficiaryResponse[]>(url)
+      const response = await apiClient.get<{
+        content: BuildPartnerBeneficiaryResponse[]
+        page: {
+          size: number
+          number: number
+          totalElements: number
+          totalPages: number
+        }
+      }>(url)
 
-      return response || []
+      return response?.content || []
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // Get beneficiaries with pagination
+  async getBuildPartnerBeneficiariesPaginated(
+    buildPartnerId?: string,
+    page = 0,
+    size = 20
+  ): Promise<PaginatedResponse<BuildPartnerBeneficiaryResponse>> {
+    try {
+      if (!buildPartnerId) {
+        return {
+          content: [],
+          page: {
+            size,
+            number: page,
+            totalElements: 0,
+            totalPages: 0,
+          },
+        }
+      }
+
+      const url = buildApiUrl(
+        API_ENDPOINTS.BUILD_PARTNER_BENEFICIARY.GET_BY_ID(buildPartnerId)
+      )
+      const params = buildPaginationParams(page, size)
+      const queryString = new URLSearchParams(params).toString()
+      const finalUrl = `${url}&${queryString}`
+
+      const response =
+        await apiClient.get<PaginatedResponse<BuildPartnerBeneficiaryResponse>>(
+          finalUrl
+        )
+
+      return response
     } catch (error) {
       throw error
     }
@@ -749,17 +966,39 @@ export class BuildPartnerService {
     }
   }
 
-  // Delete a beneficiary
+  // Delete a beneficiary (soft delete)
   async deleteBuildPartnerBeneficiary(id: string): Promise<void> {
     try {
       const url = buildApiUrl(
-        API_ENDPOINTS.BUILD_PARTNER_BENEFICIARY.DELETE(id)
+        API_ENDPOINTS.BUILD_PARTNER_BENEFICIARY.SOFT_DELETE(id)
       )
 
       await apiClient.delete(url)
     } catch (error) {
       throw error
     }
+  }
+
+  // Soft delete a beneficiary
+  async softDeleteBuildPartnerBeneficiary(id: string): Promise<void> {
+    try {
+      const url = buildApiUrl(
+        API_ENDPOINTS.BUILD_PARTNER_BENEFICIARY.SOFT_DELETE(id)
+      )
+
+      await apiClient.delete(url)
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // Get a specific beneficiary by ID for editing
+  async getBuildPartnerBeneficiaryById(
+    beneficiaryId: string | number
+  ): Promise<unknown> {
+    const url = buildApiUrl(`/build-partner-beneficiary/${beneficiaryId}`)
+    const response = await apiClient.get(url)
+    return response
   }
 
   async saveBuildPartnerReview(
@@ -772,7 +1011,7 @@ export class BuildPartnerService {
   // Get uploaded documents for any entity with configurable module
   async getBuildPartnerDocuments(
     entityId: string,
-    module: string = 'BUILD_PARTNER',
+    module: string,
     page: number = 0,
     size: number = 20
   ): Promise<PaginatedDocumentResponse> {
@@ -809,8 +1048,8 @@ export class BuildPartnerService {
   async uploadBuildPartnerDocument(
     file: File,
     entityId: string,
-    documentType?: string,
-    module: string = 'BUILD_PARTNER'
+    module: string,
+    documentType?: string
   ): Promise<ApiDocumentResponse> {
     try {
       const formData = new FormData()
@@ -925,15 +1164,6 @@ export class BuildPartnerService {
       bpbSwiftCode: uiData.bpbSwiftCode as string,
       bpbRoutingCode: uiData.bpbRoutingCode as string,
       bpbAccountNumber: uiData.bpbAccountNumber as string,
-
-      // bpbBeneficiaryId: uiData.bpbBeneficiaryId as string,
-      // bpbBeneficiaryType: uiData.bpbBeneficiaryType as string,
-      // bpbName: uiData.bpbName as string,
-      // bpbBankName: uiData.bpbBankName as string,
-      // bpbSwiftCode: uiData.bpbSwiftCode as string,
-      // bpbRoutingCode: uiData.bpbRoutingCode as string,
-      // bpbAccountNumber: uiData.bpbAccountNumber as string,
-
     }
   }
 
@@ -976,7 +1206,7 @@ export class BuildPartnerService {
       const response = await apiClient.get(url)
       // Handle both single object and paginated response formats
       let buildPartners: BuildPartner[] = []
-      
+
       if (Array.isArray(response)) {
         // Direct array response
         buildPartners = response
@@ -989,7 +1219,7 @@ export class BuildPartnerService {
           buildPartners = [response as BuildPartner]
         }
       }
-      
+
       return buildPartners
     } catch (error) {
       throw new Error('Failed to search build partners')
@@ -997,8 +1227,6 @@ export class BuildPartnerService {
   }
   // Data mapping functions for fees
   mapFeeResponseToUIData(apiData: BuildPartnerFeeResponse): FeeUIData {
-   
-
     const mapped = {
       id: apiData.id.toString(),
       feeType:
@@ -1010,6 +1238,10 @@ export class BuildPartnerService {
         apiData.bpFeeFrequencyDTO?.settingValue ||
         '',
       debitAmount: apiData.debitAmount?.toString() || '',
+      debitAccount:
+        apiData.bpAccountTypeDTO?.languageTranslationId?.configValue ||
+        apiData.bpAccountTypeDTO?.settingValue ||
+        '',
       feeToBeCollected: apiData.feeCollectionDate || '',
       nextRecoveryDate: apiData.feeNextRecoveryDate || '',
       feePercentage: apiData.feePercentage?.toString() || '',

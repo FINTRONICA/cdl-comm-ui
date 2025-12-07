@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from 'react'
 import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
 import { DateRangePicker } from './components/filters/DateRangePicker'
-import { Header } from '@/components/organisms/Header'
+import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { Autocomplete } from '@/components/atoms/Autocomplete'
+import { GlobalLoading, GlobalError } from '@/components/atoms'
 import { useSidebarConfig } from '@/hooks/useSidebarConfig'
 import { useDashboardSummary } from '@/hooks/useDashboard'
 import { useBuildPartnerAutocomplete } from '@/hooks/useBuildPartnerAutocomplete'
@@ -84,7 +85,8 @@ const developersData = [
 ]
 
 const getDonutChartOptions = (
-  data: Array<{ name: string; y: number; color: string }>
+  data: Array<{ name: string; y: number; color: string }>,
+  isDark: boolean = false
 ) => ({
   chart: {
     type: 'pie',
@@ -114,6 +116,12 @@ const getDonutChartOptions = (
   ],
   credits: {
     enabled: false,
+  },
+  tooltip: {
+    backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+    style: {
+      color: isDark ? '#F3F4F6' : '#1F2937',
+    },
   },
 })
 
@@ -178,7 +186,7 @@ const DateRangeDisplay = ({
   return (
     <div ref={containerRef} className="relative">
       <div
-        className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer flex items-center gap-3"
+        className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 cursor-pointer flex items-center gap-3"
         onClick={() => setIsOpen(!isOpen)}
       >
         <svg
@@ -205,7 +213,7 @@ const DateRangeDisplay = ({
             startDate={startDate}
             endDate={endDate}
             onChange={onDateChange}
-            className="bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-full"
+            className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg dark:shadow-gray-900/50 p-4 w-full"
           />
         </div>
       )}
@@ -213,7 +221,13 @@ const DateRangeDisplay = ({
   )
 }
 
-const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
+const FiltersRow = ({
+  onSubmit,
+  isSubmitting,
+}: {
+  onSubmit?: () => void
+  isSubmitting?: boolean
+}) => {
   const [selectedDeveloper, setSelectedDeveloper] = useState('')
   const [selectedBuildPartner, setSelectedBuildPartner] =
     useState<BuildPartner | null>(null)
@@ -252,13 +266,10 @@ const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
     setSelectedDeveloper(value)
   }
 
-  // Handle build partner option selection (gets the complete object)
   const handleBuildPartnerOptionSelect = (option: any) => {
     setSelectedBuildPartnerOption(option)
     if (option.buildPartner) {
       setSelectedBuildPartner(option.buildPartner)
-      // Here you can use the complete build partner object for other API calls
-      // For example: option.buildPartner.id, option.buildPartner.bpName, etc.
     }
   }
 
@@ -267,13 +278,10 @@ const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
     setSelectedProject(value)
   }
 
-  // Handle real estate asset option selection (gets the complete object)
   const handleRealEstateAssetOptionSelect = (option: any) => {
     setSelectedRealEstateAssetOption(option)
     if (option.realEstateAsset) {
       setSelectedRealEstateAsset(option.realEstateAsset)
-      // Here you can use the complete real estate asset object for other API calls
-      // For example: option.realEstateAsset.id, option.realEstateAsset.reaName, etc.
     }
   }
 
@@ -281,13 +289,6 @@ const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
   React.useEffect(() => {
     if (selectedBuildPartner) {
       // Example of accessing build partner data for other API calls:
-      // const partnerId = selectedBuildPartner.id
-      // const partnerName = selectedBuildPartner.bpName
-      // const developerId = selectedBuildPartner.bpDeveloperId
-      // const cif = selectedBuildPartner.bpCifrera
-      // const email = selectedBuildPartner.bpEmail
-      // const mobile = selectedBuildPartner.bpMobile
-      // You can use these values to call other APIs that need build partner information
     }
   }, [selectedBuildPartner])
 
@@ -295,19 +296,14 @@ const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
   React.useEffect(() => {
     if (selectedRealEstateAsset) {
       // Example of accessing real estate asset data for other API calls:
-      // const assetId = selectedRealEstateAsset.id
-      // const assetName = selectedRealEstateAsset.reaName
-      // const assetLocation = selectedRealEstateAsset.reaLocation
-      // const buildPartnerId = selectedRealEstateAsset.buildPartnerDTO?.id
-      // You can use these values to call other APIs that need real estate asset information
     }
   }, [selectedRealEstateAsset])
 
   return (
-    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-4 mb-6 mt-8">
+    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-4 mb-6 mt-2">
       <div className="flex flex-wrap gap-3">
         <div className="flex flex-col">
-          <label className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
             Build Partner
           </label>
           <Autocomplete
@@ -326,7 +322,7 @@ const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
         </div>
 
         <div className="flex flex-col">
-          <label className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
             Build Partner Assets
           </label>
           <Autocomplete
@@ -345,7 +341,7 @@ const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
         </div>
 
         <div className="flex flex-col">
-          <label className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
             Date
           </label>
           <DateRangeDisplay
@@ -356,8 +352,9 @@ const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
         </div>
         <div className="flex flex-col items-center justify-end mb-[2px]">
           <button
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-600 transition-colors"
+            className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={onSubmit}
+            disabled={isSubmitting}
           >
             Submit
           </button>
@@ -368,25 +365,34 @@ const FiltersRow = ({ onSubmit }: { onSubmit?: () => void }) => {
 }
 
 const MainBalance = ({ dashboardData }: { dashboardData: any }) => (
-  <div className="mb-8 mt-8 pb-8 border-b border-gray-200">
-    <h1 className="text-2xl lg:text-3xl font-semibold text-gray-900 mb-2 leading-tight">
-      Available balance in account's
+  <div className="mb-8 mt-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+    <h1 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 leading-tight">
+      Available Balance in Accounts
     </h1>
-    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-6">
+    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-6">
       MAIN TRUST ACCOUNT SUMMARY
     </div>
-    <div className="flex gap-6">
-      <div className="text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 leading-none">
-        ₹
-        {formatIndianCurrency(
-          dashboardData?.mainTrustSummary?.availableBalance
-        )}
+    <div className="flex flex-wrap items-baseline gap-4 lg:gap-6">
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
+          ₹
+        </span>
+        <span className="text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 leading-none">
+          {formatIndianCurrency(
+            dashboardData?.mainTrustSummary?.availableBalance
+          )}
+        </span>
       </div>
       <div className="flex flex-col">
-        <div className="text-xl lg:text-2xl font-semibold text-gray-900 leading-tight">
+        <div className="text-xl lg:text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-tight">
           CRORE
         </div>
-        <TrendBadge value="12% vs last month" isPositive />
+        <TrendBadge
+          value={`${dashboardData?.mainTrustSummary?.depositVsLastPeriodPercent || 12}% vs last month`}
+          isPositive={
+            dashboardData?.mainTrustSummary?.depositVsLastPeriodPercent >= 0
+          }
+        />
       </div>
     </div>
   </div>
@@ -421,7 +427,7 @@ const CustomLegend = ({
           className="w-3 h-3 rounded-sm flex-shrink-0"
           style={{ backgroundColor: entry.color }}
         />
-        <span className="text-gray-600 text-sm font-medium leading-relaxed">
+        <span className="text-gray-600 dark:text-gray-400 text-sm font-medium leading-relaxed">
           {entry.name}
         </span>
       </div>
@@ -441,36 +447,58 @@ const KpiCard = ({
   trend: { value: string; isPositive: boolean }
   data: Array<{ name: string; y: number; color: string }>
   className?: string
-}) => (
-  <div
-    className={`bg-white rounded-xl shadow-sm border border-gray-200 h-full p-6 ${className}`}
-  >
-    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
-      {title}
-    </div>
-    <div className="flex items-baseline gap-1 mb-8 flex-col">
-      <div className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight">
-        ₹{formatIndianCurrency(amount)}
+}) => {
+  const [isDark, setIsDark] = React.useState(false)
+
+  React.useEffect(() => {
+    // Check if dark mode is active
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+
+    checkDarkMode()
+
+    // Watch for changes
+    const observer = new MutationObserver(checkDarkMode)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 h-full p-6 ${className}`}
+    >
+      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+        {title}
       </div>
-      <div className="-mt-1 -mb-1">
-        <TrendBadge {...trend} />
-      </div>
-    </div>
-    <div className="flex items-center justify-between h-80 flex-col">
-      <div className="flex-1 flex justify-center">
-        <div className="w-40 h-40">
-          <HighchartsReact
-            highcharts={Highcharts}
-            options={getDonutChartOptions(data)}
-          />
+      <div className="flex items-baseline gap-1 mb-8 flex-col">
+        <div className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
+          ₹{formatIndianCurrency(amount)}
+        </div>
+        <div className="-mt-1 -mb-1">
+          <TrendBadge {...trend} />
         </div>
       </div>
-      <div className="flex-1 flex items-center justify-start pl-6 mt-4">
-        <CustomLegend data={data} />
+      <div className="flex items-center justify-between h-[330px] flex-col">
+        <div className="flex-1 flex justify-center w-full">
+          <div className="w-48 h-48">
+            <HighchartsReact
+              highcharts={Highcharts}
+              options={getDonutChartOptions(data, isDark)}
+            />
+          </div>
+        </div>
+        <div className="flex-1 flex items-start justify-center w-full px-4">
+          <CustomLegend data={data} />
+        </div>
       </div>
     </div>
-  </div>
-)
+  )
+}
 
 const AccountCard = ({
   type,
@@ -491,15 +519,15 @@ const AccountCard = ({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 w-full">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 p-6 w-full">
       <div className="flex items-center gap-3 mb-4">
         <div className={`w-3 h-3 rounded-full border-2 ${iconColors[type]}`} />
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           {title}
         </div>
       </div>
       <div className="flex items-baseline gap-1 flex-col">
-        <div className="text-xl font-bold text-gray-900 leading-tight">
+        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
           ₹{formatIndianCurrency(amount)}
         </div>
         <div className="-mt-1 -mb-1">
@@ -517,16 +545,33 @@ const StatusBars = ({
   data: Array<{ name: string; y: number; color: string }>
   total: string
 }) => {
+  const [isDark, setIsDark] = React.useState(false)
+
+  React.useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+    checkDarkMode()
+    const observer = new MutationObserver(checkDarkMode)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    return () => observer.disconnect()
+  }, [])
+
   // Dynamic chart configuration based on actual data
   const maxValue = Math.max(...data.map((item) => item.y), 100)
   const hasData = data && data.length > 0
-  const chartHeight = Math.max(200, data.length * 40 + 100) // Dynamic height based on data items
+  const chartHeight = Math.max(300, data.length * 50 + 100) // Dynamic height based on data items
 
   const statusChartOptions = {
     chart: {
       type: 'bar',
       backgroundColor: 'transparent',
       height: chartHeight,
+      marginBottom: 100,
+      marginTop: 20,
     },
     title: {
       text: null,
@@ -536,6 +581,7 @@ const StatusBars = ({
       labels: {
         style: {
           fontSize: '10px',
+          color: isDark ? '#9CA3AF' : '#6B7280',
         },
         rotation: data.length > 4 ? -45 : 0, // Rotate labels if many items
       },
@@ -547,6 +593,7 @@ const StatusBars = ({
       labels: {
         style: {
           fontSize: '10px',
+          color: isDark ? '#9CA3AF' : '#6B7280',
         },
         formatter: function (this: any) {
           return this.value + '%'
@@ -607,14 +654,14 @@ const StatusBars = ({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full p-6">
-      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 h-full p-6">
+      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
         UNIT STATUS COUNT
       </div>
-      <div className="text-3xl font-bold text-gray-900 mb-8 leading-tight">
+      <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4 leading-tight">
         {total}
       </div>
-      <div className="h-48">
+      <div className="h-[330px] overflow-hidden">
         <HighchartsReact highcharts={Highcharts} options={statusChartOptions} />
       </div>
     </div>
@@ -628,16 +675,33 @@ const GuaranteeChart = ({
   data: Array<{ name: string; y: number; color: string }>
   total: string
 }) => {
+  const [isDark, setIsDark] = React.useState(false)
+
+  React.useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+    checkDarkMode()
+    const observer = new MutationObserver(checkDarkMode)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    return () => observer.disconnect()
+  }, [])
+
   // Dynamic chart configuration based on actual data
   const maxValue = Math.max(...data.map((item) => item.y), 1)
   const hasData = data && data.length > 0
-  const chartHeight = Math.max(200, data.length * 50 + 100) // Dynamic height based on data items
+  const chartHeight = Math.max(300, data.length * 50 + 100) // Dynamic height based on data items
 
   const guaranteeChartOptions = {
     chart: {
       type: 'column',
       backgroundColor: 'transparent',
       height: chartHeight,
+      marginBottom: 100,
+      marginTop: 20,
     },
     title: {
       text: null,
@@ -647,6 +711,7 @@ const GuaranteeChart = ({
       labels: {
         style: {
           fontSize: '10px',
+          color: isDark ? '#9CA3AF' : '#6B7280',
         },
         rotation: data.length > 3 ? -45 : 0, // Rotate labels if many items
       },
@@ -656,11 +721,13 @@ const GuaranteeChart = ({
         text: 'Cr INR',
         style: {
           fontSize: '10px',
+          color: isDark ? '#9CA3AF' : '#6B7280',
         },
       },
       labels: {
         style: {
           fontSize: '10px',
+          color: isDark ? '#9CA3AF' : '#6B7280',
         },
         formatter: function (this: any) {
           return (this.value / 10000000).toFixed(1) + ' Cr' // Convert to crores
@@ -721,14 +788,14 @@ const GuaranteeChart = ({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full p-6">
-      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 h-full p-6">
+      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
         GUARANTEE STATUS
       </div>
-      <div className="text-3xl font-bold text-gray-900 mb-8 leading-tight">
+      <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8 leading-tight">
         {total}
       </div>
-      <div className="h-48">
+      <div className="h-[330px] overflow-hidden">
         <HighchartsReact
           highcharts={Highcharts}
           options={guaranteeChartOptions}
@@ -741,10 +808,11 @@ const GuaranteeChart = ({
 const Dashboard = () => {
   const { getLabelResolver } = useSidebarConfig()
   const dashboardTitle = getLabelResolver
-    ? getLabelResolver('dashboard', 'Dashboard')
-    : 'Dashboard'
+    ? getLabelResolver('dashboard', 'Command Center')
+    : 'Command Center'
 
-  // Use the dashboard hook with authentication
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const {
     data: dashboardData,
     isLoading,
@@ -752,50 +820,17 @@ const Dashboard = () => {
     refetch,
   } = useDashboardSummary(true)
 
-  // Handle submit button click - refresh dashboard data
   const handleSubmit = async () => {
     try {
-      // Refetch dashboard data with current selections
+      setIsSubmitting(true)
       await refetch()
-    } catch (error) {}
+    } catch (error) {
+      console.error('Error refetching dashboard data:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  // Transform API data to chart format
-  // Real API response structure:
-  // {
-  //   "mainTrustSummary": {
-  //     "availableBalance": 4.0E7,
-  //     "totalDeposits": 6.0E7,
-  //     "totalPayments": 2.0E7,
-  //     "totalFeesCollected": 3000000.0,
-  //     "depositVsLastPeriodPercent": -8.0,
-  //     "paymentVsLastPeriodPercent": 6.0,
-  //     "feesVsLastPeriodPercent": 2.0,
-  //     "depositBreakdown": [...],
-  //     "expenseBreakdown": [...],
-  //     "feesBreakdown": [...]
-  //   },
-  //   "otherAccounts": [...],
-  //   "unitStatus": {
-  //     "totalUnitsCount": 20678,
-  //     "items": [
-  //       { "unitStatus": "Sold", "count": 12407 },
-  //       { "unitStatus": "Unsold", "count": 15715 },
-  //       { "unitStatus": "Freeze", "count": 15715 },
-  //       { "unitStatus": "Resold", "count": 9256 },
-  //       { "unitStatus": "Cancelled", "count": 11586 }
-  //     ]
-  //   },
-  //   "guaranteeStatus": {
-  //     "totalGuaranteesCount": 3,
-  //     "totalGuaranteedAmount": 14267900.0,
-  //     "items": [
-  //       { "guaranteeType": "Advanced Guarantee", "amount": 3500000.0 },
-  //       { "guaranteeType": "Retention Guarantee", "amount": 2700000.0 },
-  //       { "guaranteeType": "Performance Guarantee", "amount": 8067900.0 }
-  //     ]
-  //   }
-  // }
   const transformApiDataToCharts = (data: any) => {
     // Debug: Log the actual API response structure
     if (data) {
@@ -892,10 +927,7 @@ const Dashboard = () => {
       }))
     }
 
-    // Transform unit status data to chart format
     const transformUnitStatus = (_unitStatusData: any) => {
-      // For now, let's use static data to ensure the chart displays something
-      // TODO: Replace with real API data once the structure is confirmed
       return statusData
     }
 
@@ -1011,39 +1043,35 @@ const Dashboard = () => {
     return transformedData
   }
 
-  // Get transformed data
   const chartData = transformApiDataToCharts(dashboardData)
   // Loading state
-  if (isLoading) {
+  if (isLoading || isSubmitting) {
     return (
-      <div className="min-h-screen bg-gray-100 p-4 lg:p-6 h-full overflow-auto">
-        <Header title={dashboardTitle} subtitle="" className="!p-0" />
-        <div className="w-full flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600">Loading...</div>
-        </div>
-      </div>
+      <DashboardLayout title={dashboardTitle} subtitle="">
+        <GlobalLoading fullHeight />
+      </DashboardLayout>
     )
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 p-4 lg:p-6 h-full overflow-auto">
-        <Header title={dashboardTitle} subtitle="" className="!p-0" />
-        <div className="w-full flex items-center justify-center h-64">
-          <div className="text-lg text-red-600">
-            Error loading dashboard data. Please try again.
-          </div>
+      <DashboardLayout title={dashboardTitle} subtitle="">
+        <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full">
+          <GlobalError
+            error={error}
+            onRetry={() => window.location.reload()}
+            title="Error loading dashboard data"
+            fullHeight
+          />
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 lg:p-8 h-full overflow-auto">
-      <Header title={dashboardTitle} subtitle="" className="!p-0" />
+    <DashboardLayout title={dashboardTitle} subtitle="">
       <div className="w-full max-w-7xl mx-auto">
-        <FiltersRow onSubmit={handleSubmit} />
+        <FiltersRow onSubmit={handleSubmit} isSubmitting={isSubmitting} />
 
         <MainBalance dashboardData={dashboardData} />
 
@@ -1112,36 +1140,9 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-
-          {/* <div className="xl:col-span-3 space-y-6">
-            <AccountCard
-              type="retention"
-              title="RETENTION ACCOUNT"
-              amount={chartData.accountData.retention}
-              trend={chartData.trends.retention}
-            />
-            <AccountCard
-              type="wakala"
-              title="WAKALA ACCOUNT"
-              amount={chartData.accountData.wakala}
-              trend={chartData.trends.wakala}
-            />
-            <AccountCard
-              type="corporate"
-              title="CORPORATE ACCOUNT"
-              amount={chartData.accountData.corporate}
-              trend={chartData.trends.corporate}
-            />
-            <AccountCard
-              type="trust"
-              title="TRUST ACCOUNT"
-              amount={chartData.accountData.trust}
-              trend={chartData.trends.trust}
-            />
-          </div> */}
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }
 

@@ -69,8 +69,8 @@ export interface JWTPayload {
 
 export class AuthService {
   private static readonly JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
-  private static readonly JWT_EXPIRES_IN = '8h';
-  private static readonly REFRESH_TOKEN_EXPIRES_IN = '7d';
+  private static readonly JWT_EXPIRES_IN = '30m'; 
+  private static readonly REFRESH_TOKEN_EXPIRES_IN = '30m';
 
   // Generate JWT token
   static generateToken(user: User): string {
@@ -100,7 +100,7 @@ export class AuthService {
     try {
       return jwt.verify(token, this.JWT_SECRET) as JWTPayload;
     } catch (error) {
-      console.error('Token verification failed:', error);
+     
       return null;
     }
   }

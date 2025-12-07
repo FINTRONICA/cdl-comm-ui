@@ -1,0 +1,1003 @@
+import React, { useState, useEffect, useCallback } from 'react'
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  FormControl,
+  FormHelperText,
+  Grid,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  OutlinedInput,
+  Select,
+  TextField,
+  Typography,
+  useTheme,
+  SxProps,
+  Theme,
+  alpha,
+} from '@mui/material'
+import {
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material'
+import { LocalizationProvider } from '@mui/x-date-pickers'
+import { Controller, useFormContext } from 'react-hook-form'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { getAgreementLabel } from '@/constants/mappings/master/Entity/agreementMapping'
+import { useAgreementLabelsWithCache } from '@/hooks'
+import { useAppStore } from '@/store'
+import { agreementService } from '@/services/api/masterApi/Entitie/agreementService'
+import { validateAgreementField } from '@/lib/validation/masterValidation/agreementSchemasSchemas'
+import {
+  commonFieldStyles as sharedCommonFieldStyles,
+  selectStyles as sharedSelectStyles,
+  labelSx as sharedLabelSx,
+  valueSx as sharedValueSx,
+  cardStyles as sharedCardStyles,
+  viewModeInputStyles,
+  neutralBorder,
+  neutralBorderHover,
+} from '../styles'
+
+interface Step1Props {
+  isReadOnly?: boolean
+  agreementId?: string | undefined
+}
+
+const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
+  const theme = useTheme()
+  const isDark = theme.palette.mode === 'dark'
+  const textPrimary = isDark ? '#FFFFFF' : '#1E2939'
+  const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
+  const fieldStyles = React.useMemo(() => {
+    if (typeof sharedCommonFieldStyles === 'function') {
+      return sharedCommonFieldStyles(theme)
+    }
+    return sharedCommonFieldStyles
+  }, [theme])
+  
+  const selectFieldStyles = React.useMemo(() => {
+    if (typeof sharedSelectStyles === 'function') {
+      return sharedSelectStyles(theme)
+    }
+    return sharedSelectStyles
+  }, [theme])
+  
+  const labelStyles = React.useMemo(() => {
+    if (typeof sharedLabelSx === 'function') {
+      return sharedLabelSx(theme)
+    }
+    return sharedLabelSx
+  }, [theme])
+  
+  const valueStyles = React.useMemo(() => {
+    if (typeof sharedValueSx === 'function') {
+      return sharedValueSx(theme)
+    }
+    return sharedValueSx
+  }, [theme])
+  
+  const cardBaseStyles = React.useMemo(() => {
+    if (typeof sharedCardStyles === 'function') {
+      return sharedCardStyles(theme)
+    }
+    return sharedCardStyles
+  }, [theme])
+  const viewModeStyles = viewModeInputStyles(theme)
+  const neutralBorderColor = neutralBorder(theme)
+  const neutralBorderHoverColor = neutralBorderHover(theme)
+  const focusBorder = theme.palette.primary.main
+  // Check if we're in edit mode (existing agreement)
+  const isEditMode = !!agreementId
+  const {
+    control,
+    watch,
+    setValue,
+    trigger,
+    formState: { errors },
+  } = useFormContext()
+
+  // State for agreement ID generation
+  const [generatedId, setGeneratedId] = useState<string>('')
+  const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
+  const [isFetchingDetails, setIsFetchingDetails] = useState<boolean>(false)
+
+  // Dynamic label support
+  const { data: agreementLabels, getLabel } = useAgreementLabelsWithCache()
+  const currentLanguage = useAppStore((state) => state.language) || 'EN'
+
+  const getAgreementLabelDynamic = useCallback(
+    (configId: string): string => {
+      const fallback = getAgreementLabel(configId)
+
+      if (agreementLabels) {
+        return getLabel(configId, currentLanguage, fallback)
+      }
+      return fallback
+    },
+    [agreementLabels, currentLanguage, getLabel]
+  )
+
+  // Initialize agreement ID from form value
+  useEffect(() => {
+    const subscription = watch((value) => {
+      if (value.id) {
+        setGeneratedId(String(value.id))
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [watch])
+
+  // Populate clientName and productManagerName when agreement data is loaded (for edit mode)
+  // This ensures fields are populated even if they're not in the initial form reset
+  useEffect(() => {
+    if (!agreementId || !isEditMode) {
+      return
+    }
+
+    let isPopulating = false
+    let timeoutId: NodeJS.Timeout | null = null
+    
+    const populateFields = async () => {
+      if (isPopulating) return
+      isPopulating = true
+      
+      try {
+        // Wait a bit for form reset to complete - increased delay to ensure form is ready
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        const currentClientName = watch('clientName')
+        const currentProductManagerName = watch('productManagerName')
+        const currentCif = watch('primaryEscrowCifNumber')
+        
+        console.log('[Step1] Checking fields for population:', {
+          currentClientName,
+          currentProductManagerName,
+          currentCif,
+        })
+        
+        // Fetch agreement data to populate missing fields
+        const agreement = await agreementService.getAgreement(agreementId)
+        
+        console.log('[Step1] Fetched agreement data for population:', {
+          agreementId,
+          clientName: agreement?.clientName,
+          productManagerName: agreement?.productManagerName,
+          primaryEscrowCifNumber: agreement?.primaryEscrowCifNumber,
+        })
+        
+        // Populate clientName if it exists in API response and form field is empty
+        if (agreement?.clientName) {
+          const shouldPopulate = !currentClientName || currentClientName.trim() === ''
+          if (shouldPopulate) {
+            console.log('[Step1] Populating clientName from agreement:', agreement.clientName)
+            setValue('clientName', agreement.clientName, {
+        shouldValidate: true,
+              shouldDirty: false,
+            })
+            // Trigger validation to clear any error messages
+            setTimeout(() => {
+              trigger('clientName').catch(() => {
+                // Ignore validation errors
+              })
+            }, 100)
+          }
+        } else if (currentCif && (!currentClientName || currentClientName.trim() === '')) {
+          // If clientName is not in agreement but we have CIF, try fetching from customer details
+          try {
+            const customerDetails = await agreementService.getCustomerDetailsByCif(currentCif.trim())
+            const clientName = customerDetails?.name?.shortName || ''
+            if (clientName) {
+              console.log('[Step1] Populating clientName from customer details (shortName):', clientName)
+              setValue('clientName', clientName, {
+        shouldValidate: true,
+                shouldDirty: false,
+              })
+              // Trigger validation to clear any error messages
+              setTimeout(() => {
+                trigger('clientName').catch(() => {
+                  // Ignore validation errors
+                })
+              }, 100)
+            }
+    } catch (error) {
+            console.error('[Step1] Error fetching customer details for clientName:', error)
+          }
+        }
+        
+        // Populate productManagerName if it exists in API response and form field is empty
+        if (agreement?.productManagerName) {
+          const shouldPopulate = !currentProductManagerName || currentProductManagerName.trim() === ''
+          if (shouldPopulate) {
+            console.log('[Step1] Populating productManagerName from agreement:', agreement.productManagerName)
+            setValue('productManagerName', agreement.productManagerName, {
+              shouldValidate: true,
+              shouldDirty: false,
+            })
+          }
+        } else if (currentCif && (!currentProductManagerName || currentProductManagerName.trim() === '')) {
+          // If productManagerName is not in agreement but we have CIF, try fetching from customer details
+          try {
+            const customerDetails = await agreementService.getCustomerDetailsByCif(currentCif.trim())
+            const productManagerName = customerDetails?.name?.firstName || ''
+            if (productManagerName) {
+              console.log('[Step1] Populating productManagerName from customer details (firstName):', productManagerName)
+              setValue('productManagerName', productManagerName, {
+        shouldValidate: true,
+                shouldDirty: false,
+      })
+            }
+    } catch (error) {
+            console.error('[Step1] Error fetching customer details for productManagerName:', error)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching agreement data for form population:', error)
+    } finally {
+        isPopulating = false
+      }
+    }
+    
+    // Use a timeout to ensure form reset has completed
+    timeoutId = setTimeout(() => {
+      populateFields()
+    }, 300)
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agreementId, isEditMode])
+
+  // Handle Fetch Details button click
+  const handleFetchDetails = async () => {
+    const currentCif = watch('primaryEscrowCifNumber')
+    if (!currentCif || !currentCif.trim()) {
+      return
+    }
+
+    try {
+      setIsFetchingDetails(true)
+      // Fetch customer details from core bank API
+      const customerDetails = await agreementService.getCustomerDetailsByCif(currentCif.trim())
+
+      // Map API response to form fields:
+      // name.firstName -> productManagerName
+      // name.shortName -> clientName
+      // Handle missing fields gracefully
+      const productManagerName = customerDetails?.name?.firstName || ''
+      const clientName = customerDetails?.name?.shortName || ''
+
+      // Populate only the name fields from customer details
+      setValue('productManagerName', productManagerName, {
+            shouldValidate: true,
+        shouldDirty: true,
+      })
+      setValue('clientName', clientName, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+    } catch (error) {
+      // Log detailed error information
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to fetch customer details. Please check the CIF number and try again.'
+      
+      console.error('Error fetching customer details:', errorMessage, error)
+      
+      // Clear the fields on error to prevent showing stale data
+      setValue('productManagerName', '', {
+        shouldValidate: false,
+            shouldDirty: false,
+          })
+      setValue('clientName', '', {
+        shouldValidate: false,
+        shouldDirty: false,
+      })
+      
+      // You can add a toast notification here if needed
+      // toast.error(errorMessage)
+    } finally {
+      setIsFetchingDetails(false)
+    }
+  }
+
+  // Function to generate new agreement ID
+  const handleGenerateNewId = async () => {
+    try {
+      setIsGeneratingId(true)
+      // Generate a simple ID - can be replaced with actual service call
+      const newId = `AGR-${Date.now()}`
+      setGeneratedId(newId)
+      setValue('id', newId, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+      } catch {
+      // Handle error silently
+    } finally {
+      setIsGeneratingId(false)
+    }
+  }
+
+  // Placeholder for dropdown data - to be implemented
+  const getDisplayLabel = (option: unknown, fallback: string) => {
+    if (option && typeof option === 'object' && 'settingValue' in option) {
+      return String((option as { settingValue: string }).settingValue)
+    }
+    return fallback
+  }
+
+  // Placeholder for dropdown error state - to be implemented when dropdown hooks are added
+  // This will be populated from dropdown hooks similar to useDeveloperDropdownLabels
+  const dropdownsError: Error | null = null
+
+  const renderTextField = (
+    name: string,
+    label: string,
+    defaultValue = '',
+    gridSize: number = 6,
+    disabled = false,
+    required = false
+  ) => (
+    <Grid key={`field-${name}`} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        defaultValue={defaultValue === undefined ? '' : defaultValue}
+        rules={{
+          required: required ? `${label} is required` : false,
+          validate: (value: unknown) => validateAgreementField(0, name, value),
+        }}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            label={label}
+            fullWidth
+            required={required}
+            disabled={disabled || isReadOnly}
+            error={!!errors[name]}
+            helperText={errors[name]?.message?.toString()}
+            InputLabelProps={{
+              sx: {
+                ...labelStyles,
+                ...(!!errors[name] && {
+                  color: theme.palette.error.main,
+                  '&.Mui-focused': { color: theme.palette.error.main },
+                  '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                }),
+              },
+            }}
+            InputProps={{
+              sx: {
+                ...valueStyles,
+                ...(isReadOnly && {
+                  color: textSecondary,
+                }),
+              },
+            }}
+            sx={{
+              ...(typeof fieldStyles === 'object' ? fieldStyles : {}),
+              ...(disabled && {
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: viewModeStyles.backgroundColor,
+                  color: textSecondary,
+                  '& fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                },
+              }),
+              ...(!!errors[name] &&
+                !isReadOnly && {
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: theme.palette.error.main,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.error.main,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.error.main,
+                    },
+                  },
+                }),
+            }}
+          />
+        )}
+      />
+    </Grid>
+  )
+
+  // New render function for API-driven dropdowns (for future use)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const renderApiSelectField = (
+    name: string,
+    label: string,
+    options: unknown[],
+    gridSize: number = 6,
+    loading = false,
+    required = false
+  ) => {
+    return (
+      <Grid key={`field-${name}`} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value: unknown) => {
+              // First check if required and empty
+              if (
+                required &&
+                (!value ||
+                  value === '' ||
+                  value === null ||
+                  value === undefined)
+              ) {
+                return `${label} is required`
+              }
+              // Then run additional validation
+              const validationResult = validateAgreementField(0, name, value as unknown)
+              // validateDeveloperField returns true if valid, or an error message string if invalid
+              return validationResult
+            },
+          }}
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => {
+            return (
+            <FormControl fullWidth error={!!error} required={required}>
+              <InputLabel sx={labelStyles}>
+                {loading ? `Loading...` : label}
+              </InputLabel>
+              <Select
+                {...field}
+                value={field.value || ''}
+                input={<OutlinedInput label={loading ? `Loading...` : label} />}
+                label={loading ? `Loading...` : label}
+                IconComponent={KeyboardArrowDownIcon}
+                disabled={loading || isReadOnly}
+                  sx={
+                    typeof selectFieldStyles === 'object' && typeof valueStyles === 'object'
+                      ? ({
+                  ...selectFieldStyles,
+                  ...valueStyles,
+                  ...(isReadOnly && {
+                    backgroundColor: viewModeStyles.backgroundColor,
+                    color: textSecondary,
+                  }),
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: `1px solid ${neutralBorderColor}`,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    border: `1px solid ${neutralBorderHoverColor}`,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    border: `2px solid ${focusBorder}`,
+                  },
+                        } as SxProps<Theme>)
+                      : ({
+                          ...(isReadOnly && {
+                            backgroundColor: viewModeStyles.backgroundColor,
+                            color: textSecondary,
+                          }),
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            border: `1px solid ${neutralBorderColor}`,
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            border: `1px solid ${neutralBorderHoverColor}`,
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            border: `2px solid ${focusBorder}`,
+                          },
+                        } as SxProps<Theme>)
+                  }
+              >
+                  {options.map((option, index) => {
+                    const optionObj = option as { id?: string | number; settingValue?: string; configId?: string }
+                    return (
+                  <MenuItem
+                        key={optionObj.id || optionObj.configId || index}
+                        value={String(optionObj.id || optionObj.configId || '')}
+                  >
+                    {getDisplayLabel(
+                          option,
+                          optionObj.settingValue || optionObj.configId || 'Option'
+                    )}
+                  </MenuItem>
+                    )
+                  })}
+              </Select>
+              {error && (
+                <FormHelperText
+                  error
+                  sx={{
+                    fontFamily: 'Outfit, sans-serif',
+                    fontSize: '12px',
+                    marginLeft: '14px',
+                    marginRight: '14px',
+                    marginTop: '4px',
+                  }}
+                >
+                  {error?.message?.toString()}
+                </FormHelperText>
+              )}
+            </FormControl>
+            )
+          }}
+          />
+        </Grid>
+      )
+    }
+
+
+
+  const renderTextFieldWithButton = (
+    name: string,
+    label: string,
+    buttonText: string,
+    gridSize: number = 6,
+    required = false
+  ) => (
+    <Grid key={`agreement-step1-field-with-button-${name}`} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        defaultValue=""
+        rules={{
+          required: required ? `${label} is required` : false,
+        }}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            fullWidth
+            label={label}
+            required={required}
+            disabled={isReadOnly}
+            error={!!errors[name]}
+            helperText={errors[name]?.message?.toString()}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    sx={{
+                      color: theme.palette.primary.contrastText,
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      background: theme.palette.primary.main,
+                      '&:hover': {
+                        background: theme.palette.primary.dark,
+                      },
+                      '&:disabled': {
+                        background: theme.palette.action.disabledBackground,
+                        color: theme.palette.action.disabled,
+                      },
+                      minWidth: '100px',
+                      height: '32px',
+                      fontFamily: 'Outfit, sans-serif',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '11px',
+                      lineHeight: '14px',
+                      letterSpacing: '0.3px',
+                      px: 1,
+                    }}
+                    onClick={handleFetchDetails}
+                    disabled={isReadOnly || isFetchingDetails}
+                  >
+                    {isFetchingDetails ? 'Fetching...' : buttonText}
+                  </Button>
+                </InputAdornment>
+              ),
+              sx: valueStyles,
+            }}
+            InputLabelProps={{
+              sx: {
+                ...labelStyles,
+                ...(!!errors[name] && {
+                  color: theme.palette.error.main,
+                  '&.Mui-focused': { color: theme.palette.error.main },
+                  '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                }),
+              },
+            }}
+            sx={{
+              ...fieldStyles,
+              ...(isReadOnly && {
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: viewModeStyles.backgroundColor,
+                  color: textSecondary,
+                  '& fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                },
+              }),
+            }}
+          />
+        )}
+      />
+    </Grid>
+  )
+
+  const renderAgreementIdField = (
+    name: string,
+    label: string,
+    gridSize: number = 6,
+    required = false
+  ) => (
+    <Grid key={`field-${name}`} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        defaultValue=""
+        rules={{
+          required: required ? `${label} is required` : false,
+        }}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            fullWidth
+            label={label}
+            required={required}
+            value={field.value || generatedId}
+            error={!!errors[name]}
+            helperText={errors[name]?.message?.toString()}
+            onChange={(e) => {
+              setGeneratedId(e.target.value)
+              field.onChange(e)
+            }}
+            disabled={isReadOnly || isEditMode}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end" sx={{ mr: 0 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={handleGenerateNewId}
+                    disabled={isGeneratingId || isReadOnly || isEditMode}
+                    sx={{
+                      color: theme.palette.primary.contrastText,
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      background: theme.palette.primary.main,
+                      '&:hover': {
+                        background: theme.palette.primary.dark,
+                      },
+                      minWidth: '100px',
+                      height: '32px',
+                      fontFamily: 'Outfit, sans-serif',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '11px',
+                      lineHeight: '14px',
+                      letterSpacing: '0.3px',
+                      px: 1,
+                    }}
+                  >
+                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                  </Button>
+                </InputAdornment>
+              ),
+              sx: valueStyles,
+            }}
+            InputLabelProps={{
+              sx: {
+                ...labelStyles,
+                ...(!!errors[name] && {
+                  color: theme.palette.error.main,
+                  '&.Mui-focused': { color: theme.palette.error.main },
+                  '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                }),
+              },
+            }}
+            sx={{
+              ...fieldStyles,
+              ...((isReadOnly || isEditMode) && {
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: viewModeStyles.backgroundColor,
+                  color: textSecondary,
+                  '& fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                },
+              }),
+            }}
+          />
+        )}
+      />
+    </Grid>
+  )
+
+  return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Card
+        sx={{
+          ...cardBaseStyles,
+          width: '84%',
+          margin: '0 auto',
+        }}
+      >
+        <CardContent sx={{ color: textPrimary }}>
+          {/* Show error if dropdowns fail to load */}
+          {dropdownsError && (
+            <Box
+              sx={{
+                mb: 2,
+                p: 1,
+                bgcolor: isDark
+                  ? alpha(theme.palette.error.main, 0.15)
+                  : '#fef2f2',
+                borderRadius: 1,
+                border: `1px solid ${alpha(theme.palette.error.main, 0.4)}`,
+              }}
+            >
+              <Typography variant="body2" color="error">
+                ⚠️ Failed to load dropdown options. Using fallback values.
+              </Typography>
+            </Box>
+          )}
+
+          <Grid container rowSpacing={4} columnSpacing={2}>
+            {renderAgreementIdField(
+              'id',
+              getAgreementLabelDynamic('CDL_ESCROW_AGREEMENT_ID'),
+              6,
+              true
+            )}
+            {renderTextFieldWithButton(
+              'primaryEscrowCifNumber',
+              getAgreementLabelDynamic('CDL_ESCROW_CIF_NUMBER'),
+              'Fetch Details',
+              6,
+              true
+            )}
+            <Grid key="field-productManagerName" size={{ xs: 12, md: 6 }}>
+              <Controller
+                name="productManagerName"
+                control={control}
+                defaultValue=""
+                rules={{
+                  required: `${getAgreementLabelDynamic('CDL_ESCROW_PRODUCT_MANAGET_NAME')} is required`,
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label={`${getAgreementLabelDynamic('CDL_ESCROW_PRODUCT_MANAGET_NAME')}`}
+                    fullWidth
+                    required={true}
+                    disabled={true}
+                    error={!!errors['productManagerName']}
+                    helperText={errors['productManagerName']?.message?.toString()}
+                    InputLabelProps={{ sx: labelStyles }}
+                    InputProps={{
+                      sx: {
+                        ...valueStyles,
+                        color: textSecondary,
+                      },
+                    }}
+                    sx={{
+                      ...fieldStyles,
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: viewModeStyles.backgroundColor,
+                        '& fieldset': {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                        '&:hover fieldset': {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                      },
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid key="field-clientName" size={{ xs: 12, md: 6 }}>
+              <Controller
+                name="clientName"
+                control={control}
+                defaultValue=""
+                rules={{
+                  required: `${getAgreementLabelDynamic('CDL_ESCROW_CLIENT_NAME')} is required`,
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label={`${getAgreementLabelDynamic('CDL_ESCROW_CLIENT_NAME')}`}
+                    fullWidth
+                    required={true}
+                    disabled={true}
+                    error={!!errors['clientName']}
+                    helperText={errors['clientName']?.message?.toString()}
+                    InputLabelProps={{ sx: labelStyles }}
+                    InputProps={{
+                      sx: {
+                        ...valueStyles,
+                        color: textSecondary,
+                      },
+                    }}
+                    sx={{
+                      ...fieldStyles,
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: viewModeStyles.backgroundColor,
+                        '& fieldset': {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                        '&:hover fieldset': {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                      },
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+            {renderTextField(
+              'relationshipManagerName',
+              getAgreementLabelDynamic('CDL_ESCROW_RM_NAME'),
+              '',
+              6,
+              false,
+              true
+            )}
+            {renderTextField(
+              'operatingLocationCode',
+              getAgreementLabelDynamic('CDL_ESCROW_OPERATING_LOCATION_CODE'),
+              '',
+              6,
+              false,
+              true
+            )}
+            {renderTextField(
+              'customField1',
+              getAgreementLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_1'),
+              '',
+              6,
+              false,
+              true
+            )}
+            {renderTextField(
+              'customField2',
+              getAgreementLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_2'),
+              '',
+              6,
+              false,
+              true
+            )}
+            {renderTextField(
+              'customField3',
+              getAgreementLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_3'),
+              '',
+              6,
+              false,
+              true
+            )}
+            {renderTextField(
+              'customField4',
+              getAgreementLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_4'),
+              '',
+              6,
+              false,
+              true
+            )}
+            {/* {renderApiSelectField(
+              'agreementParametersDTO.id',
+              getAgreementLabelDynamic('CDL_ESCROW_AGREEMENT_PARAMETERS_DTO'),
+              agreementParameters,
+              6,
+              dropdownsLoading,
+              true
+            )} */}
+          
+            {/* {renderApiSelectField(
+                'agreementParametersDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_AGREEMENT_PARAMETERS_DTO'),
+                agreementRegulatoryAuthoritiesOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'agreementFeeScheduleDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_AGREEMENT_FEE_SCHEDULE_DTO'),
+                agreementFeeScheduleOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'clientNameDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_CLIENT_NAME_DTO'),
+                clientNameOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'businessSegmentDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_BUSINESS_SEGMENT_DTO'),
+                businessSegmentOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'businessSubSegmentDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_BUSINESS_SUB_SEGMENT_DTO'),
+                businessSubSegmentOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'dealStatusDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_DEAL_STATUS_DTO'),
+                dealStatusOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'feesDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_FEES_DTO'),
+                feesOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'dealTypeDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_DEAL_TYPE_DTO'),
+                dealTypeOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'dealSubTypeDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_DEAL_SUB_TYPE_DTO'),
+                dealSubTypeOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'productProgramDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_PRODUCT_PROGRAM_DTO'),
+                productProgramOptions,
+                6,
+                dropdownsLoading,
+                true
+              )}
+              {renderApiSelectField(
+                'dealPriorityDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_DEAL_PRIORITY_DTO'),
+                dealPriorityOptions,
+                6,
+                dropdownsLoading,
+                true
+              )} */}
+            
+          </Grid>
+        </CardContent>
+      </Card>
+    </LocalizationProvider>
+  )
+}
+
+export default Step1

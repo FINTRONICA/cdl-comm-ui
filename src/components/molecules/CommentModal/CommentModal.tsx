@@ -181,7 +181,6 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   resetOnOpen = true,
 }) => {
   const [internalState, setInternalState] = useState('')
-  console.log('internalState', internalState)
   useEffect(() => {
     if (open && resetOnOpen) {
       setInternalState('')

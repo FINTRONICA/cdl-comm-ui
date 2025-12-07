@@ -55,7 +55,7 @@ export function useWorkflowAmountRuleLabelsWithCache() {
     cacheStatus: workflowAmountRuleLabels
       ? 'cached'
       : workflowAmountRuleLabelsLoading
-        ? 'loading'
+        ? 'Loading...'
         : 'fresh',
   }
 }

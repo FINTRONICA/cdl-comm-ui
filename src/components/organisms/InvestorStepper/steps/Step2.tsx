@@ -1,6 +1,11 @@
 'use client'
 
-import { useState, forwardRef, useImperativeHandle, useEffect } from 'react'
+import React, {
+  useState,
+  forwardRef,
+  useImperativeHandle,
+  useEffect,
+} from 'react'
 import {
   useUnitStatuses,
   usePropertyIds,
@@ -22,19 +27,15 @@ import { capitalPartnerUnitBookingService } from '../../../../services/api/capit
 import { capitalPartnerUnitPurchaseService } from '../../../../services/api/capitalPartnerUnitPurchaseService'
 import {
   mapStep2ToCapitalPartnerUnitPayload,
-  validateStep2Data,
   type Step2FormData,
 } from '../../../../utils/capitalPartnerUnitMapper'
 
 import {
-  Box,
   Button,
   Card,
   CardContent,
-  FormHelperText,
   Grid,
   TextField,
-  Typography,
   FormControl,
   InputLabel,
   Select,
@@ -42,6 +43,9 @@ import {
   Checkbox,
   FormControlLabel,
   InputAdornment,
+  useTheme,
+  alpha,
+  Theme,
 } from '@mui/material'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Controller, useFormContext } from 'react-hook-form'
@@ -49,6 +53,21 @@ import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs from 'dayjs'
+import { CapitalPartnerStep2Schema } from '@/lib/validation/capitalPartnerSchemas'
+import { FormError } from '../../../atoms/FormError'
+import {
+  commonFieldStyles as sharedCommonFieldStyles,
+  selectStyles as sharedSelectStyles,
+  datePickerStyles as sharedDatePickerStyles,
+  labelSx as sharedLabelSx,
+  valueSx as sharedValueSx,
+  calendarIconSx as sharedCalendarIconSx,
+  cardStyles as sharedCardStyles,
+  errorFieldStyles as sharedErrorFieldStyles,
+  viewModeInputStyles,
+  neutralBorder,
+  neutralBorderHover,
+} from '../styles'
 
 interface Step2Props {
   onSaveAndNext?: (data: any) => void
@@ -66,18 +85,26 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
     { onSaveAndNext, capitalPartnerId, isEditMode, isViewMode = false },
     ref
   ) => {
+    const theme = useTheme()
+    const textPrimary = theme.palette.mode === 'dark' ? '#FFFFFF' : '#1E2939'
+    const textSecondary = theme.palette.mode === 'dark' ? '#CBD5E1' : '#6B7280'
+    const primaryHoverBackground =
+      theme.palette.mode === 'dark'
+        ? alpha(theme.palette.primary.main as string, 0.2)
+        : alpha(theme.palette.primary.main, 0.1)
     const {
       control,
       watch,
       setValue,
       formState: { errors },
+      setError,
+      clearErrors,
+      trigger,
     } = useFormContext()
 
-    // Get labels from API
     const { getLabel } = useCapitalPartnerLabelsApi()
     const currentLanguage = useAppStore((state) => state.language)
 
-    const [saveError, setSaveError] = useState<string | null>(null)
     const [selectedProject, setSelectedProject] = useState<any>(null)
     const [isFormInitialized, setIsFormInitialized] = useState<boolean>(false)
 
@@ -85,21 +112,32 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
       setIsFormInitialized(false)
       setSelectedProject(null)
     }, [isEditMode, capitalPartnerId])
-    const {
-      data: unitStatuses,
-      loading: loadingUnitStatuses,
-      error: unitStatusesError,
-    } = useUnitStatuses()
-    const {
-      data: propertyIds,
-      loading: loadingPropertyIds,
-      error: propertyIdsError,
-    } = usePropertyIds()
-    const {
-      data: realEstateAssets,
-      loading: loadingProjects,
-      error: projectsError,
-    } = useRealEstateAssets()
+
+    // Auto-calculate Total Capital Partner Payment
+    useEffect(() => {
+      const paidInEscrow = watch('paidInEscrow')
+      const paidOutEscrow = watch('paidOutEscrow')
+
+      const inEscrowValue = parseFloat(paidInEscrow) || 0
+      const outEscrowValue = parseFloat(paidOutEscrow) || 0
+      const total = inEscrowValue + outEscrowValue
+
+      // Only set value if it's different to avoid infinite loops
+      const currentTotal = watch('totalPaid')
+      const calculatedTotal = total > 0 ? total.toString() : ''
+
+      if (currentTotal !== calculatedTotal) {
+        setValue('totalPaid', calculatedTotal, {
+          shouldValidate: true,
+          shouldDirty: true,
+        })
+      }
+    }, [watch('paidInEscrow'), watch('paidOutEscrow'), setValue, watch])
+    const { data: unitStatuses, loading: loadingUnitStatuses } =
+      useUnitStatuses()
+    const { data: propertyIds, loading: loadingPropertyIds } = usePropertyIds()
+    const { data: realEstateAssets, loading: loadingProjects } =
+      useRealEstateAssets()
 
     const projectOptions =
       transformRealEstateAssetsForDropdown(realEstateAssets)
@@ -113,6 +151,12 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
       {},
       {
         enabled: Boolean(isEditMode && capitalPartnerId),
+        // Disable caching to always fetch fresh data
+        gcTime: 0,
+        staleTime: 0,
+        // Always refetch when component mounts
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: false,
       }
     )
 
@@ -126,24 +170,34 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
     const {
       data: existingUnitPurchaseData,
       isLoading: isLoadingExistingPurchase,
-      error: errorPurchase,
     } = useGetEnhanced<CapitalPartnerUnitPurchaseResponse[]>(
       `${API_ENDPOINTS.CAPITAL_PARTNER_UNIT_PURCHASE.GET_ALL}?capitalPartnerUnitId.equals=${unitId || 0}`,
       {},
       {
         enabled: Boolean(isEditMode && isUnitDataReady && unitId),
+        // Disable caching to always fetch fresh data
+        gcTime: 0,
+        staleTime: 0,
+        // Always refetch when component mounts
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: false,
       }
     )
 
     const {
       data: existingUnitBookingData,
       isLoading: isLoadingExistingBooking,
-      error: errorBooking,
     } = useGetEnhanced<any[]>(
       `${API_ENDPOINTS.CAPITAL_PARTNER_UNIT_BOOKING.GET_ALL}?capitalPartnerUnitId.equals=${unitId || 0}`,
       {},
       {
         enabled: Boolean(isEditMode && isUnitDataReady && unitId),
+        // Disable caching to always fetch fresh data
+        gcTime: 0,
+        staleTime: 0,
+        // Always refetch when component mounts
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: false,
       }
     )
 
@@ -277,16 +331,76 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
 
       if (selectedProjectData) {
         setSelectedProject(selectedProjectData)
-        setValue('projectId', selectedProjectData.projectId)
-        setValue('developerIdInput', selectedProjectData.developerId)
-        setValue('developerNameInput', selectedProjectData.developerName)
+        setValue('projectId', selectedProjectData.projectId, {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        })
+        setValue('developerIdInput', selectedProjectData.developerId, {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        })
+        setValue('developerNameInput', selectedProjectData.developerName, {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        })
+        // Clear any prior manual errors for these auto-filled fields
+        clearErrors([
+          'projectId',
+          'developerIdInput',
+          'developerNameInput',
+        ] as unknown as any)
       }
     }
     const handleSaveAndNext = async () => {
       try {
-        setSaveError(null)
+        // Validate required fields first so UI shows errors immediately
+        const requiredValid = await (async () => {
+          try {
+            const result = CapitalPartnerStep2Schema.safeParse({
+              projectNameDropdown: watch('projectNameDropdown'),
+              projectId: watch('projectId'),
+              developerIdInput: watch('developerIdInput'),
+              developerNameInput: watch('developerNameInput'),
+              unitNoQaqood: watch('unitNoQaqood'),
+              unitStatus: watch('unitStatus'),
+              plotSize: watch('plotSize'),
+              propertyId: watch('propertyId'),
+            })
+            if (!result.success) {
+              const fieldsToCheck = [
+                'projectNameDropdown',
+                'projectId',
+                'developerIdInput',
+                'developerNameInput',
+                'unitNoQaqood',
+                'unitStatus',
+                'plotSize',
+                'propertyId',
+              ] as const
+              clearErrors(fieldsToCheck as unknown as any)
+              result.error.issues.forEach((issue) => {
+                const field = (issue.path?.[0] as string) || ''
+                if (field) {
+                  setError(field as any, {
+                    type: 'manual',
+                    message: issue.message,
+                  })
+                }
+              })
+              return false
+            }
+            return true
+          } catch {
+            return false
+          }
+        })()
+        if (!requiredValid) {
+          throw new Error('Please fill all required fields')
+        }
         if (!capitalPartnerId) {
-          setSaveError('Capital Partner ID is required from Step1')
           throw new Error('Capital Partner ID is required from Step1')
         }
         const formData: Step2FormData = {
@@ -328,10 +442,30 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
           transferredAmount: watch('transferredAmount'),
           unitRemarks: watch('unitRemarks'),
         }
-        const validationErrors = validateStep2Data(formData)
-        if (validationErrors.length > 0) {
-          setSaveError(validationErrors.join(', '))
-          throw new Error(validationErrors.join(', '))
+
+        const zodResult = CapitalPartnerStep2Schema.safeParse(formData)
+
+        if (!zodResult.success) {
+          const fieldsToCheck = [
+            'projectNameDropdown',
+            'projectId',
+            'developerIdInput',
+            'developerNameInput',
+            'unitNoQaqood',
+            'unitStatus',
+            'plotSize',
+            'propertyId',
+          ] as const
+          clearErrors(fieldsToCheck as unknown as any)
+          zodResult.error.issues.forEach((issue) => {
+            const field = (issue.path?.[0] as string) || ''
+            if (field) {
+              setError(field as any, { type: 'manual', message: issue.message })
+            }
+          })
+          throw new Error('Please fix validation errors')
+        } else {
+          clearErrors()
         }
         const { unitPayload, bookingPayload, purchasePayload } =
           mapStep2ToCapitalPartnerUnitPayload(
@@ -438,9 +572,6 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
           onSaveAndNext({ unitResponse, bookingResponse, purchaseResponse })
         }
       } catch (error) {
-        setSaveError(
-          error instanceof Error ? error.message : 'Failed to save data'
-        )
         throw error
       }
     }
@@ -451,96 +582,47 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
       }),
       [handleSaveAndNext]
     )
-    const commonFieldStyles = {
-      '& .MuiOutlinedInput-root': {
-        height: '46px',
-        borderRadius: '8px',
-        '& fieldset': {
-          borderColor: '#CAD5E2',
-          borderWidth: '1px',
-        },
-        '&:hover fieldset': {
-          borderColor: '#CAD5E2',
-        },
-        '&.Mui-focused fieldset': {
-          borderColor: '#2563EB',
-        },
-      },
-    }
+    const fieldStyles = React.useMemo(
+      () => (sharedCommonFieldStyles as any)(theme),
+      [theme]
+    )
+    const selectFieldStyles = React.useMemo(
+      () => (sharedSelectStyles as any)(theme),
+      [theme]
+    )
+    const dateFieldStyles = React.useMemo(
+      () => (sharedDatePickerStyles as any)(theme),
+      [theme]
+    )
+    const labelStyles = React.useMemo(
+      () => (sharedLabelSx as any)(theme),
+      [theme]
+    )
+    const valueStyles = React.useMemo(
+      () => (sharedValueSx as any)(theme),
+      [theme]
+    )
+    const errorFieldStyles = React.useMemo(
+      () => (sharedErrorFieldStyles as any)(theme),
+      [theme]
+    )
+    const cardBaseStyles = React.useMemo(
+      () => (sharedCardStyles as any)(theme),
+      [theme]
+    )
+    const viewModeStyles = viewModeInputStyles(theme)
+    const neutralBorderColor = neutralBorder(theme)
+    const neutralBorderHoverColor = neutralBorderHover(theme)
 
-    const selectStyles = {
-      height: '46px',
-      '& .MuiOutlinedInput-root': {
-        height: '46px',
-        borderRadius: '8px',
-        '& fieldset': {
-          borderColor: '#CAD5E2',
-          borderWidth: '1px',
-        },
-        '&:hover fieldset': {
-          borderColor: '#CAD5E2',
-        },
-        '&.Mui-focused fieldset': {
-          borderColor: '#2563EB',
-        },
-      },
-      '& .MuiSelect-icon': {
-        color: '#666',
-      },
-    }
-
-    const datePickerStyles = {
-      height: '46px',
-      '& .MuiOutlinedInput-root': {
-        height: '46px',
-        borderRadius: '8px',
-        '& fieldset': {
-          borderColor: '#CAD5E2',
-          borderWidth: '1px',
-        },
-        '&:hover fieldset': {
-          borderColor: '#CAD5E2',
-        },
-        '&.Mui-focused fieldset': {
-          borderColor: '#2563EB',
-        },
-      },
-    }
-
-    const labelSx = {
-      color: '#6A7282',
-      fontFamily: 'Outfit',
-      fontWeight: 400,
-      fontStyle: 'normal',
-      fontSize: '12px',
-      letterSpacing: 0,
-    }
-
-    const valueSx = {
-      color: '#1E2939',
-      fontFamily: 'Outfit',
-      fontWeight: 400,
-      fontStyle: 'normal',
-      fontSize: '14px',
-      letterSpacing: 0,
-      wordBreak: 'break-word',
-    }
-
-    const StyledCalendarIcon = (
-      props: React.ComponentProps<typeof CalendarTodayOutlinedIcon>
-    ) => (
-      <CalendarTodayOutlinedIcon
-        {...props}
-        sx={{
-          width: '18px',
-          height: '20px',
-          position: 'relative',
-          top: '2px',
-          left: '3px',
-          transform: 'rotate(0deg)',
-          opacity: 1,
-        }}
-      />
+    const StyledCalendarIcon = React.useCallback(
+      (props: React.ComponentProps<typeof CalendarTodayOutlinedIcon>) =>
+        (
+          <CalendarTodayOutlinedIcon
+            {...props}
+            sx={(sharedCalendarIconSx as any)(theme as Theme)}
+          />
+        ) as any,
+      [theme]
     )
 
     const renderTextField = (
@@ -549,7 +631,8 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
       fallbackLabel: string,
       defaultValue = '',
       gridMd = 6,
-      disabled = false
+      disabled = false,
+      required = false
     ) => {
       const label = getLabel(configId, currentLanguage, fallbackLabel)
       return (
@@ -557,19 +640,48 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
           <Controller
             name={name}
             control={control}
+            rules={required ? { required: `${label} is required` } : {}}
             defaultValue={defaultValue}
             render={({ field }) => (
-              <TextField
-                {...field}
-                label={label}
-                fullWidth
-                disabled={disabled || isViewMode}
-                InputLabelProps={{ sx: labelSx }}
-                InputProps={{ sx: valueSx }}
-                sx={commonFieldStyles}
-                value={field.value || ''}
-                onChange={field.onChange}
-              />
+              <>
+                <TextField
+                  {...field}
+                  label={label}
+                  fullWidth
+                  disabled={disabled || isViewMode}
+                  error={!!errors[name]}
+                  InputLabelProps={{ sx: labelStyles }}
+                  InputProps={{ sx: valueStyles }}
+                  sx={{
+                    ...fieldStyles,
+                    ...(disabled && {
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: viewModeStyles.backgroundColor,
+                        '& fieldset': {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                        '&:hover fieldset': {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                      },
+                    }),
+                  }}
+                  required={required}
+                  value={field.value || ''}
+                  onChange={(e) => {
+                    field.onChange(e)
+                    if (errors[name]) {
+                      clearErrors(name as any)
+                    }
+                    // re-validate this field to update resolver-based errors
+                    trigger(name as any)
+                  }}
+                />
+                <FormError
+                  error={errors[name]?.message as string}
+                  touched={true}
+                />
+              </>
             )}
           />
         </Grid>
@@ -594,25 +706,26 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
             rules={required ? { required: `${label} is required` } : {}}
             defaultValue={''}
             render={({ field }) => (
-              <FormControl fullWidth error={!!errors[name]}>
-                <InputLabel sx={labelSx}>
-                  {loading ? `Loading ${label}...` : label}
+              <FormControl fullWidth error={!!errors[name]} required={required}>
+                <InputLabel sx={labelStyles} required={required}>
+                  {loading ? `Loading...` : label}
                 </InputLabel>
                 <Select
                   {...field}
-                  label={loading ? `Loading ${label}...` : label}
+                  label={loading ? `Loading...` : label}
+                  required={required}
                   sx={{
-                    ...selectStyles,
-                    ...valueSx,
+                    ...selectFieldStyles,
+                    ...valueStyles,
                     '& .MuiOutlinedInput-notchedOutline': {
-                      border: '1px solid #d1d5db',
+                      border: `1px solid ${neutralBorderColor}`,
                       borderRadius: '6px',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      border: '1px solid #9ca3af',
+                      border: `1px solid ${neutralBorderHoverColor}`,
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      border: '2px solid #2563eb',
+                      border: `2px solid ${theme.palette.primary.main}`,
                     },
                   }}
                   IconComponent={KeyboardArrowDownIcon}
@@ -626,11 +739,10 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                     </MenuItem>
                   ))}
                 </Select>
-                {errors[name] && (
-                  <FormHelperText error>
-                    {errors[name]?.message?.toString()}
-                  </FormHelperText>
-                )}
+                <FormError
+                  error={errors[name]?.message as string}
+                  touched={true}
+                />
               </FormControl>
             )}
           />
@@ -656,27 +768,57 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
             rules={required ? { required: `${label} is required` } : {}}
             defaultValue={''}
             render={({ field }) => (
-              <FormControl fullWidth error={!!errors[name]}>
-                <InputLabel sx={labelSx}>
-                  {loading ? `Loading ${label}...` : label}
+              <FormControl fullWidth error={!!errors[name]} required={required}>
+                <InputLabel sx={labelStyles} required={required}>
+                  {loading ? `Loading...` : label}
                 </InputLabel>
                 <Select
                   {...field}
-                  label={loading ? `Loading ${label}...` : label}
-                  sx={{
-                    ...selectStyles,
-                    ...valueSx,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
+                  label={loading ? `Loading...` : label}
+                  required={required}
+                  sx={[
+                    selectFieldStyles,
+                    valueStyles,
+                    {
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        border: `1px solid ${neutralBorderColor}`,
+                        borderRadius: '6px',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        border: `1px solid ${neutralBorderHoverColor}`,
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        border: `2px solid ${theme.palette.primary.main}`,
+                      },
                     },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      border: '1px solid #9ca3af',
+                    isViewMode && {
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: viewModeStyles.backgroundColor,
+                        '& fieldset': {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                        '&:hover fieldset': {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                      },
+                      '& .MuiSelect-select': {
+                        color: viewModeStyles.textColor,
+                      },
                     },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      border: '2px solid #2563eb',
-                    },
-                  }}
+                    !!errors[name] && !isViewMode
+                      ? {
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            border: `1px solid ${theme.palette.error.main}`,
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            border: `1px solid ${theme.palette.error.main}`,
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            border: `1px solid ${theme.palette.error.main}`,
+                          },
+                        }
+                      : null,
+                  ]}
                   IconComponent={KeyboardArrowDownIcon}
                   disabled={loading || isViewMode}
                   value={field.value || ''}
@@ -691,11 +833,10 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                     </MenuItem>
                   ))}
                 </Select>
-                {errors[name] && (
-                  <FormHelperText error>
-                    {errors[name]?.message?.toString()}
-                  </FormHelperText>
-                )}
+                <FormError
+                  error={errors[name]?.message as string}
+                  touched={true}
+                />
               </FormControl>
             )}
           />
@@ -714,6 +855,7 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
           return [
             { id: 1, displayName: 'Property 1', settingValue: '1' },
             { id: 2, displayName: 'Property 2', settingValue: '2' },
+            { id: 3, displayName: 'Property 3', settingValue: '3' },
           ]
         default:
           return []
@@ -741,9 +883,9 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                     disabled={isViewMode}
                     onChange={(e) => field.onChange(e.target.checked)}
                     sx={{
-                      color: '#CAD5E2',
+                      color: neutralBorderColor,
                       '&.Mui-checked': {
-                        color: '#2563EB',
+                        color: theme.palette.primary.main,
                       },
                     }}
                   />
@@ -757,6 +899,7 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                     lineHeight: '24px',
                     letterSpacing: '0.5px',
                     verticalAlign: 'middle',
+                    color: textPrimary,
                   },
                 }}
               />
@@ -768,72 +911,23 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
 
     return (
       <LocalizationProvider dateAdapter={AdapterDayjs}>
+        {/** Inline field errors + a small top banner for save errors. */}
         <Card
-          sx={{
-            boxShadow: 'none',
-            backgroundColor: '#FFFFFFBF',
-            width: '84%',
-            margin: '0 auto',
-          }}
+          sx={[
+            cardBaseStyles,
+            {
+              width: '84%',
+              margin: '0 auto',
+            },
+          ]}
         >
-          <CardContent>
-            {(unitStatusesError || projectsError || propertyIdsError) && (
-              <Box
-                sx={{
-                  mb: 2,
-                  p: 1,
-                  bgcolor: '#fef2f2',
-                  borderRadius: 1,
-                  border: '1px solid #ef4444',
-                }}
-              >
-                <Typography variant="body2" color="error">
-                  ⚠️ Failed to load dropdown options.
-                  {unitStatusesError && ' Unit statuses failed to load.'}
-                  {projectsError && ' Projects failed to load.'}
-                  {propertyIdsError && ' Property IDs failed to load.'}
-                </Typography>
-              </Box>
-            )}
-            {(errorLoadingUnit || errorPurchase || errorBooking) && (
-              <Box
-                sx={{
-                  mb: 2,
-                  p: 1,
-                  bgcolor: '#fef2f2',
-                  borderRadius: 1,
-                  border: '1px solid #ef4444',
-                }}
-              >
-                <Typography variant="body2" color="error">
-                  ⚠️ Failed to load existing data.
-                  {errorLoadingUnit && ' Unit data failed to load.'}
-                  {errorPurchase && ' Purchase data failed to load.'}
-                  {errorBooking && ' Booking data failed to load.'}
-                </Typography>
-              </Box>
-            )}
-            {saveError && (
-              <Box
-                sx={{
-                  mb: 2,
-                  p: 1,
-                  bgcolor: '#fef2f2',
-                  borderRadius: 1,
-                  border: '1px solid #ef4444',
-                }}
-              >
-                <Typography variant="body2" color="error">
-                  ⚠️ {saveError}
-                </Typography>
-              </Box>
-            )}
-
+          <CardContent sx={{ color: valueStyles.color || undefined }}>
+            {/* Removed top banner error; rely on inline field errors for consistency with Step 1 */}
             <Grid container rowSpacing={4} columnSpacing={2}>
               {renderProjectSelectField(
                 'projectNameDropdown',
-                'CDL_CP_PROJECT_NAME',
-                'Project Name*',
+                'CDL_CP_BPA_NAME',
+                'Project Name',
                 projectOptions,
                 6,
                 true,
@@ -845,7 +939,8 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                 'Project ID*',
                 '',
                 6,
-                !selectedProject
+                !selectedProject || isEditMode,
+                true
               )}
               {renderTextField(
                 'developerIdInput',
@@ -853,15 +948,17 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                 'Developer ID*',
                 '',
                 6,
-                !selectedProject
+                !selectedProject || isEditMode,
+                true
               )}
               {renderTextField(
                 'developerNameInput',
                 'CDL_CP_BP_NAME',
-                'Developer Name*',
+                'Developer Name',
                 '',
                 6,
-                !selectedProject
+                !selectedProject || isEditMode,
+                true
               )}
               {renderTextField('floor', 'CDL_CP_FLOOR', 'Floor', '', 3)}
               {renderTextField(
@@ -874,14 +971,16 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
               {renderTextField(
                 'unitNoQaqood',
                 'CDL_CP_UNIT_NUMBER',
-                'Unit no. Qaqood format*',
+                'Unit no. Qaqood format',
                 '',
-                3
+                3,
+                false,
+                false
               )}
               {renderApiSelectField(
                 'unitStatus',
                 'CDL_CP_UNIT_STATUS',
-                'Unit Status*',
+                'Unit Status',
                 unitStatuses?.length
                   ? unitStatuses
                   : getFallbackOptions('unitStatus'),
@@ -894,19 +993,23 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                 'CDL_CP_BUILDING_NAME',
                 'Building Name',
                 '',
-                6
+                6,
+                false,
+                watch('propertyId') === '3'
               )}
               {renderTextField(
                 'plotSize',
                 'CDL_CP_PLOT_SIZE',
                 'Plot Size*',
                 '',
-                6
+                6,
+                false,
+                true
               )}
               {renderApiSelectField(
                 'propertyId',
                 'CDL_CP_PROP_NUMBER',
-                'Property ID*',
+                'Property ID',
                 propertyIds?.length
                   ? propertyIds
                   : getFallbackOptions('propertyId'),
@@ -938,26 +1041,25 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                             <Button
                               variant="contained"
                               sx={{
-                                color: '#2563EB',
-                                borderRadius: '24px',
-                                textTransform: 'none',
-                                background: 'var(--UIColors-Blue-100, #DBEAFE)',
-
-                                boxShadow: 'none',
-                                '&:hover': {
-                                  background: '#D0E3FF',
-                                  boxShadow: 'none',
-                                },
-                                minWidth: '120px',
+                                minWidth: '100px',
                                 height: '36px',
-
+                                gap: '6px',
+                                opacity: 1,
+                                paddingTop: '2px',
+                                paddingRight: '3px',
+                                paddingBottom: '2px',
+                                paddingLeft: '3px',
+                                borderRadius: '6px',
+                                backgroundColor: '#2563EB',
+                                color: '#FFFFFF',
+                                boxShadow: 'none',
                                 fontFamily: 'Outfit, sans-serif',
                                 fontWeight: 500,
                                 fontStyle: 'normal',
                                 fontSize: '14px',
-                                lineHeight: '24px',
-                                letterSpacing: '0.5px',
-                                verticalAlign: 'middle',
+                                lineHeight: '20px',
+                                letterSpacing: 0,
+                                px: 1,
                               }}
                               onClick={() => {}}
                             >
@@ -965,10 +1067,32 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                             </Button>
                           </InputAdornment>
                         ) : undefined,
-                        sx: valueSx,
+                        sx: {
+                          ...valueStyles,
+                          ...(isViewMode && {
+                            backgroundColor: viewModeStyles.backgroundColor,
+                            color: viewModeStyles.textColor,
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: viewModeStyles.borderColor,
+                            },
+                          }),
+                        },
                       }}
-                      InputLabelProps={{ sx: labelSx }}
-                      sx={commonFieldStyles}
+                      InputLabelProps={{ sx: labelStyles }}
+                      sx={[
+                        fieldStyles,
+                        isViewMode && {
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: viewModeStyles.backgroundColor,
+                            '& fieldset': {
+                              borderColor: viewModeStyles.borderColor,
+                            },
+                            '&:hover fieldset': {
+                              borderColor: viewModeStyles.borderColor,
+                            },
+                          },
+                        },
+                      ]}
                     />
                   )}
                 />
@@ -979,49 +1103,36 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                 'CDL_CP_REG_FEE',
                 'Unit Registration Fees',
                 '',
-                3
+                3,
+                false,
+                false
               )}
               {renderTextField(
                 'agentName',
                 'CDL_CP_AGENT_NAME',
                 'Agent Name',
                 '',
-                3
+                3,
+                false,
+                false
               )}
               {renderTextField(
                 'agentNationalId',
                 'CDL_CP_AGENT_ID',
                 'Agent National ID',
                 '',
-                3
+                3,
+                false,
+                false
               )}
               {renderTextField(
                 'grossSalePrice',
                 'CDL_CP_GROSS_PRICE',
                 'Gross Sale Price',
                 '',
-                3
-              )}
-              {renderTextField(
-                'agentName',
-                'CDL_CP_AGENT_NAME',
-                'Agent Name',
-                '',
-                3
-              )}
-              {renderTextField(
-                'agentNationalId',
-                'CDL_CP_AGENT_ID',
-                'Agent National ID',
-                '',
-                3
-              )}
-              {renderTextField(
-                'grossSalePrice',
-                'CDL_CP_GROSS_PRICE',
-                'Gross Sale Price',
-                '',
-                3
+                3,
+                false,
+                false
               )}
 
               {[
@@ -1032,12 +1143,12 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                 },
                 {
                   name: 'SalesPurchaseAgreement',
-                  configId: 'CDL_CP_SALES_PURCHASE_AGREEMENT',
+                  configId: 'CDL_CP_SPA',
                   fallbackLabel: 'Sales Purchase Agreement',
                 },
                 {
                   name: 'ProjectPaymentPlan',
-                  configId: 'CDL_CP_PROJECT_PAYMENT_PLAN',
+                  configId: 'CDL_CP_PAYMENT_PLAN',
                   fallbackLabel: 'Project Payment Plan',
                 },
               ].map(({ name, configId, fallbackLabel }) => (
@@ -1053,6 +1164,15 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                             checked={!!field.value}
                             disabled={isViewMode}
                             onChange={(e) => field.onChange(e.target.checked)}
+                            sx={{
+                              color:
+                                theme.palette.mode === 'dark'
+                                  ? alpha('#FFFFFF', 0.4)
+                                  : neutralBorderColor,
+                              '&.Mui-checked': {
+                                color: theme.palette.primary.main,
+                              },
+                            }}
                           />
                         )}
                       />
@@ -1066,6 +1186,7 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                         lineHeight: '24px',
                         letterSpacing: '0.5px',
                         verticalAlign: 'middle',
+                        color: textPrimary,
                       },
                     }}
                   />
@@ -1116,10 +1237,12 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                         textField: {
                           fullWidth: true,
                           error: !!errors.agreementDate,
-                          sx: datePickerStyles,
-                          InputLabelProps: { sx: labelSx },
+                          sx: (sharedDatePickerStyles as any)(theme as Theme),
+                          InputLabelProps: {
+                            sx: (sharedLabelSx as any)(theme as Theme),
+                          },
                           InputProps: {
-                            sx: valueSx,
+                            sx: (sharedValueSx as any)(theme as Theme),
                             style: { height: '46px' },
                           },
                         },
@@ -1129,10 +1252,22 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                 />
               </Grid>
               {[
-                'ModificationFeeNeeded',
-                'ReservationBookingForm',
-                'OqoodPaid',
-              ].map((name) => (
+                {
+                  name: 'ModificationFeeNeeded',
+                  configId: 'CDL_CP_FEE_REQ',
+                  fallbackLabel: 'Modification Fee Needed',
+                },
+                {
+                  name: 'ReservationBookingForm',
+                  configId: 'CDL_CP_BOOKING',
+                  fallbackLabel: 'Reservation & Booking Form',
+                },
+                {
+                  name: 'OqoodPaid',
+                  configId: 'CDL_CP_OQOOD_PAID',
+                  fallbackLabel: 'Oqood Paid',
+                },
+              ].map(({ name, configId, fallbackLabel }) => (
                 <Grid size={{ xs: 12, md: 4 }} key={name}>
                   <FormControlLabel
                     control={
@@ -1149,7 +1284,7 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
                         )}
                       />
                     }
-                    label={name.replace(/([A-Z])/g, ' $1')}
+                    label={getLabel(configId, currentLanguage, fallbackLabel)}
                     sx={{
                       '& .MuiFormControlLabel-label': {
                         fontFamily: 'Outfit, sans-serif',
@@ -1172,23 +1307,25 @@ const Step2 = forwardRef<Step2Ref, Step2Props>(
               {renderTextField(
                 'paidInEscrow',
                 'CDL_CP_WITH_ESCROW',
-                'Amount Paid to Developer within Escrow',
+                'Amount Paid to Build Partner (Within Escrow)',
                 '',
                 6
               )}
               {renderTextField(
                 'paidOutEscrow',
                 'CDL_CP_OUTSIDE_ESCROW',
-                'Amount Paid to Developer out of Escrow',
+                'Amount Paid to Build Partner (Outside Escrow)',
                 '',
                 6
               )}
               {renderTextField(
                 'totalPaid',
                 'CDL_CP_PARTNER_PAYMENT',
-                'Total Amount Paid',
+                'Total Capital Partner Payment',
                 '',
-                6
+                6,
+                true,
+                false
               )}
               {renderTextField(
                 'qaqoodAmount',

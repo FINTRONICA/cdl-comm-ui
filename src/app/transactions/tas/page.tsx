@@ -11,6 +11,7 @@ import { useManualPaymentLabelsWithCache } from '@/hooks/useManualPaymentLabelsW
 import { MANUAL_PAYMENT_LABELS } from '@/constants/mappings/manualPaymentLabels'
 import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable/PermissionAwareDataTable'
+import { GlobalLoading, GlobalError } from '@/components/atoms'
 
 // Define the manual payment data structure
 interface ManualPaymentData extends Record<string, unknown> {
@@ -124,7 +125,7 @@ const createTableColumns = (
       MANUAL_PAYMENT_LABELS.FALLBACKS.TABLE_COLUMNS.APPROVAL_STATUS
     ),
     type: 'status' as const,
-    width: 'w-32',
+    width: 'w-40',
     sortable: true,
   },
   {
@@ -230,17 +231,19 @@ const TASPaymentPage: React.FC = () => {
   const apiTotalPages = apiPagination.totalPages
 
   // Determine which pagination values to use
-  const effectiveTotalRows = Object.values(search).some((value) => value.trim())
-    ? localTotalRows
-    : apiTotal
-  const effectiveTotalPages = Object.values(search).some((value) =>
-    value.trim()
-  )
-    ? localTotalPages
-    : apiTotalPages
-  const effectivePage = Object.values(search).some((value) => value.trim())
-    ? localPage
-    : currentApiPage
+  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+
+  // Calculate effective startItem and endItem based on pagination type
+  const effectiveStartItem = hasActiveSearch
+    ? startItem
+    : (currentApiPage - 1) * currentApiSize + 1
+  const effectiveEndItem = hasActiveSearch
+    ? endItem
+    : Math.min(currentApiPage * currentApiSize, apiTotal)
 
   // Action handlers
   const handleViewPayment = (row: ManualPaymentData) => {
@@ -428,14 +431,8 @@ const TASPaymentPage: React.FC = () => {
         )}
 
         <DashboardLayout title={tasPaymentTitle}>
-          <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
-            {/* Loading State */}
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex flex-col items-center space-y-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#155DFC]"></div>
-                <div className="text-gray-600 text-sm">Loading...</div>
-              </div>
-            </div>
+          <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full rounded-t-2xl">
+            <GlobalLoading fullHeight />
           </div>
         </DashboardLayout>
       </>
@@ -454,25 +451,13 @@ const TASPaymentPage: React.FC = () => {
         )}
 
         <DashboardLayout title={tasPaymentTitle}>
-          <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
-            {/* Error State */}
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex flex-col items-center space-y-4">
-                <div className="text-red-500 text-6xl">⚠️</div>
-                <div className="text-red-600 text-lg font-medium">
-                  Failed to load TAS payment data
-                </div>
-                <div className="text-gray-600 text-sm text-center max-w-md">
-                  {apiError}
-                </div>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-[#155DFC] text-white rounded-lg hover:bg-[#1248CC] transition-colors"
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
+          <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full rounded-t-2xl">
+            <GlobalError
+              error={apiError}
+              onRetry={() => window.location.reload()}
+              title="Failed to load TAS payment data"
+              fullHeight
+            />
           </div>
         </DashboardLayout>
       </>
@@ -489,15 +474,15 @@ const TASPaymentPage: React.FC = () => {
       )}
 
       <DashboardLayout title={tasPaymentTitle}>
-        <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
+        <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full rounded-t-2xl">
           {/* Sticky Header Section */}
-          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] border-b border-gray-200 rounded-t-2xl">
+          <div className="sticky top-0 z-10 bg-white/75 dark:bg-gray-800/80  rounded-t-2xl">
             {/* Action Buttons */}
           </div>
 
           {/* Table Container with Fixed Pagination */}
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto rounded-t-2xl">
               <PermissionAwareDataTable<ManualPaymentData>
                 data={paginated}
                 columns={tableColumns}
@@ -508,8 +493,8 @@ const TASPaymentPage: React.FC = () => {
                   rowsPerPage: rowsPerPage,
                   totalRows: effectiveTotalRows,
                   totalPages: effectiveTotalPages,
-                  startItem,
-                  endItem,
+                  startItem: effectiveStartItem,
+                  endItem: effectiveEndItem,
                 }}
                 onPageChange={handlePageChange}
                 onRowsPerPageChange={handleRowsPerPageChange}

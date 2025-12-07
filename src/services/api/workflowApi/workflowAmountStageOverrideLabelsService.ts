@@ -1,6 +1,7 @@
 import { apiClient } from '@/lib/apiClient'
 import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 import { getAuthCookies } from '@/utils/cookieUtils'
+import { toast } from 'react-hot-toast'
 
 export interface WorkflowAmountStageOverrideLabelResponse {
   id: number
@@ -52,7 +53,7 @@ export class WorkflowAmountStageOverrideLabelsService {
       })
       return labels
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw new Error(ERROR_MESSAGE)
     }
   }
@@ -106,7 +107,7 @@ export class WorkflowAmountStageOverrideLabelsService {
 
       return Array.from(languages)
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       return [DEFAULT_LANGUAGE]
     }
   }

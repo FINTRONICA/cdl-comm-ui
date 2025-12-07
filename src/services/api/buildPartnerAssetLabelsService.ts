@@ -63,7 +63,7 @@ export class BuildPartnerAssetLabelsService {
       if (!processedLabels[configId]) {
         processedLabels[configId] = {}
       }
-      processedLabels[configId][appLanguageCode.languageCode] = configValue
+        processedLabels[configId][appLanguageCode.languageCode] = configValue
       return processedLabels
     }, {} as Record<string, Record<string, string>>)
   }

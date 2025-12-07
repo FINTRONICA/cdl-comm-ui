@@ -14,6 +14,7 @@ export {
   useOptimisticWorkflowActions,
   useWorkflowActionUtils,
   useWorkflowActionService,
+  useWorkflowActionListUtils,
 } from './useWorkflowActions'
 
 export { useWorkflowActionLabelsWithCache } from './useWorkflowActionLabelsWithCache'

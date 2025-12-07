@@ -192,7 +192,7 @@ class UploadService {
    */
   validateFile(
     file: File,
-    maxSize: number = 10,
+    maxSize: number = 25,
     allowedTypes: string[] = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv']
   ): { isValid: boolean; error?: string } {
     // Check file size

@@ -6,13 +6,33 @@ interface UseTableStateProps<T> {
   initialRowsPerPage?: number
 }
 
+const parseNumericValue = (value: unknown): number | null => {
+  if (typeof value === 'number' && !Number.isNaN(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/,/g, '').trim()
+    if (!normalized) {
+      return null
+    }
+
+    const parsed = Number(normalized)
+    if (!Number.isNaN(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
 export const useTableState = <T>({
   data,
   searchFields,
   initialRowsPerPage = 20,
 }: UseTableStateProps<T>) => {
-  const [search, setSearch] = useState<Record<string, string>>(
-    () => Object.fromEntries(searchFields.map(field => [field, '']))
+  const [search, setSearch] = useState<Record<string, string>>(() =>
+    Object.fromEntries(searchFields.map((field) => [field, '']))
   )
   const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage)
   const [page, setPage] = useState(1)
@@ -23,39 +43,75 @@ export const useTableState = <T>({
     direction: 'asc' | 'desc'
   } | null>(null)
 
-  // Memoize search fields to prevent unnecessary re-renders
   const memoizedSearchFields = useMemo(() => searchFields, [searchFields])
 
-  // Optimized filtered data with proper dependencies
   const filtered = useMemo(() => {
-    // Early return if no search values
-    const hasSearchValues = Object.values(search).some(val => val.trim() !== '')
+    const hasSearchValues = Object.values(search).some(
+      (val) => val.trim() !== ''
+    )
     let filteredData = data
 
     if (hasSearchValues) {
-      // Use a more efficient filtering approach with early termination
       filteredData = data.filter((row: unknown) => {
         return memoizedSearchFields.every((field) => {
-          const searchVal = search[field]?.toLowerCase().trim() || ''
+          const searchVal = search[field]?.trim() || ''
           if (!searchVal) return true
-          const value = String((row as Record<string, unknown>)[field] ?? '').toLowerCase()
-          return value.includes(searchVal)
+
+          const value = (row as Record<string, unknown>)[field]
+
+          // For status fields, use exact match (case-insensitive)
+          if (field === 'status' || field === 'paymentStatus' || field === 'approvalStatus') {
+            return String(value ?? '').toUpperCase() === searchVal.toUpperCase()
+          }
+
+          // For other fields, use substring match (case-insensitive)
+          const searchLower = searchVal.toLowerCase()
+          const valueLower = String(value ?? '').toLowerCase()
+          return valueLower.includes(searchLower)
         })
       })
     }
 
-    // Apply sorting if sortConfig is set
     if (sortConfig) {
       filteredData = [...filteredData].sort((a, b) => {
         const aVal = (a as Record<string, unknown>)[sortConfig.key]
         const bVal = (b as Record<string, unknown>)[sortConfig.key]
-        
-        if (aVal === bVal) return 0
-        
-        // Type-safe comparison
-        const aStr = String(aVal ?? '')
-        const bStr = String(bVal ?? '')
-        const comparison = aStr < bStr ? -1 : 1
+
+        // Handle null/undefined values - nulls go to the end
+        if (aVal === null || aVal === undefined) {
+          if (bVal === null || bVal === undefined) return 0
+          return 1 // a is null, b is not - a goes after b
+        }
+        if (bVal === null || bVal === undefined) return -1 // b is null, a is not - b goes after a
+
+        // Handle numeric values
+        const aNum = parseNumericValue(aVal)
+        const bNum = parseNumericValue(bVal)
+
+        if (aNum !== null && bNum !== null) {
+          if (aNum === bNum) {
+            return 0
+          }
+
+          const comparison = aNum - bNum
+          return sortConfig.direction === 'asc' ? comparison : -comparison
+        }
+
+        // Handle array values (e.g., roleName)
+        if (Array.isArray(aVal) && Array.isArray(bVal)) {
+          const aStr = aVal.join(', ').toLowerCase()
+          const bStr = bVal.join(', ').toLowerCase()
+          const comparison = aStr.localeCompare(bStr)
+          return sortConfig.direction === 'asc' ? comparison : -comparison
+        }
+
+        // Convert to string and compare case-insensitively
+        const aStr = String(aVal).toLowerCase().trim()
+        const bStr = String(bVal).toLowerCase().trim()
+
+        if (aStr === bStr) return 0
+
+        const comparison = aStr.localeCompare(bStr)
         return sortConfig.direction === 'asc' ? comparison : -comparison
       })
     }
@@ -63,13 +119,12 @@ export const useTableState = <T>({
     return filteredData
   }, [data, search, sortConfig, memoizedSearchFields])
 
-  // Memoize pagination calculations
   const pagination = useMemo(() => {
     const totalRows = filtered.length
     const totalPages = Math.ceil(totalRows / rowsPerPage)
     const startIndex = (page - 1) * rowsPerPage
     const endIndex = Math.min(startIndex + rowsPerPage, totalRows)
-    
+
     return {
       totalRows,
       totalPages,
@@ -78,98 +133,74 @@ export const useTableState = <T>({
     }
   }, [filtered.length, rowsPerPage, page])
 
-  // Memoize paginated data
   const paginated = useMemo(() => {
     const { startIndex, endIndex } = pagination
     return filtered.slice(startIndex, endIndex)
   }, [filtered, pagination])
 
-  // Optimized search change handler
   const handleSearchChange = useCallback((field: string, value: string) => {
-    setSearch(prev => {
+    setSearch((prev) => {
       const newSearch = { ...prev, [field]: value }
-      // Reset to first page when searching
+
       setPage(1)
       return newSearch
     })
   }, [])
 
-  // Optimized page change handler
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage)
   }, [])
 
-  // Optimized rows per page change handler
   const handleRowsPerPageChange = useCallback((newRowsPerPage: number) => {
     setRowsPerPage(newRowsPerPage)
-    setPage(1) // Reset to first page
+    setPage(1)
   }, [])
 
-  // Optimized row selection handler
-  const handleRowSelectionChange = useCallback((rowIndex: number, selected: boolean) => {
-    setSelectedRows(prev => {
-      if (selected) {
-        return [...prev, rowIndex]
-      } else {
-        return prev.filter(index => index !== rowIndex)
-      }
-    })
+  const handleRowSelectionChange = useCallback((selectedRows: number[]) => {
+    setSelectedRows(selectedRows)
   }, [])
 
-  // Optimized row expansion handler
-  const handleRowExpansionChange = useCallback((rowIndex: number, expanded: boolean) => {
-    setExpandedRows(prev => {
-      if (expanded) {
-        return [...prev, rowIndex]
-      } else {
-        return prev.filter(index => index !== rowIndex)
-      }
-    })
+  const handleRowExpansionChange = useCallback((expandedRows: number[]) => {
+    setExpandedRows(expandedRows)
   }, [])
 
-  // Optimized sort handler
   const handleSort = useCallback((key: string) => {
-    setSortConfig(prev => {
+    setSortConfig((prev) => {
       if (prev?.key === key) {
         return {
           key,
-          direction: prev.direction === 'asc' ? 'desc' : 'asc'
+          direction: prev.direction === 'asc' ? 'desc' : 'asc',
         }
       } else {
         return { key, direction: 'asc' }
       }
     })
+    setPage(1) // Reset to first page when sorting changes
   }, [])
 
   return {
-    // Data
     filtered,
     paginated,
-    
-    // Pagination
+
     totalRows: pagination.totalRows,
     totalPages: pagination.totalPages,
     startItem: pagination.startIndex + 1,
     endItem: pagination.endIndex,
     page,
     rowsPerPage,
-    
-    // Search
+
     search,
     handleSearchChange,
-    
-    // Selection
+
     selectedRows,
     expandedRows,
     handleRowSelectionChange,
     handleRowExpansionChange,
-    
-    // Sorting
+
     sortConfig,
     handleSort,
-    
-    // Pagination handlers
+
     handlePageChange,
     handleRowsPerPageChange,
   }
-} 
+}

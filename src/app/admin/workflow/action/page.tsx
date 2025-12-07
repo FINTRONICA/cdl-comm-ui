@@ -9,7 +9,7 @@ import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getWorkflowActionLabel } from '@/constants/mappings/workflowMapping'
 import { useAppStore } from '@/store'
-import { Spinner } from '@/components/atoms/Spinner'
+import { GlobalLoading } from '@/components/atoms'
 import {
   useWorkflowActions,
   useDeleteWorkflowAction,
@@ -20,7 +20,8 @@ import {
   type WorkflowActionUIData,
 } from '@/services/api/workflowApi'
 import { RightSlideWorkflowActionPanel } from '@/components/organisms/RightSlidePanel/RightSlideWorkflowActionPanel'
-import { CommentModal } from '@/components/molecules'
+import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
+import { toast } from 'react-hot-toast'
 
 interface WorkflowActionData
   extends WorkflowActionUIData,
@@ -30,12 +31,12 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
   onRetry,
 }) => (
-  <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50">
+  <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
     <div className="w-full max-w-md text-center">
       <div className="mb-8">
-        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-red-100 rounded-full">
+        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-red-100 dark:bg-red-500/20 rounded-full">
           <svg
-            className="w-12 h-12 text-red-600"
+            className="w-12 h-12 text-red-600 dark:text-red-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -48,19 +49,19 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
             />
           </svg>
         </div>
-        <h1 className="mb-4 text-2xl font-semibold text-gray-900">
+        <h1 className="mb-4 text-2xl font-semibold text-gray-900 dark:text-white">
           Failed to load workflow actions
         </h1>
-        <p className="mb-4 text-gray-600">
+        <p className="mb-4 text-gray-600 dark:text-gray-200">
           {error.message ||
             'An error occurred while loading the data. Please try again.'}
         </p>
         {process.env.NODE_ENV === 'development' && (
           <details className="text-left">
-            <summary className="text-sm font-medium text-gray-600 cursor-pointer">
+            <summary className="text-sm font-medium text-gray-600 dark:text-gray-200 cursor-pointer">
               Error Details (Development)
             </summary>
-            <pre className="p-4 mt-2 overflow-auto text-xs text-gray-500 bg-gray-100 rounded">
+            <pre className="p-4 mt-2 overflow-auto text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 rounded">
               {error.stack}
             </pre>
           </details>
@@ -69,7 +70,7 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="w-full px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+          className="w-full px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
         >
           Try Again
         </button>
@@ -77,24 +78,22 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
     </div>
   </div>
 )
+
 const WorkflowActionPageClient = dynamic(
   () => Promise.resolve(WorkflowActionPageImpl),
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
+      <div className="bg-[#FFFFFFBF] dark:bg-[#0B1220] rounded-2xl flex flex-col h-full text-gray-900 dark:text-white">
+        <GlobalLoading fullHeight />
       </div>
     ),
   }
 )
 
 const LoadingSpinner: React.FC = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50">
-    <div className="text-center">
-      <Spinner size="lg" />
-      <p className="mt-4 text-gray-600"></p>
-    </div>
+  <div className="bg-[#FFFFFFBF] dark:bg-[#0B1220] rounded-2xl flex flex-col h-full text-gray-900 dark:text-white">
+    <GlobalLoading fullHeight />
   </div>
 )
 
@@ -103,8 +102,6 @@ const WorkflowActionPageImpl: React.FC = () => {
   const [editingAction, setEditingAction] =
     useState<WorkflowActionUIData | null>(null)
   const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteIds, setDeleteIds] = useState<(string | number)[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
   const deletingRef = useRef<Set<string | number>>(new Set())
 
@@ -121,6 +118,7 @@ const WorkflowActionPageImpl: React.FC = () => {
   } = useWorkflowActions(0, 1000)
 
   const deleteMutation = useDeleteWorkflowAction()
+  const confirmDelete = useDeleteConfirmation()
 
   const workflowActionsData = useMemo(() => {
     if (apiResponse?.content) {
@@ -216,61 +214,6 @@ const WorkflowActionPageImpl: React.FC = () => {
     initialRowsPerPage: 20,
   })
 
-  const confirmDelete = async () => {
-    if (isDeleting || (deleteMutation as { isPending?: boolean })?.isPending) {
-      return
-    }
-
-    setIsDeleting(true)
-
-    try {
-      for (const id of deleteIds) {
-        if (deletingRef.current.has(id)) {
-          continue
-        }
-
-        deletingRef.current.add(id)
-
-        try {
-          if (
-            typeof (
-              deleteMutation as {
-                mutateAsync?: (id: string) => Promise<unknown>
-              }
-            ).mutateAsync === 'function'
-          ) {
-            await (
-              deleteMutation as {
-                mutateAsync: (id: string) => Promise<unknown>
-              }
-            ).mutateAsync(id.toString())
-          } else {
-            throw new Error('mutateAsync not available')
-          }
-        } catch (deleteError) {
-          if (
-            deleteError instanceof Error &&
-            (deleteError.message.includes('500') ||
-              deleteError.message.includes('Internal Server Error'))
-          ) {
-            continue
-          }
-        } finally {
-          deletingRef.current.delete(id)
-        }
-      }
-
-      refetchWorkflowActions()
-    } catch (err) {
-      console.log('Delete operation failed:', err)
-    } finally {
-      setIsDeleting(false)
-      setIsDeleteModalOpen(false)
-      setDeleteIds([])
-      deletingRef.current.clear()
-    }
-  }
-
   const paginated = paginatedData
   const actionButtons: Array<{
     label: string
@@ -286,8 +229,35 @@ const WorkflowActionPageImpl: React.FC = () => {
       return
     }
 
-    setDeleteIds([row.id])
-    setIsDeleteModalOpen(true)
+    confirmDelete({
+      itemName: `workflow action: ${row.actionName || row.actionKey}`,
+      itemId: row.id.toString(),
+      onConfirm: async () => {
+        try {
+          setIsDeleting(true)
+          if (deletingRef.current.has(row.id)) {
+            return
+          }
+
+          deletingRef.current.add(row.id)
+
+          try {
+            await deleteMutation.mutateAsync(row.id.toString())
+          } finally {
+            deletingRef.current.delete(row.id)
+          }
+
+          refetchWorkflowActions()
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error occurred'
+          toast.error(`Failed to delete: ${errorMessage}`)
+          throw error
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+    })
   }
 
   const handleRowView = (row: WorkflowActionData) => {
@@ -308,98 +278,6 @@ const WorkflowActionPageImpl: React.FC = () => {
     refetchWorkflowActions()
   }, [refetchWorkflowActions])
 
-  const renderExpandedContent = (row: WorkflowActionData) => (
-    <div className="grid grid-cols-2 gap-8">
-      <div className="space-y-4">
-        <h4 className="mb-4 text-sm font-semibold text-gray-900">Details</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">
-              {getWorkflowActionLabelDynamic('CDL_WA_ACTION_KEY')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.actionKey &&
-              row.actionKey !== 'N/A' &&
-              row.actionKey !== 'null' &&
-              row.actionKey !== 'undefined'
-                ? row.actionKey
-                : '-'}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">
-              {getWorkflowActionLabelDynamic('CDL_WA_ACTION_NAME')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.actionName &&
-              row.actionName !== 'N/A' &&
-              row.actionName !== 'null' &&
-              row.actionName !== 'undefined'
-                ? row.actionName
-                : '-'}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">
-              {getWorkflowActionLabelDynamic('CDL_WA_MODULE_CODE')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.moduleCode &&
-              row.moduleCode !== 'N/A' &&
-              row.moduleCode !== 'null' &&
-              row.moduleCode !== 'undefined'
-                ? row.moduleCode
-                : '-'}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">
-              {getWorkflowActionLabelDynamic('CDL_WA_NAME')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.name &&
-              row.name !== 'N/A' &&
-              row.name !== 'null' &&
-              row.name !== 'undefined'
-                ? row.name
-                : '-'}
-            </span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-gray-600">
-              {getWorkflowActionLabelDynamic('CDL_WA_DESCRIPTION')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.description &&
-              row.description !== 'N/A' &&
-              row.description !== 'null' &&
-              row.description !== 'undefined'
-                ? row.description
-                : '-'}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="space-y-4">
-        <h4 className="mb-4 text-sm font-semibold text-gray-900">Actions</h4>
-        <div className="space-y-3">
-          <button
-            onClick={() => handleRowView(row)}
-            className="w-full p-3 text-sm text-left text-gray-700 transition-colors bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50"
-          >
-            Edit Workflow Action
-          </button>
-          <button
-            onClick={() => handleRowDelete(row)}
-            className="w-full p-3 text-sm text-left text-red-700 transition-colors bg-white border border-red-200 rounded-lg shadow-sm hover:bg-red-50"
-          >
-            Delete Workflow Action
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-
   if (workflowActionsLoading) {
     return <LoadingSpinner />
   }
@@ -416,8 +294,8 @@ const WorkflowActionPageImpl: React.FC = () => {
   return (
     <>
       <DashboardLayout title="Workflow Actions">
-        <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
-          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] border-b border-gray-200 rounded-t-2xl">
+        <div className="bg-[#FFFFFFBF] dark:bg-gray-800 rounded-2xl flex flex-col h-full text-gray-900 dark:text-white">
+          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] dark:bg-gray-800 border-b border-gray-200 dark:border-white/10 rounded-t-2xl">
             <PageActionButtons
               entityType="workflowAction"
               onAddNew={handleAddNew}
@@ -446,7 +324,6 @@ const WorkflowActionPageImpl: React.FC = () => {
                 onRowSelectionChange={handleRowSelectionChange}
                 expandedRows={expandedRows}
                 onRowExpansionChange={handleRowExpansionChange}
-                renderExpandedContent={renderExpandedContent}
                 onRowDelete={handleRowDelete}
                 onRowView={handleRowView}
                 onRowClick={() => {}}
@@ -457,26 +334,6 @@ const WorkflowActionPageImpl: React.FC = () => {
           </div>
         </div>
       </DashboardLayout>
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Action"
-        message={`Are you sure you want to delete `}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => setIsDeleteModalOpen(false),
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
       <RightSlideWorkflowActionPanel
         isOpen={isPanelOpen}
         onClose={handleClosePanel}

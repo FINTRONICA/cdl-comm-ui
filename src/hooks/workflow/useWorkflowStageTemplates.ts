@@ -15,6 +15,7 @@ import {
   WorkflowStageTemplateLabelsService,
   type ProcessedWorkflowStageTemplateLabels,
 } from '@/services/api/workflowApi/workflowStageTemplateLabelsService'
+import { toast } from 'react-hot-toast'
 
 export const WORKFLOW_STAGE_TEMPLATES_QUERY_KEY = 'workflowStageTemplates'
 
@@ -130,7 +131,7 @@ export function useCreateWorkflowStageTemplate() {
       })
     },
     onError: (error) => {
-      console.log(error)
+      toast.error(`${error}`)
     },
     retry: 2,
   })
@@ -163,7 +164,7 @@ export function useUpdateWorkflowStageTemplate() {
       })
     },
     onError: (error) => {
-      console.log(error)
+      toast.error(`${error}`)
     },
     retry: 2,
   })
@@ -179,7 +180,7 @@ export function useDeleteWorkflowStageTemplate() {
       return result
     },
     onSuccess: (_, deletedId) => {
-      console.log(deletedId)
+     
 
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_STAGE_TEMPLATES_QUERY_KEY],
@@ -190,7 +191,7 @@ export function useDeleteWorkflowStageTemplate() {
       })
     },
     onError: (error) => {
-      console.log(error)
+      toast.error(`${error}`)
     },
     retry: false,
   })
@@ -292,7 +293,7 @@ export function useWorkflowStageTemplateForm() {
 
   // Transform data for dropdowns
   const workflowDefinitionOptions =
-    workflowDefinitions.data?.content?.map((def: WorkflowDefinition) => ({
+    workflowDefinitions.data?.content?.map((def) => ({
       id: def.id,
       label: def.name || 'Unnamed',
       value: def.id,
@@ -386,7 +387,7 @@ export function useWorkflowStageTemplateForm() {
 
     getWorkflowDefinitionById: (id: number | string) =>
       workflowDefinitions.data?.content?.find(
-        (def: WorkflowDefinition) => def.id === id
+        (def) => def.id === id
       ),
   }
 }

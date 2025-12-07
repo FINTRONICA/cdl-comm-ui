@@ -6,7 +6,7 @@ export class CookieService {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict' as const,
-      maxAge: 8 * 60 * 60 * 1000, // 8 hours
+      maxAge: 30 * 60 * 1000, 
       path: '/',
       ...options
     };

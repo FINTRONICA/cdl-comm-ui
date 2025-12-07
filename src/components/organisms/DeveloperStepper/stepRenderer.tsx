@@ -11,7 +11,6 @@ import {
 } from './lazyComponents'
 import { StepContentProps } from './types'
 
-
 export const useStepContentRenderer = ({
   developerId,
   methods,
@@ -26,12 +25,20 @@ export const useStepContentRenderer = ({
     }
   }, [activeStep])
 
+  // Memoized callbacks to prevent infinite re-renders
+  const handleBeneficiariesChange = useCallback(
+    (beneficiaries: any[]) => {
+      methods.setValue('beneficiaries', beneficiaries)
+    },
+    [methods]
+  )
+
   const getStepContent = useCallback(
     (step: number) => {
       const stepComponents = {
         0: () => (
           <LazyStepWrapper>
-            <Step1 isReadOnly={isReadOnly} />
+            <Step1 isReadOnly={isReadOnly} developerId={developerId} />
           </LazyStepWrapper>
         ),
         1: () => (
@@ -80,9 +87,7 @@ export const useStepContentRenderer = ({
           <LazyStepWrapper>
             <Step4
               beneficiaries={methods.watch('beneficiaries')}
-              onBeneficiariesChange={(beneficiaries) =>
-                methods.setValue('beneficiaries', beneficiaries)
-              }
+              onBeneficiariesChange={handleBeneficiariesChange}
               buildPartnerId={developerId || ''}
               isReadOnly={isReadOnly}
             />
@@ -90,7 +95,11 @@ export const useStepContentRenderer = ({
         ),
         5: () => (
           <LazyStepWrapper>
-            <Step5 developerId={developerId} onEditStep={onEditStep || undefined} isReadOnly={isReadOnly} />
+            <Step5
+              developerId={developerId}
+              onEditStep={onEditStep || undefined}
+              isReadOnly={isReadOnly}
+            />
           </LazyStepWrapper>
         ),
       }

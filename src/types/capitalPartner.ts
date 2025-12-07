@@ -75,6 +75,7 @@ export interface PaymentPlanResponse {
     id: number
   }
   deleted: boolean
+  enabled: boolean
 }
 
 export interface PayModeDTO {
@@ -151,7 +152,7 @@ export interface RealEstateAssetDTO {
   reaMarketingExpenses: string
   reaAccoutStatusDate: string
   reaTeamLeadName: string
-  reaRelationshipManagerName: string
+  reamprelationshipManagerName: string
   reaAssestRelshipManagerName: string
   reaRealEstateBrokerExp: number
   reaAdvertisementExp: number

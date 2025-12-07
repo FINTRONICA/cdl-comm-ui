@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, useTheme } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { Controller, useFormContext } from 'react-hook-form'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -48,13 +48,14 @@ export const DateRange: React.FC<DateRangeProps> = ({
     )
   }
 
+  const theme = useTheme()
   const { control, watch, setValue } = formContext
 
   const startDate = watch(startName)
   const endDate = watch(endName)
 
   const StyledCalendarIcon = (props: any) => (
-    <props.icon {...props} sx={calendarIconSx} />
+    <props.icon {...props} sx={calendarIconSx(theme)} />
   )
 
   const handleStartDateChange = (date: Dayjs | null) => {
@@ -97,10 +98,10 @@ export const DateRange: React.FC<DateRangeProps> = ({
                       fullWidth: true,
                       error: !!fieldState.error,
                       helperText: fieldState.error?.message || helperText,
-                      sx: commonFieldStyles,
-                      InputLabelProps: { sx: labelSx },
+                      sx: commonFieldStyles(theme),
+                      InputLabelProps: { sx: labelSx(theme) },
                       InputProps: {
-                        sx: valueSx,
+                        sx: valueSx(theme),
                         style: { height: '46px' },
                       },
                     },
@@ -142,10 +143,10 @@ export const DateRange: React.FC<DateRangeProps> = ({
                       fullWidth: true,
                       error: !!fieldState.error,
                       helperText: fieldState.error?.message || helperText,
-                      sx: commonFieldStyles,
-                      InputLabelProps: { sx: labelSx },
+                      sx: commonFieldStyles(theme),
+                      InputLabelProps: { sx: labelSx(theme) },
                       InputProps: {
-                        sx: valueSx,
+                        sx: valueSx(theme),
                         style: { height: '46px' },
                       },
                     },

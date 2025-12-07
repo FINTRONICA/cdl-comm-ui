@@ -50,11 +50,10 @@ export class BeneficiaryDropdownService {
         }
       )
       
-      console.log('✅ BeneficiaryDropdownService: Bank names fetched successfully')
-      console.log('📊 Bank Names API Response:', bankNames)
+   
       return bankNames
     } catch (error) {
-      console.error('❌ BeneficiaryDropdownService: Error fetching bank names:', error)
+     
       throw new Error(ERROR_MESSAGE)
     }
   }
@@ -76,11 +75,10 @@ export class BeneficiaryDropdownService {
         }
       )
       
-      console.log('✅ BeneficiaryDropdownService: Transfer types fetched successfully')
-      console.log('📊 Transfer Types API Response:', transferTypes)
+    
       return transferTypes
     } catch (error) {
-      console.error('❌ BeneficiaryDropdownService: Error fetching transfer types:', error)
+     
       throw new Error(ERROR_MESSAGE)
     }
   }

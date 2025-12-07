@@ -1,9 +1,5 @@
 import Cookies from 'js-cookie'
-
-const AUTH_TOKEN = 'auth_token'
-const USER_TYPE = 'user_type'
-const USER_NAME = 'user_name'
-const USER_ID = 'user_id'
+import { COOKIES } from '@/types/auth'
 
 
 const DEFAULT_OPTIONS = {
@@ -12,12 +8,22 @@ const DEFAULT_OPTIONS = {
   sameSite: 'lax' as const
 }
 
-export const setAuthCookies = (token: string, userType: string, userName: string, userId: string, days: number = 7) => {
+export const setAuthCookies = (
+  token: string,
+  userType: string,
+  userName: string,
+  userId: string,
+  refreshToken?: string,
+  days: number = 7
+) => {
   try {
-    Cookies.set(AUTH_TOKEN, token, { ...DEFAULT_OPTIONS, expires: days })
-    Cookies.set(USER_TYPE, userType, { ...DEFAULT_OPTIONS, expires: days })
-    Cookies.set(USER_NAME, userName, { ...DEFAULT_OPTIONS, expires: days })
-    Cookies.set(USER_ID, userId, { ...DEFAULT_OPTIONS, expires: days })
+    Cookies.set(COOKIES.AUTH_TOKEN, token, { ...DEFAULT_OPTIONS, expires: days })
+    Cookies.set(COOKIES.USER_TYPE, userType, { ...DEFAULT_OPTIONS, expires: days })
+    Cookies.set(COOKIES.USER_NAME, userName, { ...DEFAULT_OPTIONS, expires: days })
+    Cookies.set(COOKIES.USER_ID, userId, { ...DEFAULT_OPTIONS, expires: days })
+    if (refreshToken) {
+      Cookies.set(COOKIES.REFRESH_TOKEN, refreshToken, { ...DEFAULT_OPTIONS, expires: days })
+    }
   } catch (error) {
     console.error('Error setting auth cookies:', error)
   }
@@ -27,26 +33,45 @@ export const setAuthCookies = (token: string, userType: string, userName: string
 export const getAuthCookies = () => {
   try {
     return {
-      token: Cookies.get(AUTH_TOKEN) || null,
-      userType: Cookies.get(USER_TYPE) || null,
-      userName: Cookies.get(USER_NAME) || null,
-      userId: Cookies.get(USER_ID) || null
+      token: Cookies.get(COOKIES.AUTH_TOKEN) || null,
+      userType: Cookies.get(COOKIES.USER_TYPE) || null,
+      userName: Cookies.get(COOKIES.USER_NAME) || null,
+      userId: Cookies.get(COOKIES.USER_ID) || null,
+      refreshToken: Cookies.get(COOKIES.REFRESH_TOKEN) || null
     }
   } catch (error) {
     console.error('Error getting auth cookies:', error)
-    return { token: null, userType: null, userName: null, userId: null }
+    return { token: null, userType: null, userName: null, userId: null, refreshToken: null }
   }
 }
 
 
 export const clearAuthCookies = () => {
   try {
-    Cookies.remove(AUTH_TOKEN)
-    Cookies.remove(USER_TYPE)
-    Cookies.remove(USER_NAME)
-    Cookies.remove(USER_ID)
+    Cookies.remove(COOKIES.AUTH_TOKEN)
+    Cookies.remove(COOKIES.USER_TYPE)
+    Cookies.remove(COOKIES.USER_NAME)
+    Cookies.remove(COOKIES.USER_ID)
+    Cookies.remove(COOKIES.REFRESH_TOKEN)
   } catch (error) {
     console.error('Error clearing auth cookies:', error)
+  }
+}
+
+export const getRefreshTokenCookie = (): string | null => {
+  try {
+    return Cookies.get(COOKIES.REFRESH_TOKEN) || null
+  } catch (error) {
+    console.error('Error getting refresh token cookie:', error)
+    return null
+  }
+}
+
+export const setRefreshTokenCookie = (refreshToken: string, days: number = 7) => {
+  try {
+    Cookies.set(COOKIES.REFRESH_TOKEN, refreshToken, { ...DEFAULT_OPTIONS, expires: days })
+  } catch (error) {
+    console.error('Error setting refresh token cookie:', error)
   }
 }
 

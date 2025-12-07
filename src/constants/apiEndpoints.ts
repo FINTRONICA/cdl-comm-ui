@@ -1,6 +1,7 @@
 // API Base URL and Version
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8081',
+  // BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8083',
+  BASE_URL: process.env.NODE_ENV === 'production' ? '' : (process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8083'),
   VERSION: 'v1',
   API_PREFIX: '/api/v1',
 } as const
@@ -69,22 +70,366 @@ export const API_ENDPOINTS = {
     GROUP_MANAGEMENT_LABEL: '/app-language-translation/group-management',
     PAYMENTS_LABEL: '/app-language-translation/payments',
     FEE_REPUSH: '/app-language-translation/fee-repush',
+    PARTY: '/app-language-translation/party',
+    ACCOUNT_PURPOSE: '/app-language-translation/account-purpose',
+    INVESTMENT: '/app-language-translation/investment',
+    BUSINESS_SEGMENT: '/app-language-translation/business-segment',
+    BUSINESS_SUB_SEGMENT: '/app-language-translation/business-sub-segment',
+    AGREEMENT_TYPE: '/app-language-translation/agreement-type',
+    AGREEMENT_SUB_TYPE: '/app-language-translation/agreement-sub-type',
+    PRODUCT_PROGRAM: '/app-language-translation/product-program',
+    BENEFICIARY: '/app-language-translation/beneficiary',
+    ESCROW_ACCOUNT: '/app-language-translation/escrow-account',
+    AGREEMENT_SEGMENT: '/app-language-translation/agreement-segment',
+    GENERAL_LEDGER_ACCOUNT: '/app-language-translation/general-ledger-account',
+    COUNTRY: '/app-language-translation/country',
+    CURRENCY: '/app-language-translation/currency',
+    ESCROW_AGREEMENT: '/app-language-translation/escrow-agreement',
+    AGREEMENT_SIGNATORY: '/app-language-translation/agreement-signatory',
+    AGREEMENT_PARAMETER: '/app-language-translation/agreement-parameter',
+    AGREEMENT_FEE_SCHEDULE: '/app-language-translation/agreement-fee-schedule',
+    RECONCILED_TRANSACTION: '/app-language-translation/reconciled-transaction',
+    UNRECONCILED_TRANSACTION: '/app-language-translation/unreconciled-transaction',
+    PROCESSING_STATUS: '/app-language-translation/processing-status',
+    TRANSACTION_PROCESSING_HISTORY: '/app-language-translation/transaction-processing-history',
+    SCHEDULE_JOB: '/app-language-translation/schedule-job',
+    PAYMENT_INSTRUCTION: '/app-language-translation/standing-instruction',
+    PAYMENT_BENEFICIARY: '/app-language-translation/standing-instruction-beneficiary',
+    AGREEMENT_BUDGET_PLAN: '/app-language-translation/agreement-budget-plan',
+    BULK_PAYMENT_UPLOAD: '/app-language-translation/bulk-payment-upload',
+  },
 
-    CUSTOMER_MASTER_LABEL: '/app-language-translatio/customer-master',
-    ACCOUNT_PURPOSE_LABEL: '/app-language-translatio/account-purpose',
-    INVESTMENT_MASTER_LABEL: '/app-language-translatio/investment-mastr',
-    BUSINESS_SEGMENT_LABEL: '/app-language-translatio/business-segmen',
-    BUSINESS_SUB_SEGMENT_LABEL: '/app-language-translatio/business-sub-sement',
-    DEAL_TYPE_LABEL: '/app-language-translatio/deal-type',
-  DEAL_SUBTYPE_LABEL: '/app-language-translatio/deal-subtype',
-   PRODUCT_PROGRAM_LABEL: '/app-language-translatio/product-program',
-    BENEFICIARY_LABEL: '/app-language-translatio/beneficiary',
-  DOCUMENT_LABEL: '/app-language-translatio/document',
-    EAL_SEGMENT_LABEL: '/app-language-translatio/deal-segment',
-   LEDGER_ACCOUNT_LABEL: '/app-language-translatio/ledger-account',
-    COUNTRY_CODE_LABEL: '/app-language-translatio/country-code',
-   CURRENCY_CODE_LABEL: '/app-language-translatio/currency-code'
- },
+  // MASTER DOCUMENT API ENDPOINTS START
+  // party Create
+  PARTY_CREATE: {
+    DETAILS_SAVE: '/party',
+    AUTHORISED_SIGNATORY_SAVE: '/party-authorised-signatory',
+    REVIEW_SAVE: '/party-review',
+    GET_STEP_DATA: (step: number) => `/party/create/${step}/data`,
+    VALIDATE_STEP: (step: number) => `/party/create/${step}/validate`,
+  },
+
+  // party
+  PARTY: {
+    GET_BY_ID: (id: string) => `/party/${id}`,
+    UPDATE: (id: string) => `/party/${id}`,
+    DELETE: (id: string) => `/party/${id}`,
+    SOFT_DELETE: (id: string) => `/party/soft/${id}`,
+    GET_ALL: '/party?deleted.equals=false&enabled.equals=true',
+    SAVE: '/party',
+    FIND_ALL:
+      '/party/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // authorised-signatory
+  PARTY_AUTHORIZED_SIGNATORY: {
+    GET_BY_ID: (id: string) => `/authorised-signatory/${id}`,
+    UPDATE: (id: string) => `/authorised-signatory/${id}`,
+    DELETE: (id: string) => `/authorised-signatory/${id}`,
+    SOFT_DELETE: (id: string) => `/authorised-signatory/soft/${id}`,
+    GET_ALL: '/authorised-signatory?deleted.equals=false&enabled.equals=true',
+    SAVE: '/authorised-signatory',
+    FIND_ALL:
+      '/authorised-signatory/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // Account  Purpose 
+  MASTER_ACCOUNT_PURPOSE: {
+    GET_BY_ID: (id: string) => `/account-purpose/${id}`,
+    UPDATE: (id: string) => `/account-purpose/${id}`,
+    DELETE: (id: string) => `/account-purpose/${id}`,
+    SOFT_DELETE: (id: string) => `/account-purpose/soft/${id}`,
+    GET_ALL: '/account-purpose?deleted.equals=false&enabled.equals=true',
+    SAVE: '/account-purpose',
+    FIND_ALL: '/account-purpose/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // Investment
+  MASTER_INVESTMENT: {
+    GET_BY_ID: (id: string) => `/investment/${id}`,
+    UPDATE: (id: string) => `/investment/${id}`,
+    DELETE: (id: string) => `/investment/${id}`,
+    SOFT_DELETE: (id: string) => `/investment/soft/${id}`,
+    GET_ALL: '/investment?deleted.equals=false&enabled.equals=true',
+    SAVE: '/investment',
+    FIND_ALL: '/investment/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // business-segment
+  MASTER_BUSINESS_SEGMENT: {
+    GET_BY_ID: (id: string) => `/business-segment/${id}`,
+    UPDATE: (id: string) => `/business-segment/${id}`,
+    DELETE: (id: string) => `/business-segment/${id}`,
+    SOFT_DELETE: (id: string) => `/business-segment/soft/${id}`,
+    GET_ALL: '/business-segment?deleted.equals=false&enabled.equals=true',
+    SAVE: '/business-segment',
+    FIND_ALL: '/business-segment/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // business-sub-segment
+  MASTER_BUSINESS_SUB_SEGMENT: {
+    GET_BY_ID: (id: string) => `/business-sub-segment/${id}`,
+    UPDATE: (id: string) => `/business-sub-segment/${id}`,
+    DELETE: (id: string) => `/business-sub-segment/${id}`,
+    SOFT_DELETE: (id: string) => `/business-sub-segment/soft/${id}`,
+    GET_ALL: '/business-sub-segment?deleted.equals=false&enabled.equals=true',
+    SAVE: '/business-sub-segment',
+    FIND_ALL: '/business-sub-segment/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // AgreementType
+  MASTER_AGREEMENT_TYPE: {
+    GET_BY_ID: (id: string) => `/agreement-type/${id}`,
+    UPDATE: (id: string) => `/agreement-type/${id}`,
+    DELETE: (id: string) => `/agreement-type/${id}`,
+    SOFT_DELETE: (id: string) => `/agreement-type/soft/${id}`,
+    GET_ALL: '/agreement-type?deleted.equals=false&enabled.equals=true',
+    SAVE: '/agreement-type',
+    FIND_ALL: '/agreement-type/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // agreement-sub-type
+  MASTER_AGREEMENT_SUB_TYPE: {
+    GET_BY_ID: (id: string) => `/agreement-sub-type/${id}`,
+    UPDATE: (id: string) => `/agreement-sub-type/${id}`,
+    DELETE: (id: string) => `/agreement-sub-type/${id}`,
+    SOFT_DELETE: (id: string) => `/agreement-sub-type/soft/${id}`,
+    GET_ALL: '/agreement-sub-type?deleted.equals=false&enabled.equals=true',
+    SAVE: '/agreement-sub-type',
+    FIND_ALL: '/agreement-sub-type/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // product-program
+  MASTER_PRODUCT_PROGRAM: {
+    GET_BY_ID: (id: string) => `/product-program/${id}`,
+    UPDATE: (id: string) => `/product-program/${id}`,
+    DELETE: (id: string) => `/product-program/${id}`,
+    SOFT_DELETE: (id: string) => `/product-program/soft/${id}`,
+    GET_ALL: '/product-program?deleted.equals=false&enabled.equals=true',
+    SAVE: '/product-program',
+    FIND_ALL: '/product-program/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // Beneficiary
+  MASTER_BENEFICIARY: {
+    GET_BY_ID: (id: string) => `/beneficiary/${id}`,
+    UPDATE: (id: string) => `/beneficiary/${id}`,
+    DELETE: (id: string) => `/beneficiary/${id}`,
+    SOFT_DELETE: (id: string) => `/beneficiary/soft/${id}`,
+    GET_ALL: '/beneficiary?deleted.equals=false&enabled.equals=true',
+    SAVE: '/beneficiary',
+    FIND_ALL: '/beneficiary/find-all?deleted.equals=false&enabled.equals=true',
+  },
+  // Escrow Account
+  MASTER_ESCROW_ACCOUNT: {
+    GET_BY_ID: (id: string) => `/escrow-account/${id}`,
+    UPDATE: (id: string) => `/escrow-account/${id}`,
+    DELETE: (id: string) => `/escrow-account/${id}`,
+    SOFT_DELETE: (id: string) => `/escrow-account/soft/${id}`,
+    GET_ALL: '/escrow-account?deleted.equals=false&enabled.equals=true',
+    SAVE: '/escrow-account',
+    FIND_ALL: '/escrow-account/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // agreement-segment
+  MASTER_AGREEMENT_SEGMENT: {
+    GET_BY_ID: (id: string) => `/agreement-segment/${id}`,
+    UPDATE: (id: string) => `/agreement-segment/${id}`,
+    DELETE: (id: string) => `/agreement-segment/${id}`,
+    SOFT_DELETE: (id: string) => `/agreement-segment/soft/${id}`,
+    GET_ALL: '/agreement-segment?deleted.equals=false&enabled.equals=true',
+    SAVE: '/agreement-segment',
+    FIND_ALL: '/agreement-segment/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // general-ledger-account
+  MASTER_GENERAL_LEDGER_ACCOUNT: {
+    GET_BY_ID: (id: string) => `/general-ledger-account/${id}`,
+    UPDATE: (id: string) => `/general-ledger-account/${id}`,
+    DELETE: (id: string) => `/general-ledger-account/${id}`,
+    SOFT_DELETE: (id: string) => `/general-ledger-account/soft/${id}`,
+    GET_ALL: '/general-ledger-account?deleted.equals=false&enabled.equals=true',
+    SAVE: '/general-ledger-account',
+    FIND_ALL: '/general-ledger-account/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // Country
+  MASTER_COUNTRY: {
+    GET_BY_ID: (id: string) => `/country/${id}`,
+    UPDATE: (id: string) => `/country/${id}`,
+    DELETE: (id: string) => `/country/${id}`,
+    SOFT_DELETE: (id: string) => `/country/soft/${id}`,
+    GET_ALL: '/country?deleted.equals=false&enabled.equals=true',
+    SAVE: '/country',
+    FIND_ALL: '/country/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // Currency
+  MASTER_CURRENCY: {
+    GET_BY_ID: (id: string) => `/currency/${id}`,
+    UPDATE: (id: string) => `/currency/${id}`,
+    DELETE: (id: string) => `/currency/${id}`,
+    SOFT_DELETE: (id: string) => `/currency/soft/${id}`,
+    GET_ALL: '/currency?deleted.equals=false&enabled.equals=true',
+    SAVE: '/currency',
+    FIND_ALL: '/currency/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // escrow-agreement
+  ESCROW_AGREEMENT: {
+    GET_BY_ID: (id: string) => `/escrow-agreement/${id}`,
+    UPDATE: (id: string) => `/escrow-agreement/${id}`,
+    DELETE: (id: string) => `/escrow-agreement/${id}`,
+    SOFT_DELETE: (id: string) => `/escrow-agreement/soft/${id}`,
+    GET_ALL: '/escrow-agreement?deleted.equals=false&enabled.equals=true',
+    SAVE: '/escrow-agreement',
+    FIND_ALL: '/escrow-agreement/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // escrow-account
+  ESCROW_ACCOUNT: {
+    GET_BY_ID: (id: string) => `/escrow-account/${id}`,
+    UPDATE: (id: string) => `/escrow-account/${id}`,
+    DELETE: (id: string) => `/escrow-account/${id}`,
+    SOFT_DELETE: (id: string) => `/escrow-account/soft/${id}`,
+    GET_ALL: '/escrow-account?deleted.equals=false&enabled.equals=true',
+    SAVE: '/escrow-account',
+    FIND_ALL: '/escrow-account/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // escrow-agreement-signatory
+  AGREEMENT_SIGNATORY: {
+    GET_BY_ID: (id: string) => `/agreement-signatory/${id}`,
+    UPDATE: (id: string) => `/agreement-signatory/${id}`,
+    DELETE: (id: string) => `/agreement-signatory/${id}`,
+    SOFT_DELETE: (id: string) => `/agreement-signatory/soft/${id}`,
+    GET_ALL: '/agreement-signatory?deleted.equals=false&enabled.equals=true',
+    SAVE: '/agreement-signatory',
+    FIND_ALL: '/agreement-signatory/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  //  Escrow Agreement Signatory 
+  AGREEMENT_PARAMETER: {
+    GET_BY_ID: (id: string) => `/agreement-parameter/${id}`,
+    UPDATE: (id: string) => `/agreement-parameter/${id}`,
+    DELETE: (id: string) => `/agreement-parameter/${id}`,
+    SOFT_DELETE: (id: string) => `/agreement-parameter/soft/${id}`,
+    GET_ALL: '/agreement-parameter?deleted.equals=false&enabled.equals=true',
+    SAVE: '/agreement-parameter',
+    FIND_ALL: '/agreement-parameter/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // agreement-fee-schedule
+  AGREEMENT_FEE_SCHEDULE: {
+    GET_BY_ID: (id: string) => `/agreement-fee-schedule/${id}`,
+    UPDATE: (id: string) => `/agreement-fee-schedule/${id}`,
+    DELETE: (id: string) => `/agreement-fee-schedule/${id}`,
+    SOFT_DELETE: (id: string) => `/agreement-fee-schedule/soft/${id}`,
+    GET_ALL: '/agreement-fee-schedule?deleted.equals=false&enabled.equals=true',
+    SAVE: '/agreement-fee-schedule',
+    FIND_ALL: '/agreement-fee-schedule/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // reconciled-transaction Processed Transaction ( Deposit)
+  RECONCILED_TRANSACTION: {
+    GET_BY_ID: (id: string) => `/reconciled-transaction/${id}`,
+    UPDATE: (id: string) => `/reconciled-transaction/${id}`,
+    DELETE: (id: string) => `/reconciled-transaction/${id}`,
+    SOFT_DELETE: (id: string) => `/reconciled-transaction/soft/${id}`,
+    GET_ALL: '/reconciled-transaction?deleted.equals=false&enabled.equals=true',
+    SAVE: '/reconciled-transaction',
+    FIND_ALL: '/reconciled-transaction/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // unreconciled-transaction  Pending Transaction (deposit)
+  UNRECONCILED_TRANSACTION: {
+    GET_BY_ID: (id: string) => `/unreconciled-transaction/${id}`,
+    UPDATE: (id: string) => `/unreconciled-transaction/${id}`,
+    DELETE: (id: string) => `/unreconciled-transaction/${id}`,
+    SOFT_DELETE: (id: string) => `/unreconciled-transaction/soft/${id}`,
+    GET_ALL: '/unreconciled-transaction?deleted.equals=false&enabled.equals=true',
+    SAVE: '/unreconciled-transaction',
+    FIND_ALL: '/unreconciled-transaction/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // processing-status
+  PROCESSING_STATUS: {
+    GET_BY_ID: (id: string) => `/processing-status/${id}`,
+    UPDATE: (id: string) => `/processing-status/${id}`,
+    DELETE: (id: string) => `/processing-status/${id}`,
+    SOFT_DELETE: (id: string) => `/processing-status/soft/${id}`,
+    GET_ALL: '/processing-status?deleted.equals=false&enabled.equals=true',
+    SAVE: '/processing-status',
+    FIND_ALL: '/processing-status/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // transaction-processing-history
+  TRANSACTION_PROCESSING_HISTORY: {
+    GET_BY_ID: (id: string) => `/transaction-processing-history/${id}`,
+    UPDATE: (id: string) => `/transaction-processing-history/${id}`,
+    DELETE: (id: string) => `/transaction-processing-history/${id}`,
+    SOFT_DELETE: (id: string) => `/transaction-processing-history/soft/${id}`,
+    GET_ALL: '/transaction-processing-history?deleted.equals=false&enabled.equals=true',
+    SAVE: '/transaction-processing-history',
+    FIND_ALL: '/transaction-processing-history/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // schedule-job
+  SCHEDULE_JOB: {
+    GET_BY_ID: (id: string) => `/schedule-job/${id}`,
+    UPDATE: (id: string) => `/schedule-job/${id}`,
+    DELETE: (id: string) => `/schedule-job/${id}`,
+    SOFT_DELETE: (id: string) => `/schedule-job/soft/${id}`,
+    GET_ALL: '/schedule-job?deleted.equals=false&enabled.equals=true',
+    SAVE: '/schedule-job',
+    FIND_ALL: '/schedule-job/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // standing-instruction
+  PAYMENT_INSTRUCTION: {
+    GET_BY_ID: (id: string) => `/standing-instruction/${id}`,
+    UPDATE: (id: string) => `/standing-instruction/${id}`,
+    DELETE: (id: string) => `/standing-instruction/${id}`,
+    SOFT_DELETE: (id: string) => `/standing-instruction/soft/${id}`,
+    GET_ALL: '/standing-instruction?deleted.equals=false&enabled.equals=true',
+    SAVE: '/standing-instruction',
+    FIND_ALL: '/standing-instruction/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // standing-instruction-beneficiary
+  PAYMENT_BENEFICIARY: {
+    GET_BY_ID: (id: string) => `/standing-instruction-beneficiary/${id}`,
+    UPDATE: (id: string) => `/standing-instruction-beneficiary/${id}`,
+    DELETE: (id: string) => `/standing-instruction-beneficiary/${id}`,
+    SOFT_DELETE: (id: string) => `/standing-instruction-beneficiary/soft/${id}`,
+    GET_ALL: '/standing-instruction-beneficiary?deleted.equals=false&enabled.equals=true',
+    SAVE: '/standing-instruction-beneficiary',
+    FIND_ALL: '/standing-instruction-beneficiary/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // agreement-budget-plan
+  AGREEMENT_BUDGET_PLAN: {
+    GET_BY_ID: (id: string) => `/agreement-budget-plan/${id}`,
+    UPDATE: (id: string) => `/agreement-budget-plan/${id}`,
+    DELETE: (id: string) => `/agreement-budget-plan/${id}`,
+    SOFT_DELETE: (id: string) => `/agreement-budget-plan/soft/${id}`,
+    GET_ALL: '/agreement-budget-plan?deleted.equals=false&enabled.equals=true',
+    SAVE: '/agreement-budget-plan',
+    FIND_ALL: '/agreement-budget-plan/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // bulk-payment-upload
+  BULK_PAYMENT_UPLOAD: {
+    GET_BY_ID: (id: string) => `/bulk-payment-upload/${id}`,
+    UPDATE: (id: string) => `/bulk-payment-upload/${id}`,
+    DELETE: (id: string) => `/bulk-payment-upload/${id}`,
+    SOFT_DELETE: (id: string) => `/bulk-payment-upload/soft/${id}`,
+    GET_ALL: '/bulk-payment-upload?deleted.equals=false&enabled.equals=true',
+    SAVE: '/bulk-payment-upload',
+    FIND_ALL: '/bulk-payment-upload/find-all?deleted.equals=false&enabled.equals=true',
+  },
+
+  // END MASTER DOCUMENT API ENDPOINTS
 
   APPLICATION_CONFIGURATION: {
     GET_BY_ID: (id: string) => `/application-configuration/${id}`,
@@ -127,6 +472,7 @@ export const API_ENDPOINTS = {
     CATEGORIES: '/application-setting?settingKey.equals=FEE_CATEGORY',
     FREQUENCIES: '/application-setting?settingKey.equals=FEE_FREQUENCY',
     CURRENCIES: '/application-setting?settingKey.equals=CURRENCY',
+    COUNTRIES: '/application-setting?settingKey.equals=COUNTRY',
     DEBIT_ACCOUNTS: '/application-setting?settingKey.equals=DEBIT_ACOUNT_TYPE',
   },
 
@@ -242,42 +588,56 @@ export const API_ENDPOINTS = {
     FIND_ALL: '/binary-data-store/find-all',
   },
 
-  // Build Partner
-  BUILD_PARTNER_ACCOUNT: {
-    GET_BY_ID: (id: string) => `/build-partner-account/${id}`,
-    UPDATE: (id: string) => `/build-partner-account/${id}`,
-    DELETE: (id: string) => `/build-partner-account/${id}`,
-    SAVE: '/build-partner-account',
-    FIND_ALL: '/build-partner-account/find-all',
-  },
+  // // Build Partner
+  // BUILD_PARTNER_ACCOUNT: {
+  //   GET_BY_ID: (id: string) => `/build-partner-account/${id}`,
+  //   UPDATE: (id: string) => `/build-partner-account/${id}`,
+  //   DELETE: (id: string) => `/build-partner-account/${id}`,
+  //   SAVE: '/build-partner-account',
+  //   FIND_ALL: '/build-partner-account/find-all',
+  // },
 
-  BUILD_PARTNER_BENEFICIARY: {
-    GET_BY_ID: (id: string) =>
-      `/build-partner-beneficiary?buildPartnerId.equals=${id}`,
-    UPDATE: (id: string) => `/build-partner-beneficiary/${id}`,
-    DELETE: (id: string) => `/build-partner-beneficiary/${id}`,
-    SAVE: '/build-partner-beneficiary',
-    FIND_ALL: '/build-partner-beneficiary/find-all',
-    UPLOAD: '/build-partner-beneficiary/upload',
-  },
+  // BUILD_PARTNER_BENEFICIARY: {
+  //   GET_BY_ID: (id: string) =>
+  //     `/build-partner-beneficiary?buildPartnerId.equals=${id}&deleted.equals=false&enabled.equals=true`,
+  //   UPDATE: (id: string) => `/build-partner-beneficiary/${id}`,
+  //   DELETE: (id: string) => `/build-partner-beneficiary/${id}`,
+  //   SOFT_DELETE: (id: string) => `/build-partner-beneficiary/soft/${id}`,
+  //   SAVE: '/build-partner-beneficiary',
+  //   FIND_ALL: '/build-partner-beneficiary/find-all',
+  //   UPLOAD: '/build-partner-beneficiary/upload',
+  // },
 
-  BUILD_PARTNER_CONTACT: {
-    GET_BY_ID: (id: string) =>
-      `/build-partner-contact?buildPartnerId.equals=${id}`,
-    UPDATE: (id: string) => `/build-partner-contact/${id}`,
-    DELETE: (id: string) => `/build-partner-contact/${id}`,
-    SAVE: '/build-partner-contact',
-    FIND_ALL: '/build-partner-contact/find-all',
-  },
+  // BUILD_PARTNER_CONTACT: {
+  //   GET_BY_ID: (id: string) =>
+  //     `/build-partner-contact?buildPartnerId.equals=${id}&deleted.equals=false&enabled.equals=true`,
+  //   UPDATE: (id: string) => `/build-partner-contact/${id}`,
+  //   DELETE: (id: string) => `/build-partner-contact/${id}`,
+  //   SOFT_DELETE: (id: string) => `/build-partner-contact/soft/${id}`,
+  //   SAVE: '/build-partner-contact',
+  //   FIND_ALL: '/build-partner-contact/find-all',
+  // },
 
-  BUILD_PARTNER_FEES: {
-    GET_BY_ID: (id: string) =>
-      `/build-partner-fees?buildPartnerId.equals=${id}`,
-    UPDATE: (id: string) => `/build-partner-fees/${id}`,
-    DELETE: (id: string) => `/build-partner-fees/${id}`,
-    GET_ALL: '/build-partner-fees',
-    SAVE: '/build-partner-fees',
-    FIND_ALL: '/build-partner-fees/find-all',
+  // BUILD_PARTNER_FEES: {
+  //   GET_BY_ID: (id: string) =>
+  //     `/build-partner-fees?buildPartnerId.equals=${id}&deleted.equals=false&enabled.equals=true`,
+  //   GET_FEE_BY_ID: (feeId: string) => `/build-partner-fees/${feeId}`,
+  //   UPDATE: (id: string) => `/build-partner-fees/${id}`,
+  //   DELETE: (id: string) => `/build-partner-fees/${id}`,
+  //   SOFT_DELETE: (id: string) => `/build-partner-fees/soft/${id}`,
+  //   GET_ALL: '/build-partner-fees',
+  //   SAVE: '/build-partner-fees',
+  //   FIND_ALL: '/build-partner-fees/find-all',
+  // },
+  // Build Partner Stepper APIs
+  BUILD_PARTNER_CREATE: {
+    DETAILS_SAVE: '/build-partner',
+    CONTACT_SAVE: '/build-partner-contact',
+    FEES_SAVE: '/build-partner-fees',
+    BENEFICIARY_SAVE: '/build-partner-beneficiary',
+    REVIEW_SAVE: '/build-partner-review',
+    GET_STEP_DATA: (step: number) => `/build-partner/create/${step}/data`,
+    VALIDATE_STEP: (step: number) => `/build-partner/create/${step}/validate`,
   },
 
   // Capital Partner
@@ -313,6 +673,7 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: string) => `/capital-partner-payment-plan/${id}`,
     UPDATE: (id: string) => `/capital-partner-payment-plan/${id}`,
     DELETE: (id: string) => `/capital-partner-payment-plan/${id}`,
+    SOFT_DELETE: (id: string) => `/capital-partner-payment-plan/soft/${id}`,
     GET_ALL: '/capital-partner-payment-plan',
     SAVE: '/capital-partner-payment-plan',
     FIND_ALL: '/capital-partner-payment-plan/find-all',
@@ -453,10 +814,12 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: string) => `/real-estate-assest-beneficiary/${id}`,
     UPDATE: (id: string) => `/real-estate-assest-beneficiary/${id}`,
     DELETE: (id: string) => `/real-estate-assest-beneficiary/${id}`,
+    SOFT_DELETE: (id: string) => `/real-estate-assest-beneficiary/soft/${id}`,
     GET_ALL: '/real-estate-assest-beneficiary',
     SAVE: '/real-estate-assest-beneficiary',
     FIND_ALL: '/real-estate-assest-beneficiary/find-all',
-    GET_BY_PROJECT_ID: (projectId: string) => `/real-estate-assest-beneficiary?realEstateAssestId.equals=${projectId}`,
+    GET_BY_PROJECT_ID: (projectId: string) =>
+      `/real-estate-assest-beneficiary?realEstateAssestId.equals=${projectId}`,
   },
 
   REAL_ESTATE_ASSET_CLOSURE: {
@@ -466,17 +829,20 @@ export const API_ENDPOINTS = {
     GET_ALL: '/real-estate-assest-closure',
     SAVE: '/real-estate-assest-closure',
     FIND_ALL: '/real-estate-assest-closure/find-all',
-    GET_BY_PROJECT_ID: (projectId: string) => `/real-estate-assest-closure?realEstateAssestId.equals=${projectId}`,
+    GET_BY_PROJECT_ID: (projectId: string) =>
+      `/real-estate-assest-closure?realEstateAssestId.equals=${projectId}`,
   },
 
   REAL_ESTATE_ASSET_FEE: {
     GET_BY_ID: (id: string) => `/real-estate-asset-fee/${id}`,
     UPDATE: (id: string) => `/real-estate-asset-fee/${id}`,
     DELETE: (id: string) => `/real-estate-asset-fee/${id}`,
+    SOFT_DELETE: (id: string) => `/real-estate-asset-fee/soft/${id}`,
     GET_ALL: '/real-estate-asset-fee',
     SAVE: '/real-estate-asset-fee',
     FIND_ALL: '/real-estate-asset-fee/find-all',
-    GET_BY_PROJECT_ID: (projectId: string) => `/real-estate-asset-fee?realEstateAssestId.equals=${projectId}`,
+    GET_BY_PROJECT_ID: (projectId: string) =>
+      `/real-estate-asset-fee?realEstateAssestId.equals=${projectId}`,
   },
 
   REAL_ESTATE_ASSET_FEE_HISTORY: {
@@ -486,7 +852,8 @@ export const API_ENDPOINTS = {
     GET_ALL: '/real-estate-asset-fee-history',
     SAVE: '/real-estate-asset-fee-history',
     FIND_ALL: '/real-estate-asset-fee-history/find-all',
-    FEE_REPUSH: (id: string) => `/real-estate-asset-fee-history/fee-repush/${id}`,
+    FEE_REPUSH: (id: string) =>
+      `/real-estate-asset-fee-history/fee-repush/${id}`,
   },
 
   REAL_ESTATE_ASSET_FINANCIAL_SUMMARY: {
@@ -497,17 +864,20 @@ export const API_ENDPOINTS = {
     SAVE: '/real-estate-asset-financial-summary',
     FIND_ALL: '/real-estate-asset-financial-summary/find-all',
     DELETE_SOFT: '/real-estate-asset-financial-summary/soft/',
-    GET_BY_PROJECT_ID: (projectId: string) => `/real-estate-asset-financial-summary?realEstateAssestId.equals=${projectId}`,
+    GET_BY_PROJECT_ID: (projectId: string) =>
+      `/real-estate-asset-financial-summary?realEstateAssestId.equals=${projectId}`,
   },
 
   REAL_ESTATE_ASSET_PAYMENT_PLAN: {
     GET_BY_ID: (id: string) => `/real-estate-assest-payment-plan/${id}`,
     UPDATE: (id: string) => `/real-estate-assest-payment-plan/${id}`,
     DELETE: (id: string) => `/real-estate-assest-payment-plan/${id}`,
+    SOFT_DELETE: (id: string) => `/real-estate-assest-payment-plan/soft/${id}`,
     GET_ALL: '/real-estate-assest-payment-plan',
     SAVE: '/real-estate-assest-payment-plan',
     FIND_ALL: '/real-estate-assest-payment-plan/find-all',
-    GET_BY_PROJECT_ID: (projectId: string) => `/real-estate-assest-payment-plan?realEstateAssestId.equals=${projectId}`,
+    GET_BY_PROJECT_ID: (projectId: string) =>
+      `/real-estate-assest-payment-plan?realEstateAssestId.equals=${projectId}&deleted.equals=false&enabled.equals=true`,
   },
 
   REAL_ESTATE_BANK_ACCOUNT: {
@@ -517,7 +887,8 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `/real-estate-bank-account/${id}`,
     GET_ALL: '/real-estate-bank-account',
     FIND_ALL: '/real-estate-bank-account/find-all',
-    GET_BY_PROJECT_ID: (projectId: string) => `/real-estate-bank-account?realEstateAssestId.equals=${projectId}`,
+    GET_BY_PROJECT_ID: (projectId: string) =>
+      `/real-estate-bank-account?realEstateAssestId.equals=${projectId}`,
   },
 
   REAL_ESTATE_DOCUMENT: {
@@ -594,6 +965,8 @@ export const API_ENDPOINTS = {
     CREATE_ROLE: '/auth-admin-user/auth/roles',
     GET_ROLE_BY_NAME: (roleName: string) =>
       `/auth-admin-user/auth/roles/${roleName}`,
+    UPDATE_ROLE_NAME: (roleName: string, newRoleName: string) =>
+      `/auth-admin-user/auth/roles/${roleName}/${newRoleName}`,
     ASSIGN_ROLE: (userId: string, roleId: string) =>
       `/auth-admin-user/auth/users/${userId}/roles/${roleId}`,
     REMOVE_ROLE: (userId: string, roleId: string) =>
@@ -688,23 +1061,18 @@ export const API_ENDPOINTS = {
 
   // Workflow Request
   WORKFLOW_REQUEST: {
-    GET_BY_ID: (id: string) => `/workflow-request/${id}`,
-    UPDATE: (id: string) => `/workflow-request/${id}`,
-    DELETE: (id: string) => `/workflow-request/${id}`,
-    GET_ALL: '/workflow-request',
-    SAVE: '/workflow-request',
-    FIND_ALL: '/workflow-request/find-all',
     CREATE_REQUEST: '/workflow-request/create-request',
   },
 
-  // Workflow Request Log
-  WORKFLOW_REQUEST_LOG: {
-    GET_BY_ID: (id: string) => `/workflow-request-log/${id}`,
-    UPDATE: (id: string) => `/workflow-request-log/${id}`,
-    DELETE: (id: string) => `/workflow-request-log/${id}`,
-    GET_ALL: '/workflow-request-log',
-    SAVE: '/workflow-request-log',
-    FIND_ALL: '/workflow-request-log/find-all',
+  // Workflow Queue
+  WORKFLOW_QUEUE: {
+    GET_BY_ID: (id: string) => `/workflow/requests/${id}`,
+    GET_BY_LOGS_ID: (id: string) => `/workflow/requests/${id}`,
+    GET_STATUS_BY_ID: (id: string) => `/workflow/requests/${id}`,
+    GET_ALL_AWAITING_ACTIONS: '/workflow/awaiting-actions',
+    GET_ALL_MY_ENGAGEMENTS: '/workflow/my-engagements',
+    SAVE: '/workflow/stages/bulk-decision',
+    GET_SUMMARY: '/workflow/summary',
   },
 
   // Workflow Execution
@@ -726,175 +1094,12 @@ export const API_ENDPOINTS = {
     FIND_ALL: '/workflow-instance/find-all',
   },
 
-  // Build Partner Stepper APIs
-  BUILD_PARTNER_CREATE: {
-    DETAILS_SAVE: '/build-partner',
-    CONTACT_SAVE: '/build-partner-contact',
-    FEES_SAVE: '/build-partner-fees',
-    BENEFICIARY_SAVE: '/build-partner-beneficiary',
-    REVIEW_SAVE: '/build-partner-review',
-    GET_STEP_DATA: (step: number) => `/build-partner/create/${step}/data`,
-    VALIDATE_STEP: (step: number) => `/build-partner/create/${step}/validate`,
-  },
+
 
   // Customer Details API
   CUSTOMER_DETAILS: {
     GET_BY_CIF: (cif: string) =>
       `/core-bank-get/sbi/apis/customer-details?customerCif=${cif}`,
-  },
-
-  // Master Customer APIs - Customer Master module
-  CUSTOMER_MASTER: {
-    GET_BY_ID: (id: string) => `/customer-master/${id}`,
-    UPDATE: (id: string) => `/customer-master/${id}`,
-    DELETE: (id: string) => `/customer-master/${id}`,
-    SOFT_DELETE: (id: string) => `/customer-master/soft/${id}`,
-    GET_ALL: '/customer-master?deleted.equals=false&enabled.equals=true',
-    SAVE: '/customer-master',
-    FIND_ALL: '/customer-master/find-all',
-  },
-
-  // Master Customer APIs - Account Purpose module
-  ACCOUNT_PURPOSE: {
-    GET_BY_ID: (id: string) => `/account-purpose/${id}`,
-    UPDATE: (id: string) => `/account-purpose/${id}`,
-    DELETE: (id: string) => `/account-purpose/${id}`,
-    SOFT_DELETE: (id: string) => `/account-purpose/soft/${id}`,
-    GET_ALL: '/account-purpose?deleted.equals=false&enabled.equals=true',
-    SAVE: '/account-purpose',
-    FIND_ALL: '/account-purpose/find-all',
-  },
-
-  // Master Customer APIs - Investment Master module
-  INVESTMENT_MASTER: {
-    GET_BY_ID: (id: string) => `/investment-master/${id}`,
-    UPDATE: (id: string) => `/investment-master/${id}`,
-    DELETE: (id: string) => `/investment-master/${id}`,
-    SOFT_DELETE: (id: string) => `/investment-master/soft/${id}`,
-    GET_ALL: '/investment-master?deleted.equals=false&enabled.equals=true',
-    SAVE: '/investment-master',
-    FIND_ALL: '/investment-master/find-all',
-  },
-
-  // Master Customer APIs - Business Segment module
-  BUSINESS_SEGMENT: {
-    GET_BY_ID: (id: string) => `/business-segment/${id}`,
-    UPDATE: (id: string) => `/business-segment/${id}`,
-    DELETE: (id: string) => `/business-segment/${id}`,
-    SOFT_DELETE: (id: string) => `/business-segment/soft/${id}`,
-    GET_ALL: '/business-segment?deleted.equals=false&enabled.equals=true',
-    SAVE: '/business-segment',
-    FIND_ALL: '/business-segment/find-all',
-  },
-
-  // Master Customer APIs - Business Sub Segment module
-  BUSINESS_SUB_SEGMENT: {
-    GET_BY_ID: (id: string) => `/business-sub-segment/${id}`,
-    UPDATE: (id: string) => `/business-sub-segment/${id}`,
-    DELETE: (id: string) => `/business-sub-segment/${id}`,
-    SOFT_DELETE: (id: string) => `/business-sub-segment/soft/${id}`,
-    GET_ALL: '/business-sub-segment?deleted.equals=false&enabled.equals=true',
-    SAVE: '/business-sub-segment',
-    FIND_ALL: '/business-sub-segment/find-all',
-  },
-
-  // Master Customer APIs - Deal Type module
-  DEAL_TYPE: {
-    GET_BY_ID: (id: string) => `/deal-type/${id}`,
-    UPDATE: (id: string) => `/deal-type/${id}`,
-    DELETE: (id: string) => `/deal-type/${id}`,
-    SOFT_DELETE: (id: string) => `/deal-type/soft/${id}`,
-    GET_ALL: '/deal-type?deleted.equals=false&enabled.equals=true',
-    SAVE: '/deal-type',
-    FIND_ALL: '/deal-type/find-all',
-  },
-
-  // Master Customer APIs - Deal Subtype module
-  DEAL_SUBTYPE: {
-    GET_BY_ID: (id: string) => `/deal-subtype/${id}`,
-    UPDATE: (id: string) => `/deal-subtype/${id}`,
-    DELETE: (id: string) => `/deal-subtype/${id}`,
-    SOFT_DELETE: (id: string) => `/deal-subtype/soft/${id}`,
-    GET_ALL: '/deal-subtype?deleted.equals=false&enabled.equals=true',
-    SAVE: '/deal-subtype',
-    FIND_ALL: '/deal-subtype/find-all',
-  },
-
-  // Master Customer APIs - Product Program module
-  PRODUCT_PROGRAM: {
-    GET_BY_ID: (id: string) => `/product-program/${id}`,
-    UPDATE: (id: string) => `/product-program/${id}`,
-    DELETE: (id: string) => `/product-program/${id}`,
-    SOFT_DELETE: (id: string) => `/product-program/soft/${id}`,
-    GET_ALL: '/product-program?deleted.equals=false&enabled.equals=true',
-    SAVE: '/product-program',
-    FIND_ALL: '/product-program/find-all',
-  },
-
-  // Master Customer APIs - Beneficiary module
-  BENEFICIARY: {
-    GET_BY_ID: (id: string) => `/beneficiary/${id}`,
-    UPDATE: (id: string) => `/beneficiary/${id}`,
-    DELETE: (id: string) => `/beneficiary/${id}`,
-    SOFT_DELETE: (id: string) => `/beneficiary/soft/${id}`,
-    GET_ALL: '/beneficiary?deleted.equals=false&enabled.equals=true',
-    SAVE: '/beneficiary',
-    FIND_ALL: '/beneficiary/find-all',
-  },
-
-  // Master Customer APIs - Document module
-  DOCUMENT: {
-    GET_BY_ID: (id: string) => `/document/${id}`,
-    UPDATE: (id: string) => `/document/${id}`,
-    DELETE: (id: string) => `/document/${id}`,
-    SOFT_DELETE: (id: string) => `/document/soft/${id}`,
-    GET_ALL: '/document?deleted.equals=false&enabled.equals=true',
-    SAVE: '/document',
-    FIND_ALL: '/document/find-all',
-  },
-
-  // Master Customer APIs - Deal Segment module
-  DEAL_SEGMENT: {
-    GET_BY_ID: (id: string) => `/deal-segment/${id}`,
-    UPDATE: (id: string) => `/deal-segment/${id}`,
-    DELETE: (id: string) => `/deal-segment/${id}`,
-    SOFT_DELETE: (id: string) => `/deal-segment/soft/${id}`,
-    GET_ALL: '/deal-segment?deleted.equals=false&enabled.equals=true',
-    SAVE: '/deal-segment',
-    FIND_ALL: '/deal-segment/find-all',
-  },
-
-  // Master Customer APIs - Ledger Account module
-  LEDGER_ACCOUNT: {
-    GET_BY_ID: (id: string) => `/ledger-account/${id}`,
-    UPDATE: (id: string) => `/ledger-account/${id}`,
-    DELETE: (id: string) => `/ledger-account/${id}`,
-    SOFT_DELETE: (id: string) => `/ledger-account/soft/${id}`,
-    GET_ALL: '/ledger-account?deleted.equals=false&enabled.equals=true',
-    SAVE: '/ledger-account',
-    FIND_ALL: '/ledger-account/find-all',
-  },
-
-  // Master Customer APIs - Country Code module
-  COUNTRY_CODE: {
-    GET_BY_ID: (id: string) => `/country-code/${id}`,
-    UPDATE: (id: string) => `/country-code/${id}`,
-    DELETE: (id: string) => `/country-code/${id}`,
-    SOFT_DELETE: (id: string) => `/country-code/soft/${id}`,
-    GET_ALL: '/country-code?deleted.equals=false&enabled.equals=true',
-    SAVE: '/country-code',
-    FIND_ALL: '/country-code/find-all',
-  },
-
-  // Master Customer APIs - Currency Code module
-  CURRENCY_CODE: {
-    GET_BY_ID: (id: string) => `/currency-code/${id}`,
-    UPDATE: (id: string) => `/currency-code/${id}`,
-    DELETE: (id: string) => `/currency-code/${id}`,
-    SOFT_DELETE: (id: string) => `/currency-code/soft/${id}`,
-    GET_ALL: '/currency-code?deleted.equals=false&enabled.equals=true',
-    SAVE: '/currency-code',
-    FIND_ALL: '/currency-code/find-all',
   },
 
   // Additional endpoints can be added here as needed

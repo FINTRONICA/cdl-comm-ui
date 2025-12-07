@@ -11,13 +11,13 @@ export const APP_CONFIG = {
 
 export const ROUTES = {
   dashboard: '/dashboard',
-  projects: '/projects',
+  projects: '/build-partner-assets',
   transactions: '/transactions',
   activities: '/activities',
   reports: '/reports',
   admin: '/admin',
-  investors: '/investors',
-  developers: '/developers',
+  investors: '/capital-partner',
+  developers: '/build-partner',
   payments: '/transactions',
   workflowAction: '/admin/workflow/action',
   workfloDifinition: '/admin/workflow/definition',
@@ -47,11 +47,11 @@ export const LEGACY_API_ENDPOINTS = {
     delete: (id: string) => `/users/${id}`,
   },
   projects: {
-    list: '/projects',
-    create: '/projects',
-    update: (id: string) => `/projects/${id}`,
-    delete: (id: string) => `/projects/${id}`,
-    details: (id: string) => `/projects/${id}`,
+    list: '/build-partner-assets',
+    create: '/build-partner-assets',
+    update: (id: string) => `/build-partner-assets/${id}`,
+    delete: (id: string) => `/build-partner-assets/${id}`,
+    details: (id: string) => `/build-partner-assets/${id}`,
   },
   transactions: {
     list: '/transactions',
@@ -225,6 +225,7 @@ export const THEME_COLORS = {
 
 // Template file names for document downloads
 export const TEMPLATE_FILES = {
+  ESCROW_ACCOUNT: 'EscrowAccountTemplate.xlsx',
   BUILD_PARTNER: 'BuildPartnerTemplate.xlsx',
   BUILD_PARTNER_ASSET: 'BuildPartnerAssestTemplate.xlsx',
   BUILD_PARTNER_BENEFICIARY: 'BuildPartnerBeneficiaryTemplate.xlsx',

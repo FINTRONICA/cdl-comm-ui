@@ -9,6 +9,8 @@ import {
   Button,
   Alert,
   AlertTitle,
+  Theme,
+  alpha,
 } from '@mui/material'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { cardStyles } from '../styles'
@@ -98,9 +100,19 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback
       }
 
-      // Default error UI
+      // Default error UI - we need to access theme here
+      // Since this is a class component, we'll use a render prop pattern or inline styles
       return (
-        <Card sx={cardStyles}>
+        <Card
+          sx={(theme: Theme) => [
+            cardStyles(theme),
+            {
+              color: theme.palette.mode === 'dark' 
+                ? theme.palette.text.primary 
+                : theme.palette.text.primary,
+            },
+          ]}
+        >
           <CardContent>
             <Alert severity="error" sx={{ mb: 2 }}>
               <AlertTitle>Something went wrong</AlertTitle>
@@ -115,13 +127,18 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Typography
                   variant="body2"
                   component="pre"
-                  sx={{
-                    backgroundColor: '#f5f5f5',
+                  sx={(theme: Theme) => ({
+                    backgroundColor: theme.palette.mode === 'dark' 
+                      ? alpha('#000000', 0.3) 
+                      : '#f5f5f5',
+                    color: theme.palette.mode === 'dark' 
+                      ? theme.palette.text.primary 
+                      : theme.palette.text.primary,
                     p: 2,
                     borderRadius: 1,
                     overflow: 'auto',
                     fontSize: '12px',
-                  }}
+                  })}
                 >
                   {this.state.error.toString()}
                 </Typography>
@@ -136,13 +153,18 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Typography
                   variant="body2"
                   component="pre"
-                  sx={{
-                    backgroundColor: '#f5f5f5',
+                  sx={(theme: Theme) => ({
+                    backgroundColor: theme.palette.mode === 'dark' 
+                      ? alpha('#000000', 0.3) 
+                      : '#f5f5f5',
+                    color: theme.palette.mode === 'dark' 
+                      ? theme.palette.text.primary 
+                      : theme.palette.text.primary,
                     p: 2,
                     borderRadius: 1,
                     overflow: 'auto',
                     fontSize: '12px',
-                  }}
+                  })}
                 >
                   {this.state.errorInfo.componentStack}
                 </Typography>

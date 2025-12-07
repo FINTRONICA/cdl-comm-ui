@@ -12,7 +12,21 @@ import {
   Alert,
   Snackbar,
 } from '@mui/material'
-import { FormProvider, useForm } from 'react-hook-form'
+import type { Theme } from '@mui/material/styles'
+import {
+  FormProvider,
+  useForm,
+  type Resolver,
+  type ResolverResult,
+} from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  CapitalPartnerStep1Schema,
+  CapitalPartnerStep2Schema,
+  CapitalPartnerStep4Schema,
+  type CapitalPartnerStep1Data,
+  type CapitalPartnerStep2Data,
+} from '@/lib/validation/capitalPartnerSchemas'
 
 import Step1, { type Step1Ref } from './steps/Step1'
 import Step2, { type Step2Ref } from './steps/Step2'
@@ -21,8 +35,22 @@ import Step4, { type Step4Ref } from './steps/Step4'
 import Step5 from './steps/Step5'
 import DocumentUploadFactory from '../DocumentUpload/DocumentUploadFactory'
 import { DocumentItem } from '../DeveloperStepper/developerTypes'
+import {
+  outerContainerSx,
+  formSectionSx,
+  buttonContainerSx,
+  stepperLabelSx,
+  backButtonSx,
+  nextButtonSx,
+  cancelButtonSx,
+} from './styles'
 
-import { ProjectData } from './investorsTypes'
+type CapitalPartnerFormData = CapitalPartnerStep1Data &
+  CapitalPartnerStep2Data & {
+    // Add other step data types as needed
+    documents?: any[]
+    paymentPlan?: any[]
+  }
 import { useCreateDeveloperWorkflowRequest } from '@/hooks/workflow'
 import { useCapitalPartnerLabelsApi } from '@/hooks/useCapitalPartnerLabelsApi'
 import { useAppStore } from '@/store'
@@ -85,13 +113,54 @@ export default function InvestorsStepperWrapper({
   const step3Ref = useRef<Step3Ref>(null)
   const step4Ref = useRef<Step4Ref>(null)
 
+  // Keep active step in a ref so the resolver can react to step changes without remounting the form
+  const activeStepRef = useRef(activeStep)
+  useEffect(() => {
+    activeStepRef.current = activeStep
+  }, [activeStep])
+
+  const dynamicResolver: Resolver<CapitalPartnerFormData> = useCallback(
+    async (
+      values: CapitalPartnerFormData,
+      context: unknown,
+      options: Parameters<Resolver<CapitalPartnerFormData>>[2]
+    ) => {
+      const step = activeStepRef.current
+      switch (step) {
+        case 0:
+          return (
+            zodResolver(
+              CapitalPartnerStep1Schema
+            ) as unknown as Resolver<CapitalPartnerFormData>
+          )(values, context, options)
+        case 2:
+          return (
+            zodResolver(
+              CapitalPartnerStep2Schema
+            ) as unknown as Resolver<CapitalPartnerFormData>
+          )(values, context, options)
+        case 4:
+          return (
+            zodResolver(
+              CapitalPartnerStep4Schema
+            ) as unknown as Resolver<CapitalPartnerFormData>
+          )(values, context, options)
+        default:
+          return {
+            values,
+            errors: {},
+          } as ResolverResult<CapitalPartnerFormData>
+      }
+    },
+    []
+  )
+
   const updateURL = (step: number, id?: number | null) => {
     if (id && step >= 0) {
-      const stepParam = `step=${step + 1}`
-      const modeParam = isViewMode ? '&mode=view' : ''
-      router.push(`/investors/new/${id}?${stepParam}${modeParam}`)
+      const queryParam = isViewMode ? '?mode=view' : '?editing=true'
+      router.push(`/capital-partner/${id}/step/${step + 1}${queryParam}`)
     } else if (step === 0) {
-      router.push('/investors/new')
+      router.push('/capital-partner/new')
     }
   }
   const createCapitalPartnerWorkflowRequest =
@@ -117,91 +186,29 @@ export default function InvestorsStepperWrapper({
     }
   }, [params.id, capitalPartnerId])
 
-  const methods = useForm<ProjectData>({
+  const methods = useForm<CapitalPartnerFormData>({
+    resolver: dynamicResolver,
+    mode: 'onChange', // Enable real-time validation
     defaultValues: {
-      sectionId: '',
-      developerId: '',
-      developerName: '',
-      masterDeveloperName: '',
-      projectName: '',
-      projectLocation: '',
-      projectAccountCif: '',
-      projectStatus: '',
-      projectAccountStatusDate: null,
-      projectRegistrationDate: null,
-      projectStartDate: null,
-      projectCompletionDate: null,
-      retention: '',
-      additionalRetention: '',
-      totalRetention: '',
-      retentionEffectiveStartDate: null,
-      projectManagementExpenses: '',
-      marketingExpenses: '',
-      realEstateBrokerExpense: '',
-      advertisingExpense: '',
-      landOwnerName: '',
-      projectCompletionPercentage: '',
-      currency: '',
-      actualConstructionCost: '',
-      noOfUnits: '',
-      remarks: '',
-      specialApproval: '',
-      paymentType: '',
-      managedBy: '',
-      backupRef: '',
-      relationshipManager: '',
-      assistantRelationshipManager: '',
-      teamLeaderName: '',
+      // Step 1: Capital Partner Basic Info
+      investorType: '',
+      investorFirstName: '',
+      investorMiddleName: '',
+      investorLastName: '',
+      arabicName: '',
+      investorId: '',
+      investorIdType: '',
+      idNumber: '',
+      ownership: '',
+      idExpiryDate: null,
+      nationality: '',
+      accountContact: '',
+      mpmobileNumber: '',
+      email: '',
 
-      accounts: [
-        {
-          trustAccountNumber: '',
-          ibanNumber: '',
-          dateOpened: null,
-          accountTitle: '',
-          currency: '',
-        },
-      ],
-
-      fees: [
-        {
-          feeType: '',
-          frequency: '',
-          debitAmount: '',
-          feeToBeCollected: '',
-          nextRecoveryDate: null,
-          feePercentage: '',
-          amount: '',
-          vatPercentage: '',
-        },
-      ],
-
-      beneficiaries: [
-        {
-          id: '',
-          expenseType: '',
-          transferType: '',
-          name: '',
-          bankName: '',
-          swiftCode: '',
-          routingCode: '',
-          account: '',
-        },
-      ],
-
-      paymentPlan: [
-        {
-          installmentNumber: 1,
-          installmentPercentage: '',
-          projectCompletionPercentage: '',
-        },
-      ],
-
-      financialData: {
-        projectEstimatedCost: '',
-        actualCost: '',
-        projectBudget: '',
-      },
+      // Additional fields for other steps
+      documents: [],
+      paymentPlan: [],
     },
   })
 
@@ -210,6 +217,7 @@ export default function InvestorsStepperWrapper({
   }) => {
     try {
       setIsSaving(true)
+
       await stepRef.handleSaveAndNext()
     } catch {
       return false
@@ -228,10 +236,21 @@ export default function InvestorsStepperWrapper({
   }
 
   const handleNext = async () => {
-    // In view mode, just navigate to next step without saving
     if (isViewMode) {
       navigateToNextStep()
       return
+    }
+
+    // Check for unsaved changes in Step 3 (Payment Plan)
+    if (activeStep === 3) {
+      const step3State = (window as any).step3ValidationState || {}
+      if (step3State.hasUnsavedChanges) {
+        setErrorMessage(
+          'You have unsaved payment plan data. Please save all rows (click the ✓ icon) or cancel editing (click the ✗ icon) before proceeding.'
+        )
+        setTimeout(() => setErrorMessage(null), 5000)
+        return
+      }
     }
 
     if (activeStep === 0 && step1Ref.current) {
@@ -277,7 +296,7 @@ export default function InvestorsStepperWrapper({
     setErrorMessage(null)
     setSuccessMessage(null)
     methods.reset()
-    router.push('/investors')
+    router.push('/capital-partner')
   }
 
   const onSubmit = () => {}
@@ -323,7 +342,7 @@ export default function InvestorsStepperWrapper({
   )
 
   const handlePaymentPlanChange = useCallback(
-    (paymentPlan: ProjectData['paymentPlan']) => {
+    (paymentPlan: CapitalPartnerFormData['paymentPlan']) => {
       methods.setValue('paymentPlan', paymentPlan)
     },
     [methods]
@@ -353,7 +372,7 @@ export default function InvestorsStepperWrapper({
       setSuccessMessage(
         'Capital Partner registration submitted successfully! Workflow request created.'
       )
-      router.push('/investors')
+      router.push('/capital-partner')
     } catch (error) {
       const errorData = error as {
         response?: { data?: { message?: string } }
@@ -384,11 +403,12 @@ export default function InvestorsStepperWrapper({
       case 1:
         return (
           <DocumentUploadFactory
-            type="INVESTOR"
+            type="CAPITAL_PARTNER"
             entityId={capitalPartnerId?.toString() || ''}
             isOptional={true}
             onDocumentsChange={handleDocumentsChange}
             formFieldName="documents"
+            isReadOnly={isViewMode}
           />
         )
       case 2:
@@ -405,7 +425,7 @@ export default function InvestorsStepperWrapper({
         return (
           <Step3
             ref={step3Ref}
-            paymentPlan={methods.watch('paymentPlan')}
+            paymentPlan={methods.watch('paymentPlan') || []}
             onPaymentPlanChange={handlePaymentPlanChange}
             capitalPartnerId={capitalPartnerId}
             onSaveAndNext={handleStep3SaveAndNext}
@@ -435,33 +455,12 @@ export default function InvestorsStepperWrapper({
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)}>
-        <Box
-          sx={{
-            width: '100%',
-            backgroundColor: '#FFFFFFBF',
-            borderRadius: '16px',
-            paddingTop: '16px',
-            border: '1px solid #FFFFFF',
-          }}
-        >
+        <Box sx={outerContainerSx}>
           <Stepper activeStep={activeStep} alternativeLabel>
             {steps.map((label) => (
               <Step key={label}>
                 <StepLabel>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 400,
-                      fontStyle: 'normal',
-                      fontSize: '12px',
-                      lineHeight: '100%',
-                      letterSpacing: '0.36px',
-                      textAlign: 'center',
-                      verticalAlign: 'middle',
-                      textTransform: 'uppercase',
-                    }}
-                  >
+                  <Typography variant="caption" sx={stepperLabelSx}>
                     {label}
                   </Typography>
                 </StepLabel>
@@ -469,52 +468,36 @@ export default function InvestorsStepperWrapper({
             ))}
           </Stepper>
 
-          <Box sx={{ my: 4, backgroundColor: '#FFFFFFBF', boxShadow: 'none' }}>
+          <Box
+            key={`step-${activeStep}-${capitalPartnerId}`}
+            sx={formSectionSx}
+          >
             {getStepContent(activeStep)}
 
             <Box
               display="flex"
               justifyContent="space-between"
-              sx={{ backgroundColor: '#FFFFFFBF', mt: 3, mx: 6, mb: 2 }}
+              sx={buttonContainerSx}
             >
               <Button
                 onClick={handleReset}
-                sx={{
-                  fontFamily: 'Outfit, sans-serif',
-                  fontWeight: 500,
-                  fontStyle: 'normal',
-                  fontSize: '14px',
-                  lineHeight: '20px',
-                  letterSpacing: 0,
-                }}
+                variant="outlined"
+                sx={cancelButtonSx}
               >
                 Cancel
               </Button>
               <Box>
-                {activeStep !== 0 && activeStep !== steps.length - 1 && (
+                {activeStep !== 0 && (
                   <Button
                     onClick={handleBack}
-                    sx={{
-                      width: '114px',
-                      height: '36px',
-                      gap: '6px',
-                      opacity: 1,
-                      paddingTop: '2px',
-                      paddingRight: '3px',
-                      paddingBottom: '2px',
-                      paddingLeft: '3px',
-                      borderRadius: '6px',
-                      backgroundColor: '#DBEAFE',
-                      color: '#155DFC',
-                      border: 'none',
+                    sx={(theme) => ({
+                      ...(
+                        backButtonSx as (
+                          theme: Theme
+                        ) => Record<string, unknown>
+                      )(theme),
                       mr: 2,
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      letterSpacing: 0,
-                    }}
+                    })}
                     variant="outlined"
                   >
                     Back
@@ -524,7 +507,7 @@ export default function InvestorsStepperWrapper({
                   onClick={
                     activeStep === steps.length - 1
                       ? isViewMode
-                        ? () => router.push('/investors')
+                        ? () => router.push('/capital-partner')
                         : handleSubmit
                       : handleNext
                   }
@@ -533,26 +516,7 @@ export default function InvestorsStepperWrapper({
                     (activeStep === steps.length - 1 && isSaving) ||
                     createCapitalPartnerWorkflowRequest.isPending
                   }
-                  sx={{
-                    width: '114px',
-                    height: '36px',
-                    gap: '6px',
-                    opacity: 1,
-                    paddingTop: '2px',
-                    paddingRight: '3px',
-                    paddingBottom: '2px',
-                    paddingLeft: '3px',
-                    borderRadius: '6px',
-                    backgroundColor: '#2563EB',
-                    color: '#FFFFFF',
-                    boxShadow: 'none',
-                    fontFamily: 'Outfit, sans-serif',
-                    fontWeight: 500,
-                    fontStyle: 'normal',
-                    fontSize: '14px',
-                    lineHeight: '20px',
-                    letterSpacing: 0,
-                  }}
+                  sx={nextButtonSx}
                 >
                   {isSaving || createCapitalPartnerWorkflowRequest.isPending
                     ? activeStep === steps.length - 1

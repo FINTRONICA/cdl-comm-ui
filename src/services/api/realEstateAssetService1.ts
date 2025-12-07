@@ -57,7 +57,7 @@ export interface RealEstateAsset {
   reaMarketingExpenses: string
   reaAccoutStatusDate: string
   reaTeamLeadName: string
-  reaRelationshipManagerName: string
+  reamprelationshipManagerName: string
   reaAssestRelshipManagerName: string
   reaRealEstateBrokerExp: number
   reaAdvertisementExp: number
@@ -118,7 +118,7 @@ class RealEstateAssetService {
   }
 
   async findAllRealEstateAssets(): Promise<RealEstateAssetResponse> {
-    const url = buildApiUrl(API_ENDPOINTS.REAL_ESTATE_ASSET.FIND_ALL)
+    const url = buildApiUrl(API_ENDPOINTS.REAL_ESTATE_ASSET.GET_ALL)
     const filteredUrl = `${url}`
     const data = await apiClient.get<RealEstateAssetResponse>(filteredUrl)
     return data

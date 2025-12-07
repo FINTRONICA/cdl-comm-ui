@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { JWTParser } from '@/utils/jwtParser'
+import { getAuthCookies } from '@/utils/cookieUtils'
 
 /**
  * React hook for JWT token parsing and analysis
@@ -86,7 +87,9 @@ export function useJWTParser(token?: string) {
  */
 export function useStoredJWTParser() {
   const token = useMemo(() => {
-    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')
+    if (typeof window === 'undefined') return null;
+    const { token } = getAuthCookies()
+    return token
   }, [])
 
   return useJWTParser(token || undefined)

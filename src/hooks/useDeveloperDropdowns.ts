@@ -15,7 +15,7 @@ export const useRegulatoryAuthorities = () => {
     queryFn: async () => {
       const rawAuthorities = await DeveloperDropdownService.fetchRegulatoryAuthorities()
       const processedAuthorities = DeveloperDropdownService.processRegulatoryAuthorities(rawAuthorities)
-      console.log('🔄 Processed Regulatory Authorities:', processedAuthorities)
+     
       return processedAuthorities
     },
     staleTime: STALE_TIME,

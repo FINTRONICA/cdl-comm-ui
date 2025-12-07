@@ -23,8 +23,9 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(COOKIES.AUTH_TOKEN)?.value || 
                 request.headers.get('authorization')?.replace('Bearer ', '');
-  const userType = request.cookies.get(COOKIES.USER_TYPE)?.value;
   
+  // FIRST LINE OF DEFENSE: When user returns to website, check token expiration
+  // If token exists but is expired, immediately redirect to login and clear auth cookies
   if (token && JWTParser.isExpired(token)) {
     const response = NextResponse.redirect(new URL('/login', request.url));
     response.cookies.delete(COOKIES.AUTH_TOKEN);
@@ -37,17 +38,21 @@ export function middleware(request: NextRequest) {
   const publicRoutes = ['/login', '/api/auth/login', '/api/auth/logout'];
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
   
+  // REROUTING LOGIC:
+  // 1. If user is on /login but has valid token → redirect to intended page or dashboard
   if (pathname === '/login' && token) {
     const redirectTo = request.nextUrl.searchParams.get('redirect') || '/dashboard';
     return NextResponse.redirect(new URL(redirectTo, request.url));
   }
   
+  // 2. If user tries to access protected route without token → redirect to login with return path
   if (!isPublicRoute && !token && pathname !== '/') {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
   
+  // 3. Root path handling: authenticated users → dashboard, guests → login
   if (pathname === '/') {
     if (token) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -66,7 +71,8 @@ export function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self'",
-      `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8081'}`,
+      // `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8083'}`,
+      `connect-src 'self' ${process.env.NODE_ENV === 'production' ? '' : (process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8083')}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

@@ -6,6 +6,8 @@ import { FormState } from '../types'
 
 /**
  * Custom hook for managing step form state and operations
+ * Note: Validation is handled at field-level and step-level, not form-level
+ * This prevents validation of fields from other steps
  */
 export const useStepForm = (developerId?: string, activeStep?: number) => {
   const [formState, setFormState] = useState<FormState>({
@@ -13,6 +15,8 @@ export const useStepForm = (developerId?: string, activeStep?: number) => {
     isAddingContact: false,
   })
 
+  // Don't use zodResolver here - it would validate all fields at once
+  // Instead, we validate field-by-field and step-by-step manually
   const methods = useForm<ProjectData>({
     defaultValues: DEFAULT_FORM_VALUES,
     mode: 'onChange',
@@ -43,7 +47,7 @@ export const useStepForm = (developerId?: string, activeStep?: number) => {
 
   // Reset form for specific steps when developerId changes
   useEffect(() => {
-    if (RESET_FORM_STEPS.includes(activeStep as number) && developerId) {
+    if (activeStep !== undefined && RESET_FORM_STEPS.includes(activeStep as 1 | 2 | 3) && developerId) {
       setShouldResetForm(true)
     }
   }, [activeStep, developerId, setShouldResetForm])

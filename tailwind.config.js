@@ -9,6 +9,25 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Semantic brand colors
+        brand: {
+          primary: '#2563EB',
+          secondary: '#2F80ED',
+          accent: '#60A5FA',
+        },
+        // Semantic surface colors
+        surface: {
+          light: '#FFFFFF',
+          DEFAULT: '#F3F4F6',
+          dark: '#0F172A',
+        },
+        // Semantic content/text colors
+        content: {
+          primary: '#1E2939',
+          secondary: '#4A5565',
+          tertiary: '#6A7282',
+        },
+        // Keep all existing primary colors
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',
@@ -77,6 +96,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['var(--font-outfit)', 'system-ui', 'sans-serif'],
+        outfit: ['Outfit', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       fontSize: {
@@ -93,6 +113,7 @@ module.exports = {
       },
       spacing: {
         18: '4.5rem',
+        62: '15.5rem',
         88: '22rem',
         128: '32rem',
       },

@@ -60,22 +60,13 @@ export function useFundEgress(): UseFundEgressReturn {
         setError(null)
         setResponse(null)
 
-        console.log('🔄 useFundEgress: Submitting fund egress payment...', {
-          paymentDataKeys: Object.keys(paymentData),
-          timestamp: new Date().toISOString(),
-        })
+      
 
         const result = await fundEgressService.submitFundEgress(paymentData)
 
         setResponse(result)
 
-        console.log(
-          '✅ useFundEgress: Successfully submitted fund egress payment:',
-          {
-            result,
-            timestamp: new Date().toISOString(),
-          }
-        )
+     
 
         return result
       } catch (err) {
@@ -83,14 +74,7 @@ export function useFundEgress(): UseFundEgressReturn {
           err instanceof Error ? err.message : 'Unknown error occurred'
         setError(errorMessage)
 
-        console.error(
-          '❌ useFundEgress: Failed to submit fund egress payment:',
-          {
-            error: errorMessage,
-            errorType: err instanceof Error ? err.name : 'Unknown',
-            timestamp: new Date().toISOString(),
-          }
-        )
+       
 
         throw err
       } finally {
@@ -167,12 +151,7 @@ export function useManualPayments(
       setLoading(true)
       setError(null)
 
-      console.log('🔄 useManualPayments: Deleting fund egress...', {
-        id,
-        timestamp: new Date().toISOString(),
-      })
-
-      // Use the service to delete fund egress
+ 
       await fundEgressService.deleteFundEgress(id)
 
       // Remove from local state after successful deletion
@@ -180,20 +159,13 @@ export function useManualPayments(
         prevData.filter((item) => item.id.toString() !== id)
       )
 
-      console.log('✅ useManualPayments: Successfully deleted fund egress:', {
-        id,
-        timestamp: new Date().toISOString(),
-      })
+    
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred'
       setError(errorMessage)
 
-      console.error('❌ useManualPayments: Failed to delete fund egress:', {
-        error: errorMessage,
-        errorType: err instanceof Error ? err.name : 'Unknown',
-        timestamp: new Date().toISOString(),
-      })
+    
 
       throw err
     } finally {
@@ -206,10 +178,7 @@ export function useManualPayments(
       setLoading(true)
       setError(null)
 
-      console.log('🔄 useManualPayments: Approving fund egress...', {
-        id,
-        timestamp: new Date().toISOString(),
-      })
+     
 
       // Use the service to approve fund egress
       await fundEgressService.approveFundEgress(id)
@@ -223,20 +192,13 @@ export function useManualPayments(
         )
       )
 
-      console.log('✅ useManualPayments: Successfully approved fund egress:', {
-        id,
-        timestamp: new Date().toISOString(),
-      })
+   
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred'
       setError(errorMessage)
 
-      console.error('❌ useManualPayments: Failed to approve fund egress:', {
-        error: errorMessage,
-        errorType: err instanceof Error ? err.name : 'Unknown',
-        timestamp: new Date().toISOString(),
-      })
+    
 
       throw err
     } finally {
@@ -249,11 +211,7 @@ export function useManualPayments(
       setLoading(true)
       setError(null)
 
-      console.log('🔄 useManualPayments: Rejecting fund egress...', {
-        id,
-        reason,
-        timestamp: new Date().toISOString(),
-      })
+    
 
       // Use the service to reject fund egress
       await fundEgressService.rejectFundEgress(id, reason)
@@ -267,21 +225,13 @@ export function useManualPayments(
         )
       )
 
-      console.log('✅ useManualPayments: Successfully rejected fund egress:', {
-        id,
-        reason,
-        timestamp: new Date().toISOString(),
-      })
+    
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred'
       setError(errorMessage)
 
-      console.error('❌ useManualPayments: Failed to reject fund egress:', {
-        error: errorMessage,
-        errorType: err instanceof Error ? err.name : 'Unknown',
-        timestamp: new Date().toISOString(),
-      })
+    
 
       throw err
     } finally {

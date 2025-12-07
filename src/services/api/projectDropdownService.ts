@@ -52,20 +52,11 @@ export class ProjectDropdownService {
         }
       )
       
-      console.log('✅ ProjectDropdownService.fetchProjectTypes Success:', { 
-        hasResult: !!projectTypes, 
-        resultType: typeof projectTypes, 
-        resultLength: projectTypes?.length || 0,
-        timestamp: new Date().toISOString() 
-      })
+     
       
       return projectTypes
     } catch (error) {
-      console.error('❌ ProjectDropdownService.fetchProjectTypes Failed:', { 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw new Error(`${ERROR_MESSAGE}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -90,20 +81,11 @@ export class ProjectDropdownService {
         }
       )
       
-      console.log('✅ ProjectDropdownService.fetchProjectStatuses Success:', { 
-        hasResult: !!projectStatuses, 
-        resultType: typeof projectStatuses, 
-        resultLength: projectStatuses?.length || 0,
-        timestamp: new Date().toISOString() 
-      })
+      
       
       return projectStatuses
     } catch (error) {
-      console.error('❌ ProjectDropdownService.fetchProjectStatuses Failed:', { 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw new Error(`${ERROR_MESSAGE}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -129,14 +111,10 @@ export class ProjectDropdownService {
    */
   static async fetchProjectCurrencies() {
     try {
-      console.log('✅ ProjectDropdownService.fetchProjectCurrencies - Using existing FeeDropdownService')
+      
       return await FeeDropdownService.fetchCurrencies()
     } catch (error) {
-      console.error('❌ ProjectDropdownService.fetchProjectCurrencies Failed:', { 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw new Error(`${ERROR_MESSAGE}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -162,7 +140,7 @@ export class ProjectDropdownService {
    */
   static async processProjectCurrencies() {
     try {
-      console.log('✅ ProjectDropdownService.processProjectCurrencies - Using existing FeeDropdownService')
+      
       const rawData = await FeeDropdownService.fetchCurrencies()
       return rawData
         .filter(item => item.enabled && item.languageTranslationId?.enabled)
@@ -175,11 +153,7 @@ export class ProjectDropdownService {
         }))
         .sort((a, b) => a.configValue.localeCompare(b.configValue))
     } catch (error) {
-      console.error('❌ ProjectDropdownService.processProjectCurrencies Failed:', { 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw new Error(`${ERROR_MESSAGE}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -204,20 +178,11 @@ export class ProjectDropdownService {
         }
       )
       
-      console.log('✅ ProjectDropdownService.fetchBankAccountStatuses Success:', { 
-        hasResult: !!bankAccountStatuses, 
-        resultType: typeof bankAccountStatuses, 
-        resultLength: bankAccountStatuses?.length || 0,
-        timestamp: new Date().toISOString() 
-      })
+     
       
       return bankAccountStatuses
     } catch (error) {
-      console.error('❌ ProjectDropdownService.fetchBankAccountStatuses Failed:', { 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw new Error(`${ERROR_MESSAGE}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -261,11 +226,7 @@ export class ProjectDropdownService {
       
       return blockedPaymentTypes
     } catch (error) {
-      console.error('❌ ProjectDropdownService.fetchBlockedPaymentTypes Failed:', { 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw new Error(`${ERROR_MESSAGE}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }

@@ -4,8 +4,10 @@ export class SessionService {
   private static readonly TIMEOUT_MINUTES = 30;
   private static readonly WARNING_MINUTES = 5;
   private static readonly CHECK_INTERVAL = 60000;
+  private static sessionTimer?: NodeJS.Timeout;
 
   static startSession(): void {
+    if (typeof window === 'undefined') return;
     const now = Date.now();
     const timeoutMs = this.TIMEOUT_MINUTES * 60 * 1000;
 
@@ -14,15 +16,25 @@ export class SessionService {
     localStorage.setItem('session_timeout', (now + timeoutMs).toString());
     localStorage.setItem('last_activity', now.toString());
 
-    // Start session timer
+    // Start session timer (clear existing first to prevent memory leaks)
+    this.clearSessionTimer();
     this.startSessionTimer();
   }
 
+  private static clearSessionTimer(): void {
+    if (this.sessionTimer) {
+      clearInterval(this.sessionTimer);
+      this.sessionTimer = undefined as any;
+    }
+  }
+
   static updateActivity(): void {
+    if (typeof window === 'undefined') return;
     localStorage.setItem('last_activity', Date.now().toString());
   }
 
   static checkSessionTimeout(): boolean {
+    if (typeof window === 'undefined') return true;
     const lastActivity = localStorage.getItem('last_activity');
     const sessionTimeout = localStorage.getItem('session_timeout');
 
@@ -38,6 +50,7 @@ export class SessionService {
   }
 
   static shouldShowWarning(): boolean {
+    if (typeof window === 'undefined') return false;
     const lastActivity = localStorage.getItem('last_activity');
     if (!lastActivity) return false;
 
@@ -49,14 +62,19 @@ export class SessionService {
   }
 
   private static startSessionTimer(): void {
-    setInterval(() => {
+    this.sessionTimer = setInterval(() => {
       if (this.checkSessionTimeout()) {
         this.forceLogout();
       }
     }, this.CHECK_INTERVAL);
   }
 
+  static destroy(): void {
+    this.clearSessionTimer();
+  }
+
   static forceLogout(): void {
+    if (typeof window === 'undefined') return;
     // Clear all data
     localStorage.clear();
     sessionStorage.clear();

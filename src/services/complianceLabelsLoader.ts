@@ -5,6 +5,7 @@ import { SidebarLabelsService } from '@/services/api/sidebarLabelsService'
 import { BuildPartnerLabelsService } from '@/services/api/buildPartnerLabelsService'
 import { CapitalPartnerLabelsService } from '@/services/api/capitalPartnerLabelsService'
 import { BuildPartnerAssetLabelsService } from '@/services/api/buildPartnerAssetLabelsService'
+import { PartyLabelsService } from '@/services/api/masterApi/Customer/partyLabelsService'
 import { useAppStore } from '@/store'
 import PendingTransactionLabelsService from '@/services/api/pendingTransactionLabelsService'
 
@@ -42,6 +43,8 @@ export class SimpleLabelsLoader {
         this.loadCapitalPartnerLabels(),
         this.loadBuildPartnerAssetLabels(),
         this.loadPendingTransactionLabels(),
+        // Temporarily commented out - Party labels
+        // this.loadPartyLabels(),
       ])
 
       // Process results
@@ -79,6 +82,7 @@ export class SimpleLabelsLoader {
             'Capital Partner Labels',
             'Build Partner Asset Labels',
             'Pending Transaction Labels',
+            // 'Party Labels', // Temporarily commented out
           ]
           const apiName = apiNames[index] || `API ${index + 1}`
 
@@ -215,6 +219,27 @@ export class SimpleLabelsLoader {
   }
 
   /**
+   * Load Party  labels
+   */
+  private async loadPartyLabels() {
+    try {
+      const data = await PartyLabelsService.fetchLabels()
+      const processed = PartyLabelsService.processLabels(data)
+
+      // Store in Zustand
+      useAppStore.getState().setPartyLabels(processed)
+      useAppStore.getState().setPartyLabelsError(null)
+
+      return { success: true, data: processed }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error'
+      useAppStore.getState().setPartyLabelsError(errorMessage)
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
    * Set all loading states
    */
   private setAllLoadingStates(loading: boolean) {
@@ -224,6 +249,7 @@ export class SimpleLabelsLoader {
     state.setCapitalPartnerLabelsLoading(loading)
     state.setBuildPartnerAssetLabelsLoading(loading)
     state.setPendingTransactionLabelsLoading(loading)
+    state.setPartyLabelsLoading(loading)
   }
 
   /**

@@ -297,33 +297,4 @@ export function mapStep2ToCapitalPartnerUnitPayload(
   }
 }
 
-export function validateStep2Data(formData: Step2FormData): string[] {
-  const errors: string[] = []
 
-  if (!formData.projectNameDropdown) {
-    errors.push('Project Name is required')
-  }
-  if (!formData.projectId) {
-    errors.push('Project ID is required')
-  }
-  if (!formData.developerIdInput) {
-    errors.push('Developer ID is required')
-  }
-  if (!formData.developerNameInput) {
-    errors.push('Developer Name is required')
-  }
-  if (!formData.unitNoQaqood) {
-    errors.push('Unit no. Qaqood format is required')
-  }
-  if (!formData.unitStatus) {
-    errors.push('Unit Status is required')
-  }
-  if (!formData.plotSize) {
-    errors.push('Plot Size is required')
-  }
-  if (!formData.propertyId) {
-    errors.push('Property ID is required')
-  }
-
-  return errors
-}

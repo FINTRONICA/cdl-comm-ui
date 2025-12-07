@@ -42,3 +42,12 @@ export {
   type TemplateMetadata,
   AVAILABLE_TEMPLATES
 } from './realEstateDocumentTemplateService'
+export {
+  pendingTransactionService,
+  type PendingTransaction,
+  type PendingTransactionFilters,
+  type PendingTransactionUIData,
+  type CreatePendingTransactionRequest,
+  type UpdatePendingTransactionRequest,
+  mapPendingTransactionToUIData
+} from './pendingTransactionService'

@@ -8,6 +8,7 @@ import {
   Typography,
   Card,
   CardContent,
+  useTheme,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -67,6 +68,7 @@ export const FormArray: React.FC<FormArrayProps> = ({
     )
   }
 
+  const theme = useTheme()
   const {
     control,
     formState: { errors },
@@ -115,7 +117,13 @@ export const FormArray: React.FC<FormArrayProps> = ({
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 600,
+              color: theme.palette.mode === 'dark' ? '#FFFFFF' : undefined,
+            }}
+          >
             {title}
           </Typography>
           <Button
@@ -138,7 +146,7 @@ export const FormArray: React.FC<FormArrayProps> = ({
       )}
 
       {fieldArray.length === 0 ? (
-        <Card sx={cardStyles}>
+        <Card sx={cardStyles(theme)}>
           <CardContent>
             <Typography color="textSecondary" align="center">
               {emptyMessage}
@@ -148,7 +156,7 @@ export const FormArray: React.FC<FormArrayProps> = ({
       ) : (
         <Box>
           {fieldArray.map((item: FieldArrayWithId, index: number) => (
-            <Card key={item.id} sx={{ ...cardStyles, mb: 2 }}>
+            <Card key={item.id} sx={[cardStyles(theme), { mb: 2 }]}>
               <CardContent>
                 <Box
                   display="flex"

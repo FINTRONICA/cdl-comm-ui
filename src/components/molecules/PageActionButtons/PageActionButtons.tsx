@@ -22,7 +22,30 @@ export type EntityType =
   | 'suretyBond'
   | 'developerBeneficiary'
   | 'pendingPayment'
-  | 'customer'
+  | 'party'
+  | 'accountPurpose'
+  | 'investmentType'
+  | 'businessSegment'
+  | 'businessSubSegment'
+  | 'agreementType'
+  | 'agreementSubType'
+  | 'productProgram'
+  | 'beneficiary'
+  | 'agreementSegment'
+  | 'generalLedgerAccount'
+  | 'country'
+  | 'currency'
+  | 'agreement'
+  | 'agreement-parameter'
+  | 'agreement-fee-schedule'
+  | 'escrowAccount' 
+  | 'escrowAgreementSignatory'
+  | 'paymentBeneficiary'
+  | 'paymentInstruction'
+
+
+
+
 
 interface ActionButton {
   label: string
@@ -46,17 +69,20 @@ interface PageActionButtonsProps {
   }
   customActionButtons?: ActionButton[]
   isDownloading?: boolean
-  // Additional template downloads
+
+  downloadPermission?: string[]
+  uploadPermission?: string[]
+
   additionalDownloads?: Array<{
     label: string
     onClick: () => void
     isLoading?: boolean
     icon?: string
   }>
-  // Upload dialog configuration
+
   uploadConfig?: {
     title?: string
-    titleConfigId?: string // Label config ID for dynamic title
+    titleConfigId?: string
     acceptedFileTypes?: string
     maxFileSize?: number
     uploadEndpoint?: string
@@ -79,6 +105,8 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
   isDownloading = false,
   additionalDownloads = [],
   uploadConfig,
+  downloadPermission = ['*'], // Default to wildcard for backward compatibility
+  uploadPermission = ['*'], // Default to wildcard for backward compatibility
 }) => {
   const router = useRouter()
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
@@ -87,100 +115,323 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
   const entityConfig = {
     project: {
       label: 'Add New Build Partner Assest',
-      route: '/entities/projects/new',
+      route: '/build-partner-assets/new',
       permissions: ['bpa_create'], // Only users with bpa_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     investor: {
       label: 'Add New Capital Partner',
-      route: '/investors/new',
+      route: '/capital-partner/new',
       permissions: ['cp_create'], // Only users with cp_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     developer: {
       label: 'Add New Build Partner',
-      route: '/entities/developers/new',
+      route: '/build-partner/new',
       permissions: ['bp_create'], // Only users with bp_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     manualPayment: {
       label: 'Add New Payment',
       route: '/transactions/manual/new',
       permissions: ['manual_payment_create'], // Only users with manual_payment_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     feeRepush: {
       label: 'Add New',
       route: '/fee-reconciliation/new',
       permissions: ['fee_repush_create'], // Only users with fee_repush_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     userManagement: {
       label: 'Add New User',
-      route: '/admin/user-management/new',
+      route: '/admin/stakeholder/new',
       permissions: ['user_create'], // Only users with user_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     roleManagement: {
-      label: 'Add New Role',
-      route: '/admin/role-management/new',
+      label: 'Add New Entitlement',
+      route: '/admin/entitlement/new',
       permissions: ['role_create'], // Only users with role_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     groupManagement: {
       label: 'Add New Group',
-      route: '/admin/fee-types/new',
+      route: '/admin/access-grant/new',
       permissions: ['group_create'], // Only users with group_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     suretyBond: {
       label: 'Add New Surety Bond',
-      route: '/guarantee/surety-bond/new',
+      route: '/surety_bond/new',
       permissions: ['surety_bond_create'],
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     workflowAction: {
       label: 'Add New Action',
       route: '/admin/workflow/action/new',
       permissions: ['workflow_action_create'], // Only users with workflow_action_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     workflowAmountRule: {
       label: 'Add New Amount Rule',
       route: '/admin/workflow/amount-rule/new',
       permissions: ['workflow_amount_rule_create'], // Only users with workflow_amount_rule_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     workflowStageTemplate: {
       label: 'Add New Stage Template',
       route: '/admin/workflow/stage-template/new',
       permissions: ['workflow_stage_template_create'], // Only users with workflow_stage_template_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     workflowDefinition: {
       label: 'Add New  Definition',
       route: '/admin/workflow/definition/new',
       permissions: ['workflow_definition_create'], // Only users with workflow_definition_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     workflowAmountStageOverride: {
       label: 'Add New Amount Stage Override',
       route: '/admin/workflow/amount-stage-override/new',
       permissions: ['workflow_amount_stage_override_create'], // Only users with workflow_amount_stage_override_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     developerBeneficiary: {
       label: 'Add New Beneficiary',
       route: '/developer-beneficiary/new',
       permissions: ['developer_beneficiary_create'], // Only users with developer_beneficiary_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     pendingPayment: {
       label: 'Add New Pending Payment',
       route: '/pending-payment/new',
       permissions: ['pending_tran_create'], // Only users with pending_payment_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
     },
+    party: {
+      label: 'Add New Party',
+      route: '/master/party/new',
+      permissions: ['*'], // Only users with party_create permission
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    accountPurpose: {
+      label: 'Add New Account Purpose',
+      route: '/master/account-purpose/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    investmentType: {
+      label: 'Add New Investment Type',
+      route: '/master/investment/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    businessSegment: {
+      label: 'Add New Business Segment',
+      route: '/master/business-segment/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    businessSubSegment: {
+      label: 'Add New Business Sub Segment',
+      route: '/master/business-sub-segment/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    agreementType: {
+      label: 'Add New Agreement Type',
+      route: '/master/agreement-Type/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    agreementSubType: {
+      label: 'Add New Agreement Sub Type',
+      route: '/master/agreement-Sub-Type/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    productProgram: {
+      label: 'Add New Product Program',
+      route: '/master/product/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    beneficiary: {
+      label: 'Add New Beneficiary',
+      route: '/master/beneficiary/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    agreementSegment: {
+      label: 'Add New Agreement Segment',
+      route: '/master/agreement-segment/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },  
+   
+    generalLedgerAccount: {
+      label: 'Add New General Ledger Account',
+      route: '/master/general-ledger-account/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    country: {
+      label: 'Add New Country',
+      route: '/master/country/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    currency: {
+      label: 'Add New Currency',
+      route: '/master/currency/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    agreement: {  
+      label: 'Add New Agreement',
+      route: '/agreement/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    'agreement-parameter': {
+      label: 'Add New Agreement Parameter',
+      route: '/agreement-parameter/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    'agreement-fee-schedule': {
+      label: 'Add New Agreement Fee Schedule',
+      route: '/agreement-fee-schedule/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    escrowAccount: {
+      label: 'Add New Escrow Account',
+      route: '/escrow-account/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    'agreement-signatory': {
+      label: 'Add New Agreement Signatory',
+      route: '/agreement-signatory/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    escrowAgreementSignatory: {
+      label: 'Add New Escrow Agreement Signatory',
+      route: '/agreement-signatory/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    'standing-instruction': {
+      label: 'Add New Payment Instruction',
+      route: '/payment/payment-instruction/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    'payment-beneficiary': {
+      label: 'Add New Payment Beneficiary',
+      route: '/payment-beneficiary/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    'paymentBeneficiary': {
+      label: 'Add New Payment Beneficiary',
+      route: '/payment-beneficiary/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    'payment-instruction': {
+      label: 'Add New Payment Instruction',
+      route: '/payment-instruction/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    },
+    'paymentInstruction': {
+      label: 'Add New Payment Instruction',
+      route: '/payment-instruction/new',
+      permissions: ['*'], // Temporarily set to allow all users
+      downloadPermission: ['data_export'], // Unified download permission
+      uploadPermission: ['bulk_upload'], // Unified upload permission
+    }
 
-    customer: {
-      label: 'Add New Customer',
-      route: '/master-customers/customers/new',
-      permissions: ['bp_create'], // Only users with bp_create permission
-    },
+
+    
   }
 
   const config = entityConfig[entityType]
+
+  // Safety check: if config is undefined, log error and use defaults
+  if (!config) {
+    console.error(`[PageActionButtons] No config found for entityType: ${entityType}. Available types:`, Object.keys(entityConfig))
+  }
+
+  // Use centralized permissions from entityConfig, but allow override via props
+  // Provide safe defaults if config is missing
+  const safeConfig = config || {
+    label: 'Add New',
+    route: '/',
+    permissions: ['*'],
+    downloadPermission: ['*'],
+    uploadPermission: ['*'],
+  }
+
+  const effectiveDownloadPermission =
+    downloadPermission.length > 0 && !downloadPermission.includes('*')
+      ? downloadPermission
+      : (safeConfig.downloadPermission || ['*'])
+
+  const effectiveUploadPermission =
+    uploadPermission.length > 0 && !uploadPermission.includes('*')
+      ? uploadPermission
+      : (safeConfig.uploadPermission || ['*'])
   const handleAddNew = useCallback(() => {
     if (onAddNew) {
       onAddNew()
     } else {
-      router.push(config.route)
+      router.push(safeConfig.route)
     }
-  }, [onAddNew, router, config.route])
+  }, [onAddNew, router, safeConfig.route])
 
   const handleDownloadTemplate = useCallback(() => {
     if (onDownloadTemplate) {
@@ -197,18 +448,14 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
     }
   }, [onUploadDetails])
 
-  const handleUploadSuccess = useCallback(
-    (response: {
-      id: string
-      fileName: string
-      fileSize: number
-      uploadedAt: string
-      [key: string]: unknown
-    }) => {},
-    []
-  )
+  const handleUploadSuccess = useCallback(() => {
+    // Upload success handler - can be customized per entity if needed
+  }, [])
 
-  const handleUploadError = useCallback((error: string) => {}, [])
+  const handleUploadError = useCallback((error: string) => {
+    // Handle upload error - can be customized per entity if needed
+    console.error('Upload error:', error)
+  }, [])
 
   // Get default upload endpoint based on entity type
   const getDefaultUploadEndpoint = (entityType: EntityType): string => {
@@ -227,6 +474,8 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
         return '/build-partner-beneficiary/upload'
       case 'pendingPayment':
         return '/pending-fund-ingress/upload'
+      case 'party':
+        return '/party/upload'
       default:
         return '/real-estate-document/upload'
     }
@@ -235,70 +484,77 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
   return (
     <div className={`flex justify-end gap-2 py-3.5 px-4 ${className}`}>
       {showButtons.downloadTemplate && (
-        <Tooltip
-          title={isDownloading ? 'Downloading...' : 'Download Template'}
-          arrow
-          placement="bottom"
+        <PermissionButton
+          requiredPermissions={effectiveDownloadPermission}
+          onClick={handleDownloadTemplate}
+          disabled={isDownloading}
+          className={`flex items-center h-8 py-1.5 px-2.5 gap-1.5 font-sans font-medium text-sm rounded-md transition-colors ${
+            isDownloading
+              ? 'cursor-not-allowed text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800'
+              : 'cursor-pointer text-[#155DFC] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+          }`}
         >
-          <button
-            onClick={handleDownloadTemplate}
-            disabled={isDownloading}
-            className={`flex items-center h-8 py-1.5 px-2.5 gap-1.5 font-sans font-medium text-sm rounded-md transition-colors ${
-              isDownloading
-                ? 'cursor-not-allowed text-gray-400 bg-gray-100'
-                : 'cursor-pointer text-[#155DFC] hover:bg-blue-50'
-            }`}
+          <Tooltip
+            title={isDownloading ? 'Downloading...' : 'Download Template'}
+            arrow
+            placement="bottom"
           >
-            {!isDownloading && (
-              <img src="/download icon.svg" alt="download icon" />
-            )}
-            {isDownloading && (
-              <span className="text-xs animate-spin">
-                <Loader />
-              </span>
-            )}
-          </button>
-        </Tooltip>
+            <>
+              {!isDownloading && (
+                <img src="/download icon.svg" alt="download icon" />
+              )}
+              {isDownloading && (
+                <span className="text-xs animate-spin">
+                  <Loader />
+                </span>
+              )}
+            </>
+          </Tooltip>
+        </PermissionButton>
       )}
 
       {/* Additional download buttons */}
       {additionalDownloads.map((download, index) => (
-        <Tooltip
+        <PermissionButton
           key={index}
-          title={download.isLoading ? 'Downloading...' : download.label}
-          arrow
-          placement="bottom"
+          requiredPermissions={effectiveDownloadPermission}
+          onClick={download.onClick}
+          disabled={download.isLoading || false}
+          className={`flex items-center h-8 py-1.5 px-2.5 gap-1.5 font-sans font-medium text-sm rounded-md transition-colors ${
+            download.isLoading
+              ? 'cursor-not-allowed text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800'
+              : 'cursor-pointer text-[#155DFC] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+          }`}
         >
-          <button
-            onClick={download.onClick}
-            disabled={download.isLoading}
-            className={`flex items-center h-8 py-1.5 px-2.5 gap-1.5 font-sans font-medium text-sm rounded-md transition-colors ${
-              download.isLoading
-                ? 'cursor-not-allowed text-gray-400 bg-gray-100'
-                : 'cursor-pointer text-[#155DFC] hover:bg-blue-50'
-            }`}
+          <Tooltip
+            title={download.isLoading ? 'Downloading...' : download.label}
+            arrow
+            placement="bottom"
           >
-            <img
-              src={download.icon || '/download icon.svg'}
-              alt="download icon"
-            />
-            {download.isLoading && (
-              <span className="text-xs animate-spin">
-                <Loader />
-              </span>
-            )}
-          </button>
-        </Tooltip>
+            <>
+              <img
+                src={download.icon || '/download icon.svg'}
+                alt="download icon"
+              />
+              {download.isLoading && (
+                <span className="text-xs animate-spin">
+                  <Loader />
+                </span>
+              )}
+            </>
+          </Tooltip>
+        </PermissionButton>
       ))}
       {showButtons.uploadDetails && (
-        <Tooltip title="Upload Details" arrow placement="bottom">
-          <button
-            onClick={handleUploadDetails}
-            className="flex items-center cursor-pointer h-8 py-1.5 bg-[#DBEAFE] rounded-md px-2.5 gap-1.5 text-[#155DFC] font-sans font-medium text-sm hover:bg-blue-100 transition-colors"
-          >
+        <PermissionButton
+          requiredPermissions={effectiveUploadPermission}
+          onClick={handleUploadDetails}
+          className="flex items-center cursor-pointer h-8 py-1.5 bg-[#DBEAFE] dark:bg-blue-900/30 rounded-md px-2.5 gap-1.5 text-[#155DFC] dark:text-blue-400 font-sans font-medium text-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+        >
+          <Tooltip title="Upload Details" arrow placement="bottom">
             <img src="/upload.svg" alt="upload icon" />
-          </button>
-        </Tooltip>
+          </Tooltip>
+        </PermissionButton>
       )}
       {/* Render custom action buttons if provided, otherwise render default add new button */}
       {customActionButtons.length > 0
@@ -309,8 +565,8 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
               disabled={button.disabled}
               className={`flex items-center cursor-pointer h-8 py-1.5 rounded-md px-2.5 gap-1.5 font-sans font-medium text-sm transition-colors ${
                 button.variant === 'primary' || !button.variant
-                  ? 'bg-[#155DFC] text-[#FAFAF9] hover:bg-blue-700'
-                  : 'bg-[#DBEAFE] text-[#155DFC] hover:bg-blue-100'
+                  ? 'bg-[#155DFC] dark:bg-blue-600 text-[#FAFAF9] dark:text-white hover:bg-blue-700 dark:hover:bg-blue-700'
+                  : 'bg-[#DBEAFE] dark:bg-blue-900/30 text-[#155DFC] dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50'
               }`}
             >
               <img src="/circle-plus.svg" alt="plus icon" />
@@ -319,13 +575,13 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
           ))
         : showButtons.addNew && (
             <PermissionButton
-              requiredPermissions={config.permissions}
+              requiredPermissions={safeConfig.permissions}
               onClick={handleAddNew}
               className="flex items-center cursor-pointer
- h-8 py-1.5 bg-[#155DFC] rounded-md px-2.5 gap-1.5 text-[#FAFAF9] font-sans font-medium text-sm hover:bg-blue-700 transition-colors"
+ h-8 py-1.5 bg-[#155DFC] dark:bg-blue-600 rounded-md px-2.5 gap-1.5 text-[#FAFAF9] dark:text-white font-sans font-medium text-sm hover:bg-blue-700 dark:hover:bg-blue-700 transition-colors"
             >
               <img src="/circle-plus.svg" alt="plus icon" />
-              {config.label}
+              {safeConfig.label}
             </PermissionButton>
           )}
 
@@ -339,7 +595,7 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
         acceptedFileTypes={
           uploadConfig?.acceptedFileTypes || '.xlsx,.xls,.csv,.pdf,.doc,.docx'
         }
-        maxFileSize={uploadConfig?.maxFileSize || 10}
+        maxFileSize={uploadConfig?.maxFileSize || 25}
         uploadEndpoint={
           uploadConfig?.uploadEndpoint || getDefaultUploadEndpoint(entityType)
         }

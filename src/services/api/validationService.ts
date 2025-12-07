@@ -60,11 +60,7 @@ export class ValidationService {
       const accountNumber = data.accountNumber
       const apiUrl = API_ENDPOINTS.VALIDATION.CORE_BANK_ACCOUNT(accountNumber)
       
-      console.log('🔗 Account Validation API Call:', {
-        url: apiUrl,
-        accountNumber: accountNumber?.replace(/\d/g, '*'), // Mask for security
-        timestamp: new Date().toISOString()
-      })
+     
       
       const response = await apiClient.get<any>(
         apiUrl,
@@ -78,11 +74,7 @@ export class ValidationService {
       // Transform the response to match our ValidationResponse interface
       const validationResponse = this.transformCoreBankResponse(response, data.accountNumber)
       
-      console.log('🔍 ValidationService.validateAccount Success:', { 
-        isValid: validationResponse.isValid,
-        hasDetails: !!validationResponse.details,
-        details: validationResponse.details
-      })
+     
       
       return validationResponse
     } catch (error) {
@@ -129,12 +121,7 @@ export class ValidationService {
         message = 'Account is valid'
       
       }
-      
-      // If no checks passed, log why
-      if (!isValid) {
-        console.log('❌ No validation checks passed - Account is invalid')
-      }
-      
+   
      
       
       return {
@@ -149,7 +136,7 @@ export class ValidationService {
         suggestions: response?.suggestions || []
       }
     } catch (error) {
-      console.error('Error transforming core bank response:', error)
+      
       return {
         isValid: false,
         message: 'Failed to process validation response',
@@ -199,7 +186,7 @@ export class ValidationService {
         suggestions: response?.suggestions || []
       }
     } catch (error) {
-      console.error('Error transforming core bank SWIFT response:', error)
+     
       return {
         isValid: false,
         message: 'Failed to process SWIFT validation response',
@@ -255,11 +242,7 @@ export class ValidationService {
       const swiftCode = data.swiftCode
       const apiUrl = API_ENDPOINTS.VALIDATION.CORE_BANK_SWIFT(swiftCode)
       
-      console.log('🔗 SWIFT Validation API Call:', {
-        url: apiUrl,
-        swiftCode: swiftCode?.replace(/\d/g, '*'), // Mask for security
-        timestamp: new Date().toISOString()
-      })
+    
       
       const response = await apiClient.get<any>(
         apiUrl,
@@ -272,11 +255,7 @@ export class ValidationService {
       
       const validationResponse = this.transformCoreBankSwiftResponse(response, data.swiftCode)
       
-     console.log('🔍 ValidationService.validateSwift Success:', { 
-      isValid: validationResponse.isValid,
-      hasDetails: !!validationResponse.details,
-      details: validationResponse.details
-    })
+   
       
       return validationResponse
     } catch (error) {
@@ -361,7 +340,7 @@ export class ValidationService {
       
       return results
     } catch (error) {
-      console.error('❌ ValidationService.validateBeneficiaryData Error:', error)
+      
       throw new Error(ERROR_MESSAGE)
     }
   }

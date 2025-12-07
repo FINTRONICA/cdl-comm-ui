@@ -4,6 +4,7 @@ import { Dayjs } from 'dayjs'
 export interface StepperProps {
   developerId?: string
   initialStep?: number
+  isViewMode?: boolean
 }
 
 // Notification state

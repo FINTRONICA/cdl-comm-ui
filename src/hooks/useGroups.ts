@@ -64,6 +64,8 @@ export function useGroupManager() {
       // Invalidate and refetch groups
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['groups-search'] });
+      // Ensure stakeholder/user panels see latest groups immediately
+      queryClient.invalidateQueries({ queryKey: ['allAvailableGroups'] });
     },
   });
 
@@ -74,6 +76,8 @@ export function useGroupManager() {
       // Invalidate and refetch groups
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['groups-search'] });
+      // Keep stakeholder/user panels in sync
+      queryClient.invalidateQueries({ queryKey: ['allAvailableGroups'] });
     },
   });
 
@@ -83,6 +87,8 @@ export function useGroupManager() {
       // Invalidate and refetch groups
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['groups-search'] });
+      // Keep stakeholder/user panels in sync
+      queryClient.invalidateQueries({ queryKey: ['allAvailableGroups'] });
     },
   });
 

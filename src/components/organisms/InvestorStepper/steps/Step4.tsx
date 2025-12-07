@@ -30,7 +30,6 @@ import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 import { BankDetailsResponse } from '@/types/capitalPartner'
 import {
   mapStep4ToCapitalPartnerBankInfoPayload,
-  validateStep4Data,
   type Step4FormData,
 } from '../../../../utils/capitalPartnerBankInfoMapper'
 
@@ -109,6 +108,7 @@ const Step4 = forwardRef<Step4Ref, Step4Props>(
       control,
       watch,
       setValue,
+      trigger,
       formState: { errors },
     } = useFormContext()
     const { getLabel } = useCapitalPartnerLabelsApi()
@@ -134,6 +134,12 @@ const Step4 = forwardRef<Step4Ref, Step4Props>(
         {},
         {
           enabled: Boolean(isEditMode && capitalPartnerId),
+          // Disable caching to always fetch fresh data
+          gcTime: 0,
+          staleTime: 0,
+          // Always refetch when component mounts
+          refetchOnMount: 'always',
+          refetchOnWindowFocus: false,
         }
       )
 
@@ -170,6 +176,23 @@ const Step4 = forwardRef<Step4Ref, Step4Props>(
           throw new Error('Capital Partner ID is required from Step1')
         }
 
+        // First, run Zod-based validation via RHF
+        const isValid = await trigger([
+          'payMode',
+          'accountNumber',
+          'payeeName',
+          'payeeAddress',
+          'bankName',
+          'bankAddress',
+          'beneficiaryRoutingCode',
+          'bic',
+        ])
+
+        if (!isValid) {
+          setSaveError('Please fix validation errors before continuing')
+          throw new Error('Validation failed')
+        }
+
         // Get current form data
         const formData: Step4FormData = {
           payMode: watch('payMode'),
@@ -180,13 +203,6 @@ const Step4 = forwardRef<Step4Ref, Step4Props>(
           bankAddress: watch('bankAddress'),
           beneficiaryRoutingCode: watch('beneficiaryRoutingCode'),
           bic: watch('bic'),
-        }
-
-        // Validate form data
-        const validationErrors = validateStep4Data(formData)
-        if (validationErrors.length > 0) {
-          setSaveError(validationErrors.join(', '))
-          throw new Error(validationErrors.join(', '))
         }
 
         // Map form data to API payload
@@ -302,11 +318,11 @@ const Step4 = forwardRef<Step4Ref, Step4Props>(
                 sx={commonInputStyles}
               >
                 <InputLabel sx={labelSx}>
-                  {loading ? `Loading ${label}...` : label}
+                  {loading ? `Loading...` : label}
                 </InputLabel>
                 <Select
                   {...field}
-                  label={loading ? `Loading ${label}...` : label}
+                  label={loading ? `Loading...` : label}
                   sx={{
                     ...selectStyles,
                     ...valueSx,
@@ -399,7 +415,7 @@ const Step4 = forwardRef<Step4Ref, Step4Props>(
                 }}
               >
                 <Typography variant="body2" color="error">
-                  ⚠️ {saveError}
+                  ⚠️ 678{saveError}
                 </Typography>
               </Box>
             )}
@@ -408,12 +424,12 @@ const Step4 = forwardRef<Step4Ref, Step4Props>(
               {renderApiSelectField(
                 'payMode',
                 'CDL_CP_PAY_MODE',
-                'Pay Mode*',
+                'Pay Mode',
                 paymentModes?.length
                   ? paymentModes
                   : getFallbackOptions('payMode'),
                 6,
-                true,
+                false,
                 loadingPaymentModes
               )}
               {renderTextField(
@@ -438,7 +454,7 @@ const Step4 = forwardRef<Step4Ref, Step4Props>(
                 'CDL_CP_ROUTING_CODE',
                 'Beneficiary Routing Code'
               )}
-              {renderTextField('bic', 'DL_CP_BIC_CODE', 'BIC')}
+              {renderTextField('bic', 'CDL_CP_BIC_CODE', 'BIC')}
             </Grid>
           </CardContent>
         </Card>

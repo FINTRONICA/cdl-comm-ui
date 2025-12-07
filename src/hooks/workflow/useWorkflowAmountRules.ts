@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
 import {
   workflowAmountRuleService,
   type WorkflowAmountRuleDTO,
@@ -10,6 +11,27 @@ import {
 import type { PaginatedResponse } from '@/types'
 
 const WORKFLOW_AMOUNT_RULES_QUERY_KEY = 'workflowAmountRules'
+
+const convertToUIData = (apiData: WorkflowAmountRuleDTO) => {
+  return {
+    id: apiData.id,
+    currency: apiData.currency,
+    minAmount: apiData.minAmount ?? 0,
+    maxAmount: apiData.maxAmount ?? 0,
+    priority: apiData.priority ?? 0,
+    requiredMakers: apiData.requiredMakers ?? 0,
+    requiredCheckers: apiData.requiredCheckers ?? 0,
+    workflowDefinitionDTO: {
+      id: apiData.workflowDefinitionDTO?.id || 0,
+      name: apiData.workflowDefinitionDTO?.name || '',
+    },
+    workflowId: (apiData as any)?.workflowId || 0,
+    amountRuleName: (apiData as any)?.amountRuleName || '',
+    workflowAmountStageOverrideDTOS: (apiData as any)?.workflowAmountStageOverrideDTOS || [],
+    active: (apiData as any)?.enabled ?? false,
+    status: (apiData as any)?.enabled ? 'Active' : 'Inactive',
+  }
+}
 
 export function useWorkflowAmountRules(
   page = 0,
@@ -80,17 +102,56 @@ export function useCreateWorkflowAmountRule() {
 
   return useMutation({
     mutationFn: async (data: CreateWorkflowAmountRuleRequest) => {
-      const result =
-        await workflowAmountRuleService.createWorkflowAmountRule(data)
-      return result
+      try {
+        // toast.loading('Creating workflow amount rule')
+        const result = await workflowAmountRuleService.createWorkflowAmountRule(data)
+        return result
+      } catch (error) {
+        throw error
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY],
-      })
+    onSuccess: (newData) => {
+      try {
+        queryClient.invalidateQueries({
+          queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY],
+        })
+        
+        const queries = queryClient.getQueriesData({
+          queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY, 'list'],
+          exact: false
+        })
+        
+        queries.forEach(([queryKey, oldData]) => {
+          if (!oldData || !(oldData as any).content) return
+          
+          const uiData = convertToUIData(newData)
+          
+          const updatedData = {
+            ...oldData,
+            content: [uiData, ...(oldData as any).content],
+            totalElements: (oldData as any).totalElements + 1,
+          }
+          
+          queryClient.setQueryData(queryKey, updatedData)
+        })
+
+        toast.success('Workflow amount rule created successfully!' )
+      } catch (error) {
+        toast.error(`${error} Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: Error) => {
+      try {
+        const errorMessage = 
+          (error as any)?.response?.data?.message ||
+          (error as any)?.response?.data?.details ||
+          (error as any)?.response?.data?.error ||
+          error?.message ||
+          'Failed to create workflow amount rule'
+        toast.error(errorMessage, { id: 'create-amount-rule' })
+      } catch (toastError) {
+        toast.error(`${toastError} Failed to show error message`)
+      }
     },
     retry: 2,
   })
@@ -107,22 +168,60 @@ export function useUpdateWorkflowAmountRule() {
       id: string
       updates: UpdateWorkflowAmountRuleRequest
     }) => {
-      const result = await workflowAmountRuleService.updateWorkflowAmountRule(
-        id,
-        updates
-      )
-      return result
+      try {
+        // toast.loading('Updating workflow amount rule')
+        const result = await workflowAmountRuleService.updateWorkflowAmountRule(
+          id,
+          updates
+        )
+        return result
+      } catch (error) {
+        throw error
+      }
     },
-    onSuccess: (variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY],
-      })
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY, 'detail', variables.id],
-      })
+    onSuccess: (updatedData, variables) => {
+      try {
+        queryClient.invalidateQueries({
+          queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY],
+        })
+        
+        const queries = queryClient.getQueriesData({
+          queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY, 'list'],
+          exact: false
+        })
+        
+        queries.forEach(([queryKey, oldData]) => {
+          if (!oldData || !(oldData as any).content) return
+          
+          const uiData = convertToUIData(updatedData)
+          
+          const filteredContent = (oldData as any).content.filter((item: any) => item.id.toString() !== variables.id)
+          
+          const updatedListData = {
+            ...oldData,
+            content: [uiData, ...filteredContent],
+          }
+          
+          queryClient.setQueryData(queryKey, updatedListData)
+        })
+
+        toast.success('Workflow amount rule updated successfully')
+      } catch (error) {
+        toast.error(`${error} Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage = 
+          error?.response?.data?.message ||
+          error?.response?.data?.details ||
+          error?.response?.data?.error ||
+          error?.message ||
+          'Failed to update workflow amount rule'
+        toast.error(errorMessage, { id: 'update-amount-rule' })
+      } catch (toastError) {
+        toast.error(`${toastError} Failed to show error message`)
+      }
     },
     retry: 2,
   })
@@ -133,17 +232,54 @@ export function useDeleteWorkflowAmountRule() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const result =
-        await workflowAmountRuleService.deleteWorkflowAmountRule(id)
-      return result
+      try {
+        // toast.loading('Deleting workflow amount rule')
+        const result = await workflowAmountRuleService.deleteWorkflowAmountRule(id)
+        return result
+      } catch (error) {
+        throw error
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY],
-      })
+    onSuccess: (_, deletedId) => {
+      try {
+        queryClient.invalidateQueries({
+          queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY],
+        })
+        
+        const queries = queryClient.getQueriesData({
+          queryKey: [WORKFLOW_AMOUNT_RULES_QUERY_KEY, 'list'],
+          exact: false
+        })
+        
+        queries.forEach(([queryKey, oldData]) => {
+          if (!oldData || !(oldData as any).content) return
+          
+          const updatedData = {
+            ...oldData,
+            content: (oldData as any).content.filter((item: any) => item.id.toString() !== deletedId),
+            totalElements: Math.max(0, (oldData as any).totalElements - 1),
+          }
+          
+          queryClient.setQueryData(queryKey, updatedData)
+        })
+
+        toast.success('Workflow amount rule deleted successfully!', { id: 'delete-amount-rule' })
+      } catch (error) {
+        toast.error(`${error} Failed to update local data`)
+      }
     },
-    onError: (error) => {
-      console.log(error)
+    onError: (error: any) => {
+      try {
+        const errorMessage = 
+          error?.response?.data?.message ||
+          error?.response?.data?.details ||
+          error?.response?.data?.error ||
+          error?.message ||
+          'Failed to delete workflow amount rule'
+        toast.error(errorMessage)
+      } catch (toastError) {
+        toast.error(`${toastError} Failed to show error message`)
+      }
     },
     retry: false,
   })
@@ -258,7 +394,7 @@ export function useBulkWorkflowAmountRuleOperations() {
       })
     },
     onError: (error) => {
-      console.log(error)
+     toast.error(`${error}`)
     },
     retry: 1,
   })
@@ -283,7 +419,7 @@ export function useBulkWorkflowAmountRuleOperations() {
       })
     },
     onError: (error) => {
-      console.log(error)
+     toast.error(`${error}`)
     },
     retry: 1,
   })
@@ -302,7 +438,7 @@ export function useBulkWorkflowAmountRuleOperations() {
       })
     },
     onError: (error) => {
-      console.log(error)
+     toast.error(`${error}`)
     },
     retry: 1,
   })

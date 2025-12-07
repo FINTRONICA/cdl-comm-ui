@@ -223,25 +223,7 @@ export class PrivacyService {
   ): void {
     if (!env.complianceConfig.auditLogEnabled) return;
     
-    // Import audit logger here to avoid circular dependency
-    // const { AuditLogger, AuditEventType, AuditSeverity } = require('./auditLogger');
-    
-    // Mock audit logging for now
-    console.log('Data access logged:', {
-      eventType: 'SECURITY_EVENT',
-      severity: 'MEDIUM',
-      userId,
-      ipAddress: 'unknown', // Should be passed from request
-      userAgent: 'unknown', // Should be passed from request
-      action: `data_access_${action}`,
-      details: {
-        dataOwnerId,
-        dataCategory,
-        action,
-        ...details
-      },
-      outcome: 'success'
-    });
+ 
   }
 
   // Generate data export for GDPR

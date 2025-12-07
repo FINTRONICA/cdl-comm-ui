@@ -40,7 +40,7 @@ export class EncryptionService {
           tag: tag.toString('hex')
         }
       };
-    } catch {
+    } catch (error) {
       console.error('Encryption failed:', error);
       return {
         success: false,
@@ -67,7 +67,7 @@ export class EncryptionService {
         success: true,
         data: { encrypted: decrypted, iv: '', tag: '' }
       };
-    } catch {
+    } catch (error) {
       console.error('Decryption failed:', error);
       return {
         success: false,
@@ -151,7 +151,7 @@ export class EncryptionService {
           tag: tag.toString('hex')
         }
       };
-    } catch {
+    } catch (error) {
       console.error('Buffer encryption failed:', error);
       return {
         success: false,
@@ -178,7 +178,7 @@ export class EncryptionService {
       ]);
       
       return { success: true, data: decrypted };
-    } catch {
+    } catch (error) {
       console.error('Buffer decryption failed:', error);
       return {
         success: false,

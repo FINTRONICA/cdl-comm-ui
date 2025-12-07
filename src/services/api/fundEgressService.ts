@@ -77,7 +77,7 @@ export interface RealEstateAssetDTO {
   reaMarketingExpenses: string | null
   reaAccoutStatusDate: string | null
   reaTeamLeadName: string | null
-  reaRelationshipManagerName: string | null
+  reamprelationshipManagerName: string | null
   reaAssestRelshipManagerName: string | null
   reaRealEstateBrokerExp: number
   reaAdvertisementExp: number
@@ -205,6 +205,11 @@ export interface FundEgressRequest {
   feBenefFromProject?: boolean
   feCorporatePaymentEngFee?: string | number
   feIsEngineerFee?: boolean
+  fePaymentExecutionDate?: string
+  escrowAccountNumber?: string
+  constructionAccountNumber?: string
+  corporateAccountNumber?: string
+  retentionAccountNumber?: string
   status?: string
   enabled?: boolean
   paymentStatusOptionDTO?: StatusDTO
@@ -227,7 +232,9 @@ export interface FundEgressRequest {
   suretyBondDTO?: any
   deleted?: boolean
   taskStatusDTO?: any
+  // Note: backend expects 'fBbankCharges' (capital B). Keep both for compatibility.
   fbbankCharges?: string | number
+  fBbankCharges?: string | number
 }
 
 export interface FundEgressResponse {
@@ -305,10 +312,16 @@ export interface FundEgressData {
   feInvoiceDate?: string
   feReraApprovedRefNo?: string
   feReraApprovedDate?: string
+  feEngineerApprovalDate?: string
   feCurBalInEscrowAcc?: number
   feSubConsAccBalance?: number
   feCorporateAccBalance?: number
   feCurBalInRetentionAcc?: number
+  fePaymentExecutionDate?: string
+  escrowAccountNumber?: string
+  constructionAccountNumber?: string
+  corporateAccountNumber?: string
+  retentionAccountNumber?: string
   buildPartnerDTO?: {
     id: number
     bpName: string
@@ -318,6 +331,7 @@ export interface FundEgressData {
     id: number
     reaName: string
     reaId: string
+    reaNoOfUnits?: number
     reaAccountStatusDTO?: {
       settingValue: string
     }
@@ -333,10 +347,16 @@ export interface FundEgressData {
   invoiceCurrencyDTO?: {
     id: number
     name: string
+    languageTranslationId?: {
+      configValue?: string
+    }
   }
   paymentCurrencyDTO?: {
     id: number
     name: string
+    languageTranslationId?: {
+      configValue?: string
+    }
   }
   chargedCodeDTO?: {
     id: number
@@ -349,6 +369,9 @@ export interface FundEgressData {
   transactionTypeDTO?: {
     id: number
     name: string
+    languageTranslationId?: {
+      configValue?: string
+    }
   }
   capitalPartnerUnitDTO?: {
     id: number

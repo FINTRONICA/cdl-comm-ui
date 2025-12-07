@@ -1,32 +1,27 @@
 import React from 'react'
-import { ConfirmationDialog } from '../../molecules/ConfirmationDialog'
-import { useConfirmationDialog } from '../../../hooks/useConfirmationDialog'
+import { useDeleteConfirmation } from '../../../store/confirmationDialogStore'
 import { DocumentUploadConfig, BaseDocument, DocumentAction } from './types'
 
 export interface DocumentUploadWithConfirmationProps<
   T extends BaseDocument = BaseDocument,
-  ApiResponse = unknown
+  ApiResponse = unknown,
 > {
   config: DocumentUploadConfig<T, ApiResponse>
   onDeleteDocument?: (document: T) => Promise<void>
-  children: (enhancedConfig: DocumentUploadConfig<T, ApiResponse>) => React.ReactNode
+  children: (
+    enhancedConfig: DocumentUploadConfig<T, ApiResponse>
+  ) => React.ReactNode
 }
 
 export const DocumentUploadWithConfirmation = <
   T extends BaseDocument = BaseDocument,
-  ApiResponse = unknown
+  ApiResponse = unknown,
 >({
   config,
   onDeleteDocument,
   children,
 }: DocumentUploadWithConfirmationProps<T, ApiResponse>) => {
-  const confirmationDialog = useConfirmationDialog({
-    title: 'Delete Document',
-    message: 'Are you sure you want to delete this document? This action cannot be undone.',
-    confirmText: 'Delete',
-    cancelText: 'Cancel',
-    variant: 'error',
-  })
+  const confirmDelete = useDeleteConfirmation()
 
   // Enhanced actions with confirmation dialog integration
   const enhancedActions: DocumentAction<T>[] = config.actions.map((action) => {
@@ -34,22 +29,29 @@ export const DocumentUploadWithConfirmation = <
       return {
         ...action,
         onClick: async (document: T) => {
-          confirmationDialog.openDialog({
-            title: 'Delete Document',
-            message: action.confirmationMessage || 'Are you sure you want to delete this document? This action cannot be undone.',
-            confirmText: 'Delete',
-            cancelText: 'Cancel',
-            variant: 'error',
-          })
+          // Get document name/identifier for display
+          const documentName =
+            (document as any).name ||
+            (document as any).fileName ||
+            (document as any).documentName ||
+            'document'
 
-          // Store the document and action for confirmation
-          await confirmationDialog.confirm(async () => {
-            if (onDeleteDocument) {
-              await onDeleteDocument(document)
-            } else {
-              // Fallback to original action if no custom delete handler
-              await action.onClick(document)
-            }
+          // Use the global delete confirmation dialog (same as build partner main page)
+          confirmDelete({
+            itemName: documentName,
+            itemId: (document as any).id?.toString(),
+            // Custom message if provided, otherwise use store's default message
+            ...(action.confirmationMessage && {
+              message: action.confirmationMessage,
+            }),
+            onConfirm: async () => {
+              if (onDeleteDocument) {
+                await onDeleteDocument(document)
+              } else {
+                // Fallback to original action if no custom delete handler
+                await action.onClick(document)
+              }
+            },
           })
         },
       }
@@ -62,24 +64,8 @@ export const DocumentUploadWithConfirmation = <
     actions: enhancedActions,
   }
 
-  return (
-    <>
-      {children(enhancedConfig)}
-      <ConfirmationDialog
-        open={confirmationDialog.isOpen}
-        onClose={confirmationDialog.closeDialog}
-        onConfirm={async () => {
-          // This will be handled by the confirm method in the onClick
-        }}
-        title={confirmationDialog.dialogProps.title}
-        message={confirmationDialog.dialogProps.message}
-        confirmText={confirmationDialog.dialogProps.confirmText}
-        cancelText={confirmationDialog.dialogProps.cancelText}
-        variant={confirmationDialog.dialogProps.variant}
-        loading={confirmationDialog.isLoading}
-      />
-    </>
-  )
+  // No need to render a local ConfirmationDialog - using global one from layout
+  return <>{children(enhancedConfig)}</>
 }
 
 export default DocumentUploadWithConfirmation

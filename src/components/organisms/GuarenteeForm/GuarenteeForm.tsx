@@ -1,83 +1,112 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react'
 import {
-  Box, Button, Card, CardContent, Checkbox, FormControl, FormControlLabel, Grid, IconButton, InputLabel, Menu, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography
-} from '@mui/material';
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
+  FormControl,
+  FormControlLabel,
+  Grid,
+  IconButton,
+  InputLabel,
+  Menu,
+  MenuItem,
+  Paper,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
-  MoreVert
+  MoreVert,
 } from '@mui/icons-material'
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
-import { Controller, useFormContext } from 'react-hook-form';
-import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
-import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { RightSlideDocumentsPanel } from '@/components/organisms/RightSlidePanel/RightSlideDocumentPanel';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
+import { Controller, useFormContext } from 'react-hook-form'
+import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
+import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { RightSlideDocumentsPanel } from '@/components/organisms/RightSlidePanel/RightSlideDocumentPanel'
 
 type DocumentItem = {
-  name: string;
-  date: string;
-  type: string;
-};
+  name: string
+  date: string
+  type: string
+}
 
 export const GuaranteeForm = () => {
-  const { control } = useFormContext();
+  const { control } = useFormContext()
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleClosePanel = () => {
     setIsPanelOpen(false)
-    // setSelectedReport(null)
   }
 
-  const [uploadedDocuments, setUploadedDocuments] = useState<DocumentItem[]>([]); // Add state for uploaded documents
-  // State for the menu
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState<DocumentItem[]>([]) // Add state for uploaded documents
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(
+    null
+  )
 
   const handleFileData = (data: []) => {
-
-    data.map((file: any) => { setUploadedDocuments((prev) => [...prev, { name: file.name, date: new Date().toLocaleDateString(), type: file.type }]); });
-    // setUploadedDocuments(data);
-  };
+    data.map((file: any) => {
+      setUploadedDocuments((prev) => [
+        ...prev,
+        {
+          name: file.name,
+          date: new Date().toLocaleDateString(),
+          type: file.type,
+        },
+      ])
+    })
+  }
 
   const handleFileChange = (e: any) => {
-    const file = e.target.files[0];
-    console.log(file)
+    const file = e.target.files[0]
     if (file) {
       const newDocument = {
         name: file.name,
         date: new Date(file.lastModified).toLocaleDateString(), // Format the lastModified date
         type: file.type,
-      };
-      setUploadedDocuments((prev) => [...prev, newDocument]); // Update the state with the new document
+      }
+      setUploadedDocuments((prev) => [...prev, newDocument]) // Update the state with the new document
     }
-  };
+  }
 
   // Menu handlers
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, document: DocumentItem) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedDocument(document);
-  };
+  const handleMenuClick = (
+    event: React.MouseEvent<HTMLElement>,
+    document: DocumentItem
+  ) => {
+    setAnchorEl(event.currentTarget)
+    setSelectedDocument(document)
+  }
 
   const handleCloseMenu = () => {
-    setAnchorEl(null);
-    setSelectedDocument(null);
-  };
+    setAnchorEl(null)
+    setSelectedDocument(null)
+  }
 
   const handleView = () => {
     // Implement view action
-    console.log("View document:", selectedDocument);
-    handleCloseMenu();
-  };
+    handleCloseMenu()
+  }
 
   const handleDelete = () => {
     // Implement delete action
-    console.log("Delete document:", selectedDocument);
-    setUploadedDocuments((prev) => prev.filter(doc => doc !== selectedDocument));
-    handleCloseMenu();
-  };
+    setUploadedDocuments((prev) =>
+      prev.filter((doc) => doc !== selectedDocument)
+    )
+    handleCloseMenu()
+  }
 
-  // Common styles for form components
   const commonFieldStyles = {
     '& .MuiOutlinedInput-root': {
       height: '46px',
@@ -94,7 +123,6 @@ export const GuaranteeForm = () => {
       },
     },
   }
-
 
   const selectStyles = {
     height: '46px',
@@ -146,7 +174,7 @@ export const GuaranteeForm = () => {
     fontStyle: 'normal',
     fontSize: '12px',
     letterSpacing: 0,
-  };
+  }
 
   const valueSx = {
     color: '#1E2939',
@@ -156,7 +184,7 @@ export const GuaranteeForm = () => {
     fontSize: '14px',
     letterSpacing: 0,
     wordBreak: 'break-word',
-  };
+  }
 
   const StyledCalendarIcon = (props: any) => (
     <CalendarTodayOutlinedIcon
@@ -172,7 +200,12 @@ export const GuaranteeForm = () => {
     />
   )
 
-  const renderTextField = (name: string, label: string, defaultValue = '', gridSize: number = 6) => (
+  const renderTextField = (
+    name: string,
+    label: string,
+    defaultValue = '',
+    gridSize: number = 6
+  ) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
       <Controller
         name={name}
@@ -190,9 +223,14 @@ export const GuaranteeForm = () => {
         )}
       />
     </Grid>
-  );
+  )
 
-  const renderSelectField = (name: string, label: string, options: string[], gridSize: number = 6) => (
+  const renderSelectField = (
+    name: string,
+    label: string,
+    options: string[],
+    gridSize: number = 6
+  ) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
       <Controller
         name={name}
@@ -205,41 +243,44 @@ export const GuaranteeForm = () => {
             <Select
               {...field}
               label={label}
-
               sx={{
                 ...selectStyles,
                 ...valueSx,
-                "& .MuiOutlinedInput-notchedOutline": {
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
+                '& .MuiOutlinedInput-notchedOutline': {
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
                 },
-                "&:hover .MuiOutlinedInput-notchedOutline": {
-                  border: "1px solid #9ca3af",
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  border: '1px solid #9ca3af',
                 },
-                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                  border: "2px solid #2563eb",
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  border: '2px solid #2563eb',
                 },
               }}
               IconComponent={KeyboardArrowDownIcon}
             >
-              <MenuItem value="" disabled>-- Select --</MenuItem>
+              <MenuItem value="" disabled>
+                -- Select --
+              </MenuItem>
               {options.map((opt) => (
-                <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                <MenuItem key={opt} value={opt}>
+                  {opt}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
         )}
       />
     </Grid>
-  );
+  )
 
   const renderCheckboxField = (
     name: string,
     label?: string,
     gridSize: number = 6
   ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize, }}>
-      <div className='text-sm'>{label}</div>
+    <Grid key={name} size={{ xs: 12, md: gridSize }}>
+      <div className="text-sm">{label}</div>
       <Controller
         name={name}
         control={control}
@@ -273,7 +314,7 @@ export const GuaranteeForm = () => {
         )}
       />
     </Grid>
-  );
+  )
 
   const renderDatePickerField = (
     name: string,
@@ -299,7 +340,6 @@ export const GuaranteeForm = () => {
                 fullWidth: true,
                 // error: !!errors[name],
 
-
                 sx: datePickerStyles,
                 InputLabelProps: { sx: labelSx },
                 InputProps: {
@@ -314,58 +354,114 @@ export const GuaranteeForm = () => {
     </Grid>
   )
 
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Card sx={{ boxShadow: 'none', backgroundColor: '#FFFFFFBF', width: '84%', margin: '0 auto' }}>
+      <Card
+        sx={{
+          boxShadow: 'none',
+          backgroundColor: '#FFFFFFBF',
+          width: '84%',
+          margin: '0 auto',
+        }}
+      >
         <CardContent>
           <Grid container rowSpacing={4} columnSpacing={2}>
             {renderTextField('guaranteeRefNo', 'Guarantee Reference Number*')}
-            {renderSelectField('guaranteeType', 'Guarantee Type*', ['Performance Guarantee', 'Financial Guarantee', 'Advance Payment Guarantee', 'Bid Bond', 'Retention Money Guarantee', 'Customs Guarantee',])}
-            {renderDatePickerField('guaranteeDate', 'Guarantee Date*')}
+            {renderSelectField('guaranteeType', 'Guarantee Type*', [
+              'Performance Guarantee',
+              'Financial Guarantee',
+              'Advance Payment Guarantee',
+              'Bid Bond',
+              'Retention Money Guarantee',
+              'Customs Guarantee',
+            ])}
+            {renderDatePickerField('guaranteeDate', 'Guarantee Date456*')}
             {renderTextField('projectCif', 'Project CIF*')}
-            {renderSelectField('projectName', 'Project Name*', ['Ajman Heights', 'Dubai Creek Towers', 'Marina Bay Residency', 'Palm View Villas', 'Sharjah Central Mall',])}
+            {renderSelectField('projectName', 'Project Name*', [
+              'Ajman Heights',
+              'Dubai Creek Towers',
+              'Marina Bay Residency',
+              'Palm View Villas',
+              'Sharjah Central Mall',
+            ])}
             {renderTextField('develperName', 'Developer/Contractor Name*')}
-            {renderCheckboxField('openEndedGuarantee', 'Open Ended Guarantee', 3)}
-            {renderDatePickerField('projectCompletionDate', 'Project completion date', 3)}
+            {renderCheckboxField(
+              'openEndedGuarantee',
+              'Open Ended Guarantee',
+              3
+            )}
+            {renderDatePickerField(
+              'projectCompletionDate',
+              'Project completion date',
+              3
+            )}
             {renderTextField('noOfAmmendments', 'No of Ammendments', '', 3)}
-            {renderDatePickerField('guaranteeExpirationDate', 'Guarantee Expiration Date*', 3)}
+            {renderDatePickerField(
+              'guaranteeExpirationDate',
+              'Guarantee Expiration Date*',
+              3
+            )}
             {renderTextField('guaranteeAmount', 'Guarantee Amount*', '', 4)}
             {renderTextField('newReading', 'New Reading (Amendments)', '', 4)}
-            {renderSelectField('issuerBank', 'Issuer Bank*', ['State Bank of India (SBI)', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Bank of Baroda', 'HSBC',], 4)}
+            {renderSelectField(
+              'issuerBank',
+              'Issuer Bank*',
+              [
+                'State Bank of India (SBI)',
+                'HDFC Bank',
+                'ICICI Bank',
+                'Axis Bank',
+                'Bank of Baroda',
+                'HSBC',
+              ],
+              4
+            )}
 
-            <div className='pl-216'></div>
+            <div className="pl-216"></div>
 
-            {renderSelectField('status', 'Status*', ['Active', 'Expired', 'Amended', 'Cancelled', 'Pending Approval',], 4)}
-
+            {renderSelectField(
+              'status',
+              'Status*',
+              ['Active', 'Expired', 'Amended', 'Cancelled', 'Pending Approval'],
+              4
+            )}
           </Grid>
 
           <Box mt={6}>
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-              <Typography variant="h6" sx={{
-                fontFamily: 'Outfit, sans-serif',
-                fontWeight: 500,
-                fontStyle: 'normal',
-                fontSize: '18px',
-                lineHeight: '28px',        // Assuming "Title Large" line height
-                letterSpacing: '0.15px',   // Conservative tracking
-                verticalAlign: 'middle',
-              }}>
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              mb={3}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  fontFamily: 'Outfit, sans-serif',
+                  fontWeight: 500,
+                  fontStyle: 'normal',
+                  fontSize: '18px',
+                  lineHeight: '28px',
+                  letterSpacing: '0.15px',
+                  verticalAlign: 'middle',
+                }}
+              >
                 Supported Documents
               </Typography>
               <Button
                 variant="outlined"
                 startIcon={<FileUploadOutlinedIcon />}
-                onClick={() => { setIsPanelOpen(true) }}
+                onClick={() => {
+                  setIsPanelOpen(true)
+                }}
                 sx={{
                   textTransform: 'none',
                   fontFamily: 'Outfit, sans-serif',
-                  fontWeight: 500,         // Medium
+                  fontWeight: 500,
                   fontStyle: 'normal',
-                  fontSize: '14px',        // text-sm
-                  lineHeight: '20px',      // from design token for text-sm
+                  fontSize: '14px',
+                  lineHeight: '20px',
                   letterSpacing: '0px',
-
                 }}
               >
                 Upload Documents
@@ -381,30 +477,75 @@ export const GuaranteeForm = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell colSpan={2} sx={{ fontFamily: 'Outfit', fontWeight: 'normal', }}>Document Name</TableCell>
-                    <TableCell colSpan={2} sx={{ fontFamily: 'Outfit', fontWeight: 'normal', }}>Uploaded Date</TableCell>
-                    <TableCell colSpan={2} sx={{ fontFamily: 'Outfit', fontWeight: 'normal', }}>Document Type</TableCell>
-                    <TableCell colSpan={2} sx={{ fontFamily: 'Outfit', fontWeight: 'normal', }}>Actions</TableCell>
+                    <TableCell
+                      colSpan={2}
+                      sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                    >
+                      Document Name
+                    </TableCell>
+                    <TableCell
+                      colSpan={2}
+                      sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                    >
+                      Uploaded Date
+                    </TableCell>
+                    <TableCell
+                      colSpan={2}
+                      sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                    >
+                      Document Type
+                    </TableCell>
+                    <TableCell
+                      colSpan={2}
+                      sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                    >
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {uploadedDocuments.length > 0 ? (
                     uploadedDocuments.map((doc, index) => (
                       <TableRow key={index}>
-                        <TableCell colSpan={2} sx={{ fontFamily: 'Outfit', fontWeight: 'normal', maxWidth: 200 }}>{doc.name}</TableCell>
-                        <TableCell colSpan={2} sx={{ fontFamily: 'Outfit', fontWeight: 'normal', }}>{doc.date}</TableCell>
-                        <TableCell colSpan={2} sx={{ fontFamily: 'Outfit', fontWeight: 'normal', }}>{doc.type}</TableCell>
-                        <TableCell colSpan={2} sx={{ fontFamily: 'Outfit', fontWeight: 'normal', }}>
-                          <IconButton onClick={(event) => handleMenuClick(event, doc)} sx={{
-                            backgroundColor: '#DBEAFE', // light blue background
-                            borderRadius: '8px',       // rounded corners
-                            width: 30,
-                            height: 30,
-                            padding: 1,
-                            '&:hover': {
-                              backgroundColor: '#d0e2fd' // slightly darker on hover
-                            }
-                          }}>
+                        <TableCell
+                          colSpan={2}
+                          sx={{
+                            fontFamily: 'Outfit',
+                            fontWeight: 'normal',
+                            maxWidth: 200,
+                          }}
+                        >
+                          {doc.name}
+                        </TableCell>
+                        <TableCell
+                          colSpan={2}
+                          sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                        >
+                          {doc.date}
+                        </TableCell>
+                        <TableCell
+                          colSpan={2}
+                          sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                        >
+                          {doc.type}
+                        </TableCell>
+                        <TableCell
+                          colSpan={2}
+                          sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                        >
+                          <IconButton
+                            onClick={(event) => handleMenuClick(event, doc)}
+                            sx={{
+                              backgroundColor: '#DBEAFE', // light blue background
+                              borderRadius: '8px', // rounded corners
+                              width: 30,
+                              height: 30,
+                              padding: 1,
+                              '&:hover': {
+                                backgroundColor: '#d0e2fd', // slightly darker on hover
+                              },
+                            }}
+                          >
                             <MoreVert sx={{ color: '#155DFC' }} />
                           </IconButton>
                         </TableCell>
@@ -412,7 +553,11 @@ export const GuaranteeForm = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell sx={{ fontFamily: 'Outfit', fontWeight: 'normal', }} colSpan={8} align="center">
+                      <TableCell
+                        sx={{ fontFamily: 'Outfit', fontWeight: 'normal' }}
+                        colSpan={8}
+                        align="center"
+                      >
                         No documents uploaded
                       </TableCell>
                     </TableRow>
@@ -439,11 +584,14 @@ export const GuaranteeForm = () => {
             <MenuItem onClick={handleView}>View</MenuItem>
             <MenuItem onClick={handleDelete}>Delete</MenuItem>
           </Menu>
-
         </CardContent>
       </Card>
 
-      <RightSlideDocumentsPanel isOpen={isPanelOpen} onClose={handleClosePanel} sendFileData={handleFileData} />
+      <RightSlideDocumentsPanel
+        isOpen={isPanelOpen}
+        onClose={handleClosePanel}
+        sendFileData={handleFileData}
+      />
     </LocalizationProvider>
-  );
-};
+  )
+}

@@ -5,6 +5,7 @@ import {
   API_ENDPOINTS,
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
+import { toast } from 'react-hot-toast'
 
 export interface WorkflowAmountStageOverride {
   id: number
@@ -69,7 +70,7 @@ export interface CreateWorkflowAmountRuleRequest {
   workflowDefinitionId: number
   workflowId: number
   amountRuleName: string
-  active: boolean
+  enabled: boolean
 }
 export interface UpdateWorkflowAmountRuleRequest {
   id: number
@@ -80,7 +81,7 @@ export interface UpdateWorkflowAmountRuleRequest {
   requiredMakers: number
   requiredCheckers: number
   workflowDefinitionId: number
-  active: boolean
+  enabled: boolean
 }
 
 export interface WorkflowAmountRuleLabel {
@@ -167,7 +168,7 @@ export interface WorkflowAmountRuleUIData {
   workflowId: number | string
   amountRuleName: string
   workflowAmountStageOverrideDTOS: WorkflowAmountStageOverride[]
-  active: boolean
+  enabled: boolean
   status?: string
 }
 
@@ -198,8 +199,8 @@ export const mapWorkflowAmountRuleToUI = (
           workflowAmountStageOverrideDTOS?: WorkflowAmountStageOverride[]
         }
       )?.workflowAmountStageOverrideDTOS || [],
-    active: (apiData as { active?: boolean })?.active ?? false,
-    status: (apiData as { active?: boolean })?.active ? 'Active' : 'Inactive',
+    enabled: (apiData as { enabled?: boolean })?.enabled ?? false,
+    status: (apiData as { enabled?: boolean })?.enabled ? 'Active' : 'Inactive',
   }
 }
 
@@ -275,7 +276,7 @@ export class WorkflowAmountRuleService {
         await apiClient.get<PaginatedResponse<WorkflowAmountRuleDTO>>(url)
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -287,7 +288,7 @@ export class WorkflowAmountRuleService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -308,7 +309,7 @@ export class WorkflowAmountRuleService {
         },
         workflowId: data.workflowId,
         amountRuleName: data.amountRuleName,
-        active: data.active,
+        enabled: data.enabled,
       }
       const result = await apiClient.post<WorkflowAmountRuleDTO>(
         buildApiUrl(API_ENDPOINTS.WORKFLOW_AMOUNT_RULE.SAVE),
@@ -316,7 +317,7 @@ export class WorkflowAmountRuleService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -353,7 +354,7 @@ export class WorkflowAmountRuleService {
           id: updates.workflowDefinitionId,
         },
         workflowId: updates.workflowDefinitionId,
-        active: updates.active,
+        enabled: updates.enabled,
       }
       const result = await apiClient.put<WorkflowAmountRuleDTO>(
         buildApiUrl(API_ENDPOINTS.WORKFLOW_AMOUNT_RULE.UPDATE(id)),
@@ -361,7 +362,7 @@ export class WorkflowAmountRuleService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -372,7 +373,7 @@ export class WorkflowAmountRuleService {
         buildApiUrl(API_ENDPOINTS.WORKFLOW_AMOUNT_RULE.DELETE(id))
       )
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }
@@ -384,7 +385,7 @@ export class WorkflowAmountRuleService {
       )
       return result
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       throw error
     }
   }

@@ -1,6 +1,7 @@
 import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 import apiClient from '@/lib/apiClient'
 import { getAuthCookies } from '@/utils/cookieUtils'
+import { toast } from 'react-hot-toast'
 
 export interface WorkflowActionLabelResponse {
   id: number
@@ -51,7 +52,7 @@ export class WorkflowActionLabelsService {
       )
       return labels
     } catch (error) {
-      console.log(' WorkflowActionLabelsService: Error fetching labels:', error)
+      toast.error(`${error}`)
       throw new Error(ERROR_MESSAGE)
     }
   }
@@ -103,13 +104,11 @@ export class WorkflowActionLabelsService {
 
       return Array.from(languages)
     } catch (error) {
-      console.error(
-        'WorkflowActionLabelsService: Error getting available languages:',
-        error
-      )
+      toast.error(`${error}`)
       return [DEFAULT_LANGUAGE]
     }
   }
 }
 
 export default WorkflowActionLabelsService
+

@@ -57,33 +57,15 @@ export class AccountBalanceService {
     try {
       const url = buildApiUrl(`/core-bank-get/${bankCode}/apis/account-status?accountNumber=${accountNumber}`)
       
-      console.log('🔧 AccountBalanceService.getAccountBalance Called:', { 
-        accountNumber, 
-        bankCode,
-        url,
-        timestamp: new Date().toISOString() 
-      })
+      
       
       const result = await apiClient.get<AccountBalanceResponse>(url)
       
-      console.log('✅ AccountBalanceService.getAccountBalance Success:', { 
-        accountNumber,
-        bankCode,
-        hasResult: !!result, 
-        accountName: result?.name,
-        accountNumber: result?.accountNumber,
-        timestamp: new Date().toISOString() 
-      })
+     
       
       return result
     } catch (error) {
-      console.error('❌ AccountBalanceService.getAccountBalance Failed:', { 
-        accountNumber,
-        bankCode,
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw error
     }
   }

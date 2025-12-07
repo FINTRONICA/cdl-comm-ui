@@ -6,6 +6,8 @@ import {
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
 import { getCurrentUserFromJWT } from '@/utils'
+import { useAuthStore } from '@/store/authStore'
+import { toast } from 'react-hot-toast'
 
 export interface ApplicationModuleDTO {
   id: number
@@ -53,7 +55,7 @@ export interface WorkflowDefinition {
   workflowActionDTO: string
   applicationModuleName?: string
   workflowActionName?: string
-  active: boolean
+  enabled: boolean
   status?: string
 }
 
@@ -67,7 +69,7 @@ export interface CreateWorkflowDefinitionRequest {
   workflowActionId?: number | string | null
   stageTemplateIds?: (number | string)[] | null
   amountRuleIds?: (number | string)[] | null
-  active?: boolean
+  enabled?: boolean
 }
 
 export interface UpdateWorkflowDefinitionRequest {
@@ -81,7 +83,7 @@ export interface UpdateWorkflowDefinitionRequest {
   workflowActionId?: number | string | null
   stageTemplateIds?: (number | string)[] | null
   amountRuleIds?: (number | string)[] | null
-  active?: boolean
+  enabled?: boolean
 }
 
 export interface WorkflowDefinitionFilters {
@@ -89,7 +91,7 @@ export interface WorkflowDefinitionFilters {
   moduleCode?: string
   actionCode?: string
   createdBy?: string
-  active?: boolean
+  enabled?: boolean
 }
 
 export interface WorkflowDefinitionUIData {
@@ -110,7 +112,7 @@ export interface WorkflowDefinitionUIData {
   stageTemplateIds?: string[]
   stageTemplateNames?: string[]
   amountRuleIds?: string[]
-  active: boolean
+  enabled: boolean
   updatedBy?: string
   updatedAt?: string
   status?: string
@@ -140,7 +142,7 @@ export interface WorkflowDefinitionResponse {
     ruleName: string
     [key: string]: unknown
   }>
-  active: boolean
+  enabled: boolean
   [key: string]: unknown
 }
 
@@ -232,7 +234,7 @@ export const mapWorkflowDefinitionData = (
     amountBased: apiData.amountBased,
     moduleCode: formatValue(apiData.moduleCode) as string,
     actionCode: formatValue(apiData.actionCode) as string,
-    active: apiData.active,
+    enabled: apiData.enabled,
     applicationModuleDTO: getApplicationModuleDTO(apiData.applicationModuleDTO),
     workflowActionDTO: getWorkflowActionDTO(apiData.workflowActionDTO),
     applicationModuleName: getApplicationModuleName(
@@ -356,7 +358,7 @@ export const mapWorkflowDefinitionToUIData = (
     amountBased: apiData.amountBased,
     moduleCode: formatValue(apiData.moduleCode) as string,
     actionCode: formatValue(apiData.actionCode) as string,
-    active: apiData.active,
+    enabled: apiData.enabled,
     applicationModuleId: getApplicationModuleDTO(apiData.applicationModuleDTO),
     applicationModuleName: getApplicationModuleName(
       apiData.applicationModuleDTO
@@ -369,7 +371,7 @@ export const mapWorkflowDefinitionToUIData = (
     workflowActionDescription: getWorkflowActionDescription(
       apiData.workflowActionDTO
     ),
-    status: apiData.active ? 'Active' : 'Inactive',
+    status: apiData.enabled ? 'Active' : 'Inactive',
     stageTemplateIds:
       apiData.stageTemplates?.map((st) => st.id.toString()) || [],
     stageTemplateNames: apiData.stageTemplates?.map((st) => st.name) || [],
@@ -389,8 +391,8 @@ export class WorkflowDefinitionService {
       if (filters.moduleCode) apiFilters.moduleCode = filters.moduleCode
       if (filters.actionCode) apiFilters.actionCode = filters.actionCode
       if (filters.createdBy) apiFilters.createdBy = filters.createdBy
-      if (typeof filters.active !== 'undefined')
-        apiFilters.active = String(filters.active)
+      if (typeof filters.enabled !== 'undefined')
+        apiFilters.enabled = String(filters.enabled)
     }
     const params = { ...buildPaginationParams(page, size), ...apiFilters }
     const queryString = new URLSearchParams(params).toString()
@@ -400,8 +402,8 @@ export class WorkflowDefinitionService {
         await apiClient.get<PaginatedResponse<WorkflowDefinitionResponse>>(url)
       return result
     } catch (error) {
-      console.log(error)
-      throw error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      throw new Error(`Failed to fetch workflow definitions: ${errorMessage}`)
     }
   }
 
@@ -412,8 +414,8 @@ export class WorkflowDefinitionService {
       )
       return result
     } catch (error) {
-      console.log(error)
-      throw error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      throw new Error(`Failed to fetch workflow definition: ${errorMessage}`)
     }
   }
 
@@ -424,8 +426,8 @@ export class WorkflowDefinitionService {
       )
       return result
     } catch (error) {
-      console.log(error)
-      throw error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      throw new Error(`Failed to fetch workflow definition labels: ${errorMessage}`)
     }
   }
 
@@ -445,8 +447,11 @@ export class WorkflowDefinitionService {
 
       const createTimestamp = new Date().toISOString()
 
-      const currentUser = getCurrentUserFromJWT()
-      const userName = currentUser
+      const authState = useAuthStore.getState()
+      const jwtUser = getCurrentUserFromJWT()
+      const userName = authState.user?.name || jwtUser?.name || 'System'
+
+
 
       const payload = {
         name: data.name,
@@ -454,7 +459,7 @@ export class WorkflowDefinitionService {
         amountBased: Boolean(data.amountBased),
         moduleCode: data.moduleCode,
         actionCode: data.actionCode,
-        active: Boolean(data.active),
+        enabled: Boolean(data.enabled),
         createdAt: createTimestamp,
         updatedAt: createTimestamp,
         createdBy: userName,
@@ -474,8 +479,9 @@ export class WorkflowDefinitionService {
 
       return result
     } catch (error) {
-      console.log(error)
-      throw error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Failed to create workflow definition: ${errorMessage}`)
+      throw new Error(`Failed to create workflow definition: ${errorMessage}`)
     }
   }
 
@@ -486,22 +492,25 @@ export class WorkflowDefinitionService {
     try {
       const applicationModuleId =
         typeof updates === 'object' &&
-        'applicationModuleId' in updates &&
-        updates.applicationModuleId
+          'applicationModuleId' in updates &&
+          updates.applicationModuleId
           ? updates.applicationModuleId
           : undefined
 
       const workflowActionId =
         typeof updates === 'object' &&
-        'workflowActionId' in updates &&
-        updates.workflowActionId
+          'workflowActionId' in updates &&
+          updates.workflowActionId
           ? updates.workflowActionId
           : undefined
 
       const currentTimestamp = new Date().toISOString()
 
-      const currentUser = getCurrentUserFromJWT()
-      const userName = currentUser?.name || 'System'
+      const authState = useAuthStore.getState()
+      const jwtUser = getCurrentUserFromJWT()
+      const userName = authState.user?.name || jwtUser?.name || 'System'
+
+
 
       const payload = {
         id: parseInt(id),
@@ -510,7 +519,7 @@ export class WorkflowDefinitionService {
         amountBased: Boolean(updates.amountBased),
         moduleCode: updates.moduleCode || '',
         actionCode: updates.actionCode || '',
-        active: Boolean(updates.active),
+        enabled: Boolean(updates.enabled),
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
         createdBy: userName,
@@ -530,8 +539,9 @@ export class WorkflowDefinitionService {
 
       return result
     } catch (error) {
-      console.log(error)
-      throw error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Failed to update workflow definition: ${errorMessage}`)
+      throw new Error(`Failed to update workflow definition: ${errorMessage}`)
     }
   }
 
@@ -541,8 +551,9 @@ export class WorkflowDefinitionService {
         buildApiUrl(API_ENDPOINTS.WORKFLOW_DEFINITION.DELETE(id))
       )
     } catch (error) {
-      console.log(error)
-      throw error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Failed to delete workflow definition: ${errorMessage}`)
+      throw new Error(`Failed to delete workflow definition: ${errorMessage}`)
     }
   }
 
@@ -555,7 +566,7 @@ export class WorkflowDefinitionService {
       >(buildApiUrl(API_ENDPOINTS.APPLICATION_MODULE.FIND_ALL))
       return result.content || []
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       return []
     }
   }
@@ -567,7 +578,8 @@ export class WorkflowDefinitionService {
       )
       return result.content || []
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
+
       return []
     }
   }
@@ -579,7 +591,7 @@ export class WorkflowDefinitionService {
       )
       return result.content || []
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       return []
     }
   }
@@ -591,7 +603,7 @@ export class WorkflowDefinitionService {
       )
       return result.content || []
     } catch (error) {
-      console.log(error)
+      toast.error(`${error}`)
       return []
     }
   }

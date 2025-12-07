@@ -63,7 +63,7 @@ export function useWorkflowRequestLabelsWithCache() {
     cacheStatus: workflowRequestedLabels
       ? 'cached'
       : workflowRequestedLabelsLoading
-        ? 'loading'
+        ? 'Loading...'
         : 'fresh',
 
     getLabelsForConfig: useCallback(

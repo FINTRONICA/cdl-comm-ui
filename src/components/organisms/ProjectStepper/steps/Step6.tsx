@@ -8,22 +8,18 @@ import {
   Card,
   CardContent,
   Box,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  useTheme,
 } from '@mui/material'
-import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { FinancialData } from '../types'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { Controller, useFormContext } from 'react-hook-form'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
-import { useProjectLabels } from '@/hooks/useProjectLabels'
+// import { useProjectLabels } from '@/hooks/useProjectLabels'
+import { useBuildPartnerAssetLabelsWithUtils } from '@/hooks/useBuildPartnerAssetLabels'
 import {
   commonFieldStyles,
-  selectStyles,
   datePickerStyles,
   labelSx,
   valueSx,
@@ -38,7 +34,10 @@ interface Step6Props {
 }
 
 const Step6: React.FC<Step6Props> = ({ isViewMode = false }) => {
-  const { getLabel } = useProjectLabels()
+  const theme = useTheme()
+  const textPrimary = theme.palette.mode === 'dark' ? '#FFFFFF' : '#1E2939'
+  const { getLabel } = useBuildPartnerAssetLabelsWithUtils()
+  const language = 'EN'
 
   const StyledCalendarIcon = (
     props: React.ComponentProps<typeof CalendarTodayOutlinedIcon>
@@ -46,69 +45,45 @@ const Step6: React.FC<Step6Props> = ({ isViewMode = false }) => {
 
   const { control } = useFormContext()
 
-  const renderTextField = (name: string, label: string, gridSize = 3) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue=""
-        render={({ field }) => (
-          <TextField
-            {...field}
-            fullWidth
-            disabled={isViewMode}
-            label={label}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={commonFieldStyles}
-          />
-        )}
-      />
-    </Grid>
-  )
-
-  const renderSelectField = (
+  const renderTextField = (
     name: string,
     label: string,
-    options: { value: string; label: string }[],
-    gridSize = 3
+    gridSize = 3,
+    required = false
   ) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
       <Controller
-        name={name}
+        name={name as any}
         control={control}
         defaultValue=""
-        render={({ field }) => (
-          <FormControl fullWidth>
-            <InputLabel sx={labelSx}>{label}</InputLabel>
-            <Select
+        rules={{
+          required: required ? `${label} is required` : false,
+          pattern: {
+            value: /^[0-9.,\s]*$/,
+            message: 'Must contain only numbers, decimals, and commas',
+          },
+          maxLength: {
+            value: 20,
+            message: 'Maximum 20 characters allowed',
+          },
+        }}
+        render={({ field, fieldState: { error, isTouched } }) => {
+          const shouldShowError = (isTouched || !!error) && !!error
+          return (
+            <TextField
               {...field}
+              fullWidth
               disabled={isViewMode}
               label={label}
-              IconComponent={KeyboardArrowDownIcon}
-              sx={{
-                ...selectStyles,
-                ...valueSx,
-                '& .MuiOutlinedInput-notchedOutline': {
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  border: '1px solid #9ca3af',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  border: '2px solid #2563eb',
-                },
-              } as any}
-            >
-              {options.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
+              required={required}
+              error={shouldShowError}
+              helperText={shouldShowError ? error?.message : ''}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={commonFieldStyles}
+            />
+          )
+        }}
       />
     </Grid>
   )
@@ -116,78 +91,147 @@ const Step6: React.FC<Step6Props> = ({ isViewMode = false }) => {
   const renderDateField = (name: string, label: string, gridSize = 3) => (
     <Grid key={name} size={{ xs: 12, md: gridSize }}>
       <Controller
-        name={name}
+        name={name as any}
         control={control}
         defaultValue={null}
-        render={({ field }) => (
-          <DatePicker
-            label={label}
-            value={field.value}
-            onChange={field.onChange}
-            format="DD/MM/YYYY"
-            slots={{ openPickerIcon: StyledCalendarIcon }}
-            slotProps={{
-              textField: {
-                fullWidth: true,
-                sx: datePickerStyles,
-                InputLabelProps: { sx: labelSx },
-                InputProps: {
-                  sx: valueSx,
-                  style: { height: '46px' },
+        rules={{}}
+        render={({ field, fieldState: { error, isTouched } }) => {
+          const shouldShowError = (isTouched || !!error) && !!error
+          return (
+            <DatePicker
+              disabled={isViewMode}
+              label={label}
+              value={field.value}
+              onChange={field.onChange}
+              format="DD/MM/YYYY"
+              slots={{ openPickerIcon: StyledCalendarIcon }}
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  sx: datePickerStyles,
+                  InputLabelProps: { sx: labelSx },
+                  InputProps: {
+                    sx: valueSx,
+                    style: { height: '46px' },
+                  },
+                  error: shouldShowError,
+                  helperText: shouldShowError ? error?.message : '',
                 },
-              },
-            }}
-          />
-        )}
+              }}
+            />
+          )
+        }}
       />
     </Grid>
   )
 
   const groupedFields = [
     {
-      title: 'Project Estimate',
+      title: getLabel(
+        'CDL_BPA_FINANCIAL',
+        language,
+        'Asset Financial Overview'
+      ),
       fields: [
-        renderTextField('estimate.revenue', 'Revenue (Project Value)*', 6),
-        renderSelectField(
+        renderTextField(
+          'estimate.revenue',
+          getLabel('CDL_BPA_EST_ASS_COST', language, 'Estimated Asset Cost'),
+          6,
+          true
+        ),
+        renderTextField(
           'estimate.constructionCost',
-          'Construction Cost*',
-          [
-            { value: '10,000', label: '10,000' },
-            { value: '30,000', label: '30,000' },
-            { value: '50,000', label: '50,000' },
-          ],
-          6
+          getLabel('CDL_BPA_BUILD_COST', language, 'Build Cost'),
+          6,
+          true
         ),
         renderTextField(
           'estimate.projectManagementExpense',
-          'Project Management Expense*',
-          6
+          getLabel(
+            'CDL_BPA_ASST_MGMT_EXP',
+            language,
+            'Asset Management Expense'
+          ),
+          6,
+          true
         ),
-        renderTextField('estimate.landCost', 'Land Cost*', 6),
-        renderTextField('estimate.marketingExpense', 'Marketing Expense*', 6),
+        renderTextField(
+          'estimate.landCost',
+          getLabel('CDL_BPA_LAND_ACQ_COST', language, 'Land Acquisition Cost'),
+          6,
+          true
+        ),
+        renderTextField(
+          'estimate.marketingExpense',
+          getLabel('CDL_BPA_MARK_EXP', language, 'Marketing Expense'),
+          6,
+          true
+        ),
         renderDateField(
           'estimate.date',
-          getLabel('CDL_BPA_ESTIMATE_DATE', 'Date*'),
+          getLabel('CDL_BPA_TRAN_DATE', language, 'Transaction Date'),
           6
         ),
       ],
     },
     {
-      title: 'Project Actual',
+      title: getLabel(
+        'CDL_BPA_ACTUAL_ASSEST_COST',
+        language,
+        'Actual Asset Cost'
+      ),
       fields: [
-        renderTextField('actual.soldValue', 'Sold Value*', 6),
-        renderTextField('actual.constructionCost', 'Construction Cost*', 6),
-        renderTextField('actual.infraCost', 'Infra Cost*', 4),
-        renderTextField('actual.landCost', 'Land Cost*', 4),
+        renderTextField(
+          'actual.soldValue',
+          getLabel(
+            'CDL_BPA_TOTAL_UNIT_SOLD',
+            language,
+            'Total Units Sold Value'
+          ),
+          6,
+          true
+        ),
+        renderTextField(
+          'actual.constructionCost',
+          getLabel('CDL_BPA_BUILD_COST', language, 'Build Cost'),
+          6,
+          true
+        ),
+        renderTextField(
+          'actual.infraCost',
+          getLabel(
+            'CDL_BPA_INFRA_COST',
+            language,
+            'Infrastructure Development Cost'
+          ),
+          4,
+          false
+        ),
+        renderTextField(
+          'actual.landCost',
+          getLabel('CDL_BPA_LAND_ACQ_COST', language, 'Land Acquisition Cost'),
+          4,
+          true
+        ),
         renderTextField(
           'actual.projectManagementExpense',
-          'Project Management Expense*',
-          4
+          getLabel(
+            'CDL_BPA_ASST_MGMT_EXP',
+            language,
+            'Asset Management Expense'
+          ),
+          4,
+          true
         ),
-        renderTextField('actual.marketingExpense', 'Marketing Expense*', 6),
+        renderTextField(
+          'actual.marketingExpense',
+          getLabel('CDL_BPA_MARK_EXP', language, 'Marketing Expense'),
+          6,
+          true
+        ),
         renderDateField(
           'actual.date',
-          getLabel('CDL_BPA_ACTUAL_DATE', 'Date*'),
+          getLabel('CDL_BPA_TRAN_DATE', language, 'Transaction Date'),
           6
         ),
       ],
@@ -195,48 +239,59 @@ const Step6: React.FC<Step6Props> = ({ isViewMode = false }) => {
   ]
 
   const breakdownSections = [
-    'Cash Received from the Unit Holder',
-    'Land Cost',
-    'Construction Cost',
-    'Marketing Expense',
-    'Project Management Expense',
-    'Mortgage',
-    'VAT Payment',
-    'Deposit',
-    'Refund',
-    'Balance in Retention A/C',
-    'Balance in Trust A/C',
-    'Balance in Sub Construction A/C',
-    'Technical Fees',
-    'Unidentified Funds',
-    'Loan/Installments',
-    'Infrastructure Cost',
-    'Others',
-    'Transferred',
-    'Developer’s Equity',
-    'Manager Funds',
-    'Others Withdrawals',
-    'Deposit/Other Fees and Payments',
-    'VAT Deposit',
-    'Credit Transfer/Profit Earned for Retention A/C',
-    'Payments for Retention Account',
-    'Re-imbursements (Developer)',
-    'Unit Registration Fee',
-    'Credit Interest/Profit Earned for ESCROW A/C',
-    'VAT Support',
+    getLabel(
+      'CDL_BPA_CASH_FROM_UNIT',
+      language,
+      'Cash Inflow from Unit Holders'
+    ),
+    getLabel('CDL_BPA_LAND_ACQ_COST', language, 'Land Acquisition Cost'),
+    getLabel('CDL_BPA_BUILD_COST', language, 'Build Cost'),
+    getLabel('CDL_BPA_MARK_EXP', language, 'Marketing Expense'),
+    getLabel('CDL_BPA_ASST_MGMT_EXP', language, 'Asset Management Expense'),
+    getLabel('CDL_BPA_MORTGAGE_AMT', language, 'Mortgage Amount'),
+    getLabel('CDL_BPA_VAT_AMT', language, 'VAT Payment'),
+    getLabel('CDL_BPA_TOTAL_AMOUNT', language, 'Total Amount'),
+    getLabel('CDL_BPA_REFUND_AMT', language, 'Refund Amount'),
+    getLabel('CDL_BPA_RETEN_ACC_BAL', language, 'Retention Account Balance'),
+    getLabel('CDL_BPA_TRUST_ACC_BAL', language, 'Trust Account Balance'),
+    getLabel(
+      'CDL_BPA_SUBCONS_ACC_BAL',
+      language,
+      'Sub-Construction Account Balance'
+    ),
+    getLabel('CDL_BPA_TECH_FEES', language, 'Technical Fees'),
+    getLabel('CDL_BPA_UNALLO_COST', language, 'Unallocated Costs'),
+    getLabel('CDL_BPA_LOAN', language, 'Loan/Installment Payments'),
+    getLabel('CDL_BPA_INFRA_COST', language, 'Infrastructure Development Cost'),
+    getLabel('CDL_BPA_OTHER_EXP', language, 'Other Expenses'),
+    getLabel('CDL_BPA_TRANS_AMT', language, 'Transferred Amount'),
+    getLabel('CDL_BPA_FORFEIT_AMT', language, 'Forfeited Amount'),
+    getLabel(
+      'CDL_BPA_DEV_EQUITY_CONT',
+      language,
+      'Developer Equity Contribution'
+    ),
+    getLabel('CDL_BPA_AMANAT_FUND', language, 'Amanat Fund Allocation'),
+    getLabel('CDL_BPA_OTHER_WITHDRAW', language, 'Other Withdrawals'),
+    getLabel('CDL_BPA_OQOOD_OTHER_PMT', language, 'Oqood and Other Payments'),
+    getLabel('CDL_BPA_VAT_DEPOSIT_AMT', language, 'VAT Deposited Amount'),
   ]
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Card sx={cardStyles}>
-        <CardContent>
+        <CardContent
+          sx={{
+            color: textPrimary,
+          }}
+        >
           {groupedFields.map(({ title, fields }, sectionIndex) => (
             <Box key={sectionIndex} mb={6}>
               <Typography
                 variant="h6"
                 mb={2}
                 sx={{
-                  color: '#1E2939',
+                  color: textPrimary,
                   fontFamily: 'Outfit, sans-serif',
                   fontWeight: 500,
                   fontStyle: 'normal',
@@ -260,7 +315,7 @@ const Step6: React.FC<Step6Props> = ({ isViewMode = false }) => {
                 variant="h6"
                 mb={2}
                 sx={{
-                  color: '#1E2939',
+                  color: textPrimary,
                   fontFamily: 'Outfit, sans-serif',
                   fontWeight: 500,
                   fontStyle: 'normal',
@@ -275,26 +330,114 @@ const Step6: React.FC<Step6Props> = ({ isViewMode = false }) => {
               <Grid container spacing={3}>
                 {renderTextField(
                   `breakdown.${index}.outOfEscrow`,
-                  'Out of Escrow',
+                  getLabel(
+                    'CDL_BPA_FUND_OUT_ESCROW',
+                    language,
+                    'Funds Outside Escrow'
+                  ),
                   3
                 )}
                 {renderTextField(
                   `breakdown.${index}.withinEscrow`,
-                  'Within Escrow',
+                  getLabel(
+                    'CDL_BPA_FUND_WITHIN_ESCROW',
+                    language,
+                    'Funds Within Escrow'
+                  ),
                   3
                 )}
-                {renderTextField(`breakdown.${index}.total`, 'Total', 3)}
+                {renderTextField(
+                  `breakdown.${index}.total`,
+                  getLabel('CDL_BPA_TOTAL_AMOUNT', language, 'Total Amount'),
+                  3
+                )}
                 {renderTextField(
                   `breakdown.${index}.exceptionalCapValue`,
-                  'Exceptional Cap Value',
+                  getLabel(
+                    'CDL_BPA_EXCEP_CAP_VAL',
+                    language,
+                    'Exceptional Capital Value'
+                  ),
                   3
                 )}
               </Grid>
             </Box>
           ))}
+
+          <Box mb={4}>
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                {renderTextField(
+                  'additional.creditInterestRetention',
+                  getLabel(
+                    'CDL_BPA_PROFIT_ERND',
+                    language,
+                    'Credit Interest/Profit Earned for Retention A/c'
+                  ),
+                  12,
+                  false
+                )}
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                {renderTextField(
+                  'additional.paymentsRetentionAccount',
+                  getLabel(
+                    'CDL_BPA_PMT_FRM_RETENTION',
+                    language,
+                    'Payments for Retention Account'
+                  ),
+                  12,
+                  false
+                )}
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                {renderTextField(
+                  'additional.reimbursementsDeveloper',
+                  getLabel(
+                    'CDL_BPA_REIMB_AMT',
+                    language,
+                    'Re-Imbursements (Developer)'
+                  ),
+                  12,
+                  false
+                )}
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                {renderTextField(
+                  'additional.unitRegistrationFees',
+                  getLabel(
+                    'CDL_BPA_UNIT_REG_FEES',
+                    language,
+                    'Unit Registration Fees'
+                  ),
+                  12,
+                  false
+                )}
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                {renderTextField(
+                  'additional.creditInterestEscrow',
+                  getLabel(
+                    'CDL_BPA_INT_ERND_ESCROW',
+                    language,
+                    'Credit Interest/Profit Earned for ESCROW A/c'
+                  ),
+                  12,
+                  false
+                )}
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                {renderTextField(
+                  'additional.vatCapped',
+                  getLabel('CDL_BPA_CAP_VAT_AMT', language, 'VAT Capped'),
+                  12,
+                  false
+                )}
+              </Grid>
+            </Grid>
+          </Box>
         </CardContent>
       </Card>
-
     </LocalizationProvider>
   )
 }

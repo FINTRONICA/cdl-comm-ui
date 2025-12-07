@@ -65,128 +65,61 @@ export class ApplicationModuleService {
     const queryString = new URLSearchParams(params).toString()
     const url = `${buildApiUrl(API_ENDPOINTS.APPLICATION_MODULE.FIND_ALL)}?${queryString}`
     
-    console.log('🔧 ApplicationModuleService.getApplicationModules Called:', { 
-      page, 
-      size, 
-      filters, 
-      apiFilters, 
-      url,
-      timestamp: new Date().toISOString() 
-    })
+   
     
     try {
       const result = await apiClient.get<PaginatedResponse<ApplicationModule>>(url)
-      console.log('✅ ApplicationModuleService.getApplicationModules Success:', { 
-        hasResult: !!result, 
-        resultType: typeof result, 
-        hasContent: !!result?.content, 
-        contentLength: result?.content?.length || 0,
-        pagination: result?.page,
-        timestamp: new Date().toISOString() 
-      })
+      
       return result
     } catch (error) {
-      console.error('❌ ApplicationModuleService.getApplicationModules Failed:', { 
-        url, 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+     
       throw error
     }
   }
 
   async getApplicationModule(id: string): Promise<ApplicationModule> {
-    console.log('🔧 ApplicationModuleService.getApplicationModule Called:', { id, timestamp: new Date().toISOString() })
+    
     try {
       const result = await apiClient.get<ApplicationModule>(buildApiUrl(API_ENDPOINTS.APPLICATION_MODULE.GET_BY_ID(id)))
-      console.log('✅ ApplicationModuleService.getApplicationModule Success:', { 
-        id, 
-        hasResult: !!result, 
-        resultType: typeof result,
-        timestamp: new Date().toISOString() 
-      })
+     
       return result
     } catch (error) {
-      console.error('❌ ApplicationModuleService.getApplicationModule Failed:', { 
-        id, 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw error
     }
   }
 
   async createApplicationModule(data: CreateApplicationModuleRequest): Promise<ApplicationModule> {
-    console.log('🔧 ApplicationModuleService.createApplicationModule Called:', { 
-      data, 
-      timestamp: new Date().toISOString() 
-    })
+   
     try {
       const result = await apiClient.post<ApplicationModule>(buildApiUrl(API_ENDPOINTS.APPLICATION_MODULE.SAVE), data)
-      console.log('✅ ApplicationModuleService.createApplicationModule Success:', { 
-        hasResult: !!result, 
-        resultType: typeof result,
-        timestamp: new Date().toISOString() 
-      })
+      
       return result
     } catch (error) {
-      console.error('❌ ApplicationModuleService.createApplicationModule Failed:', { 
-        data, 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw error
     }
   }
 
   async updateApplicationModule(id: string, updates: UpdateApplicationModuleRequest): Promise<ApplicationModule> {
-    console.log('🔧 ApplicationModuleService.updateApplicationModule Called:', { 
-      id, 
-      updates, 
-      timestamp: new Date().toISOString() 
-    })
+    
     try {
       const result = await apiClient.put<ApplicationModule>(buildApiUrl(API_ENDPOINTS.APPLICATION_MODULE.UPDATE(id)), updates)
-      console.log('✅ ApplicationModuleService.updateApplicationModule Success:', { 
-        id, 
-        hasResult: !!result, 
-        resultType: typeof result,
-        timestamp: new Date().toISOString() 
-      })
+     
       return result
     } catch (error) {
-      console.error('❌ ApplicationModuleService.updateApplicationModule Failed:', { 
-        id, 
-        updates, 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw error
     }
   }
 
   async deleteApplicationModule(id: string): Promise<void> {
-    console.log('🔧 ApplicationModuleService.deleteApplicationModule Called:', { 
-      id, 
-      timestamp: new Date().toISOString() 
-    })
+   
     try {
       await apiClient.delete(buildApiUrl(API_ENDPOINTS.APPLICATION_MODULE.DELETE(id)))
-      console.log('✅ ApplicationModuleService.deleteApplicationModule Success:', { 
-        id, 
-        timestamp: new Date().toISOString() 
-      })
+      
     } catch (error) {
-      console.error('❌ ApplicationModuleService.deleteApplicationModule Failed:', { 
-        id, 
-        error: error instanceof Error ? error.message : 'Unknown error', 
-        errorType: error instanceof Error ? error.name : 'Unknown', 
-        timestamp: new Date().toISOString() 
-      })
+      
       throw error
     }
   }

@@ -15,14 +15,23 @@ import {
   StepLabel,
   TextareaAutosize,
   Grid,
+  Snackbar,
+  Alert,
 } from '@mui/material'
+import { useTheme, alpha } from '@mui/material/styles'
+import { buildPanelSurfaceTokens } from './panelTheme'
 import { CommentModal } from '@/components/molecules'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import type { WorkflowRequest } from '@/services/api/workflowApi/workflowRequestService'
-import type { WorkflowRequestLogContent } from '@/services/api/workflowApi/workflowRequestLogService'
 import { useCreateWorkflowExecution } from '@/hooks/workflow'
+import {
+  useQueueRequestDetail,
+  useQueueRequestStatus,
+  useQueueRequestLogs,
+} from '@/hooks/workflow/useWorkflowRequest'
 import { useAuthStore } from '@/store/authStore'
 import { JWTParser } from '@/utils/jwtParser'
+import { formatDateOnly, truncateWords } from '@/utils'
 
 interface FieldItem {
   gridSize: number
@@ -36,6 +45,9 @@ interface SectionProps {
 }
 
 const Section = ({ title, fields }: SectionProps) => {
+  const theme = useTheme()
+  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+
   const renderDisplayField = (
     label: string,
     value: string | number | boolean | null | undefined
@@ -45,8 +57,7 @@ const Section = ({ title, fields }: SectionProps) => {
         sx={{
           fontSize: '14px',
           fontWeight: 600,
-          color: '#1e293b',
-          fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+          ...tokens.label,
         }}
       >
         {label}
@@ -55,8 +66,7 @@ const Section = ({ title, fields }: SectionProps) => {
         sx={{
           fontSize: 14,
           fontWeight: 600,
-          color: '#64748b',
-          fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+          ...tokens.value,
           wordBreak: 'break-word',
         }}
       >
@@ -71,8 +81,7 @@ const Section = ({ title, fields }: SectionProps) => {
         sx={{
           fontSize: '14px',
           fontWeight: 600,
-          color: '#1e293b',
-          fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+          ...tokens.label,
         }}
       >
         {label}
@@ -81,8 +90,7 @@ const Section = ({ title, fields }: SectionProps) => {
         sx={{
           fontSize: 14,
           fontWeight: 600,
-          color: '#64748b',
-          fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+          ...tokens.value,
         }}
       >
         {value ? 'Yes' : 'No'}
@@ -134,8 +142,8 @@ interface RightSlideWorkflowTransactionStatePanelProps {
   onApprove?: (transactionId?: string | number, comment?: string) => void
   onReject?: (transactionId?: string | number, comment?: string) => void
   children?: ReactNode
-  workflowRequestData?: WorkflowRequest // API response from WORKFLOW_REQUEST.GET_BY_ID
-  workflowRequestLogsData?: { content: WorkflowRequestLogContent[] } // API response from WORKFLOW_REQUEST_LOG.GET_ALL
+  workflowRequestData?: WorkflowRequest // Legacy - API response from WORKFLOW_REQUEST.GET_BY_ID
+  workflowRequestLogsData?: { content: Record<string, unknown>[] } // Legacy - API response from WORKFLOW_REQUEST_LOG.GET_ALL
   activeTab?: string // Current active tab (buildPartner, capitalPartner, payments, etc.)
 }
 
@@ -165,39 +173,69 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
     []
   )
   const [comment, setComment] = useState('')
-  const [permissionDeniedModalOpen, setPermissionDeniedModalOpen] =
-    useState(false)
-  const [permissionDeniedMessage, setPermissionDeniedMessage] = useState('')
   const [activeStep, setActiveStep] = useState(Math.max(1, initialStep))
   const [modalOpen, setModalOpen] = useState(false)
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(
     null
   )
 
+  // MUI Snackbar state - single state for messages
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
   const createWorkflowExecutionMutation = useCreateWorkflowExecution()
   const router = useRouter()
   const { token } = useAuthStore()
+  const theme = useTheme()
+  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+
+  // Queue API hooks with fresh data fetching
+  const {
+    data: queueDetailData,
+    isLoading: queueDetailLoading,
+    refetch: refetchQueueDetail,
+  } = useQueueRequestDetail(transactionId?.toString() || '')
+
+  const { data: queueStatusData, refetch: refetchQueueStatus } =
+    useQueueRequestStatus(transactionId?.toString() || '')
+
+  const {
+    data: queueLogsData,
+    isLoading: queueLogsLoading,
+    refetch: refetchQueueLogs,
+  } = useQueueRequestLogs(transactionId?.toString() || '')
+
+  // Refetch data when panel opens to ensure fresh data
+  React.useEffect(() => {
+    if (isOpen && transactionId) {
+      refetchQueueDetail()
+      refetchQueueStatus()
+      refetchQueueLogs()
+    }
+  }, [
+    isOpen,
+    transactionId,
+    refetchQueueDetail,
+    refetchQueueStatus,
+    refetchQueueLogs,
+  ])
 
   React.useEffect(() => {
-    if (workflowRequestData?.currentStageOrder) {
-      const newActiveStep = Math.max(
-        1,
-        workflowRequestData.currentStageOrder - 1
-      )
+    // Use queue status data if available, otherwise fallback to old data
+    const currentStageOrder =
+      queueStatusData?.completedStages ||
+      queueDetailData?.currentStageOrder ||
+      workflowRequestData?.currentStageOrder
+
+    if (currentStageOrder) {
+      const newActiveStep = Math.max(1, currentStageOrder - 1)
       setActiveStep(newActiveStep)
     }
-  }, [workflowRequestData?.currentStageOrder])
-
-  const showPermissionDeniedModal = useCallback((message: string) => {
-    setPermissionDeniedMessage(message)
-    setPermissionDeniedModalOpen(true)
-  }, [])
-
-  const handlePermissionDeniedModalClose = useCallback(() => {
-    setPermissionDeniedModalOpen(false)
-    setPermissionDeniedMessage('')
-    router.push('/dashboard')
-  }, [router])
+  }, [
+    queueStatusData?.completedStages,
+    queueDetailData?.currentStageOrder,
+    workflowRequestData?.currentStageOrder,
+  ])
 
   const getCurrentUserRoles = useCallback(() => {
     if (!token) {
@@ -210,32 +248,31 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
       }
       const roles = parsedToken.payload.realm_access.roles
       return roles
-    } catch (error) {
-      console.log(error)
+    } catch {
       return []
     }
   }, [token])
 
   const hasRole = useCallback(
     (role: string) => {
-      const userRoles = getCurrentUserRoles()
-      const hasSpecificRole = userRoles.includes(role)
+      const _userRoles = getCurrentUserRoles()
+      const hasSpecificRole = _userRoles.includes(role)
       return hasSpecificRole
     },
     [getCurrentUserRoles]
   )
 
   const dynamicSteps = useMemo(() => {
-    const userRoles = getCurrentUserRoles()
     const isMaker = hasRole('ROLE_MAKER')
     const isChecker = hasRole('ROLE_CHECKER')
-    const isAdmin = hasRole('ROLE_ADMIN')
 
-    if (
-      workflowRequestData?.workflowRequestStageDTOS &&
-      workflowRequestData.workflowRequestStageDTOS.length > 0
-    ) {
-      const sortedStages = [...workflowRequestData.workflowRequestStageDTOS]
+    // Use queue status data if available, otherwise fallback to old data
+    const stageData =
+      queueStatusData?.stageHistory ||
+      workflowRequestData?.workflowRequestStageDTOS
+
+    if (stageData && stageData.length > 0) {
+      const sortedStages = [...stageData]
         .sort((a, b) => a.stageOrder - b.stageOrder)
         .map((stage) => ({
           id: stage.id,
@@ -246,6 +283,9 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
             `Stage ${stage.stageOrder}`,
           stageKey: stage.stageKey,
           keycloakGroup: stage.keycloakGroup,
+          status: 'status' in stage ? stage.status : undefined,
+          requiredApprovals: stage.requiredApprovals,
+          approvalsObtained: stage.approvalsObtained,
         }))
 
       if (!sortedStages.some((stage) => stage.stageKey === 'INITIATION')) {
@@ -286,9 +326,9 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
 
     return stepsProp ?? defaultSteps
   }, [
+    queueStatusData?.stageHistory,
     workflowRequestData?.workflowRequestStageDTOS,
     stepsProp,
-    getCurrentUserRoles,
     hasRole,
   ])
 
@@ -306,80 +346,54 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
         userName: userInfo.name,
       }
       return result
-    } catch (error) {
-      console.log(error)
+    } catch {
       return { userId: null, userName: null }
     }
   }, [token])
 
   const resolveUserName = useCallback(
     (userId: string | null | undefined) => {
-      const { userId: currentUserId, userName: currentUserName } =
+      const { userId: currentUserId, userName: _currentUserName } =
         getCurrentUserInfo()
-      if (userId === currentUserId && currentUserName) {
-        return currentUserName
+      if (userId === currentUserId && _currentUserName) {
+        return _currentUserName
       }
+
+      // Try to find username from stages data
+      if (userId && queueDetailData?.stages) {
+        for (const stage of queueDetailData.stages) {
+          if ((stage as any).approvals) {
+            for (const approval of (stage as any).approvals) {
+              if (
+                approval.approverUserId === userId &&
+                approval.approverUsername
+              ) {
+                return approval.approverUsername
+              }
+            }
+          }
+        }
+      }
+
+      // Try to find username from workflow data stages
+      if (userId && workflowRequestData?.workflowRequestStageDTOS) {
+        for (const stage of workflowRequestData.workflowRequestStageDTOS) {
+          if ((stage as any).approvals) {
+            for (const approval of (stage as any).approvals) {
+              if (
+                approval.approverUserId === userId &&
+                approval.approverUsername
+              ) {
+                return approval.approverUsername
+              }
+            }
+          }
+        }
+      }
+
       return userId
     },
-    [getCurrentUserInfo]
-  )
-
-  // Function to validate role permissions for workflow actions
-  const validateRolePermission = useCallback(
-    (action: 'approve' | 'reject', currentStage: string) => {
-      const userRoles = getCurrentUserRoles()
-
-      const isMaker = hasRole('ROLE_MAKER')
-      const isChecker = hasRole('ROLE_CHECKER')
-      const isAdmin = hasRole('ROLE_ADMIN')
-
-      if (isAdmin) {
-        return { allowed: true, message: '' }
-      }
-
-      const isMakerStage =
-        currentStage.toLowerCase().includes('maker') ||
-        currentStage.toLowerCase().includes('initiation') ||
-        currentStage === 'Stage 1' ||
-        currentStage === '1' ||
-        currentStage.toLowerCase().includes('stage 1')
-
-      if (isMakerStage) {
-        if (isMaker) {
-          return { allowed: true, message: '' }
-        } else {
-          return {
-            allowed: false,
-            message: `Your role does not match. Your current role is "${userRoles.find((r) => r.startsWith('ROLE_'))}" but you need ROLE_MAKER for this action.`,
-          }
-        }
-      }
-      const isCheckerStage =
-        currentStage.toLowerCase().includes('checker') ||
-        currentStage.toLowerCase().includes('approval') ||
-        currentStage === 'Stage 2' ||
-        currentStage === 'Stage 3' ||
-        currentStage === '2' ||
-        currentStage === '3' ||
-        currentStage.toLowerCase().includes('stage 2') ||
-        currentStage.toLowerCase().includes('stage 3')
-      if (isCheckerStage) {
-        if (isChecker) {
-          return { allowed: true, message: '' }
-        } else {
-          return {
-            allowed: false,
-            message: `Your role does not match. Your current role is "${userRoles.find((r) => r.startsWith('ROLE_'))}" but you need ROLE_CHECKER for this action.`,
-          }
-        }
-      }
-
-      return {
-        allowed: false,
-        message: `Your role does not match. Your current role is "${userRoles.find((r) => r.startsWith('ROLE_'))}" and you don't have permission for this action. Stage "${currentStage}" is not recognized.`,
-      }
-    },
-    [getCurrentUserRoles, hasRole, workflowRequestData]
+    [getCurrentUserInfo, queueDetailData, workflowRequestData]
   )
 
   const currentLogEntry = useMemo(() => {
@@ -389,8 +403,8 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
     if (logs.length === 0) return null
 
     const sortedLogs = [...logs].sort((a, b) => {
-      const dateA = new Date(a.eventAt).getTime()
-      const dateB = new Date(b.eventAt).getTime()
+      const dateA = new Date(a.eventAt as string).getTime()
+      const dateB = new Date(b.eventAt as string).getTime()
       return dateB - dateA
     })
 
@@ -401,7 +415,18 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
     workflowRequestData || currentLogEntry?.workflowRequestDTO
 
   const transactionDetails = useMemo(() => {
-    if (!currentWorkflowData && !currentLogEntry) {
+    // Use queue detail data if available, otherwise fallback to old data
+    const workflowData =
+      queueDetailData ||
+      currentWorkflowData ||
+      currentLogEntry?.workflowRequestDTO
+    const detailsJson =
+      queueDetailData?.payloadJson ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (workflowData as any)?.payloadJson ||
+      currentLogEntry?.detailsJson
+
+    if (!workflowData && !currentLogEntry && queueDetailLoading) {
       return [
         { gridSize: 3, label: 'Reference ID', value: 'Loading...' },
         { gridSize: 3, label: 'Reference Type', value: 'Loading...' },
@@ -413,22 +438,20 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
       ]
     }
 
-    const workflowData =
-      currentWorkflowData || currentLogEntry?.workflowRequestDTO
-    const detailsJson =
-      workflowData?.payloadJson || currentLogEntry?.detailsJson
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const workflowDataAny = workflowData as any
 
     const baseDetails = [
       {
         gridSize: 4,
         label: 'ID',
-        value: workflowData?.id ? workflowData.id : '-',
+        value: workflowDataAny?.id ? workflowDataAny.id : '-',
       },
       {
         gridSize: 4,
         label: 'Reference ID',
-        value: workflowData?.referenceId
-          ? workflowData.referenceId
+        value: workflowDataAny?.referenceId
+          ? workflowDataAny.referenceId
           : transactionId
             ? String(transactionId)
             : '-',
@@ -436,100 +459,94 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
       {
         gridSize: 4,
         label: 'Reference Type',
-        value: workflowData?.referenceType ? workflowData.referenceType : '-',
+        value: workflowDataAny?.referenceType
+          ? workflowDataAny.referenceType
+          : '-',
       },
       {
         gridSize: 4,
         label: 'Action Key',
-        value: workflowData?.actionKey ? workflowData.actionKey : '-',
+        value: workflowDataAny?.actionKey ? workflowDataAny.actionKey : '-',
       },
       {
         gridSize: 4,
         label: 'Amount',
-        value: workflowData?.amount ? workflowData.amount : '-',
+        value: workflowDataAny?.amount ? workflowDataAny.amount : '0',
       },
       {
         gridSize: 4,
         label: 'Currency',
-        value: workflowData?.currency ? workflowData.currency : '-',
+        value: workflowDataAny?.currency || '-',
       },
-      // { gridSize: 12, label: 'Created By', value: workflowData?.createdBy ? workflowData.createdBy : '-' },
     ]
 
     const dynamicDetails = []
     const currentModuleName =
       TAB_TO_MODULE_MAP[activeTab as keyof typeof TAB_TO_MODULE_MAP] ||
-      workflowData?.moduleName
+      workflowDataAny?.moduleName
 
     if (
       activeTab === 'buildPartner' ||
       currentModuleName === 'BUILD_PARTNER' ||
-      workflowData?.referenceType === 'BUILD_PARTNER'
+      workflowDataAny?.referenceType === 'BUILD_PARTNER'
     ) {
       dynamicDetails.push({
         gridSize: 4,
         label: 'CIFRERA',
-        value: detailsJson?.bpCifrera ? detailsJson.bpCifrera : '-',
+        value: detailsJson?.bpCifrera || '-',
       })
 
       dynamicDetails.push({
         gridSize: 4,
         label: 'License No',
-        value: detailsJson?.bpLicenseNo ? detailsJson.bpLicenseNo : '-',
+        value: detailsJson?.bpLicenseNo || '-',
       })
 
       dynamicDetails.push({
         gridSize: 4,
         label: 'Local Name',
-        value: detailsJson?.bpNameLocal ? detailsJson.bpNameLocal : '-',
+        value: detailsJson?.bpNameLocal || '-',
       })
 
       dynamicDetails.push({
         gridSize: 4,
         label: 'Current Stage',
-        value: workflowData?.currentStageOrder
-          ? `Stage ${workflowData.currentStageOrder}`
+        value: workflowDataAny?.currentStageOrder
+          ? `Stage ${workflowDataAny.currentStageOrder}`
           : '-',
       })
 
       dynamicDetails.push({
         gridSize: 4,
         label: 'Created At',
-        value: workflowData?.createdAt
-          ? new Date(workflowData.createdAt).toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+        value: workflowDataAny?.createdAt
+          ? formatDateOnly(workflowDataAny.createdAt)
           : '-',
       })
 
       dynamicDetails.push({
         gridSize: 4,
         label: 'Last Updated At',
-        value: workflowData?.lastUpdatedAt
-          ? new Date(workflowData.lastUpdatedAt).toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+        value: workflowDataAny?.lastUpdatedAt
+          ? formatDateOnly(workflowDataAny.lastUpdatedAt)
           : '-',
       })
 
       dynamicDetails.push({
-        gridSize: 6,
+        gridSize: 4,
         label: 'Build Partner Name',
-        value: detailsJson?.bpName ? detailsJson.bpName : '-',
+        value: truncateWords(detailsJson?.bpName, 15) || '-',
       })
 
       dynamicDetails.push({
-        gridSize: 6,
+        gridSize: 4,
         label: 'Developer ID',
-        value: detailsJson?.bpDeveloperId ? detailsJson.bpDeveloperId : '-',
+        value: detailsJson?.bpDeveloperId || '-',
+      })
+      dynamicDetails.push({
+        gridSize: 4,
+        label: 'Status',
+        value: workflowDataAny?.status ? workflowDataAny.status : '-',
       })
     }
 
@@ -539,193 +556,194 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
         activeTab === 'capitalPartner' ||
         currentModuleName === 'CAPITAL_PARTNER'
       ) {
-        if ((detailsJson as any).cpName)
+        if ((detailsJson as Record<string, unknown>).cpName)
           dynamicDetails.push({
             gridSize: 6,
             label: 'CP Name',
-            value: (detailsJson as any).cpName,
+            value: (detailsJson as Record<string, unknown>).cpName,
           })
-        if ((detailsJson as any).cpId)
+        if ((detailsJson as Record<string, unknown>).cpId)
           dynamicDetails.push({
             gridSize: 3,
             label: 'CP ID',
-            value: (detailsJson as any).cpId,
+            value: (detailsJson as Record<string, unknown>).cpId,
           })
-        if ((detailsJson as any).cpCode)
+        if ((detailsJson as Record<string, unknown>).cpCode)
           dynamicDetails.push({
             gridSize: 3,
             label: 'CP Code',
-            value: (detailsJson as any).cpCode,
+            value: (detailsJson as Record<string, unknown>).cpCode,
           })
-        if ((detailsJson as any).cpType)
+        if ((detailsJson as Record<string, unknown>).cpType)
           dynamicDetails.push({
             gridSize: 3,
             label: 'CP Type',
-            value: (detailsJson as any).cpType,
+            value: (detailsJson as Record<string, unknown>).cpType,
           })
-        if ((detailsJson as any).cpContactPerson)
+        if ((detailsJson as Record<string, unknown>).cpContactPerson)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Contact Person',
-            value: (detailsJson as any).cpContactPerson,
+            value: (detailsJson as Record<string, unknown>).cpContactPerson,
           })
-        if ((detailsJson as any).cpEmail)
+        if ((detailsJson as Record<string, unknown>).cpEmail)
           dynamicDetails.push({
             gridSize: 4,
             label: 'Email',
-            value: (detailsJson as any).cpEmail,
+            value: (detailsJson as Record<string, unknown>).cpEmail,
           })
-        if ((detailsJson as any).cpPhone)
+        if ((detailsJson as Record<string, unknown>).cpPhone)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Phone',
-            value: (detailsJson as any).cpPhone,
+            value: (detailsJson as Record<string, unknown>).cpPhone,
           })
-        if ((detailsJson as any).cpAddress)
+        if ((detailsJson as Record<string, unknown>).cpAddress)
           dynamicDetails.push({
             gridSize: 4,
             label: 'Address',
-            value: (detailsJson as any).cpAddress,
+            value: (detailsJson as Record<string, unknown>).cpAddress,
           })
-        if ((detailsJson as any).cpLicenseNumber)
+        if ((detailsJson as Record<string, unknown>).cpLicenseNumber)
           dynamicDetails.push({
             gridSize: 3,
             label: 'License Number',
-            value: (detailsJson as any).cpLicenseNumber,
+            value: (detailsJson as Record<string, unknown>).cpLicenseNumber,
           })
-        if ((detailsJson as any).cpRegistrationDate)
+        if ((detailsJson as Record<string, unknown>).cpRegistrationDate)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Registration Date',
-            value: (detailsJson as any).cpRegistrationDate,
+            value: (detailsJson as Record<string, unknown>).cpRegistrationDate,
           })
       }
 
       // Payments specific fields
       if (activeTab === 'payments' || currentModuleName === 'PAYMENTS') {
-        if ((detailsJson as any).paymentId)
+        if ((detailsJson as Record<string, unknown>).paymentId)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Payment ID',
-            value: (detailsJson as any).paymentId,
+            value: (detailsJson as Record<string, unknown>).paymentId,
           })
-        if ((detailsJson as any).recipientName)
+        if ((detailsJson as Record<string, unknown>).recipientName)
           dynamicDetails.push({
             gridSize: 6,
             label: 'Recipient Name',
-            value: (detailsJson as any).recipientName,
+            value: (detailsJson as Record<string, unknown>).recipientName,
           })
-        if ((detailsJson as any).paymentAmount)
+        if ((detailsJson as Record<string, unknown>).paymentAmount)
           dynamicDetails.push({
             gridSize: 4,
             label: 'Payment Amount',
-            value: (detailsJson as any).paymentAmount,
+            value: (detailsJson as Record<string, unknown>).paymentAmount,
           })
-        if ((detailsJson as any).paymentCurrency)
+        if ((detailsJson as Record<string, unknown>).paymentCurrency)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Currency',
-            value: (detailsJson as any).paymentCurrency,
+            value: (detailsJson as Record<string, unknown>).paymentCurrency,
           })
-        if ((detailsJson as any).paymentMethod)
+        if ((detailsJson as Record<string, unknown>).paymentMethod)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Payment Method',
-            value: (detailsJson as any).paymentMethod,
+            value: (detailsJson as Record<string, unknown>).paymentMethod,
           })
-        if ((detailsJson as any).bankAccount)
+        if ((detailsJson as Record<string, unknown>).bankAccount)
           dynamicDetails.push({
             gridSize: 4,
             label: 'Bank Account',
-            value: (detailsJson as any).bankAccount,
+            value: (detailsJson as Record<string, unknown>).bankAccount,
           })
-        if ((detailsJson as any).routingNumber)
+        if ((detailsJson as Record<string, unknown>).routingNumber)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Routing Number',
-            value: (detailsJson as any).routingNumber,
+            value: (detailsJson as Record<string, unknown>).routingNumber,
           })
-        if ((detailsJson as any).paymentDate)
+        if ((detailsJson as Record<string, unknown>).paymentDate)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Payment Date',
-            value: (detailsJson as any).paymentDate,
+            value: (detailsJson as Record<string, unknown>).paymentDate,
           })
-        if ((detailsJson as any).paymentStatus)
+        if ((detailsJson as Record<string, unknown>).paymentStatus)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Payment Status',
-            value: (detailsJson as any).paymentStatus,
+            value: (detailsJson as Record<string, unknown>).paymentStatus,
           })
-        if ((detailsJson as any).transactionReference)
+        if ((detailsJson as Record<string, unknown>).transactionReference)
           dynamicDetails.push({
             gridSize: 4,
             label: 'Transaction Reference',
-            value: (detailsJson as any).transactionReference,
+            value: (detailsJson as Record<string, unknown>)
+              .transactionReference,
           })
       }
 
       // Surety Bond specific fields
       if (activeTab === 'suretyBond' || currentModuleName === 'SURETY_BOND') {
-        if ((detailsJson as any).bondId)
+        if ((detailsJson as Record<string, unknown>).bondId)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Bond ID',
-            value: (detailsJson as any).bondId,
+            value: (detailsJson as Record<string, unknown>).bondId,
           })
-        if ((detailsJson as any).bondName)
+        if ((detailsJson as Record<string, unknown>).bondName)
           dynamicDetails.push({
             gridSize: 6,
             label: 'Bond Name',
-            value: (detailsJson as any).bondName,
+            value: (detailsJson as Record<string, unknown>).bondName,
           })
-        if ((detailsJson as any).bondType)
+        if ((detailsJson as Record<string, unknown>).bondType)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Bond Type',
-            value: (detailsJson as any).bondType,
+            value: (detailsJson as Record<string, unknown>).bondType,
           })
-        if ((detailsJson as any).bondAmount)
+        if ((detailsJson as Record<string, unknown>).bondAmount)
           dynamicDetails.push({
             gridSize: 4,
             label: 'Bond Amount',
-            value: (detailsJson as any).bondAmount,
+            value: (detailsJson as Record<string, unknown>).bondAmount,
           })
-        if ((detailsJson as any).bondCurrency)
+        if ((detailsJson as Record<string, unknown>).bondCurrency)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Currency',
-            value: (detailsJson as any).bondCurrency,
+            value: (detailsJson as Record<string, unknown>).bondCurrency,
           })
-        if ((detailsJson as any).bondStartDate)
+        if ((detailsJson as Record<string, unknown>).bondStartDate)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Start Date',
-            value: (detailsJson as any).bondStartDate,
+            value: (detailsJson as Record<string, unknown>).bondStartDate,
           })
-        if ((detailsJson as any).bondEndDate)
+        if ((detailsJson as Record<string, unknown>).bondEndDate)
           dynamicDetails.push({
             gridSize: 3,
             label: 'End Date',
-            value: (detailsJson as any).bondEndDate,
+            value: (detailsJson as Record<string, unknown>).bondEndDate,
           })
-        if ((detailsJson as any).bondStatus)
+        if ((detailsJson as Record<string, unknown>).bondStatus)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Bond Status',
-            value: (detailsJson as any).bondStatus,
+            value: (detailsJson as Record<string, unknown>).bondStatus,
           })
-        if ((detailsJson as any).issuerName)
+        if ((detailsJson as Record<string, unknown>).issuerName)
           dynamicDetails.push({
             gridSize: 6,
             label: 'Issuer Name',
-            value: (detailsJson as any).issuerName,
+            value: (detailsJson as Record<string, unknown>).issuerName,
           })
-        if ((detailsJson as any).beneficiaryName)
+        if ((detailsJson as Record<string, unknown>).beneficiaryName)
           dynamicDetails.push({
             gridSize: 6,
             label: 'Beneficiary Name',
-            value: (detailsJson as any).beneficiaryName,
+            value: (detailsJson as Record<string, unknown>).beneficiaryName,
           })
       }
 
@@ -734,59 +752,61 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
         activeTab === 'buildPartnerAsset' ||
         currentModuleName === 'BUILD_PARTNER_ASSET'
       ) {
-        if ((detailsJson as any).assetId)
+        if ((detailsJson as Record<string, unknown>).assetId)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Asset ID',
-            value: (detailsJson as any).assetId,
+            value: (detailsJson as Record<string, unknown>).assetId,
           })
-        if ((detailsJson as any).assetName)
+        if ((detailsJson as Record<string, unknown>).assetName)
           dynamicDetails.push({
             gridSize: 6,
             label: 'Asset Name',
-            value: (detailsJson as any).assetName,
+            value: (detailsJson as Record<string, unknown>).assetName,
           })
-        if ((detailsJson as any).assetType)
+        if ((detailsJson as Record<string, unknown>).assetType)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Asset Type',
-            value: (detailsJson as any).assetType,
+            value: (detailsJson as Record<string, unknown>).assetType,
           })
-        if ((detailsJson as any).assetValue)
+        if ((detailsJson as Record<string, unknown>).assetValue)
           dynamicDetails.push({
             gridSize: 4,
             label: 'Asset Value',
-            value: (detailsJson as any).assetValue,
+            value: (detailsJson as Record<string, unknown>).assetValue,
           })
-        if ((detailsJson as any).assetLocation)
+        if ((detailsJson as Record<string, unknown>).assetLocation)
           dynamicDetails.push({
             gridSize: 4,
             label: 'Asset Location',
-            value: (detailsJson as any).assetLocation,
+            value: (detailsJson as Record<string, unknown>).assetLocation,
           })
-        if ((detailsJson as any).assetStatus)
+        if ((detailsJson as Record<string, unknown>).assetStatus)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Asset Status',
-            value: (detailsJson as any).assetStatus,
+            value: (detailsJson as Record<string, unknown>).assetStatus,
           })
-        if ((detailsJson as any).ownerName)
+        if ((detailsJson as Record<string, unknown>).ownerName)
           dynamicDetails.push({
             gridSize: 6,
             label: 'Owner Name',
-            value: (detailsJson as any).ownerName,
+            value: (detailsJson as Record<string, unknown>).ownerName,
           })
-        if ((detailsJson as any).registrationDate)
+        if ((detailsJson as Record<string, unknown>).registrationDate)
           dynamicDetails.push({
             gridSize: 3,
             label: 'Registration Date',
-            value: (detailsJson as any).registrationDate,
+            value: (detailsJson as Record<string, unknown>).registrationDate,
           })
       }
     }
 
     return [...baseDetails, ...dynamicDetails]
   }, [
+    queueDetailData,
+    queueDetailLoading,
     currentWorkflowData,
     currentLogEntry,
     transactionId,
@@ -795,7 +815,18 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
   ])
 
   const auditTrail = useMemo(() => {
-    if (!workflowRequestLogsData?.content && !currentWorkflowData) {
+    // Use queue logs data if available, otherwise fallback to old data
+    const logsData = queueLogsData?.content || workflowRequestLogsData?.content
+    const workflowData = queueDetailData || currentWorkflowData
+
+    // Event types to filter out from audit trail
+    const filteredEventTypes = [
+      'WORKFLOW_COMPLETED',
+      'STAGE_STARTED',
+      'REQUEST_CREATED',
+    ]
+
+    if (!logsData && !workflowData && queueLogsLoading) {
       return [
         {
           action: 'Loading...',
@@ -805,183 +836,126 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
       ]
     }
 
-    if (
-      workflowRequestLogsData?.content &&
-      workflowRequestLogsData.content.length > 0
-    ) {
-      return workflowRequestLogsData.content
+    if (logsData && logsData.length > 0) {
+      return logsData
+        .filter((log) => {
+          const eventType = (log.eventType as string)?.toUpperCase()
+          return !filteredEventTypes.includes(eventType)
+        })
         .sort(
           (a, b) =>
-            new Date(a.eventAt).getTime() - new Date(b.eventAt).getTime()
+            new Date(a.eventAt as string).getTime() -
+            new Date(b.eventAt as string).getTime()
         )
         .map((log) => {
+          const resolvedUserName = resolveUserName(log.eventByUser as string)
           const displayUser =
-            resolveUserName(log.eventByUser) || log.eventByGroup || 'System'
+            resolvedUserName !== log.eventByUser
+              ? resolvedUserName
+              : (log.eventByGroup as string) || 'System'
 
+          const eventTypeLower = (log.eventType as string)?.toLowerCase() || ''
           const isApprovalAction =
-            log.eventType?.toLowerCase().includes('approve') ||
-            log.eventType?.toLowerCase().includes('approved') ||
-            log.eventType?.toLowerCase().includes('approval')
+            eventTypeLower.includes('approve') ||
+            eventTypeLower.includes('approved') ||
+            eventTypeLower.includes('approval') ||
+            (eventTypeLower === 'decision' &&
+              (log.detailsJson as any)?.decision === 'APPROVE')
 
           let userRole = 'Unknown'
           if (log.eventByGroup) {
-            userRole = log.eventByGroup
-          } else if (log.eventType?.toLowerCase().includes('maker')) {
+            userRole = log.eventByGroup as string
+          } else if (
+            (log.eventType as string)?.toLowerCase().includes('maker')
+          ) {
             userRole = 'ROLE_MAKER'
           } else if (
-            log.eventType?.toLowerCase().includes('checker') ||
-            log.eventType?.toLowerCase().includes('approval')
+            (log.eventType as string)?.toLowerCase().includes('checker') ||
+            (log.eventType as string)?.toLowerCase().includes('approval')
           ) {
             userRole = 'ROLE_CHECKER'
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const logAny = log as any
+
+          // Format action text for better display
+          let actionText = log.eventType || 'Unknown Event'
+          if (eventTypeLower === 'decision') {
+            const decision = (log.detailsJson as any)?.decision
+            if (decision === 'APPROVE') {
+              actionText = 'APPROVED'
+            } else if (decision === 'REJECT') {
+              actionText = 'REJECTED'
+            } else {
+              actionText = `DECISION: ${decision || 'UNKNOWN'}`
+            }
+          }
+
           return {
             id: log.id,
-            action: log.eventType || 'Unknown Event',
+            action: actionText,
             user: displayUser,
             group: log.eventByGroup,
             role: userRole,
             isApproval: isApprovalAction,
             timestamp: log.eventAt
-              ? new Date(log.eventAt).toLocaleString('en-GB', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                })
-              : 'N/A',
+              ? formatDateOnly(log.eventAt as string)
+              : '-',
             rawTimestamp: log.eventAt,
             details: log.detailsJson || {},
-            workflowRequestId: log.workflowRequestDTO?.id,
-            referenceId: log.workflowRequestDTO?.referenceId,
-            moduleName: log.workflowRequestDTO?.moduleName,
-            actionKey: log.workflowRequestDTO?.actionKey,
+            remarks: (log.detailsJson as any)?.remarks || '',
+            workflowRequestId: logAny.workflowRequestDTO?.id,
+            referenceId: logAny.workflowRequestDTO?.referenceId,
+            moduleName: logAny.workflowRequestDTO?.moduleName,
+            actionKey: logAny.workflowRequestDTO?.actionKey,
           }
         })
     }
 
     if (currentWorkflowData) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currentWorkflowDataAny = currentWorkflowData as any
       return [
         {
           action: 'Request Created',
-          user: currentWorkflowData.createdBy || 'System',
-          timestamp: currentWorkflowData.createdAt
-            ? new Date(currentWorkflowData.createdAt).toLocaleString()
+          user: currentWorkflowDataAny.createdBy || 'System',
+          timestamp: currentWorkflowDataAny.createdAt
+            ? formatDateOnly(currentWorkflowDataAny.createdAt)
             : '-',
         },
         {
           action: 'Current Stage',
-          user: `Stage ${currentWorkflowData.currentStageOrder || 1}`,
-          timestamp: currentWorkflowData.lastUpdatedAt
-            ? new Date(currentWorkflowData.lastUpdatedAt).toLocaleString()
+          user: `Stage ${currentWorkflowDataAny.currentStageOrder || 1}`,
+          timestamp: currentWorkflowDataAny.lastUpdatedAt
+            ? formatDateOnly(currentWorkflowDataAny.lastUpdatedAt)
             : 'Pending',
         },
       ]
     }
 
     return []
-  }, [workflowRequestLogsData, currentWorkflowData, resolveUserName])
+  }, [
+    queueLogsData,
+    queueDetailData,
+    workflowRequestLogsData,
+    currentWorkflowData,
+    resolveUserName,
+    queueLogsLoading,
+  ])
 
+  // Check if user can perform action - if not, silently return (button should be disabled)
   const handleApprove = () => {
-    const currentStage = workflowRequestData?.currentStageOrder
-      ? `Stage ${workflowRequestData.currentStageOrder}`
-      : 'Unknown'
-
-    const currentStep = dynamicSteps[activeStep]
-    const currentStepLabel =
-      typeof currentStep === 'string' ? currentStep : currentStep?.label
-
-    const userRoles = getCurrentUserRoles()
-    const isMaker = hasRole('ROLE_MAKER')
-    const isChecker = hasRole('ROLE_CHECKER')
-
-    const isCheckerStage =
-      currentStage === 'Stage 2' ||
-      currentStage === 'Stage 3' ||
-      currentStage === '2' ||
-      currentStage === '3' ||
-      currentStepLabel.toLowerCase().includes('checker') ||
-      currentStepLabel.toLowerCase().includes('approval')
-
-    if (isMaker && isCheckerStage) {
-      showPermissionDeniedModal(
-        `Permission Denied! Your role is ROLE_MAKER but you're trying to approve at ${currentStepLabel} (CHECKER stage). Only ROLE_CHECKER can approve CHECKER stages.`
-      )
+    if (!canPerformAction) {
       return
     }
-
-    const isMakerStage =
-      currentStage === 'Stage 1' ||
-      currentStage === '1' ||
-      currentStepLabel.toLowerCase().includes('maker') ||
-      currentStepLabel.toLowerCase().includes('initiation')
-
-    if (isChecker && isMakerStage) {
-      showPermissionDeniedModal(
-        `Permission Denied! Your role is ROLE_CHECKER but you're trying to approve at ${currentStepLabel} (MAKER stage). Only ROLE_MAKER can approve MAKER stages.`
-      )
-      return
-    }
-
-    const permission = validateRolePermission('approve', currentStage)
-
-    if (!permission.allowed) {
-      alert(permission.message)
-      return
-    }
-
     setActionType('approve')
     setModalOpen(true)
   }
 
+  // Check if user can perform action - if not, silently return (button should be disabled)
   const handleReject = () => {
-    const currentStage = workflowRequestData?.currentStageOrder
-      ? `Stage ${workflowRequestData.currentStageOrder}`
-      : 'Unknown'
-
-    // Get the current active step from the stepper
-    const currentStep = dynamicSteps[activeStep]
-    const currentStepLabel =
-      typeof currentStep === 'string' ? currentStep : currentStep?.label
-
-    const userRoles = getCurrentUserRoles()
-    const isMaker = hasRole('ROLE_MAKER')
-    const isChecker = hasRole('ROLE_CHECKER')
-
-    const isCheckerStage =
-      currentStage === 'Stage 2' ||
-      currentStage === 'Stage 3' ||
-      currentStage === '2' ||
-      currentStage === '3' ||
-      currentStepLabel.toLowerCase().includes('checker') ||
-      currentStepLabel.toLowerCase().includes('approval')
-
-    if (isMaker && isCheckerStage) {
-      showPermissionDeniedModal(
-        `Permission Denied! Your role is ROLE_MAKER but you're trying to reject at ${currentStepLabel} (CHECKER stage). Only ROLE_CHECKER can reject CHECKER stages.`
-      )
-      return
-    }
-
-    const isMakerStage =
-      currentStage === 'Stage 1' ||
-      currentStage === '1' ||
-      currentStepLabel.toLowerCase().includes('maker') ||
-      currentStepLabel.toLowerCase().includes('initiation')
-
-    if (isChecker && isMakerStage) {
-      showPermissionDeniedModal(
-        `Permission Denied! Your role is ROLE_CHECKER but you're trying to reject at ${currentStepLabel} (MAKER stage). Only ROLE_MAKER can reject MAKER stages.`
-      )
-      return
-    }
-
-    const permission = validateRolePermission('reject', currentStage)
-
-    if (!permission.allowed) {
-      alert(permission.message)
+    if (!canPerformAction) {
       return
     }
 
@@ -989,7 +963,16 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
     setModalOpen(true)
   }
 
+  // Use queue data if available, otherwise fallback to legacy data
   const getCurrentWorkflowStageId = useMemo(() => {
+    if (queueDetailData?.stages && queueDetailData?.currentStageOrder) {
+      const currentStage = queueDetailData.stages.find(
+        (stage) => stage.stageOrder === queueDetailData.currentStageOrder
+      )
+      return currentStage?.id?.toString() || null
+    }
+
+    // Fallback to legacy data
     if (
       !workflowRequestData?.workflowRequestStageDTOS ||
       !workflowRequestData?.currentStageOrder
@@ -1001,37 +984,77 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
       (stage) => stage.stageOrder === workflowRequestData.currentStageOrder
     )
 
-    return currentStage?.id || null
-  }, [workflowRequestData])
+    return currentStage?.id?.toString() || null
+  }, [queueDetailData, workflowRequestData])
 
+  // Get current stage order from any available source
   const isAllStepsCompleted = useMemo(() => {
-    if (
-      !workflowRequestData?.workflowRequestStageDTOS ||
-      !workflowRequestData?.currentStageOrder
-    ) {
+    const currentStageOrder =
+      queueDetailData?.currentStageOrder ||
+      workflowRequestData?.currentStageOrder ||
+      queueStatusData?.completedStages
+
+    if (!currentStageOrder) {
       return false
     }
 
-    const totalStages = workflowRequestData.workflowRequestStageDTOS.length
-    const currentStageOrder = workflowRequestData.currentStageOrder
+    // Get total stages from queue data or workflow data
+    const totalStages =
+      queueDetailData?.stages?.length ||
+      workflowRequestData?.workflowRequestStageDTOS?.length ||
+      dynamicSteps.length
 
-    return currentStageOrder >= totalStages
-  }, [workflowRequestData])
+    // Check if checker has actually approved by looking at audit trail
+    const logsData = queueLogsData?.content || workflowRequestLogsData?.content
+    let checkerHasApproved = false
 
+    if (logsData && logsData.length > 0) {
+      checkerHasApproved = logsData.some((log) => {
+        const eventType = (log.eventType as string)?.toLowerCase() || ''
+        const eventByGroup = (log.eventByGroup as string)?.toLowerCase() || ''
+        const isApprovalEvent =
+          eventType.includes('approve') ||
+          eventType.includes('approved') ||
+          eventType.includes('approval')
+        const isCheckerEvent =
+          eventByGroup.includes('checker') ||
+          eventByGroup.includes('role_checker')
+        return isApprovalEvent && isCheckerEvent
+      })
+    }
+
+    // All steps are completed when:
+    // 1. Current stage order is greater than total stages, OR
+    // 2. We're at stage 3 or higher (checker has completed approval), OR
+    // 3. Checker has actually approved (based on audit trail)
+    const result =
+      currentStageOrder > totalStages ||
+      currentStageOrder >= 3 ||
+      checkerHasApproved
+
+    return result
+  }, [
+    queueDetailData?.currentStageOrder,
+    queueDetailData?.stages?.length,
+    workflowRequestData?.currentStageOrder,
+    workflowRequestData?.workflowRequestStageDTOS?.length,
+    queueStatusData?.completedStages,
+    dynamicSteps.length,
+    queueLogsData?.content,
+    workflowRequestLogsData?.content,
+  ])
+
+  // Use queue data if available, otherwise fallback to old data
   const canPerformAction = useMemo(() => {
     if (isAllStepsCompleted) {
       return false
     }
 
-    const currentStage = workflowRequestData?.currentStageOrder
-      ? `Stage ${workflowRequestData.currentStageOrder}`
-      : 'Unknown'
+    const currentStageOrder =
+      queueDetailData?.currentStageOrder ||
+      workflowRequestData?.currentStageOrder ||
+      queueStatusData?.completedStages
 
-    const currentStep = dynamicSteps[activeStep]
-    const currentStepLabel =
-      typeof currentStep === 'string' ? currentStep : currentStep?.label
-
-    const userRoles = getCurrentUserRoles()
     const isMaker = hasRole('ROLE_MAKER')
     const isChecker = hasRole('ROLE_CHECKER')
     const isAdmin = hasRole('ROLE_ADMIN')
@@ -1040,53 +1063,54 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
       return true
     }
 
-    const isCheckerStage =
-      currentStage === 'Stage 2' ||
-      currentStage === 'Stage 3' ||
-      currentStage === '2' ||
-      currentStage === '3' ||
-      currentStepLabel.toLowerCase().includes('checker') ||
-      currentStepLabel.toLowerCase().includes('approval')
+    // Check if checker has actually approved by looking at audit trail
+    const logsData = queueLogsData?.content || workflowRequestLogsData?.content
+    let checkerHasApproved = false
 
-    if (isMaker && isCheckerStage) {
+    if (logsData && logsData.length > 0) {
+      checkerHasApproved = logsData.some((log) => {
+        const eventType = (log.eventType as string)?.toLowerCase() || ''
+        const eventByGroup = (log.eventByGroup as string)?.toLowerCase() || ''
+        const isApprovalEvent =
+          eventType.includes('approve') ||
+          eventType.includes('approved') ||
+          eventType.includes('approval')
+        const isCheckerEvent =
+          eventByGroup.includes('checker') ||
+          eventByGroup.includes('role_checker')
+        return isApprovalEvent && isCheckerEvent
+      })
+    }
+
+    // If stage order is 3 or higher OR checker has actually approved, all approvals are complete - disable buttons
+    if ((currentStageOrder || 0) >= 3 || checkerHasApproved) {
       return false
     }
 
-    const isMakerStage =
-      currentStage === 'Stage 1' ||
-      currentStage === '1' ||
-      currentStepLabel.toLowerCase().includes('maker') ||
-      currentStepLabel.toLowerCase().includes('initiation')
-
-    if (isChecker && isMakerStage) {
-      return false
+    // Simplified logic based on current stage order
+    if (isMaker) {
+      // Maker can only approve when at stage 1 (Maker stage)
+      return (currentStageOrder || 0) === 1
     }
 
-    if (isMakerStage) {
-      return isMaker
-    }
-
-    if (isCheckerStage) {
-      return isChecker
+    if (isChecker) {
+      // Checker can only approve when at stage 2 (Checker stage) AND checker hasn't already approved
+      // If currentStageOrder is 2, it means checker stage is active and can be approved
+      // If currentStageOrder is 3 or higher OR checker has already approved, disable buttons
+      const stage = currentStageOrder || 0
+      return stage === 2 && !checkerHasApproved
     }
 
     return false
   }, [
     isAllStepsCompleted,
-    workflowRequestData,
-    getCurrentUserRoles,
+    queueDetailData?.currentStageOrder,
+    workflowRequestData?.currentStageOrder,
+    queueStatusData?.completedStages,
     hasRole,
-    dynamicSteps,
-    activeStep,
+    queueLogsData?.content,
+    workflowRequestLogsData?.content,
   ])
-
-  const getCurrentActiveStep = useMemo(() => {
-    if (!workflowRequestData?.currentStageOrder) {
-      return 0
-    }
-
-    return workflowRequestData.currentStageOrder - 1
-  }, [workflowRequestData])
 
   const handleCommentSubmit = async (
     comment: string,
@@ -1094,21 +1118,11 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
   ) => {
     try {
       const workflowStageId = getCurrentWorkflowStageId
-
-      if (!workflowStageId) {
-        return
-      }
-
-      const { userId: currentUserId, userName: currentUserName } =
-        getCurrentUserInfo()
-
-      if (!currentUserId) {
-        return
-      }
-
-      const userRoles = getCurrentUserRoles()
-      const currentRole = userRoles.find((r) => r.startsWith('ROLE_'))
-
+      if (!workflowStageId) return
+      const { userId: currentUserId } = getCurrentUserInfo()
+      if (!currentUserId) return
+      const _userRoles = getCurrentUserRoles()
+      const currentRole = _userRoles.find((r: string) => r.startsWith('ROLE_'))
       const payload = {
         userId: String(currentUserId),
         remarks: comment.trim() || (type === 'approve' ? 'APPROVE' : 'REJECT'),
@@ -1118,27 +1132,71 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
         userRole: currentRole,
       }
 
-      const response = await createWorkflowExecutionMutation.mutateAsync({
+      await createWorkflowExecutionMutation.mutateAsync({
         workflowId: String(workflowStageId),
         data: payload,
       })
 
+      // Refetch data after successful action to get updated state
+      await Promise.all([
+        refetchQueueDetail(),
+        refetchQueueStatus(),
+        refetchQueueLogs(),
+      ])
+
+      // Show success toast based on user role and action type
+      const isMaker = hasRole('ROLE_MAKER')
+      const isChecker = hasRole('ROLE_CHECKER')
+
       if (type === 'approve') {
+        if (isMaker) {
+          setSuccessMessage('Maker approved successfully!')
+        } else if (isChecker) {
+          setSuccessMessage('Checker approved successfully!')
+        } else {
+          setSuccessMessage('Approved successfully!')
+        }
+
         const newStep = Math.min(activeStep + 1, dynamicSteps.length - 1)
-
         setActiveStep(newStep)
-      }
 
-      if (type === 'approve') {
+        // Redirect to involved activities for both maker and checker approvals
         onApprove?.(transactionId, comment)
+        setSuccessMessage('Redirecting to involved activities...')
+        router.push('/activities/involved')
       } else {
+        if (isMaker) {
+          setErrorMessage('Maker rejected the request')
+        } else if (isChecker) {
+          setErrorMessage('Checker rejected the request')
+        } else {
+          setErrorMessage('Request rejected')
+        }
         onReject?.(transactionId, comment)
+        setSuccessMessage('Redirecting to involved activities...')
+        router.push('/activities/involved')
       }
 
       setModalOpen(false)
       setComment('')
     } catch (error) {
-      console.log(error)
+      // Show error toast with API message if available
+      let errorMessage = 'Failed to process request'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'object' && error !== null) {
+        // Try to extract message from API response
+        const errorObj = error as any
+        if (errorObj.message) {
+          errorMessage = errorObj.message
+        } else if (errorObj.response?.data?.message) {
+          errorMessage = errorObj.response.data.message
+        } else if (errorObj.data?.message) {
+          errorMessage = errorObj.data.message
+        }
+      }
+
+      setErrorMessage(`Error: ${errorMessage}`)
     }
   }
   const formatReferenceType = (text = '') => {
@@ -1161,9 +1219,7 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
             height: 'calc(100vh - 48px)',
             maxHeight: 'calc(100vh - 48px)',
             borderRadius: '12px',
-            background: '#FFFFFFE5',
-            boxShadow: '-8px 0px 8px 0px #62748E14',
-            backdropFilter: 'blur(10px)',
+            ...tokens.paper,
             p: '24px',
             mt: '24px',
             mb: '12px',
@@ -1174,20 +1230,30 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
         }}
       >
         <DialogTitle
-          sx={{ display: 'flex', alignItems: 'flex-start', gap: 0, px: 0 }}
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 0,
+            px: 0,
+            ...tokens.header,
+          }}
         >
           <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
             <Typography
               sx={{
                 fontSize: 24,
                 fontWeight: 600,
-                color: '#1e293b',
+                color: theme.palette.text.primary,
                 fontFamily: 'var(--font-outfit), system-ui, sans-serif',
               }}
             >
-              {currentWorkflowData?.referenceType && (
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {(currentWorkflowData as any)?.referenceType && (
                 <h2 title="Transaction Details">
-                  {formatReferenceType(currentWorkflowData.referenceType)}{' '}
+                  {formatReferenceType(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (currentWorkflowData as any).referenceType
+                  )}{' '}
                   Details :
                 </h2>
               )}
@@ -1196,52 +1262,173 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
               sx={{
                 fontSize: 12,
                 fontWeight: 500,
-                color: '#64748b',
+                ...tokens.label,
                 pt: 2,
                 fontFamily: 'var(--font-outfit), system-ui, sans-serif',
               }}
             >
-              {String()
-              // (activeTab === 'buildPartner' && (currentWorkflowData?.payloadJson?.bpName || currentLogEntry?.detailsJson?.bpName)) ||
-              // (activeTab === 'capitalPartner' && ((currentWorkflowData?.payloadJson as any)?.cpName || (currentLogEntry?.detailsJson as any)?.cpName)) ||
-              // (activeTab === 'payments' && ((currentWorkflowData?.payloadJson as any)?.recipientName || (currentLogEntry?.detailsJson as any)?.recipientName)) ||
-              // (activeTab === 'suretyBond' && ((currentWorkflowData?.payloadJson as any)?.bondName || (currentLogEntry?.detailsJson as any)?.bondName)) ||
-              // (activeTab === 'buildPartnerAsset' && ((currentWorkflowData?.payloadJson as any)?.assetName || (currentLogEntry?.detailsJson as any)?.assetName))
+              {
+                String()
+                // (activeTab === 'buildPartner' && (currentWorkflowData?.payloadJson?.bpName || currentLogEntry?.detailsJson?.bpName)) ||
+                // (activeTab === 'capitalPartner' && ((currentWorkflowData?.payloadJson as any)?.cpName || (currentLogEntry?.detailsJson as any)?.cpName)) ||
+                // (activeTab === 'payments' && ((currentWorkflowData?.payloadJson as any)?.recipientName || (currentLogEntry?.detailsJson as any)?.recipientName)) ||
+                // (activeTab === 'suretyBond' && ((currentWorkflowData?.payloadJson as any)?.bondName || (currentLogEntry?.detailsJson as any)?.bondName)) ||
+                // (activeTab === 'buildPartnerAsset' && ((currentWorkflowData?.payloadJson as any)?.assetName || (currentLogEntry?.detailsJson as any)?.assetName))
               }
             </Typography>
           </Box>
-          <IconButton onClick={onClose} size="small">
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                color: theme.palette.text.primary,
+                backgroundColor: alpha(theme.palette.action.hover, 0.1),
+              },
+            }}
+          >
             <CancelOutlinedIcon />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ p: 0, pt: '16px', overflowY: 'auto' }}>
+        <DialogContent
+          sx={{
+            p: 0,
+            pt: '16px',
+            overflowY: 'auto',
+            borderColor: tokens.dividerColor,
+            backgroundColor: tokens.paper.backgroundColor as string,
+          }}
+        >
           {children ?? (
             <>
               <Section title="" fields={transactionDetails} />
 
               {currentLogEntry && (
                 <Box sx={{ mt: 0 }}>
-                  <span>{currentLogEntry.eventType}</span>
+                  <span>{String(currentLogEntry.eventType)}</span>
                 </Box>
               )}
 
-              <Box className="w-full h-px mt-3 bg-gray-800" />
+              <Box
+                className="w-full h-px mt-3"
+                sx={{
+                  backgroundColor: tokens.dividerColor,
+                }}
+              />
 
               {/* Dynamic Stepper */}
               <Box sx={{ mt: 3 }}>
-                <Stepper activeStep={activeStep} alternativeLabel>
+                <Stepper
+                  activeStep={activeStep}
+                  alternativeLabel
+                  sx={{
+                    '& .MuiStepConnector-line': {
+                      borderColor: alpha(theme.palette.divider, 0.5),
+                    },
+                    '& .MuiStepConnector-root': {
+                      '&.Mui-active .MuiStepConnector-line': {
+                        borderColor: theme.palette.primary.main,
+                      },
+                      '&.Mui-completed .MuiStepConnector-line': {
+                        borderColor: theme.palette.primary.main,
+                      },
+                    },
+                  }}
+                >
                   {dynamicSteps.map((step, index) => {
                     const stepLabel =
                       typeof step === 'string' ? step : step.label
-                    const stepOrder =
-                      typeof step === 'string' ? 0 : step.stageOrder
+
+                    // Get current stage order for proper completion logic
+                    const currentStageOrder =
+                      queueDetailData?.currentStageOrder ||
+                      workflowRequestData?.currentStageOrder ||
+                      queueStatusData?.completedStages ||
+                      0
+
+                    const stepStageOrder =
+                      typeof step === 'object' ? step.stageOrder : index
 
                     const isInitiationStage = stepLabel
                       .toLowerCase()
                       .includes('initiation')
+                    const isMakerStage = stepLabel
+                      .toLowerCase()
+                      .includes('maker')
+                    const isCheckerStage = stepLabel
+                      .toLowerCase()
+                      .includes('checker')
+
                     const isActive = index === activeStep
-                    const isCompleted = isInitiationStage || index < activeStep
+
+                    // Fixed completion logic - stages should only be completed when they're actually done
+                    let isCompleted = false
+
+                    // Check audit trail for actual completion status
+                    const logsData =
+                      queueLogsData?.content || workflowRequestLogsData?.content
+
+                    if (isInitiationStage) {
+                      // Initiation is completed if we're at stage 1 or higher
+                      isCompleted = currentStageOrder >= 1
+                    } else if (isMakerStage) {
+                      // Maker stage is completed if we're at stage 2 or higher (after maker approves)
+                      isCompleted = currentStageOrder >= 2
+                    } else if (isCheckerStage) {
+                      // Check if checker has actually approved by looking at audit trail
+                      let checkerHasApproved = false
+                      if (logsData && logsData.length > 0) {
+                        checkerHasApproved = logsData.some((log) => {
+                          const eventType =
+                            (log.eventType as string)?.toLowerCase() || ''
+                          const eventByGroup =
+                            (log.eventByGroup as string)?.toLowerCase() || ''
+                          const isApprovalEvent =
+                            eventType.includes('approve') ||
+                            eventType.includes('approved') ||
+                            eventType.includes('approval')
+                          const isCheckerEvent =
+                            eventByGroup.includes('checker') ||
+                            eventByGroup.includes('role_checker')
+                          return isApprovalEvent && isCheckerEvent
+                        })
+                      }
+                      // Checker stage is completed if stage 3+ OR checker has actually approved
+                      isCompleted = currentStageOrder >= 3 || checkerHasApproved
+                    } else {
+                      // Fallback to original logic
+                      isCompleted = stepStageOrder < currentStageOrder
+                    }
+
+                    // Debug logging for stepper
+                    if (isCheckerStage) {
+                      const logsData =
+                        queueLogsData?.content ||
+                        workflowRequestLogsData?.content
+                      let checkerHasApproved = false
+                      if (logsData && logsData.length > 0) {
+                        checkerHasApproved = logsData.some((log) => {
+                          const eventType =
+                            (log.eventType as string)?.toLowerCase() || ''
+                          const eventByGroup =
+                            (log.eventByGroup as string)?.toLowerCase() || ''
+                          const isApprovalEvent =
+                            eventType.includes('approve') ||
+                            eventType.includes('approved') ||
+                            eventType.includes('approval')
+                          const isCheckerEvent =
+                            eventByGroup.includes('checker') ||
+                            eventByGroup.includes('role_checker')
+                          return isApprovalEvent && isCheckerEvent
+                        })
+                      }
+
+                      console.log('Checker Stage Debug:', {
+                        checkerHasApproved,
+                      })
+                    }
 
                     return (
                       <Step
@@ -1249,17 +1436,91 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                         completed={isCompleted}
                         active={isActive}
                       >
-                        <StepLabel>
+                        <StepLabel
+                          StepIconComponent={({ completed, active }) => {
+                            const isDark = theme.palette.mode === 'dark'
+                            if (completed) {
+                              return (
+                                <div
+                                  style={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: '50%',
+                                    backgroundColor: theme.palette.primary.main,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: theme.palette.primary.contrastText,
+                                    fontSize: '14px',
+                                    fontWeight: 'bold',
+                                    border: `2px solid ${theme.palette.primary.main}`,
+                                    boxShadow: `0 2px 4px ${alpha(theme.palette.primary.main, 0.3)}`,
+                                  }}
+                                >
+                                  ✓
+                                </div>
+                              )
+                            }
+                            if (active) {
+                              return (
+                                <div
+                                  style={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: '50%',
+                                    backgroundColor: theme.palette.primary.main,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: theme.palette.primary.contrastText,
+                                    fontSize: '14px',
+                                    fontWeight: 'bold',
+                                    border: `2px solid ${theme.palette.primary.main}`,
+                                    boxShadow: `0 2px 4px ${alpha(theme.palette.primary.main, 0.3)}`,
+                                  }}
+                                >
+                                  {index + 1}
+                                </div>
+                              )
+                            }
+                            return (
+                              <div
+                                style={{
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: '50%',
+                                  backgroundColor: isDark
+                                    ? theme.palette.grey[700]
+                                    : theme.palette.grey[200],
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: isDark
+                                    ? theme.palette.grey[300]
+                                    : theme.palette.grey[600],
+                                  fontSize: '14px',
+                                  fontWeight: 'bold',
+                                  border: `2px solid ${
+                                    isDark
+                                      ? theme.palette.grey[600]
+                                      : theme.palette.grey[300]
+                                  }`,
+                                }}
+                              >
+                                {index + 1}
+                              </div>
+                            )
+                          }}
+                        >
                           <div>
                             <div
                               style={{
                                 fontSize: '14px',
                                 fontWeight: 600,
-                                color: isActive
-                                  ? '#3b82f6'
-                                  : isCompleted
-                                    ? '#3b82f6'
-                                    : '#1e293b',
+                                color:
+                                  isActive || isCompleted
+                                    ? theme.palette.primary.main
+                                    : theme.palette.text.secondary,
                                 fontFamily:
                                   'var(--font-outfit), system-ui, sans-serif',
                               }}
@@ -1282,7 +1543,7 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                       sx={{
                         fontSize: 24,
                         fontWeight: 600,
-                        color: '#1e293b',
+                        color: theme.palette.text.primary,
                         mb: 2,
                         fontFamily: 'var(--font-outfit), system-ui, sans-serif',
                       }}
@@ -1293,23 +1554,26 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                       {workflowRequestLogsData.content
                         .sort(
                           (a, b) =>
-                            new Date(b.eventAt).getTime() -
-                            new Date(a.eventAt).getTime()
+                            new Date(b.eventAt as string).getTime() -
+                            new Date(a.eventAt as string).getTime()
                         )
                         .map((log) => {
                           const displayUser =
-                            resolveUserName(log.eventByUser) || 'N/A'
+                            resolveUserName(log.eventByUser as string) || '-'
 
                           return (
                             <Box
-                              key={log.id}
+                              key={String(log.id)}
                               sx={{
                                 p: 3,
                                 mb: 2,
-                                backgroundColor: '#ffffff',
+                                backgroundColor: theme.palette.background.paper,
                                 borderRadius: 2,
-                                border: '1px solid #e5e7eb',
-                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                                border: `1px solid ${tokens.dividerColor}`,
+                                boxShadow:
+                                  theme.palette.mode === 'dark'
+                                    ? '0 1px 3px rgba(0, 0, 0, 0.3)'
+                                    : '0 1px 3px rgba(0, 0, 0, 0.1)',
                               }}
                             >
                               <Box sx={{ mb: 1.5 }}>
@@ -1317,12 +1581,12 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                                   sx={{
                                     fontSize: '18px',
                                     fontWeight: 600,
-                                    color: '#1e293b',
+                                    color: theme.palette.text.primary,
                                     fontFamily:
                                       'var(--font-outfit), system-ui, sans-serif',
                                   }}
                                 >
-                                  {log.eventType || 'Unknown Event'}
+                                  {String(log.eventType || 'Unknown Event')}
                                 </Typography>
                               </Box>
 
@@ -1338,10 +1602,10 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                                     sx={{
                                       fontSize: '12px',
                                       fontWeight: 500,
-                                      color: '#64748b',
+                                      ...tokens.label,
+                                      mb: 0.5,
                                       fontFamily:
                                         'var(--font-outfit), system-ui, sans-serif',
-                                      mb: 0.5,
                                     }}
                                   >
                                     Event By User
@@ -1350,7 +1614,7 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                                     sx={{
                                       fontSize: '14px',
                                       fontWeight: 600,
-                                      color: '#1e293b',
+                                      ...tokens.value,
                                       fontFamily:
                                         'var(--font-outfit), system-ui, sans-serif',
                                     }}
@@ -1364,10 +1628,10 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                                     sx={{
                                       fontSize: '12px',
                                       fontWeight: 500,
-                                      color: '#64748b',
+                                      ...tokens.label,
+                                      mb: 0.5,
                                       fontFamily:
                                         'var(--font-outfit), system-ui, sans-serif',
-                                      mb: 0.5,
                                     }}
                                   >
                                     Event By Group
@@ -1376,12 +1640,12 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                                     sx={{
                                       fontSize: '14px',
                                       fontWeight: 600,
-                                      color: '#1e293b',
+                                      ...tokens.value,
                                       fontFamily:
                                         'var(--font-outfit), system-ui, sans-serif',
                                     }}
                                   >
-                                    {log.eventByGroup || 'N/A'}
+                                    {String(log.eventByGroup || '-')}
                                   </Typography>
                                 </Box>
 
@@ -1390,10 +1654,10 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                                     sx={{
                                       fontSize: '12px',
                                       fontWeight: 500,
-                                      color: '#64748b',
+                                      ...tokens.label,
+                                      mb: 0.5,
                                       fontFamily:
                                         'var(--font-outfit), system-ui, sans-serif',
-                                      mb: 0.5,
                                     }}
                                   >
                                     Event Date & Time
@@ -1402,24 +1666,14 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                                     sx={{
                                       fontSize: '14px',
                                       fontWeight: 600,
-                                      color: '#1e293b',
+                                      ...tokens.value,
                                       fontFamily:
                                         'var(--font-outfit), system-ui, sans-serif',
                                     }}
                                   >
                                     {log.eventAt
-                                      ? new Date(log.eventAt).toLocaleString(
-                                          'en-GB',
-                                          {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            second: '2-digit',
-                                          }
-                                        )
-                                      : 'N/A'}
+                                      ? formatDateOnly(log.eventAt as string)
+                                      : '-'}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -1429,247 +1683,472 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                     </Box>
                   </Box>
                 )}
-              {/* Audit trail */}
-              <Box sx={{ mt: 2 }}>
+              {/* Audit Trail - Tracker Style */}
+              <Box sx={{ mt: 3 }}>
                 <Typography
                   sx={{
                     fontSize: 24,
                     fontWeight: 600,
-                    color: '#1e293b',
-                    mb: 2,
+                    color: theme.palette.text.primary,
+                    mb: 3,
                     fontFamily: 'var(--font-outfit), system-ui, sans-serif',
                   }}
                 >
                   Audit Trail
                 </Typography>
-                <Box>
-                  {auditTrail.map((item, index) => (
-                    <Box
-                      key={(item as any).id || index}
-                      sx={{
-                        p: 2,
-                        mb: 1.5,
-                        backgroundColor: '#ffffff',
-                        borderRadius: 2,
-                        border: '1px solid #e5e7eb',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                      }}
-                    >
+
+                {/* Timeline Container */}
+                <Box
+                  sx={{
+                    position: 'relative',
+                    pl: 3,
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: 12,
+                      top: 0,
+                      bottom: 0,
+                      width: 2,
+                      backgroundColor: theme.palette.primary.main,
+                    },
+                  }}
+                >
+                  {auditTrail.map((item, index) => {
+                    const isLast = index === auditTrail.length - 1
+                    const isApproval = (item as Record<string, unknown>)
+                      .isApproval
+                    const isCompleted =
+                      item.timestamp &&
+                      item.timestamp !== 'Pending' &&
+                      item.timestamp !== '-'
+
+                    return (
                       <Box
+                        key={
+                          String((item as Record<string, unknown>).id) || index
+                        }
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2,
-                          mb: 1.5,
+                          position: 'relative',
+                          mb: isLast ? 0 : 3,
                         }}
                       >
+                        {/* Timeline Node */}
                         <Box
                           sx={{
-                            width: 24,
-                            height: 24,
+                            position: 'absolute',
+                            left: -21,
+                            top: 8,
+                            width: 20,
+                            height: 20,
                             borderRadius: '50%',
-                            backgroundColor: (item as any).isApproval
-                              ? '#3b82f6'
-                              : '#9ca3af',
+                            backgroundColor: isCompleted
+                              ? isApproval
+                                ? theme.palette.success.main
+                                : theme.palette.primary.main
+                              : theme.palette.grey[400],
+                            border: `3px solid ${theme.palette.background.paper}`,
+                            boxShadow:
+                              theme.palette.mode === 'dark'
+                                ? '0 2px 4px rgba(0, 0, 0, 0.3)'
+                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            flexShrink: 0,
+                            zIndex: 2,
                           }}
                         >
-                          {(item as any).isApproval ? (
-                            <Box
-                              sx={{
-                                width: 12,
-                                height: 8,
-                                border: '2px solid white',
-                                borderTop: 'none',
-                                borderRight: 'none',
-                                transform: 'rotate(-45deg)',
-                              }}
-                            />
-                          ) : (
+                          {isCompleted && isApproval ? (
                             <Box
                               sx={{
                                 width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                backgroundColor: 'white',
+                                height: 6,
+                                border: `2px solid ${theme.palette.primary.main}`,
+                                borderTop: 'none',
+                                borderRight: 'none',
+                                display: 'inline-block',
+                                transform: 'rotate(-45deg)',
                               }}
                             />
-                          )}
+                          ) : null}
+                          {isCompleted && !isApproval ? (
+                            <Box
+                              sx={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: '50%',
+                                backgroundColor: theme.palette.primary.main,
+                              }}
+                            />
+                          ) : null}
+                          {!isCompleted ? (
+                            <Box
+                              sx={{
+                                width: 4,
+                                height: 4,
+                                borderRadius: '50%',
+                                backgroundColor: theme.palette.primary.main,
+                              }}
+                            />
+                          ) : null}
                         </Box>
 
-                        {/* Action with Role */}
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Typography
+                        {/* Content Card */}
+                        <Box
+                          sx={{
+                            backgroundColor: theme.palette.background.paper,
+                            borderRadius: 3,
+                            border: `1px solid ${tokens.dividerColor}`,
+                            boxShadow:
+                              theme.palette.mode === 'dark'
+                                ? '0 2px 8px rgba(0, 0, 0, 0.2)'
+                                : '0 2px 8px rgba(0, 0, 0, 0.08)',
+                            p: 3,
+                            ml: 1,
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              boxShadow:
+                                theme.palette.mode === 'dark'
+                                  ? '0 4px 12px rgba(0, 0, 0, 0.3)'
+                                  : '0 4px 12px rgba(0, 0, 0, 0.12)',
+                              transform: 'translateY(-1px)',
+                            },
+                          }}
+                        >
+                          {/* Header */}
+                          <Box sx={{ mb: 2 }}>
+                            <Typography
+                              sx={{
+                                fontSize: '18px',
+                                fontWeight: 700,
+                                color: isCompleted
+                                  ? isApproval
+                                    ? theme.palette.success.main
+                                    : theme.palette.primary.main
+                                  : theme.palette.text.secondary,
+                                fontFamily:
+                                  'var(--font-outfit), system-ui, sans-serif',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                mb: 0.5,
+                              }}
+                            >
+                              {String(item.action)}
+                            </Typography>
+
+                            {Boolean((item as Record<string, unknown>).role) &&
+                              String((item as Record<string, unknown>).role) !==
+                                'Unknown' && (
+                                <Typography
+                                  sx={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    ...tokens.label,
+                                    fontFamily:
+                                      'var(--font-outfit), system-ui, sans-serif',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.3px',
+                                  }}
+                                >
+                                  Role:{' '}
+                                  {String(
+                                    (item as Record<string, unknown>).role || ''
+                                  )}
+                                </Typography>
+                              )}
+                          </Box>
+
+                          {/* Details Grid */}
+                          <Box
                             sx={{
-                              fontSize: '18px',
-                              fontWeight: 600,
-                              color: '#1e293b',
-                              fontFamily:
-                                'var(--font-outfit), system-ui, sans-serif',
+                              display: 'grid',
+                              gridTemplateColumns: {
+                                xs: '1fr',
+                                sm: '1fr 1fr 1fr',
+                              },
+                              gap: 2,
                             }}
                           >
-                            {item.action}
-                          </Typography>
-                          {(item as any).role &&
-                            (item as any).role !== 'Unknown' && (
+                            {/* User */}
+                            <Box>
                               <Typography
                                 sx={{
-                                  fontSize: '12px',
-                                  fontWeight: 500,
-                                  color: '#64748b',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  color: theme.palette.text.disabled,
+                                  fontFamily:
+                                    'var(--font-outfit), system-ui, sans-serif',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  mb: 1,
+                                }}
+                              >
+                                User
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  fontSize: '14px',
+                                  fontWeight: 600,
+                                  ...tokens.value,
+                                  fontFamily:
+                                    'var(--font-outfit), system-ui, sans-serif',
+                                  wordBreak: 'break-word',
+                                }}
+                              >
+                                {item.user || 'System'}
+                              </Typography>
+                            </Box>
+
+                            {/* Group */}
+                            <Box>
+                              <Typography
+                                sx={{
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  color: theme.palette.text.disabled,
+                                  fontFamily:
+                                    'var(--font-outfit), system-ui, sans-serif',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  mb: 1,
+                                }}
+                              >
+                                Group
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  fontSize: '14px',
+                                  fontWeight: 600,
+                                  ...tokens.value,
                                   fontFamily:
                                     'var(--font-outfit), system-ui, sans-serif',
                                 }}
                               >
-                                Role: {(item as any).role}
+                                {String(
+                                  (item as Record<string, unknown>).group
+                                ) || '-'}
                               </Typography>
+                            </Box>
+
+                            {/* Timestamp */}
+                            <Box>
+                              <Typography
+                                sx={{
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  color: theme.palette.text.disabled,
+                                  fontFamily:
+                                    'var(--font-outfit), system-ui, sans-serif',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  mb: 1,
+                                }}
+                              >
+                                Timestamp
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  fontSize: '14px',
+                                  fontWeight: 600,
+                                  ...tokens.value,
+                                  fontFamily:
+                                    'var(--font-outfit), system-ui, sans-serif',
+                                }}
+                              >
+                                {item.timestamp || 'Pending'}
+                              </Typography>
+                            </Box>
+                          </Box>
+
+                          {/* Remarks Section */}
+                          {(item as Record<string, unknown>).remarks &&
+                            String(
+                              (item as Record<string, unknown>).remarks
+                            ).trim() !== '' && (
+                              <Box sx={{ mt: 2 }}>
+                                <Typography
+                                  sx={{
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    color: theme.palette.text.disabled,
+                                    fontFamily:
+                                      'var(--font-outfit), system-ui, sans-serif',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    mb: 1,
+                                  }}
+                                >
+                                  Remarks
+                                </Typography>
+                                <Typography
+                                  sx={{
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    color: theme.palette.text.secondary,
+                                    fontFamily:
+                                      'var(--font-outfit), system-ui, sans-serif',
+                                    backgroundColor:
+                                      theme.palette.mode === 'dark'
+                                        ? alpha(
+                                            theme.palette.background.default,
+                                            0.5
+                                          )
+                                        : alpha(theme.palette.grey[50], 0.8),
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: `1px solid ${tokens.dividerColor}`,
+                                    wordBreak: 'break-word',
+                                    lineHeight: '1.4',
+                                  }}
+                                >
+                                  {String(
+                                    (item as Record<string, unknown>).remarks ||
+                                      ''
+                                  )}
+                                </Typography>
+                              </Box>
                             )}
                         </Box>
                       </Box>
-
-                      <Box
-                        sx={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr 1fr',
-                          gap: 2,
-                        }}
-                      >
-                        <Box>
-                          <Typography
-                            sx={{
-                              fontSize: '12px',
-                              fontWeight: 500,
-                              color: '#64748b',
-                              fontFamily:
-                                'var(--font-outfit), system-ui, sans-serif',
-                              mb: 0.5,
-                            }}
-                          >
-                            User
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontSize: '14px',
-                              fontWeight: 600,
-                              color: '#1e293b',
-                              fontFamily:
-                                'var(--font-outfit), system-ui, sans-serif',
-                            }}
-                          >
-                            {item.user || 'N/A'}
-                          </Typography>
-                        </Box>
-
-                        <Box>
-                          <Typography
-                            sx={{
-                              fontSize: '12px',
-                              fontWeight: 500,
-                              color: '#64748b',
-                              fontFamily:
-                                'var(--font-outfit), system-ui, sans-serif',
-                              mb: 0.5,
-                            }}
-                          >
-                            Group
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontSize: '14px',
-                              fontWeight: 600,
-                              color: '#1e293b',
-                              fontFamily:
-                                'var(--font-outfit), system-ui, sans-serif',
-                            }}
-                          >
-                            {(item as any).group || 'N/A'}
-                          </Typography>
-                        </Box>
-
-                        <Box>
-                          <Typography
-                            sx={{
-                              fontSize: '12px',
-                              fontWeight: 500,
-                              color: '#64748b',
-                              fontFamily:
-                                'var(--font-outfit), system-ui, sans-serif',
-                              mb: 0.5,
-                            }}
-                          >
-                            Timestamp
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontSize: '14px',
-                              fontWeight: 600,
-                              color: '#1e293b',
-                              fontFamily:
-                                'var(--font-outfit), system-ui, sans-serif',
-                            }}
-                          >
-                            {item.timestamp || 'Pending'}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Box>
-                  ))}
+                    )
+                  })}
                 </Box>
               </Box>
             </>
           )}
         </DialogContent>
 
-        <Box sx={{ mt: 'auto', pt: 1, display: 'flex', gap: 1.5 }}>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={handleApprove}
-            disabled={!canPerformAction}
-            sx={{
-              backgroundColor: !canPerformAction ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              fontFamily: 'var(--font-outfit), system-ui, sans-serif',
-              fontWeight: 600,
-              fontSize: '14px',
-              textTransform: 'none',
-              '&:hover': {
-                backgroundColor: !canPerformAction ? '#9ca3af' : '#2563eb',
-              },
-              '&:disabled': {
-                backgroundColor: '#9ca3af',
-                color: 'white',
-              },
-            }}
-          >
-            {isAllStepsCompleted ? 'Completed' : 'Approve'}
-          </Button>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={handleReject}
-            disabled={!canPerformAction}
-            sx={{
-              backgroundColor: !canPerformAction ? '#9ca3af' : '#ef4444',
-              color: 'white',
-              fontFamily: 'var(--font-outfit), system-ui, sans-serif',
-              fontWeight: 600,
-              fontSize: '14px',
-              textTransform: 'none',
-              '&:hover': {
-                backgroundColor: !canPerformAction ? '#9ca3af' : '#dc2626',
-              },
-              '&:disabled': {
-                backgroundColor: '#9ca3af',
-                color: 'white',
-              },
-            }}
-          >
-            {isAllStepsCompleted ? 'Completed' : 'Reject'}
-          </Button>
+        <Box
+          sx={{
+            mt: 'auto',
+            pt: 1,
+            display: 'flex',
+            gap: 1.5,
+            borderTop: `1px solid ${tokens.dividerColor}`,
+            backgroundColor: alpha(
+              tokens.paper.backgroundColor as string,
+              0.95
+            ),
+            backdropFilter: 'blur(10px)',
+            p: 2,
+            mx: -3,
+            mb: -3,
+          }}
+        >
+          {canPerformAction ? (
+            <>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleApprove}
+                sx={{
+                  backgroundColor: theme.palette.primary.main,
+                  color: theme.palette.primary.contrastText,
+                  fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  textTransform: 'none',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  borderColor:
+                    theme.palette.mode === 'dark'
+                      ? theme.palette.primary.main
+                      : 'transparent',
+                  '&:hover': {
+                    backgroundColor: theme.palette.primary.dark,
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
+                  },
+                }}
+              >
+                {(() => {
+                  const isMaker = hasRole('ROLE_MAKER')
+                  const isChecker = hasRole('ROLE_CHECKER')
+
+                  if (isMaker) return 'Approve (Maker)'
+                  if (isChecker) return 'Approve (Checker)'
+
+                  return 'Approve'
+                })()}
+              </Button>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleReject}
+                sx={{
+                  backgroundColor: theme.palette.error.main,
+                  color: theme.palette.error.contrastText,
+                  fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  textTransform: 'none',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  borderColor:
+                    theme.palette.mode === 'dark'
+                      ? theme.palette.error.main
+                      : 'transparent',
+                  '&:hover': {
+                    backgroundColor: theme.palette.error.dark,
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.error.main
+                        : 'transparent',
+                  },
+                }}
+              >
+                {(() => {
+                  const isMaker = hasRole('ROLE_MAKER')
+                  const isChecker = hasRole('ROLE_CHECKER')
+
+                  if (isMaker) return 'Reject (Maker)'
+                  if (isChecker) return 'Reject (Checker)'
+
+                  return 'Reject'
+                })()}
+              </Button>
+            </>
+          ) : (
+            <Button
+              fullWidth
+              variant="contained"
+              disabled
+              sx={{
+                backgroundColor: theme.palette.action.disabledBackground,
+                color: theme.palette.action.disabled,
+                fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+                fontWeight: 600,
+                fontSize: '14px',
+                textTransform: 'none',
+                '&:disabled': {
+                  backgroundColor: theme.palette.action.disabledBackground,
+                  color: theme.palette.action.disabled,
+                },
+              }}
+            >
+              {(() => {
+                const currentStageOrder =
+                  queueDetailData?.currentStageOrder ||
+                  workflowRequestData?.currentStageOrder ||
+                  queueStatusData?.completedStages ||
+                  0
+
+                if (isAllStepsCompleted || currentStageOrder >= 3)
+                  return 'All Stages Completed'
+
+                const isMaker = hasRole('ROLE_MAKER')
+                const isChecker = hasRole('ROLE_CHECKER')
+
+                if (isMaker && currentStageOrder > 1)
+                  return 'Maker Stage Completed'
+                if (isChecker && currentStageOrder > 2)
+                  return 'Checker Stage Completed'
+
+                return 'All Stages Completed'
+              })()}
+            </Button>
+          )}
         </Box>
 
         <CommentModal
@@ -1701,8 +2180,7 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
                   handleCommentSubmit(comment, actionType)
                 }
               },
-              disabled:
-                createWorkflowExecutionMutation.isPending || !comment.trim(),
+              disabled: createWorkflowExecutionMutation.isPending,
             },
           ]}
         >
@@ -1714,44 +2192,37 @@ export const RightSlideWorkflowTransactionStatePanel: React.FC<
             className="w-full p-2 font-sans text-sm border rounded-lg outline-none resize-y mt-7 border-slate-300 focus:ring-2 focus:ring-blue-500"
           />
         </CommentModal>
-
-        <CommentModal
-          open={permissionDeniedModalOpen}
-          onClose={handlePermissionDeniedModalClose}
-          title="Permission Denied"
-          subtitle="Access Restricted"
-          actions={[
-            {
-              label: 'Go to Dashboard',
-              color: 'primary',
-              onClick: handlePermissionDeniedModalClose,
-            },
-          ]}
-        >
-          <Box sx={{ p: 2, textAlign: 'center' }}>
-            <Typography
-              sx={{
-                fontSize: '16px',
-                fontWeight: 500,
-                color: '#ef4444',
-                fontFamily: 'var(--font-outfit), system-ui, sans-serif',
-                mb: 2,
-              }}
-            >
-              {permissionDeniedMessage}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                color: '#64748b',
-                fontFamily: 'var(--font-outfit), system-ui, sans-serif',
-              }}
-            >
-              You will be redirected to the dashboard.
-            </Typography>
-          </Box>
-        </CommentModal>
       </Drawer>
+
+      <Snackbar
+        open={!!errorMessage}
+        autoHideDuration={6000}
+        onClose={() => setErrorMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setErrorMessage(null)}
+          severity="error"
+          sx={{ width: '100%' }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSuccessMessage(null)}
+          severity="success"
+          sx={{ width: '100%' }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </>
   )
 }

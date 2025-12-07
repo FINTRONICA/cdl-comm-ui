@@ -32,7 +32,7 @@ export const dashboardApi = {
       params,
       headers
     })
-    console.log('Dashboard API Response:', response.data)
+    
     return response.data
   }
 }

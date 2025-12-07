@@ -35,8 +35,8 @@ export const investorDocumentService: DocumentService<
     return buildPartnerService.uploadBuildPartnerDocument(
       file,
       investorId,
-      documentType,
-      'CAPITAL_PARTNER'
+      'CAPITAL_PARTNER',
+      documentType
     )
   },
 }
@@ -166,6 +166,7 @@ export const createInvestorDocumentConfig = (
     title?: string
     description?: string
     isOptional?: boolean
+    isReadOnly?: boolean
     onDocumentsChange?: (documents: DocumentItem[]) => void
     onUploadSuccess?: (documents: DocumentItem[]) => void
     onUploadError?: (error: string) => void
@@ -189,7 +190,7 @@ export const createInvestorDocumentConfig = (
 
   const config: DocumentUploadConfig<DocumentItem, ApiDocumentResponse> = {
     entityId: investorId,
-    entityType: 'INVESTOR',
+    entityType: 'CAPITAL_PARTNER',
     documentService: investorDocumentService,
     mapApiToDocument: mapApiToInvestorDocumentItem,
     documentTypeSettingKey: 'INVESTOR_ID_TYPE',
@@ -198,6 +199,7 @@ export const createInvestorDocumentConfig = (
       options?.description ||
       'This step is optional. You can upload investor-related documents or skip to continue.',
     isOptional: options?.isOptional ?? true,
+    isReadOnly: options?.isReadOnly ?? false,
     columns: investorColumns,
     actions,
   }

@@ -1,9 +1,4 @@
 import React from 'react'
-import {
-  Visibility as VisibilityIcon,
-  Download as DownloadIcon,
-  Delete as DeleteIcon,
-} from '@mui/icons-material'
 
 import {
   DocumentItem,
@@ -16,8 +11,8 @@ import {
   TableColumn,
   DocumentAction,
 } from '../types'
-import { formatDate, previewFile, downloadFile } from '../utils'
-
+import { formatDate, downloadFile } from '../utils'
+import { Download, Trash2 } from 'lucide-react'
 // Service adapter for project documents using BUILD_PARTNER_ASSET module
 export const projectDocumentService: DocumentService<
   DocumentItem,
@@ -42,8 +37,8 @@ export const projectDocumentService: DocumentService<
     return buildPartnerService.uploadBuildPartnerDocument(
       file,
       projectId,
-      documentType,
-      'BUILD_PARTNER_ASSET'
+      'BUILD_PARTNER_ASSET',
+      documentType
     )
   },
 }
@@ -146,23 +141,23 @@ export const projectColumns: TableColumn<DocumentItem>[] = [
 
 // Document actions configuration for project documents
 export const projectActions: DocumentAction<DocumentItem>[] = [
-  {
-    key: 'view',
-    label: 'View',
-    icon: <VisibilityIcon fontSize="small" />,
-    onClick: (document: DocumentItem) => {
-      if (document.file) {
-        previewFile(document.file)
-      } else if (document.url) {
-        window.open(document.url, '_blank')
-      }
-    },
-    disabled: (document: DocumentItem) => !document.file && !document.url,
-  },
+  // {
+  //   key: 'view',
+  //   label: 'View',
+  //   icon: <VisibilityIcon fontSize="small" />,
+  //   onClick: (document: DocumentItem) => {
+  //     if (document.file) {
+  //       previewFile(document.file)
+  //     } else if (document.url) {
+  //       window.open(document.url, '_blank')
+  //     }
+  //   },
+  //   disabled: (document: DocumentItem) => !document.file && !document.url,
+  // },
   {
     key: 'download',
     label: 'Download',
-    icon: <DownloadIcon fontSize="small" />,
+    icon: <Download className="w-4 h-4" />,
     onClick: (document: DocumentItem) => {
       if (document.file) {
         downloadFile(document.file, document.name)
@@ -181,7 +176,7 @@ export const projectActions: DocumentAction<DocumentItem>[] = [
   {
     key: 'delete',
     label: 'Delete',
-    icon: <DeleteIcon fontSize="small" />,
+    icon: <Trash2 className="w-4 h-4" />,
     color: 'error' as const,
     requiresConfirmation: true,
     confirmationMessage:
@@ -189,7 +184,6 @@ export const projectActions: DocumentAction<DocumentItem>[] = [
     onClick: async (document: DocumentItem) => {
       // Note: This would need to be implemented in the parent component
       // as it requires updating the local state
-      console.log('Delete document:', document.id)
     },
   },
 ]
@@ -201,6 +195,7 @@ export const createProjectDocumentConfig = (
     title?: string
     description?: string
     isOptional?: boolean
+    isReadOnly?: boolean
     onDocumentsChange?: (documents: DocumentItem[]) => void
     onUploadSuccess?: (documents: DocumentItem[]) => void
     onUploadError?: (error: string) => void
@@ -225,15 +220,16 @@ export const createProjectDocumentConfig = (
 
   const config: DocumentUploadConfig<DocumentItem, ApiDocumentResponse> = {
     entityId: projectId,
-    entityType: 'PROJECT',
+    entityType: 'BUILD_PARTNER_ASSET',
     documentService: projectDocumentService,
     mapApiToDocument: mapApiToProjectDocumentItem,
-    documentTypeSettingKey: 'PROJECT_DOC_TYPE', // Setting key for project document types (can be different from INVESTOR_ID_TYPE)
+    documentTypeSettingKey: 'INVESTOR_ID_TYPE', // Setting key for project document types (can be different from INVESTOR_ID_TYPE)
     title: options?.title || 'Project Documents',
     description:
       options?.description ||
       'This step is optional. You can upload project-related documents or skip to continue.',
     isOptional: options?.isOptional ?? true,
+    isReadOnly: options?.isReadOnly ?? false,
     columns: projectColumns,
     actions,
   }

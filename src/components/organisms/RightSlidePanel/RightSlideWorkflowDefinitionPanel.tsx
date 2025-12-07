@@ -17,11 +17,13 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
+  FormHelperText,
 } from '@mui/material'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Controller, useForm, FieldErrors } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { getLabelByConfigId as getWorkflowDefinitionLabel } from '@/constants/mappings/workflowMapping'
+import { toast } from 'react-hot-toast'
 
 import {
   useCreateWorkflowDefinition,
@@ -29,6 +31,9 @@ import {
   useWorkflowDefinitionForm,
 } from '@/hooks/workflow'
 import type { WorkflowDefinitionUIData } from '@/services/api/workflowApi'
+import { getWorkflowDefinitionValidationRules } from '@/lib/validation/workflowDefinitionSchemas'
+import { alpha, useTheme } from '@mui/material/styles'
+import { buildPanelSurfaceTokens } from './panelTheme'
 
 interface RightSlideWorkflowDefinitionPanelProps {
   isOpen: boolean
@@ -59,11 +64,15 @@ const DEFAULT_VALUES: DefinitionFormData = {
   active: true,
 }
 
+// Styles will be defined inside component to access theme
 export const RightSlideWorkflowDefinitionPanel: React.FC<
   RightSlideWorkflowDefinitionPanelProps
 > = ({ isOpen, onClose, mode = 'add', definitionData }) => {
+  const theme = useTheme()
+  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const createDefinition = useCreateWorkflowDefinition()
   const updateDefinition = useUpdateWorkflowDefinition()
+  const validationRules = getWorkflowDefinitionValidationRules()
 
   const {
     moduleOptions,
@@ -89,12 +98,13 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
     formLoading
   const isViewMode = mode === 'view'
 
-  // Button state logic
   const isFormDirty = isDirty
   const canSave = isFormDirty && !isSubmitting && !isViewMode
   const canReset = isFormDirty && !isSubmitting && !isViewMode
 
-  // Load values when opening / changing mode
+  const labelSx = tokens.label
+  const valueSx = tokens.value
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -116,7 +126,7 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
               definitionData.workflowActionId !== '-'
                 ? parseInt(definitionData.workflowActionId)
                 : null,
-            active: definitionData.active ?? true,
+            active: definitionData.enabled ?? true,
           }
         : DEFAULT_VALUES
 
@@ -131,7 +141,7 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
       amountBased: Boolean(data.amountBased),
       moduleCode: data.moduleCode.trim(),
       actionCode: data.actionCode.trim(),
-      active: Boolean(data.active),
+      enabled: Boolean(data.active),
       applicationModuleId: data.applicationModuleId || null,
       workflowActionId: data.workflowActionId || null,
     }
@@ -144,7 +154,7 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
           amountBased: Boolean(data.amountBased),
           moduleCode: data.moduleCode.trim(),
           actionCode: data.actionCode.trim(),
-          active: Boolean(data.active),
+          enabled: Boolean(data.active),
           applicationModuleId: data.applicationModuleId || null,
           workflowActionId: data.workflowActionId || null,
         }
@@ -156,7 +166,11 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
               onClose()
             },
             onError: (err: Error | unknown) => {
-              console.log(err)
+              const errorMessage =
+                err instanceof Error ? err.message : 'Unknown error occurred'
+              toast.error(
+                `Failed to update workflow definition: ${errorMessage}`
+              )
             },
           }
         )
@@ -167,45 +181,12 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
           onClose()
         },
         onError: (err: Error | unknown) => {
-          console.log(err)
+          const errorMessage =
+            err instanceof Error ? err.message : 'Unknown error occurred'
+          toast.error(`Failed to create workflow definition: ${errorMessage}`)
         },
       })
     }
-  }
-
-  const commonFieldStyles = (hasError: boolean) => ({
-    '& .MuiOutlinedInput-root': {
-      height: '46px',
-      borderRadius: '8px',
-      '& fieldset': {
-        borderColor: hasError ? '#ef4444' : '#CAD5E2',
-        borderWidth: '1px',
-      },
-      '&:hover fieldset': {
-        borderColor: hasError ? '#ef4444' : '#CAD5E2',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: hasError ? '#ef4444' : '#2563EB',
-      },
-    },
-  })
-
-  const labelSx = {
-    fontSize: '14px',
-    fontWeight: 500,
-    color: '#374151',
-    '&.Mui-focused': {
-      color: '#2563EB',
-    },
-  }
-
-  const valueSx = {
-    fontSize: '14px',
-    color: '#111827',
-    '&::placeholder': {
-      color: '#9CA3AF',
-      opacity: 1,
-    },
   }
 
   const handleResetToLoaded = useCallback(() => {
@@ -227,7 +208,7 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
               definitionData.workflowActionId !== '-'
                 ? parseInt(definitionData.workflowActionId)
                 : null,
-            active: definitionData.active ?? true,
+            active: definitionData.enabled ?? true,
           }
         : DEFAULT_VALUES
     reset(loaded, { keepDirty: false })
@@ -235,61 +216,201 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
   }, [mode, definitionData, reset, clearErrors])
 
   const onError = (errors: FieldErrors<DefinitionFormData>) => {
-    console.log('Form validation errors:', errors)
+    console.log(errors)
   }
 
   const renderTextField = (
     name: keyof DefinitionFormData,
     label: string,
     type: 'text' | 'number' = 'text',
-    gridSize: number = 12
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => (
-          <TextField
-            name={field.name}
-            value={field.value || ''}
-            type={type}
-            label={label}
-            fullWidth
-            disabled={isSubmitting || isViewMode}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{
-              sx: valueSx,
-            }}
-            sx={commonFieldStyles(false)}
-            onChange={(e) => {
-              const value =
-                type === 'number' ? Number(e.target.value) : e.target.value
-              // Prevent negative numbers for number inputs
-              if (type === 'number' && typeof value === 'number' && value < 0) {
-                field.onChange(0)
-              } else {
-                field.onChange(value)
-              }
-            }}
-            onBlur={field.onBlur}
-          />
-        )}
-      />
-    </Grid>
-  )
+    gridSize: number = 12,
+    required: boolean = true,
+    showRedAsterisk: boolean = false
+  ) => {
+    const fieldRules =
+      validationRules[name as keyof typeof validationRules] || {}
 
-  type OptionItem = {
-    id?: string | number
-    label: string
-    value: string | number
+    return (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={fieldRules}
+          render={({ field, fieldState }) => {
+            const hasError = !!fieldState.error
+
+            const fieldStyles = hasError
+              ? {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+              : {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.7)
+                          : '#CAD5E2',
+                      borderWidth: '1px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[300], 0.8)
+                          : '#94A3B8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.primary.main,
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+
+            const dynamicLabelSx = {
+              ...labelSx,
+              ...(hasError && {
+                color: theme.palette.error.main,
+                '& .MuiFormLabel-asterisk': {
+                  color: theme.palette.error.main,
+                },
+              }),
+              ...(showRedAsterisk && {
+                '& .MuiFormLabel-asterisk': {
+                  color: theme.palette.error.main,
+                },
+              }),
+              '&.Mui-focused': {
+                color: hasError
+                  ? theme.palette.error.main
+                  : theme.palette.primary.main,
+              },
+            }
+
+            return (
+              <TextField
+                {...field}
+                type={type}
+                label={label}
+                fullWidth
+                disabled={isSubmitting || isViewMode}
+                required={required}
+                error={hasError}
+                helperText={
+                  hasError ? fieldState.error?.message || 'Invalid input' : ''
+                }
+                InputLabelProps={{ sx: dynamicLabelSx }}
+                InputProps={{
+                  sx: valueSx,
+                  inputProps: {
+                    maxLength:
+                      name === 'name' ||
+                      name === 'moduleCode' ||
+                      name === 'actionCode'
+                        ? 100
+                        : undefined,
+                    pattern:
+                      name === 'name'
+                        ? '[a-zA-Z\\s\\-_]*'
+                        : name === 'moduleCode' || name === 'actionCode'
+                          ? '[a-zA-Z\\-_]*'
+                          : undefined,
+                  },
+                }}
+                sx={fieldStyles}
+                onChange={(e) => {
+                  let value = e.target.value
+
+                  if (type === 'number') {
+                    // Allow decimal numbers for version
+                    const numericValue = value.replace(/[^0-9.]/g, '')
+
+                    // Ensure only one decimal point
+                    const parts = numericValue.split('.')
+                    if (parts.length > 2) {
+                      value = parts[0] + '.' + parts.slice(1).join('')
+                    } else {
+                      value = numericValue
+                    }
+
+                    // Limit to 10
+                    const numValue = Number(value)
+                    if (!isNaN(numValue) && numValue > 10) {
+                      value = '10'
+                    }
+
+                    field.onChange(value)
+                  } else if (name === 'name') {
+                    // Allow letters, spaces, hyphens, underscores - remove numbers
+                    const textValue = value.replace(/[0-9]/g, '').slice(0, 100)
+                    field.onChange(textValue)
+                  } else if (name === 'moduleCode' || name === 'actionCode') {
+                    // Allow only letters, hyphens, underscores - remove numbers and spaces
+                    const textValue = value
+                      .replace(/[0-9\\s]/g, '')
+                      .slice(0, 100)
+                    field.onChange(textValue)
+                  } else {
+                    field.onChange(value)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Prevent number keys for text fields that shouldn't have numbers
+                  if (name === 'moduleCode' || name === 'actionCode') {
+                    if (e.key >= '0' && e.key <= '9') {
+                      e.preventDefault()
+                    }
+                  }
+                }}
+              />
+            )
+          }}
+        />
+      </Grid>
+    )
   }
 
-  // make options optional
+  type OptionItem = {
+    label: string
+    value: string | number
+    id?: string | number
+  }
+
   const renderSelectField = (
     name: keyof DefinitionFormData,
     label: string,
     options?: OptionItem[] | string[],
     gridSize: number = 6,
+    required: boolean = true,
+    showRedAsterisk: boolean = false,
     extraProps: {
       isLoading?: boolean
       disabled?: boolean
@@ -297,17 +418,11 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
       placeholder?: string
     } = {}
   ) => {
-    // fallback: if caller didn't pass options, use moduleOptions (must be in scope)
     const resolvedOptions: OptionItem[] | string[] =
-      options && options.length > 0
-        ? options
-        : typeof moduleOptions !== 'undefined'
-          ? moduleOptions.map((op: any) => ({
-              label: op.label,
-              value: op.value,
-              id: op.id,
-            }))
-          : [] // empty array if no fallback
+      options && options.length > 0 ? options : []
+
+    const fieldRules =
+      validationRules[name as keyof typeof validationRules] || {}
 
     return (
       <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
@@ -315,59 +430,159 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
           name={name}
           control={control}
           defaultValue={''}
-          render={({ field }) => (
-            <FormControl fullWidth>
-              <InputLabel sx={labelSx}>
-                {extraProps.placeholder ?? label}
-              </InputLabel>
+          rules={fieldRules}
+          render={({ field, fieldState }) => {
+            const hasError = !!fieldState.error
 
-              <Select
-                name={field.name}
-                value={field.value ?? ''}
-                onChange={(e) => {
-                  const val = (e.target as HTMLInputElement).value
-                  field.onChange(val)
-                  if (extraProps.onChange) extraProps.onChange(val)
-                }}
-                onBlur={field.onBlur}
+            const fieldStyles = hasError
+              ? {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.error.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+              : {
+                  '& .MuiOutlinedInput-root': {
+                    height: '46px',
+                    borderRadius: '8px',
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.default, 0.9)
+                        : theme.palette.background.paper,
+                    '& fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.7)
+                          : '#CAD5E2',
+                      borderWidth: '1px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[300], 0.8)
+                          : '#94A3B8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.primary.main,
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.text.primary,
+                  },
+                }
+
+            const dynamicLabelSx = {
+              ...labelSx,
+              ...(hasError && {
+                color: theme.palette.error.main,
+                '& .MuiFormLabel-asterisk': {
+                  color: theme.palette.error.main,
+                },
+              }),
+              ...(showRedAsterisk && {
+                '& .MuiFormLabel-asterisk': {
+                  color: theme.palette.error.main,
+                },
+              }),
+              '&.Mui-focused': {
+                color: hasError
+                  ? theme.palette.error.main
+                  : theme.palette.primary.main,
+              },
+            }
+
+            return (
+              <FormControl
+                fullWidth
+                error={hasError}
                 disabled={!!extraProps.disabled || !!extraProps.isLoading}
-                label={extraProps.placeholder ?? label}
-                sx={{ ...commonFieldStyles(false), ...valueSx }}
-                IconComponent={KeyboardArrowDownIcon}
               >
-                {extraProps.isLoading ? (
-                  <MenuItem disabled>
-                    <CircularProgress size={16} sx={{ mr: 1 }} />
-                    Loading {label.toLowerCase()}...
-                  </MenuItem>
-                ) : Array.isArray(resolvedOptions) &&
-                  resolvedOptions.length > 0 ? (
-                  resolvedOptions.map((opt) =>
-                    typeof opt === 'string' ? (
-                      <MenuItem key={opt} value={opt}>
-                        {opt}
-                      </MenuItem>
-                    ) : (
-                      <MenuItem key={opt.id ?? opt.value} value={opt.value}>
-                        {opt.label}
-                      </MenuItem>
+                <InputLabel
+                  sx={dynamicLabelSx}
+                  id={`${String(name)}-label`}
+                  required={required}
+                >
+                  {extraProps.placeholder ?? label}
+                </InputLabel>
+
+                <Select
+                  labelId={`${String(name)}-label`}
+                  id={`${String(name)}-select`}
+                  name={field.name}
+                  value={field.value ?? ''}
+                  onChange={(e) => {
+                    const val = (e.target as HTMLInputElement).value
+                    field.onChange(val)
+                    if (extraProps.onChange) extraProps.onChange(val)
+                  }}
+                  onBlur={field.onBlur}
+                  disabled={!!extraProps.disabled || !!extraProps.isLoading}
+                  label={extraProps.placeholder ?? label}
+                  sx={{
+                    ...valueSx,
+                    ...fieldStyles,
+                  }}
+                  IconComponent={KeyboardArrowDownIcon}
+                >
+                  {extraProps.isLoading ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={16} sx={{ mr: 1 }} />
+                      Loading {label.toLowerCase()}...
+                    </MenuItem>
+                  ) : Array.isArray(resolvedOptions) &&
+                    resolvedOptions.length > 0 ? (
+                    resolvedOptions.map((opt) =>
+                      typeof opt === 'string' ? (
+                        <MenuItem key={opt} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ) : (
+                        <MenuItem key={opt.id ?? opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      )
                     )
-                  )
-                ) : (
-                  <MenuItem disabled>
-                    No {label.toLowerCase()} available
-                  </MenuItem>
+                  ) : (
+                    <MenuItem disabled>
+                      No {label.toLowerCase()} available
+                    </MenuItem>
+                  )}
+                </Select>
+
+                {hasError && (
+                  <FormHelperText>
+                    {fieldState.error?.message ?? 'Supporting text'}
+                  </FormHelperText>
                 )}
-              </Select>
-            </FormControl>
-          )}
+              </FormControl>
+            )
+          }}
         />
       </Grid>
     )
   }
 
   const renderCheckboxField = (
-    name: string,
+    name: keyof DefinitionFormData,
     label?: string,
     gridSize: number = 6,
     extraProps: {
@@ -422,12 +637,10 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
     </Grid>
   )
 
-  // Prevent drawer from closing when clicking inside the form
   const handleDrawerClose = (
     _event: React.KeyboardEvent | React.MouseEvent,
     reason?: string
   ) => {
-    // Only close on backdrop click or escape key, not on form interactions
     if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
       onClose()
     }
@@ -440,6 +653,7 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
       onClose={handleDrawerClose}
       PaperProps={{
         sx: {
+          ...tokens.paper,
           width: '460px',
           height: '100%',
           display: 'flex',
@@ -447,7 +661,13 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
         },
       }}
     >
-      <Box sx={{ p: 3, borderBottom: '1px solid #E5E7EB' }}>
+      <Box
+        sx={{
+          p: 3,
+          borderBottom: `1px solid ${tokens.dividerColor}`,
+          backgroundColor: tokens.paper.backgroundColor as string,
+        }}
+      >
         <Box
           sx={{
             display: 'flex',
@@ -461,56 +681,76 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
               fontSize: '20px',
               fontWeight: 500,
               fontStyle: 'normal',
+              color: theme.palette.text.primary,
             }}
           >
             {mode === 'edit'
               ? 'Edit Workflow Definition'
               : 'Add Workflow Definition'}
           </DialogTitle>
-          <IconButton onClick={onClose} size="small">
-            <CancelOutlinedIcon />
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+          >
+            <CancelOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
       </Box>
       <form onSubmit={handleSubmit(onSubmit, onError)}>
-        <DialogContent dividers>
-          {/* Error messages removed - silent error handling */}
-
+        <DialogContent
+          dividers
+          sx={{
+            borderColor: tokens.dividerColor,
+            backgroundColor: tokens.paper.backgroundColor as string,
+          }}
+        >
           <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
             {renderTextField(
               'name',
               getWorkflowDefinitionLabel('CDL_WD_NAME'),
               'text',
-              12
+              12,
+              true,
+              true
             )}
             {renderTextField(
               'version',
               getWorkflowDefinitionLabel('CDL_WD_VERSION'),
               'number',
-              12
+              12,
+              true,
+              true
             )}
             {renderTextField(
               'moduleCode',
               getWorkflowDefinitionLabel('CDL_WD_MODULE_CODE'),
               'text',
-              12
+              12,
+              true,
+              true
             )}
             {renderTextField(
               'actionCode',
               getWorkflowDefinitionLabel('CDL_WD_ACTION_CODE'),
               'text',
-              12
+              12,
+              true,
+              true
             )}
 
             {renderSelectField(
               'applicationModuleId',
-              `${getWorkflowDefinitionLabel('CDL_WD_APPLICATION_MODULE_ID')}`, // dynamic label here
-              moduleOptions.map((option) => ({
-                label: option.label,
-                value: option.value,
-                id: option.id,
-              })),
+              `${getWorkflowDefinitionLabel('CDL_WD_APPLICATION_MODULE_ID')}`,
+              moduleOptions as OptionItem[],
               12,
+              true,
+              true,
               {
                 isLoading: formLoading,
                 disabled: isSubmitting || isViewMode,
@@ -518,13 +758,15 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
             )}
             {renderSelectField(
               'workflowActionId',
-              `${getWorkflowDefinitionLabel('CDL_WD_WORKFLOW_ACTION_ID')}`, // dynamic label
+              `${getWorkflowDefinitionLabel('CDL_WD_WORKFLOW_ACTION_ID')}`,
               actionOptions.map((option) => ({
                 label: option.label,
                 value: option.value,
                 id: option.id,
               })),
               12,
+              true,
+              true,
               {
                 isLoading: formLoading,
                 disabled: isSubmitting || isViewMode,
@@ -535,14 +777,14 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                 {renderCheckboxField(
                   'amountBased',
                   getWorkflowDefinitionLabel('CDL_WD_AMOUNT_BASED'),
-                  3,
+                  6,
                   { disabled: isSubmitting, defaultValue: false }
                 )}
 
                 {renderCheckboxField(
                   'active',
                   getWorkflowDefinitionLabel('CDL_WD_ACTIVE'),
-                  3,
+                  6,
                   { disabled: isSubmitting, defaultValue: true }
                 )}
               </Box>
@@ -558,6 +800,12 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
               left: 0,
               right: 0,
               padding: 2,
+              borderTop: `1px solid ${tokens.dividerColor}`,
+              backgroundColor: alpha(
+                theme.palette.background.paper,
+                theme.palette.mode === 'dark' ? 0.92 : 0.9
+              ),
+              backdropFilter: 'blur(10px)',
             }}
           >
             <Grid container spacing={2}>
@@ -580,6 +828,12 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                     justifyContent: 'center',
                     gap: 1,
                     opacity: canReset ? 1 : 0.5,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
                   }}
                 >
                   Reset
@@ -605,13 +859,19 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                     justifyContent: 'center',
                     gap: 1,
                     opacity: canSave ? 1 : 0.5,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
                   }}
                 >
                   {isSubmitting && (
                     <CircularProgress
                       size={20}
                       sx={{
-                        color: 'white',
+                        color: theme.palette.primary.contrastText,
                       }}
                     />
                   )}
@@ -629,61 +889,7 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
             </Grid>
           </Box>
         )}
-        {/* 
-        {!isViewMode && (
-          <div className="relative left-0 right-0 p-2 top-5">
-            <div className="grid grid-cols-12 gap-2">
-              <div className="col-span-6">
-                <Button
-                  onClick={handleResetToLoaded}
-                  disabled={!canReset}
-                  className={`
-            w-full relative flex items-center justify-center gap-1
-            font-['Outfit',sans-serif] font-medium not-italic text-sm leading-5
-            ${canReset ? 'opacity-100' : 'opacity-50'}
-            bg-gray-200 text-black rounded px-4 py-2
-          `}
-                >
-                  Reset
-                </Button>
-              </div>
-
-              <div className="col-span-6">
-                <Button
-                  type="submit"
-                  disabled={!canSave}
-                  className={`
-            w-full relative flex items-center justify-center gap-1
-            font-['Outfit',sans-serif] font-medium not-italic text-sm leading-5
-            ${canSave ? 'opacity-100' : 'opacity-50'}
-            bg-blue-600 text-white rounded px-4 py-2
-          `}
-                >
-                  {isSubmitting && (
-                    <CircularProgress
-                      size={20}
-                      sx={{
-                        color: 'white',
-                      }}
-                    />
-                  )}
-                  {isSubmitting
-                    ? formLoading
-                      ? 'Loading...'
-                      : mode === 'edit'
-                        ? 'Updating...'
-                        : 'Creating...'
-                    : mode === 'edit'
-                      ? 'Update'
-                      : 'Save'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )} */}
       </form>
-
-      {/* All alerts and snackbars removed - silent error handling */}
     </Drawer>
   )
 }

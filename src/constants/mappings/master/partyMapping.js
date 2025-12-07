@@ -1,0 +1,61 @@
+export const PARTY_LABELS = {
+  // Party Details
+  'CDL_MP_PARTY_CIF_NUMBER': 'Party CIF Number',
+  'CDL_MP_PARTY_ID': 'Party ID',
+  'CDL_MP_PARTY_NAME': 'Party Name',
+  'CDL_MP_PARTY_ADDRESS_1': 'Party Address 1',
+  'CDL_MP_PARTY_ADDRESS_2': 'Party Address 2',
+  'CDL_MP_PARTY_ADDRESS_3': 'Party Address 3',
+  'CDL_MP_PARTY_TELEPHONE_NO': 'Telephone No',
+  'CDL_MP_PARTY_MOBILE_NO': 'Mobile No',
+  'CDL_MP_PARTY_EMAIL': 'Email',
+  'CDL_MP_PARTY_BANK_IDENTIFIER': 'Bank Identifier',
+  'CDL_MP_PARTY_PASSPORT_IDENTIFICATION_DETAILS': 'Passport Identification Details',
+  'CDL_MP_PARTY_PROJECT_ACCOUNT_OWNER_NAME':'Project Account Owner Name',
+  'CDL_MP_PARTY_ARM_NAME':'Assistant Relation ship Manager Name',
+  'CDL_MP_PARTY_TEAM_LEADER_NAME':'Team Leader Name',
+  'CDL_MP_PARTY_REMARKS':'Remarks',
+  'CDL_MP_PARTY_RM_NAME':'Relation ship Manager Name',
+  'CDL_MP_PARTY_BACKUP_PROJECT_ACCOUNT_OWNER_NAME': 'Backup Project Account Owner Name',
+  'CDL_MP_PARTY_CONSTITUENT_DTO':'Constituent DTO',
+  'CDL_MP_PARTY_ROLE_DTO':'Role DTO',
+  'CDL_MP_PARTY_TASK_STATUS_DTO':'Task Status DTO',
+  'CDL_MP_PARTY_STATUS':'Status',
+  'CDL_MP_PARTY_ACTIONS':'Actions',
+  'CDL_MP_PARTY_ACTIVE':'Active',
+
+
+
+  // AuthorizedSignatory Signatory
+  'CDL_MP_AUTHORIZED_SIGNATORY_CUSTOMER_CIF_NUMBER': ' Customer Cif Number',
+  'CDL_MP_AUTHORIZED_SIGNATORY_NAME': 'Name',
+  'CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_1': ' Address 1',
+  'CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_2': ' Address 2',
+  'CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_3': ' Address 3',
+  'CDL_MP_AUTHORIZED_SIGNATORY_TELEPHONE_NO': ' Telephone No',
+  'CDL_MP_AUTHORIZED_SIGNATORY_MOBILE_NO': ' Mobile No',
+  'CDL_MP_AUTHORIZED_SIGNATORY_EMAIL_ID': ' Email ID',
+  'CDL_MP_AUTHORIZED_SIGNATORY_NOTIFICATION_CONTACT_NAME': 'Notification Contact Name',
+  'CDL_MP_AUTHORIZED_SIGNATORY_CIF_NUMBER':' Cif Number',
+  'CDL_MP_AUTHORIZED_SIGNATORY_NOTIFICATION_EMAIL':'Notification Email Address',
+  'CDL_MP_AUTHORIZED_SIGNATORY_NOTIFICATION_SIGNATURE_FILE':'Notification Signature File',
+  'CDL_MP_AUTHORIZED_SIGNATORY_NOTIFICATION_SIGNATURE_MIME_TYPE':'Notification SignatureMime Type',
+  'CDL_MP_AUTHORIZED_SIGNATORY_ACTIVE':'active',
+  'CDL_MP_AUTHORIZED_SIGNATORY_CIF_EXISTS_DTO':'Cif Exists DTO',
+  'CDL_MP_AUTHORIZED_SIGNATORY_PARTY_DTO':'Party DTO',
+  'CDL_MP_AUTHORIZED_SIGNATORY_REMARKS':'remarks',
+  'CDL_MP_AUTHORIZED_SIGNATORY_STATUS':'status',
+  'CDL_MP_AUTHORIZED_SIGNATORY_ENABLED':'enabled',
+  'CDL_MP_AUTHORIZED_SIGNATORY_DELETED':'deleted',
+  'CDL_MP_AUTHORIZED_SIGNATORY_ACTIONS':'Actions',
+  'CDL_MP_AUTHORIZED_SIGNATORY_PARTY_SELECT': 'Party'
+}
+export const getPartyLabel = (configId) => {
+return PARTY_LABELS[configId] || configId
+}
+
+// Export the full mapping object for direct access
+export default PARTY_LABELS
+
+
+

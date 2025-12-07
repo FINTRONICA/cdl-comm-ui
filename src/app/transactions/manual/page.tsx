@@ -14,8 +14,8 @@ import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 import { PageActionButtons } from '../../../components/molecules/PageActionButtons'
 import LeftSlidePanel from '@/components/organisms/LeftSlidePanel/LeftSlidePanel'
 import { MANUAL_PAYMENT_LABELS } from '@/constants/mappings/manualPaymentLabels'
+import { GlobalLoading } from '@/components/atoms'
 
-// Transform API data to match table structure
 interface ManualPaymentData extends Record<string, unknown> {
   id: number
   date: string
@@ -42,7 +42,6 @@ interface ManualPaymentData extends Record<string, unknown> {
   remark: string
 }
 
-// Transform fund egress data to manual payment data
 const transformFundEgressToManualPayment = (
   fundEgress: FundEgressData
 ): ManualPaymentData => {
@@ -51,7 +50,6 @@ const transformFundEgressToManualPayment = (
       return 'INITIATED'
     }
 
-    // Use the code from taskStatusDTO directly as it matches our new status options
     return taskStatusDTO.code || 'INITIATED'
   }
 
@@ -66,7 +64,7 @@ const transformFundEgressToManualPayment = (
       'Manual Payment',
     paymentSubType:
       fundEgress.expenseSubTypeDTO?.languageTranslationId?.configValue || 'N/A',
-    invoiceNumber: fundEgress.feInvoiceNumber || '',
+    invoiceNumber: fundEgress.feInvoiceRefNo || '',
     corporatePayment: fundEgress.feCorporatePayment ? 'Yes' : 'No',
     beneficiaryName:
       fundEgress.realEstateAssestBeneficiaryDTO?.name ||
@@ -91,7 +89,6 @@ const transformFundEgressToManualPayment = (
   }
 }
 
-// Function to create expanded content labels using mapping
 const createExpandedContentLabels = (
   getLabel: (configId: string, language?: string, fallback?: string) => string
 ) => ({
@@ -213,7 +210,6 @@ const createExpandedContentLabels = (
   },
 })
 
-// Function to create table columns with dynamic labels using mapping
 const createTableColumns = (
   getLabel: (configId: string, language?: string, fallback?: string) => string
 ) => [
@@ -357,7 +353,7 @@ const createTableColumns = (
       MANUAL_PAYMENT_LABELS.FALLBACKS.TABLE_COLUMNS.APPROVAL_STATUS
     ),
     type: 'status' as const,
-    width: 'w-32',
+    width: 'w-40',
     sortable: true,
   },
   {
@@ -368,7 +364,7 @@ const createTableColumns = (
       MANUAL_PAYMENT_LABELS.FALLBACKS.TABLE_COLUMNS.ACTIONS
     ),
     type: 'actions' as const,
-    width: 'w-20',
+    width: 'w-28',
   },
 ]
 
@@ -382,7 +378,6 @@ const ManualPaymentPage: React.FC = () => {
   const { getLabel } = useManualPaymentLabelsWithCache('EN')
   const confirmDelete = useDeleteConfirmation()
 
-  // Memoize table columns, status options, and expanded content labels to avoid recreating on every render
   const tableColumns = useMemo(() => createTableColumns(getLabel), [getLabel])
   const statusOptions = [
     'PENDING',
@@ -403,13 +398,12 @@ const ManualPaymentPage: React.FC = () => {
     MANUAL_PAYMENT_LABELS.FALLBACKS.PAGE_TITLE
   )
 
-  // API-driven pagination state
   const [currentApiPage, setCurrentApiPage] = useState(1)
   const [currentApiSize, setCurrentApiSize] = useState(20)
 
-  // Use the fund egress API hook
   const {
     data: fundEgressData,
+    loading: paymentsLoading,
     deleteFundEgress,
     updatePagination,
     apiPagination,
@@ -418,11 +412,10 @@ const ManualPaymentPage: React.FC = () => {
     page: Math.max(0, currentApiPage - 1),
   })
 
-  // Transform API data when it changes
   useEffect(() => {
     if (fundEgressData && fundEgressData.length > 0) {
       const transformed = fundEgressData
-        .filter((item) => item.feIsManualPayment) // Only show manual payments
+        .filter((item) => item.feIsManualPayment)
         .map(transformFundEgressToManualPayment)
       setTransformedData(transformed)
     } else {
@@ -430,7 +423,6 @@ const ManualPaymentPage: React.FC = () => {
     }
   }, [fundEgressData])
 
-  // Use the generic table state hook with transformed data
   const {
     search,
     paginated,
@@ -471,7 +463,6 @@ const ManualPaymentPage: React.FC = () => {
     initialRowsPerPage: currentApiSize,
   })
 
-  // Handle API pagination - when user changes page in table
   const handlePageChange = (newPage: number) => {
     const hasActiveSearch = Object.values(search).some((value) => value.trim())
 
@@ -483,7 +474,6 @@ const ManualPaymentPage: React.FC = () => {
     }
   }
 
-  // Handle rows per page change
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
     setCurrentApiSize(newRowsPerPage)
     setCurrentApiPage(1)
@@ -491,27 +481,24 @@ const ManualPaymentPage: React.FC = () => {
     localHandleRowsPerPageChange(newRowsPerPage)
   }
 
-  // Get API totals from the API response
   const apiTotal = apiPagination.totalElements
   const apiTotalPages = apiPagination.totalPages
 
-  // Determine which pagination values to use
-  const effectiveTotalRows = Object.values(search).some((value) => value.trim())
-    ? localTotalRows
-    : apiTotal
-  const effectiveTotalPages = Object.values(search).some((value) =>
-    value.trim()
-  )
-    ? localTotalPages
-    : apiTotalPages
-  const effectivePage = Object.values(search).some((value) => value.trim())
-    ? localPage
-    : currentApiPage
+  const hasActiveSearch = Object.values(search).some((value) => value.trim())
 
-  // Action handlers
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+
+  const effectiveStartItem = hasActiveSearch
+    ? startItem
+    : (currentApiPage - 1) * currentApiSize + 1
+  const effectiveEndItem = hasActiveSearch
+    ? endItem
+    : Math.min(currentApiPage * currentApiSize, apiTotal)
+
   const handleViewPayment = useCallback(
     (row: ManualPaymentData) => {
-      // Navigate to view mode (read-only) with the payment ID
       router.push(`/transactions/manual/new/${row.id}?step=0&mode=view`)
     },
     [router]
@@ -519,7 +506,6 @@ const ManualPaymentPage: React.FC = () => {
 
   const handleEditPayment = useCallback(
     (row: ManualPaymentData) => {
-      // Navigate to edit mode with the payment ID
       router.push(`/transactions/manual/new/${row.id}?step=0&mode=edit`)
     },
     [router]
@@ -539,7 +525,7 @@ const ManualPaymentPage: React.FC = () => {
             setIsDeleting(true)
             await deleteFundEgress(row.id.toString())
           } catch (error) {
-            throw error // Re-throw to keep dialog open on error
+            throw error
           } finally {
             setIsDeleting(false)
           }
@@ -549,7 +535,6 @@ const ManualPaymentPage: React.FC = () => {
     [deleteFundEgress, isDeleting, confirmDelete]
   )
 
-  // Render expanded content using memoized labels
   const renderExpandedContent = useCallback(
     (row: ManualPaymentData) => (
       <div className="grid grid-cols-3 gap-8">
@@ -721,51 +706,54 @@ const ManualPaymentPage: React.FC = () => {
       )}
 
       <DashboardLayout title={manualPaymentTitle}>
-        <div className="bg-[#FFFFFFBF] rounded-2xl flex flex-col h-full">
-          {/* Sticky Header Section */}
-          <div className="sticky top-0 z-10 bg-[#FFFFFFBF] border-b border-gray-200 rounded-t-2xl">
-            {/* Action Buttons */}
-            <PageActionButtons
-              entityType="manualPayment"
-              showButtons={{ addNew: true }}
-            />
-          </div>
+        <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full">
+          {paymentsLoading ? (
+            <GlobalLoading fullHeight />
+          ) : (
+            <>
+              <div className="sticky top-0 z-10 bg-white/75 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
+                <PageActionButtons
+                  entityType="manualPayment"
+                  showButtons={{ addNew: true }}
+                />
+              </div>
 
-          {/* Table Container with Fixed Pagination */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 overflow-auto">
-              <PermissionAwareDataTable<ManualPaymentData>
-                data={paginated}
-                columns={tableColumns}
-                searchState={search}
-                onSearchChange={handleSearchChange}
-                paginationState={{
-                  page: effectivePage,
-                  rowsPerPage: rowsPerPage,
-                  totalRows: effectiveTotalRows,
-                  totalPages: effectiveTotalPages,
-                  startItem,
-                  endItem,
-                }}
-                onPageChange={handlePageChange}
-                onRowsPerPageChange={handleRowsPerPageChange}
-                selectedRows={selectedRows}
-                onRowSelectionChange={handleRowSelectionChange}
-                expandedRows={expandedRows}
-                onRowExpansionChange={handleRowExpansionChange}
-                renderExpandedContent={renderExpandedContent}
-                statusOptions={statusOptions}
-                onRowView={handleViewPayment}
-                onRowEdit={handleEditPayment}
-                onRowDelete={handleDeletePayment}
-                deletePermissions={['manual_payment_delete']}
-                viewPermissions={['manual_payment_view']}
-                editPermissions={['manual_payment_update']}
-                onSort={handleSort}
-                sortConfig={sortConfig}
-              />
-            </div>
-          </div>
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-auto">
+                  <PermissionAwareDataTable<ManualPaymentData>
+                    data={paginated}
+                    columns={tableColumns}
+                    searchState={search}
+                    onSearchChange={handleSearchChange}
+                    paginationState={{
+                      page: effectivePage,
+                      rowsPerPage: rowsPerPage,
+                      totalRows: effectiveTotalRows,
+                      totalPages: effectiveTotalPages,
+                      startItem: effectiveStartItem,
+                      endItem: effectiveEndItem,
+                    }}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
+                    selectedRows={selectedRows}
+                    onRowSelectionChange={handleRowSelectionChange}
+                    expandedRows={expandedRows}
+                    onRowExpansionChange={handleRowExpansionChange}
+                    renderExpandedContent={renderExpandedContent}
+                    statusOptions={statusOptions}
+                    onRowView={handleViewPayment}
+                    onRowEdit={handleEditPayment}
+                    onRowDelete={handleDeletePayment}
+                    deletePermissions={['manual_payment_delete']}
+                    viewPermissions={['manual_payment_view']}
+                    editPermissions={['manual_payment_update']}
+                    onSort={handleSort}
+                    sortConfig={sortConfig}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </DashboardLayout>
     </>

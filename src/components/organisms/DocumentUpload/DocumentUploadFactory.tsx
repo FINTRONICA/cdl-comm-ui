@@ -5,7 +5,18 @@ import { createBuildPartnerDocumentConfig } from './configs/buildPartnerConfig'
 import { createProjectDocumentConfig } from './configs/projectConfig'
 import { createInvestorDocumentConfig } from './configs/investorConfig'
 import { createPaymentDocumentConfig } from './configs/paymentConfig'
+import { createSuretyBondDocumentConfig } from './configs/suretyBondConfig'
 import { DocumentItem } from '../DeveloperStepper/developerTypes'
+import { createPartyDocumentConfig } from './configs/masterConfigs/partyConfig'
+import {  createBeneficiaryDocumentConfig } from './configs/masterConfigs/beneficiaryConfig' 
+import { createEscrowAccountDocumentConfig } from './configs/masterConfigs/escrowAccountConfig'
+import { createAgreementDocumentConfig } from './configs/masterConfigs/agreementConfig'
+import { createAgreementSignatoryDocumentConfig } from './configs/masterConfigs/agreementSignatoryConfig'
+import { createAccountDocumentConfig } from './configs/masterConfigs/accountConfig'
+import { createAgreementParameterDocumentConfig } from './configs/masterConfigs/agreementParameterConfig'
+import { createAgreementFeeScheduleDocumentConfig } from './configs/masterConfigs/agreementFeeScheduleConfig'
+import { createPaymentInstructionDocumentConfig } from './configs/masterConfigs/paymentInstructionConfig'
+import { createPaymentBeneficiaryDocumentConfig } from './configs/masterConfigs/paymentBeneficiaryConfig'
 
 export type DocumentUploadType =
   | 'BUILD_PARTNER'
@@ -23,11 +34,23 @@ export type DocumentUploadType =
   | 'STAKEHOLDER'
   | 'ROLES'
   | 'PERMISSIONS'
+  | 'SURETY_BOND'
+  | 'PARTY'
+  | 'BENEFICIARY'
+  | 'ESCROW_ACCOUNT'
+  | 'AGREEMENT'
+  | 'AGREEMENT_SIGNATORY'
+  | 'ACCOUNT'
+  | 'AGREEMENT_PARAMETER'
+  | 'AGREEMENT_FEE_SCHEDULE'
+  |'PAYMENT_INSTRUCTION'
+  |'PAYMENT_BENEFICIARY'
 
 interface DocumentUploadFactoryProps {
   type: DocumentUploadType
   entityId: string
   isOptional?: boolean
+  isReadOnly?: boolean
   onDocumentsChange?: (documents: DocumentItem[]) => void
   formFieldName?: string
 }
@@ -36,6 +59,7 @@ const DocumentUploadFactory: React.FC<DocumentUploadFactoryProps> = ({
   type,
   entityId,
   isOptional = true,
+  isReadOnly = false,
   onDocumentsChange,
   formFieldName = 'documents',
 }) => {
@@ -55,6 +79,7 @@ const DocumentUploadFactory: React.FC<DocumentUploadFactoryProps> = ({
   const createConfig = () => {
     const baseOptions = {
       isOptional,
+      isReadOnly,
       onDelete: handleDelete,
       ...(onDocumentsChange && { onDocumentsChange }),
     }
@@ -64,14 +89,14 @@ const DocumentUploadFactory: React.FC<DocumentUploadFactoryProps> = ({
         return createBuildPartnerDocumentConfig(entityId, baseOptions)
 
       case 'BUILD_PARTNER_ASSET':
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createProjectDocumentConfig(entityId, {
           ...baseOptions,
           title: 'Build Partner Asset Documents',
           description: 'Upload build partner asset-related documents.',
         })
 
       case 'CAPITAL_PARTNER':
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createInvestorDocumentConfig(entityId, {
           ...baseOptions,
           title: 'Capital Partner Documents',
           description: 'Upload capital partner-related documents.',
@@ -98,6 +123,13 @@ const DocumentUploadFactory: React.FC<DocumentUploadFactoryProps> = ({
           title: 'Payment Documents',
           description:
             'This step is optional. You can upload payment-related documents or skip to continue.',
+        })
+
+      case 'SURETY_BOND':
+        return createSuretyBondDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Surety Bond Documents',
+          description: 'Upload surety bond-related documents.',
         })
 
       case 'TRANSACTIONS':
@@ -163,7 +195,66 @@ const DocumentUploadFactory: React.FC<DocumentUploadFactoryProps> = ({
           description:
             'This step is optional. You can upload project-related documents or skip to continue.',
         })
-
+      case 'PARTY':
+        return createPartyDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Party Documents',
+          description: 'Upload party-related documents.',
+        })
+      case 'BENEFICIARY':
+        return createBeneficiaryDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Beneficiary Documents',
+          description: 'Upload beneficiary-related documents.',
+        })
+      case 'ESCROW_ACCOUNT':
+        return createEscrowAccountDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Escrow Account Documents',
+          description: 'Upload escrow account-related documents.',
+        })
+      case 'AGREEMENT':
+        return createAgreementDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Agreement Documents',
+          description: 'Upload agreement-related documents.',
+        })
+      case 'AGREEMENT_SIGNATORY':
+        return createAgreementSignatoryDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Agreement Signatory Documents',
+          description: 'Upload agreement signatory-related documents.',
+        })
+      case 'ACCOUNT':
+        return createAccountDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Account Documents',
+          description: 'Upload account-related documents.',
+        })
+      case 'AGREEMENT_PARAMETER':
+        return createAgreementParameterDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Agreement Parameter Documents',
+          description: 'Upload agreement parameter-related documents.',
+        })
+      case 'AGREEMENT_FEE_SCHEDULE':
+        return createAgreementFeeScheduleDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Agreement Fee Schedule Documents',
+          description: 'Upload agreement fee schedule-related documents.',
+        })
+      case 'PAYMENT_INSTRUCTION':
+        return createPaymentInstructionDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Payment Instruction Documents',
+          description: 'Upload payment instruction-related documents.',
+        })
+      case 'PAYMENT_BENEFICIARY':
+        return createPaymentBeneficiaryDocumentConfig(entityId, {
+          ...baseOptions,
+          title: 'Payment Beneficiary Documents',
+          description: 'Upload payment beneficiary-related documents.',
+        })
       default:
         throw new Error(`Unsupported document upload type: ${type}`)
     }

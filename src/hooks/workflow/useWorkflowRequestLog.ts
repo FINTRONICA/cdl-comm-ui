@@ -23,7 +23,7 @@ export function useWorkflowRequestLogs(page = 0, size = 20) {
         )
         return result
       } catch (error) {
-        console.log(error)
+        console.error(error)
         throw error
       }
     },
@@ -58,7 +58,7 @@ export function useAllWorkflowRequestLogs(page = 0, size = 20) {
 
         return result
       } catch (error) {
-        console.log(error)
+        console.error(error)
         throw error
       }
     },
@@ -115,7 +115,7 @@ export function useUpdateWorkflowRequestLog() {
       })
     },
     onError: (error) => {
-      console.log(error)
+      console.error(error)
     },
     retry: 2,
   })
@@ -329,8 +329,5 @@ export function useWorkflowRequestLogService() {
 }
 
 export function useCreatePendingLog() {
-  console.log(
-    'useCreatePendingLog is deprecated. Use useCreateWorkflowRequestLog instead.'
-  )
   return useCreateWorkflowRequestLog()
 }

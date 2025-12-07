@@ -49,11 +49,11 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
 
   return (
     <div
-      className={`flex items-center justify-between px-6 py-4 bg-white border-t border-gray-200 ${className}`}
+      className={`flex items-center justify-between px-6 py-4 bg-white dark:bg-[#1E293B] border-t border-gray-200 dark:border-slate-700 ${className}`}
     >
       {/* Left side - Row count info */}
       <div className="flex items-center">
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 dark:text-slate-400">
           {startItem}-{endItem} of {totalRows} row(s)
         </span>
       </div>
@@ -65,14 +65,14 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
           title="First page"
-          className="p-2 h-[36px] w-[36px] text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg hover:bg-gray-100"
+          className="p-2 h-[36px] w-[36px] text-gray-400 dark:text-slate-300 hover:text-gray-600 dark:hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-slate-700 dark:hover:bg-slate-600"
         />
         <IconButton
           icon={ChevronLeft}
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
           title="Previous page"
-          className="p-2 h-[36px] w-[36px] text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg hover:bg-gray-100"
+          className="p-2 h-[36px] w-[36px] text-gray-400 dark:text-slate-300 hover:text-gray-600 dark:hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-slate-700 dark:hover:bg-slate-600"
         />
 
         {generatePageNumbers().map((pageNum) => (
@@ -82,7 +82,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             className={`min-w-[36px] h-9 px-3 text-sm font-medium rounded-lg transition-colors ${
               currentPage === pageNum
                 ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-100'
+                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 bg-gray-50 dark:bg-slate-700 dark:hover:bg-slate-600'
             }`}
           >
             {pageNum}
@@ -94,14 +94,14 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
           title="Next page"
-          className="p-2 h-[36px] w-[36px] text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg hover:bg-gray-100"
+          className="p-2 h-[36px] w-[36px] text-gray-400 dark:text-slate-300 hover:text-gray-600 dark:hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-slate-700 dark:hover:bg-slate-600"
         />
         <IconButton
           icon={ChevronsRight}
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
           title="Last page"
-          className="p-2 h-[36px] w-[36px] text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg hover:bg-gray-100"
+          className="p-2 h-[36px] w-[36px] text-gray-400 dark:text-slate-300 hover:text-gray-600 dark:hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-slate-700 dark:hover:bg-slate-600"
         />
       </div>
 
@@ -115,7 +115,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             label: opt.toString(),
           }))}
           placeholder=""
-          className=" w-[70px] border border-gray-300 rounded-lg pl-4 py-2 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none [&>option]:text-gray-900 shadow-sm"
+          className=" w-[70px] border border-gray-300 dark:border-slate-600 rounded-lg pl-4 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none [&>option]:text-gray-900 dark:[&>option]:text-slate-100 dark:[&>option]:bg-slate-800 shadow-sm"
         />
       </div>
     </div>
