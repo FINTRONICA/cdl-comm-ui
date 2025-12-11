@@ -1,8 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import React from 'react'
-import { useCallback, useState, useMemo } from 'react'
+import React, { useCallback, useState, useMemo } from 'react'
 import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
@@ -17,7 +16,10 @@ import {
 } from '@/hooks/master/CustomerHook/useGeneralLedgerAccount'
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
-import type { GeneralLedgerAccount, GeneralLedgerAccountFilters } from '@/services/api/masterApi/Customer/generalLedgerAccountService'
+import type {
+  GeneralLedgerAccount,
+  GeneralLedgerAccountFilters,
+} from '@/services/api/masterApi/Customer/generalLedgerAccountService'
 
 interface GeneralLedgerAccountData extends Record<string, unknown> {
   id: number
@@ -46,7 +48,6 @@ export const GeneralLedgerAccountPageClient = dynamic(
   () => Promise.resolve(GeneralLedgerAccountPageImpl),
   {
     ssr: false,
-    // Removed loading prop to prevent duplicate loading - page handles its own loading state
   }
 )
 
@@ -60,12 +61,10 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
-  // API-driven pagination state
   const [currentApiPage, setCurrentApiPage] = useState(1)
   const [currentApiSize, setCurrentApiSize] = useState(20)
   const [searchFilters] = useState<GeneralLedgerAccountFilters>({})
 
-  // API hooks
   const {
     data: generalLedgerAccountsResponse,
     isLoading: generalLedgerAccountsLoading,
@@ -82,7 +81,6 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
   const refreshGeneralLedgerAccounts = useRefreshGeneralLedgerAccounts()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
-  // Transform API data to table format
   const generalLedgerAccountData = useMemo(() => {
     if (!generalLedgerAccountsResponse?.content) return []
     return generalLedgerAccountsResponse.content.map((account: GeneralLedgerAccount) => ({
@@ -107,51 +105,52 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     []
   )
 
-  const tableColumns = [
-    {
-      key: 'generalLedgerAccountId',
-      label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_ID'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'ledgerAccountNumber',
-      label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_ACCOUNT_NUMBER'),
-      type: 'text' as const,
-      width: 'w-64',
-      sortable: true,
-    },
-   
-
-    {
-      key: 'ledgerAccountTypeCode',
-      label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_TYPE_CODE'),
-      type: 'text' as const,
-      width: 'w-64',
-      sortable: true,
-    },
-    {
-      key: 'ledgerAccountDescription',
-      label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_DESCRIPTION'),
-      type: 'text' as const,
-      width: 'w-96',
-      sortable: true,
-    },
-    {
-      key: 'status',
-      label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  const tableColumns = useMemo(
+    () => [
+      {
+        key: 'generalLedgerAccountId',
+        label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_ID'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'ledgerAccountNumber',
+        label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_ACCOUNT_NUMBER'),
+        type: 'text' as const,
+        width: 'w-64',
+        sortable: true,
+      },
+      {
+        key: 'ledgerAccountTypeCode',
+        label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_TYPE_CODE'),
+        type: 'text' as const,
+        width: 'w-64',
+        sortable: true,
+      },
+      {
+        key: 'ledgerAccountDescription',
+        label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_DESCRIPTION'),
+        type: 'text' as const,
+        width: 'w-96',
+        sortable: true,
+      },
+      {
+        key: 'status',
+        label: getGeneralLedgerAccountLabelDynamic('CDL_MGLA_STATUS'),
+        type: 'status' as const,
+        width: 'w-32',
+        sortable: true,
+      },
+      {
+        key: 'actions',
+        label: 'Actions',
+        type: 'actions' as const,
+        width: 'w-20',
+      },
+    ],
+    [getGeneralLedgerAccountLabelDynamic]
+  )
 
   const {
     search,
@@ -177,27 +176,32 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     initialRowsPerPage: currentApiSize,
   })
 
-  const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const hasSearch = Object.values(search).some((value) => value.trim())
 
-    if (hasSearch) {
-      localHandlePageChange(newPage)
-    } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
-    }
-  }
+      if (hasSearch) {
+        localHandlePageChange(newPage)
+      } else {
+        setCurrentApiPage(newPage)
+        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      }
+    },
+    [search, localHandlePageChange, currentApiSize, updatePagination]
+  )
 
-  const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+  const handleRowsPerPageChange = useCallback(
+    (newRowsPerPage: number) => {
+      setCurrentApiSize(newRowsPerPage)
+      setCurrentApiPage(1)
+      updatePagination(0, newRowsPerPage)
+      localHandleRowsPerPageChange(newRowsPerPage)
+    },
+    [updatePagination, localHandleRowsPerPageChange]
+  )
 
   const apiTotal = apiPagination?.totalElements || 0
   const apiTotalPages = apiPagination?.totalPages || 1
-
   const hasActiveSearch = Object.values(search).some((value) => value.trim())
 
   const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
@@ -211,7 +215,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (isDeleting || !deleteItem) return
     setIsDeleting(true)
     try {
@@ -219,29 +223,34 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
       refreshGeneralLedgerAccounts()
       setIsDeleteModalOpen(false)
       setDeleteItem(null)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error(`Failed to delete general ledger account: ${errorMessage}`)
+    } catch {
+      // Error is handled by mutation, but we can add user feedback if needed
+      setIsDeleteModalOpen(false)
+      setDeleteItem(null)
     } finally {
       setIsDeleting(false)
     }
-  }
+  }, [isDeleting, deleteItem, deleteGeneralLedgerAccountMutation, refreshGeneralLedgerAccounts])
 
-  const handleRowDelete = (row: GeneralLedgerAccountData) => {
-    if (isDeleting) return
-    setDeleteItem(row)
-    setIsDeleteModalOpen(true)
-  }
+  const handleRowDelete = useCallback(
+    (row: GeneralLedgerAccountData) => {
+      if (isDeleting) return
+      setDeleteItem(row)
+      setIsDeleteModalOpen(true)
+    },
+    [isDeleting]
+  )
 
-  const handleRowEdit = (row: GeneralLedgerAccountData) => {
-    // Find index in the full data array (not just paginated)
-    const index = generalLedgerAccountData.findIndex((item) => item.id === row.id)
-    setEditingItem(row)
-    setEditingItemIndex(index >= 0 ? index : null)
-    setPanelMode('edit')
-    setIsPanelOpen(true)
-  }
+  const handleRowEdit = useCallback(
+    (row: GeneralLedgerAccountData) => {
+      const index = generalLedgerAccountData.findIndex((item) => item.id === row.id)
+      setEditingItem(row)
+      setEditingItemIndex(index >= 0 ? index : null)
+      setPanelMode('edit')
+      setIsPanelOpen(true)
+    },
+    [generalLedgerAccountData]
+  )
 
   const handleAddNew = useCallback(() => {
     setEditingItem(null)
@@ -259,8 +268,8 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
   const handleDownloadTemplate = useCallback(async () => {
     try {
       await downloadTemplate('GeneralLedgerAccountTemplate.xlsx')
-    } catch (error) {
-      console.error('Failed to download template:', error)
+    } catch {
+      // Error handling is done by the hook
     }
   }, [downloadTemplate])
 
@@ -269,8 +278,8 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshGeneralLedgerAccounts])
 
-  const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error)
+  const handleUploadError = useCallback(() => {
+    // Error is handled by UploadDialog component
   }, [])
 
   const handleGeneralLedgerAccountAdded = useCallback(() => {
@@ -283,54 +292,59 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     handleClosePanel()
   }, [handleClosePanel, refreshGeneralLedgerAccounts])
 
-  const renderExpandedContent = (row: GeneralLedgerAccountData) => (
-    <div className="grid grid-cols-2 gap-8">
-      <div className="space-y-4">
-        <h4 className="mb-4 text-sm font-semibold text-gray-900">Details</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">
-              {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_ID')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.generalLedgerAccountId || '-'}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">
-              {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_ACCOUNT_NUMBER')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.ledgerAccountNumber || '-'}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">
-              {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_IDENTIFIER_CODE')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.branchIdentifierCode || '-'}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">
-              {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_TYPE_CODE')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.ledgerAccountTypeCode || '-'}
-            </span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-gray-600">
-              {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_DESCRIPTION')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.ledgerAccountDescription || '-'}
-            </span>
+  const renderExpandedContent = useCallback(
+    (row: GeneralLedgerAccountData) => (
+      <div className="grid grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h4 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Details
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">
+                {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_ID')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.generalLedgerAccountId || '-'}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">
+                {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_ACCOUNT_NUMBER')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.ledgerAccountNumber || '-'}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">
+                {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_IDENTIFIER_CODE')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.branchIdentifierCode || '-'}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">
+                {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_TYPE_CODE')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.ledgerAccountTypeCode || '-'}
+              </span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-gray-600 dark:text-gray-400">
+                {getGeneralLedgerAccountLabelDynamic('CDL_MGLA_DESCRIPTION')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.ledgerAccountDescription || '-'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    ),
+    [getGeneralLedgerAccountLabelDynamic]
   )
 
   return (
@@ -338,7 +352,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
       <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
         <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
           <PageActionButtons
-              entityType="generalLedgerAccount"
+            entityType="generalLedgerAccount"
             onAddNew={handleAddNew}
             onDownloadTemplate={handleDownloadTemplate}
             onUploadDetails={() => setIsUploadDialogOpen(true)}
@@ -358,13 +372,13 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
             </div>
           ) : generalLedgerAccountsError ? (
             <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-red-600">
+              <div className="text-red-600 dark:text-red-400">
                 Error loading general ledger accounts. Please try again.
               </div>
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-                <ExpandableDataTable<GeneralLedgerAccountData>
+              <ExpandableDataTable<GeneralLedgerAccountData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -386,7 +400,6 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
                 renderExpandedContent={renderExpandedContent}
                 statusOptions={statusOptions}
                 onRowDelete={handleRowDelete}
-                // onRowView={handleRowView}
                 onRowEdit={handleRowEdit}
                 sortConfig={sortConfig}
                 onSort={handleSort}

@@ -86,7 +86,9 @@ export class MasterLabelService {
       const result = await apiClient.get<MasterLabel[]>(url)
       return result || []
     } catch (error) {
-      console.error(`Error fetching ${category} labels:`, error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error fetching ${category} labels:`, error)
+      }
       return []
     }
   }

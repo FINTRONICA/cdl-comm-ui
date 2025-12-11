@@ -158,7 +158,9 @@ export class BusinessSegmentService {
       
       return []
     } catch (error) {
-      console.error('Error fetching all business segments:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching all business segments:', error)
+      }
       return []
     }
   }

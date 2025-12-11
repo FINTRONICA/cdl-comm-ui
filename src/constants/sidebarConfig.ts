@@ -183,13 +183,7 @@ export const createSidebarConfig = (
           href: '/transactions/unallocated',
           permissions: ['nav_menu_pending_tran', 'nav_menu_all'],
         },
-        // {
-        //   id: 'discarded',
-        //   label: getLabel('discarded', 'Discarded Transaction'),
-        //   icon: XCircle,
-        //   href: '/transactions/discarded',
-        //   permissions: ['nav_menu_discarded_tran', 'nav_menu_all'],
-        // },
+       
         {
           id: 'allocated',
           label: getLabel('allocated', 'Allocated Transaction'),
@@ -197,6 +191,13 @@ export const createSidebarConfig = (
           href: '/transactions/allocated',
           permissions: ['nav_menu_processed_tran', 'nav_menu_all'],
         },
+         // {
+        //   id: 'discarded',
+        //   label: getLabel('discarded', 'Discarded Transaction'),
+        //   icon: XCircle,
+        //   href: '/transactions/discarded',
+        //   permissions: ['nav_menu_discarded_tran', 'nav_menu_all'],
+        // },
         // {
         //   id: 'manual',
         //   label: getLabel('manual', 'Manual Payment'),
@@ -267,84 +268,84 @@ export const createSidebarConfig = (
     //   permissions: ['nav_menu_surety_bond', 'nav_menu_all'],
     // },
 
-    // {
-    //   id: 'system-admin',
-    //   label: getLabel('system-admin', 'SYSTEM ADMIN'),
-    //   icon: UserCog,
-    //   permissions: ['*'],
+    {
+      id: 'system-admin',
+      label: getLabel('system-admin', 'SYSTEM ADMIN'),
+      icon: UserCog,
+      permissions: ['*'],
 
-    //   items: [
-    //     {
-    //       id: 'user',
-    //       label: getLabel('user', 'User Management'),
-    //       icon: UserPen,
-    //       href: '/admin/stakeholder',
-    //       permissions: ['nav_menu_system_admin', 'nav_menu_all'],
-    //     },
-    //     {
-    //       id: 'role',
-    //       label: getLabel('role', 'Role Management'),
-    //       icon: ListChecks,
-    //       href: '/admin/entitlement',
-    //       permissions: ['nav_menu_system_admin', 'nav_menu_all'],
-    //     },
-    //     {
-    //       id: 'fee-type',
-    //       label: getLabel('fee-type', 'Fee Type'),
-    //       icon: Banknote,
-    //       href: '/admin/access-grant',
-    //       permissions: ['nav_menu_fees', 'nav_menu_all'],
-    //     },
+      items: [
+        {
+          id: 'user',
+          label: getLabel('user', 'User Management'),
+          icon: UserPen,
+          href: '/admin/stakeholder',
+          permissions: ['nav_menu_system_admin', 'nav_menu_all'],
+        },
+        {
+          id: 'role',
+          label: getLabel('role', 'Role Management'),
+          icon: ListChecks,
+          href: '/admin/entitlement',
+          permissions: ['nav_menu_system_admin', 'nav_menu_all'],
+        },
+        {
+          id: 'fee-type',
+          label: getLabel('fee-type', 'Fee Type'),
+          icon: Banknote,
+          href: '/admin/access-grant',
+          permissions: ['nav_menu_fees', 'nav_menu_all'],
+        },
 
-    //     {
-    //       id: 'workflow',
-    //       label: getLabel('workflow', 'WORKFLOW'),
-    //       icon: Workflow,
-    //       permissions: ['nav_menu_workflow', 'nav_menu_all'],
-    //       children: [
-    //         {
-    //           id: 'workflow-action',
-    //           label: getLabel('action', 'Action'),
-    //           icon: BanknoteArrowUp,
-    //           href: '/admin/workflow/action',
-    //           permissions: ['nav_menu_workflow_action', 'nav_menu_all'],
-    //         },
-    //         {
-    //           id: 'workflow-definition',
-    //           label: getLabel('definition', 'Definition'),
-    //           icon: Tv,
-    //           href: '/admin/workflow/definition',
-    //           permissions: ['nav_menu_workflow_definition', 'nav_menu_all'],
-    //         },
+        {
+          id: 'workflow',
+          label: getLabel('workflow', 'WORKFLOW'),
+          icon: Workflow,
+          permissions: ['nav_menu_workflow', 'nav_menu_all'],
+          children: [
+            {
+              id: 'workflow-action',
+              label: getLabel('action', 'Action'),
+              icon: BanknoteArrowUp,
+              href: '/admin/workflow/action',
+              permissions: ['nav_menu_workflow_action', 'nav_menu_all'],
+            },
+            {
+              id: 'workflow-definition',
+              label: getLabel('definition', 'Definition'),
+              icon: Tv,
+              href: '/admin/workflow/definition',
+              permissions: ['nav_menu_workflow_definition', 'nav_menu_all'],
+            },
 
-    //         {
-    //           id: 'workflow-stage-template',
-    //           label: getLabel('stage-template', 'Stage Template'),
-    //           icon: ArrowsUpFromLine,
-    //           href: '/admin/workflow/stage-template',
-    //           permissions: ['nav_menu_workflow_stage_template', 'nav_menu_all'],
-    //         },
-    //         {
-    //           id: 'workflow-amount-rule',
-    //           label: getLabel('amount-rule', 'Amount Rule'),
-    //           icon: HandCoins,
-    //           href: '/admin/workflow/amount-rule',
-    //           permissions: ['nav_menu_workflow_amount_rule', 'nav_menu_all'],
-    //         },
-    //         {
-    //           id: 'amount-stage-overrides',
-    //           label: getLabel('amount-stage-overrides', 'Amount Stage'),
-    //           icon: Banknote,
-    //           href: '/admin/workflow/amount-stage-override',
-    //           permissions: [
-    //             'nav_menu_workflow_amount_stage_override',
-    //             'nav_menu_all',
-    //           ],
-    //         },
-    //       ],
-    //     },
-    //   ],
-    // },
+            {
+              id: 'workflow-stage-template',
+              label: getLabel('stage-template', 'Stage Template'),
+              icon: ArrowsUpFromLine,
+              href: '/admin/workflow/stage-template',
+              permissions: ['nav_menu_workflow_stage_template', 'nav_menu_all'],
+            },
+            {
+              id: 'workflow-amount-rule',
+              label: getLabel('amount-rule', 'Amount Rule'),
+              icon: HandCoins,
+              href: '/admin/workflow/amount-rule',
+              permissions: ['nav_menu_workflow_amount_rule', 'nav_menu_all'],
+            },
+            {
+              id: 'amount-stage-overrides',
+              label: getLabel('amount-stage-overrides', 'Amount Stage'),
+              icon: Banknote,
+              href: '/admin/workflow/amount-stage-override',
+              permissions: [
+                'nav_menu_workflow_amount_stage_override',
+                'nav_menu_all',
+              ],
+            },
+          ],
+        },
+      ],
+    },
   ]
 
 export const SIDEBAR_SECTIONS: SidebarSection[] = [
@@ -379,24 +380,52 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     label: 'ENTITIES',
     icon: Building,
     items: [
+      
       {
-        id: 'developers',
-        label: 'Developers',
+        id: ' Agreement',
+        label: 'Agreement',
         icon: SquareUserRound,
-        href: '/build-partner',
+        href: '/agreement',
       },
       {
-        id: 'projects',
-        label: 'Build Partner Assets',
-        icon: BriefcaseBusiness,
-        href: '/build-partner-assets',
+        id: 'Agreement Signatory',
+        label: 'Agreement Signatory',
+        icon: SquareUserRound,
+        href: '/agreement-signatory',
       },
       {
-        id: 'investors',
-        label: 'Investor',
+        id: 'Escrow Account',
+        label: 'Escrow Account',
+        icon: Building,
+        href: '/escrow-account',
+      },
+
+      {
+        id: 'Agreement Parameters',
+        label: 'Agreement Parameters',
         icon: CircleUserRound,
-        href: '/capital-partner',
+        href: '/agreement-parameter',
       },
+
+      {
+        id: 'Agreement Fee Schedule',
+        label: 'Agreement Fee Schedule',
+        icon: BriefcaseBusiness,
+        href: '/agreement-fee-schedule',
+      },
+    ],
+  },
+  {
+    id: 'master',
+    label: 'master',
+    icon: Building,
+    items: [
+      {
+        id: 'master',
+        label: 'Customer',
+        icon: SquareUserRound,
+        href: '/master',
+      }
     ],
   },
   {
@@ -411,33 +440,27 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
         href: '/transactions/unallocated',
       },
       {
-        id: 'discarded',
-        label: 'Discarded Transaction',
-        icon: XCircle,
-        href: '/transactions/discarded',
-      },
-      {
         id: 'allocated',
         label: 'Allocated Transaction',
         icon: ListCheck,
         href: '/transactions/allocated',
-      },
+      },     
     ],
   },
-  {
-    id: 'guarantee',
-    label: 'Guarantee',
-    icon: ShieldCheckIcon,
-    href: '/surety_bond',
-    items: [],
-  },
-  {
-    id: 'fee-reconciliation',
-    label: 'Fee Reconciliation',
-    icon: TicketSlash,
-    href: '/fee-reconciliation',
-    items: [],
-  },
+  // {
+  //   id: 'guarantee',
+  //   label: 'Guarantee',
+  //   icon: ShieldCheckIcon,
+  //   href: '/surety_bond',
+  //   items: [],
+  // },
+  // {
+  //   id: 'fee-reconciliation',
+  //   label: 'Fee Reconciliation',
+  //   icon: TicketSlash,
+  //   href: '/fee-reconciliation',
+  //   items: [],
+  // },
   {
     id: 'reports',
     label: 'REPORTS',

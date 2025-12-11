@@ -70,8 +70,8 @@ export default function PartyStepperWrapper({
   const pathname = usePathname()
   const isDarkMode = useIsDarkMode()
   
-  // Detect if we're on /party/new route
-  const isNewPartyRoute = pathname === '/party/new'
+  // Detect if we're on /master/party/new route
+  const isNewPartyRoute = pathname === '/master/party/new' || pathname === '/party/new'
 
   // Check if we're in view mode (read-only)
   // Use prop if provided, otherwise read from URL params (backward compatibility)
@@ -179,10 +179,10 @@ export default function PartyStepperWrapper({
         methods.reset(processedData)
         setShouldResetForm(false)
       } catch (error) {
-        throw error
+        // Silently handle processing errors - they're usually non-critical
       }
     }
-  }, [activeStep, stepStatus, partyId, setShouldResetForm, dataProcessing, formState.shouldResetForm, methods])
+  }, [activeStep, stepStatus, partyId, formState.shouldResetForm, dataProcessing, methods, setShouldResetForm])
 
   const handleSaveAndNext = async () => {
     try {
@@ -197,14 +197,14 @@ export default function PartyStepperWrapper({
           // Only navigate if partyId exists
           if (partyId) {
           router.push(
-            `/party/${partyId}/step/${nextUrlStep}?mode=view`
+            `/master/party/${partyId}/step/${nextUrlStep}?mode=view`
           )
           } else {
             // Fallback: just update local state
             setActiveStep(nextStep)
           }
         } else {
-          router.push('/party')
+          router.push('/master/party')
         }
         return
       }
@@ -220,22 +220,21 @@ export default function PartyStepperWrapper({
           // Only navigate if partyId exists
           if (partyId) {
             const docUrl = isEditingMode
-              ? `/party/${partyId}/step/${nextUrlStep}?editing=true`
-              : `/party/${partyId}/step/${nextUrlStep}`
-            // Use hard navigation if still on /party/new
-            if (isNewPartyRoute || pathname === '/party/new') {
+              ? `/master/party/${partyId}/step/${nextUrlStep}?editing=true`
+              : `/master/party/${partyId}/step/${nextUrlStep}`
+            // Use hard navigation if still on /master/party/new or /party/new
+            if (isNewPartyRoute || pathname === '/party/new' || pathname === '/master/party/new') {
               window.location.href = docUrl
             } else {
               router.push(docUrl)
             }
           } else {
-            console.error('[PartyStepper] No partyId for document step navigation. Current URL:', pathname)
             notifications.showError('Party ID is required. Please complete Step 1 first.')
           }
           // Update local state to match navigation
           setActiveStep(nextStep)
         } else {
-          router.push('/party')
+          router.push('/master/party')
         }
         return
       }
@@ -286,9 +285,8 @@ export default function PartyStepperWrapper({
           notifications.showSuccess(
             'Party details submitted successfully! Workflow request created.'
           )
-          router.push('/party')
+          router.push('/master/party')
         } catch (error) {
-          console.error(error)
           const errorData = error as {
             response?: { data?: { message?: string } }
             message?: string
@@ -328,7 +326,6 @@ export default function PartyStepperWrapper({
       let effectivePartyId = partyId
       if (activeStep === 2 && !effectivePartyId) {
         effectivePartyId = stepStatus?.stepData?.step1?.id?.toString()
-        console.log('[PartyStepper] Step 2: Using partyId from stepStatus:', effectivePartyId)
       }
       
       // If still no partyId for Step 2, this is an error
@@ -344,13 +341,6 @@ export default function PartyStepperWrapper({
         transformers,
         effectivePartyId
       )
-      
-      console.log('[PartyStepper] Transformed step data:', {
-        step: apiStepNumber,
-        activeStep,
-        partyId: effectivePartyId,
-        hasPartyDTO: stepSpecificData && typeof stepSpecificData === 'object' && 'partyDTO' in stepSpecificData,
-      })
 
       // Add enabled and deleted fields for Step1 update
       if (activeStep === 0 && isEditingMode && stepSpecificData && typeof stepSpecificData === 'object') {
@@ -400,15 +390,6 @@ export default function PartyStepperWrapper({
         authorizedSignatoryId
       )
 
-      // Log the save response for debugging (matching DeveloperStepper pattern)
-      console.log('[PartyStepper] Save response received:', {
-        saveResponse,
-        type: typeof saveResponse,
-        hasDataId: (saveResponse as unknown as { data?: { id?: unknown } })?.data?.id,
-        hasId: (saveResponse as unknown as { id?: unknown })?.id,
-        dataIdValue: (saveResponse as unknown as { data?: { id?: unknown } })?.data?.id,
-        idValue: (saveResponse as unknown as { id?: unknown })?.id,
-      })
 
       notifications.showSuccess('Step saved successfully!')
 
@@ -418,47 +399,20 @@ export default function PartyStepperWrapper({
         if (activeStep === 0) {
           // Step 1 just saved, get the Party ID from the API response
           // Matching DeveloperStepper pattern EXACTLY: (saveResponse as any)?.data?.id || (saveResponse as any)?.id
-          // apiClient.post returns response.data, so saveResponse is already the data
-          // StepSaveResponse structure: { success: boolean, message: string, data?: { id: number } }
-          // OR Party object directly: { id: number, ... }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const savedPartyId = (saveResponse as any)?.data?.id || (saveResponse as any)?.id
-
-          console.log('[PartyStepper] Step 1 saved, extracted partyId:', {
-            savedPartyId,
-            saveResponse,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            hasDataId: (saveResponse as any)?.data?.id,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            hasId: (saveResponse as any)?.id,
-            responseType: typeof saveResponse,
-            responseKeys: saveResponse && typeof saveResponse === 'object' ? Object.keys(saveResponse) : [],
-            fullResponse: JSON.stringify(saveResponse, null, 2),
-            currentPath: typeof window !== 'undefined' ? window.location.pathname : 'N/A',
-            pathname,
-            isNewPartyRoute,
-          })
 
           if (savedPartyId) {
             // Convert to string and navigate to Step 2 using the dynamic route with the Party ID from backend
             const partyIdString = String(savedPartyId)
             // For new party creation, don't add ?editing=true (only add it when editing existing party)
             const nextUrl = isEditingMode 
-              ? `/party/${partyIdString}/step/2?editing=true`
-              : `/party/${partyIdString}/step/2`
+              ? `/master/party/${partyIdString}/step/2?editing=true`
+              : `/master/party/${partyIdString}/step/2`
             
-            console.log('[PartyStepper] CRITICAL: Navigating from /party/new to:', nextUrl, {
-              from: pathname,
-              isNewPartyRoute,
-              isEditingMode,
-              savedPartyId,
-              partyIdString,
-            })
-            
-            // ALWAYS use hard navigation when on /party/new to ensure route change
+            // ALWAYS use hard navigation when on /master/party/new or /party/new to ensure route change
             // This is critical - Next.js needs a full page reload to switch from static to dynamic route
-            if (isNewPartyRoute || pathname === '/party/new' || !partyId) {
-              console.log('[PartyStepper] FORCING hard navigation using window.location.href')
+            if (isNewPartyRoute || pathname === '/party/new' || pathname === '/master/party/new' || !partyId) {
               window.location.href = nextUrl
               return // Exit early - page will reload
             } else {
@@ -468,15 +422,7 @@ export default function PartyStepperWrapper({
             
             // Don't update local state here - let the new page handle it via initialStep prop
           } else {
-            console.error('[PartyStepper] No partyId found in save response. Full response:', saveResponse)
-            console.error('[PartyStepper] Response structure:', {
-              type: typeof saveResponse,
-              isObject: typeof saveResponse === 'object',
-              keys: saveResponse && typeof saveResponse === 'object' ? Object.keys(saveResponse) : [],
-              stringified: JSON.stringify(saveResponse, null, 2),
-              currentPath: typeof window !== 'undefined' ? window.location.pathname : 'N/A',
-            })
-            notifications.showError('Failed to get Party ID from server. Please check the console for details.')
+            notifications.showError('Failed to get Party ID from server. Please try again.')
             // Fallback to local state if no Party ID
             setActiveStep((prev) => prev + 1)
           }
@@ -485,42 +431,25 @@ export default function PartyStepperWrapper({
           const nextStep = activeStep + 1
           // Ensure editing mode is preserved in URL
           const nextUrl = isEditingMode
-            ? `/party/${partyId}/step/${nextStep + 1}?editing=true`
-            : `/party/${partyId}/step/${nextStep + 1}`
-          console.log('[PartyStepper] Navigating to next step:', nextUrl, 'from current URL:', pathname)
+            ? `/master/party/${partyId}/step/${nextStep + 1}?editing=true`
+            : `/master/party/${partyId}/step/${nextStep + 1}`
           router.push(nextUrl)
           // Also update local state to match navigation
           setActiveStep(nextStep)
         } else {
-          // If we're on /party/new and don't have partyId, we need to go back to Step 1
+          // If we're on /master/party/new and don't have partyId, we need to go back to Step 1
           // This shouldn't happen if Step 1 was saved correctly
-          console.error('[PartyStepper] No partyId available for navigation. Current state:', {
-            activeStep,
-            partyId,
-            isEditingMode,
-            currentUrl: pathname,
-            isNewPartyRoute,
-          })
-          
-          // If we're on /party/new and somehow got past Step 1 without partyId, redirect to Step 1
-          if (isNewPartyRoute || pathname === '/party/new') {
-            console.warn('[PartyStepper] On /party/new without partyId, redirecting to Step 1')
-            // Don't navigate, just show error and stay on current step
-            notifications.showError('Party ID is required. Please complete Step 1 first.')
-          } else {
-            notifications.showError('Party ID is required. Please complete Step 1 first.')
-            // Fallback to local state if no Party ID
-            setActiveStep((prev) => prev + 1)
-          }
+          notifications.showError('Party ID is required. Please complete Step 1 first.')
+          // Fallback to local state if no Party ID
+          setActiveStep((prev) => prev + 1)
         }
       } else {
         // If this is the last step, redirect to party list
-        router.push('/party')
+        router.push('/master/party')
         notifications.showSuccess('All steps completed successfully!')
       }
     } catch (error: unknown) {
       setIsSaving(false)
-      console.error('Error saving step:', error)
       const errorData = error as {
         response?: { data?: { message?: string } }
         message?: string
@@ -541,12 +470,9 @@ export default function PartyStepperWrapper({
       // Only navigate if partyId exists, otherwise just update local state
       if (partyId) {
         const backUrl = isEditingMode
-          ? `/party/${partyId}/step/${previousStep + 1}?editing=true`
-          : `/party/${partyId}/step/${previousStep + 1}`
-        console.log('[PartyStepper] Navigating back to:', backUrl, 'from current URL:', pathname)
+          ? `/master/party/${partyId}/step/${previousStep + 1}?editing=true`
+          : `/master/party/${partyId}/step/${previousStep + 1}`
         router.push(backUrl)
-      } else {
-        console.warn('[PartyStepper] No partyId for back navigation. Current URL:', pathname)
       }
       // Always update local state regardless of navigation
       setActiveStep(previousStep)
@@ -614,7 +540,7 @@ export default function PartyStepperWrapper({
           >
             <Button
               variant="outlined"
-              onClick={() => router.push('/party')}
+              onClick={() => router.push('/master/party')}
               sx={{
                 fontFamily: 'Outfit, sans-serif',
                 fontWeight: 500,

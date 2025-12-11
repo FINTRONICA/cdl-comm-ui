@@ -472,7 +472,7 @@ const Step3 = ({ partyId: propPartyId, onEditStep, isReadOnly = false }: Step3Pr
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               {renderDisplayField(
-                getPartyLabelDynamic('CDL_MP_PARTY_EMAIL_ID'),
+                getPartyLabelDynamic('CDL_MP_PARTY_EMAIL'),
                 partyDetails.emailAddress
               )}
             </Grid>

@@ -45,26 +45,31 @@ export const MASTER_LABELS = {
   'CDL_MPP_NAME': 'Product Program Name', // text field
   'CDL_MPP_DESCRIPTION': 'Product Program Description', // text field
   'CDL_MPP_STATUS': ' Status', // 
+  
 
   // Beneficiary Details STEPR  there we can use DOCUMENT  uploader 
-  'CDL_MB_ID': 'Beneficiary ID', // Auto Generated
-  'CDL_MB_NAME': 'Beneficiary Name', // text field
-  'CDL_MB_ADDRESS': 'Beneficiary Address ', // text field
-  'CDL_MB_MOBILE_NO': 'Beneficiary Mobile No', // text field
-  'CDL_MB_TELEPHONE_NO': 'Beneficiary Telephone No', // text field
-  'CDL_MB_ROLE': 'Beneficiary Role ', // Dropdown from API
-  'CDL_MB_TRANSFER_TYPE': 'Beneficiary Transfer Type', // text from API
-  'CDL_MB_DESCRIPTION': 'Beneficiary Description', // text field
-  'CDL_MB_NAME': 'Beneficiary Name', // Fetch from API
-  'CDL_MB_ACCOUNT_NUMBER': 'Beneficiary Account Numbe/IBAN', // text from API 
-  'CDL_MB_ACCOUNT_TYPE': 'Beneficiary Account Type', // dropdown 
-  'CDL_MB_BANK_SWIFT_CODE': 'Beneficiary Bank Swift/BIC ', // Fetch from API
-  'CDL_MB_BANK_NAME': 'Beneficiary Bank Name', // Fetch from  CORE API
-  'CDL_MB_ROUTING_CODE': 'Beneficiary Routing Code', // text from API
-  'CDL_MB_REMARKS': ' Remarks', // text from API
-  'CDL_MB_STATUS': ' Status', // dropdown from API
+  'CDL_MB_BENEFICIARY_ID': 'Beneficiary ID  ', // Auto Generated
+  'CDL_MB_BENEFICIARY_NAME': ' Name', // text field
+  'CDL_MB_BENEFICIARY_ADDRESS': ' Address ', // text field
+  'CDL_MB_BENEFICIARY_MOBILE_NO': '  Mobile number', // text field
+  'CDL_MB_BENEFICIARY_TELEPHONE_NO': ' Telephone number', // text field
+  'CDL_MB_BENEFICIARY_ROLE': ' Role ', // Dropdown from API
+  'CDL_MB_BENEFICIARY_TRANSFER_TYPE': '  Transfer type', // text from API
+  'CDL_MB_BENEFICIARY_DESCRIPTION': ' Description', // text field
+  'CDL_MB_BENEFICIARY_NAME': 'Beneficiary Name', // Fetch from API
+  'CDL_MB_BENEFICIARY_ACCOUNT_NUMBER': ' Account Numbe/IBAN', // text from API 
+  'CDL_MB_BENEFICIARY_ACCOUNT_TYPE': ' Account Type', // dropdown 
+  'CDL_MB_BANK_NAME': ' Bank name', // Fetch from  CORE API
+  'CDL_MB_BENEFICIARY_ROUTING_CODE': 'Routing code', // text from API
+  'CDL_MB_BENEFICIARY_BANK_IFSC_CODE': ' Bank IFSC/BIC ', // Fetch from API
+  'CDL_MB_BENEFICIARY_BANK_NAME': ' Bank Name', // Fetch from CORE API
+  'CDL_MB_BENEFICIARY_DETAILS': 'Beneficiary Details', // text field
+
+  'CDL_MB_BENEFICIARY_REMARKS': ' Remarks', // text from API
+  'CDL_MB_BENEFICIARY_STATUS': ' Status', // dropdown from API
   'CDL_MB_ACTIONS': 'Beneficiary Actions', // dropdown from API
   'CDL_MB_DOCUMENT': 'Beneficiary Document', // document uploader
+  
 
   // Escrow Account Details STEPPER  there we can use DOCUMENT  uploader 
   'CDL_EA_ID': 'Escrow Account ID', // Auto Generated
@@ -102,6 +107,8 @@ export const MASTER_LABELS = {
   'CDL_MGLA_DESCRIPTION': ' General Ledger Account Description', //  Fetch from from API
   'CDL_MGLA_TYPE_CODE': ' General Ledger Account Type Code', // Fetch from from API
   'CDL_MGLA_STATUS': ' Status', // 
+  'CDL_MGLA_NAME': 'General Ledger Account', // text field
+
 
   // Country Details
   'CDL_MCNT_ID': 'Country ID', // Auto Generated
@@ -118,6 +125,7 @@ export const MASTER_LABELS = {
 
   // Common UI labels
   'CDL_COMMON_ACTION': 'Action',
+  'CDL_COMMON_STATUS': 'Status',
   'CDL_COMMON_ACTIONS': 'Actions',
   'CDL_COMMON_RETRY': 'Retry',
   'CDL_COMMON_CANCEL': 'Cancel',
@@ -133,7 +141,27 @@ export const MASTER_LABELS = {
   'CDL_COMMON_SUBMIT_WAIT': 'Please wait for dropdown options to load before submitting.',
   'Documents (Optional)': 'CDL_DOCUMENT',  //stepper label
 
-
+  // tab labels
+  'CDL_TAB_BENEFICIARY': 'Beneficiary',
+  'CDL_TAB_ESCROW_ACCOUNT': 'Escrow Account',
+  'CDL_TAB_AGREEMENT_SEGMENT': 'Agreement Segment',
+  'CDL_TAB_GENERAL_LEDGER_ACCOUNT': 'General Ledger Account',
+  'CDL_TAB_COUNTRY': 'Country',
+  'CDL_TAB_CURRENCY': 'Currency',
+  'CDL_TAB_COMMON': 'Common',
+  'CDL_TAB_CUSTOMER': 'Customer',
+  'CDL_TAB_ACCOUNT': 'Account',
+  'CDL_TAB_INVESTMENT': 'Investment',
+  'CDL_TAB_SEGMENT': 'Segment',
+  'CDL_TAB_SUB_SEGMENT': 'Sub Segment',
+  'CDL_TAB_DEAL_TYPE': 'Deal Type',
+  'CDL_TAB_DEAL_SUB_TYPE': 'Deal Sub Type',
+  'CDL_TAB_PRODUCT': 'Product',
+  'CDL_TAB_DEAL_SEGMENT': 'Deal Segment',
+  'CDL_TAB_LEDGER_ACCOUNT': 'Ledger Account',
+  'CDL_TAB_COUNTRY': 'Country',
+  'CDL_TAB_CURRENCY': 'Currency',
+  'CDL_TAB_COMMON': 'Common',
 
 
 }

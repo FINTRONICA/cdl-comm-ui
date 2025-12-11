@@ -402,7 +402,7 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
   const config = entityConfig[entityType]
 
   // Safety check: if config is undefined, log error and use defaults
-  if (!config) {
+  if (!config && process.env.NODE_ENV === 'development') {
     console.error(`[PageActionButtons] No config found for entityType: ${entityType}. Available types:`, Object.keys(entityConfig))
   }
 
@@ -454,7 +454,9 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
 
   const handleUploadError = useCallback((error: string) => {
     // Handle upload error - can be customized per entity if needed
-    console.error('Upload error:', error)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Upload error:', error)
+    }
   }, [])
 
   // Get default upload endpoint based on entity type
@@ -499,7 +501,7 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
             arrow
             placement="bottom"
           >
-            <>
+            <span className="inline-flex items-center">
               {!isDownloading && (
                 <img src="/download icon.svg" alt="download icon" />
               )}
@@ -508,7 +510,7 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
                   <Loader />
                 </span>
               )}
-            </>
+            </span>
           </Tooltip>
         </PermissionButton>
       )}

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback, useMemo } from 'react'
 
 interface Tab {
   id: string
@@ -12,29 +12,53 @@ interface TabNavigationProps {
   className?: string
 }
 
-export const TabNavigation: React.FC<TabNavigationProps> = ({
+export const TabNavigation: React.FC<TabNavigationProps> = React.memo(({
   tabs,
   activeTab,
   onTabChange,
   className = '',
 }) => {
-  return (
-    <div className={`${className}`}>
-      <nav className="flex justify-between" aria-label="Tabs">
-        {tabs.map((tab) => (
+  // Memoize tab click handlers to prevent unnecessary re-renders
+  const handleTabClick = useCallback(
+    (tabId: string) => {
+      if (tabId !== activeTab) {
+        onTabChange(tabId)
+      }
+    },
+    [activeTab, onTabChange]
+  )
+
+  // Memoize tab buttons to prevent re-renders
+  const tabButtons = useMemo(
+    () =>
+      tabs.map((tab) => {
+        const isActive = activeTab === tab.id
+        return (
           <button
             key={tab.id}
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => handleTabClick(tab.id)}
             className={`relative w-[100%] font-sans text-sm leading-5 tracking-normal transition-colors duration-200 h-[48px] cursor-pointer ${
-              activeTab === tab.id
+              isActive
                 ? 'text-[#155DFC] dark:text-blue-400 border-b-2 border-[#2563EB] dark:border-blue-400 font-medium'
                 : 'text-[#1F2937] dark:text-gray-300 hover:text-[#155DFC] dark:hover:text-blue-400 hover:font-medium border-b border-[#D1D5DB] dark:border-gray-700 font-normal'
             }`}
+            aria-selected={isActive}
+            role="tab"
           >
             {tab.label}
           </button>
-        ))}
+        )
+      }),
+    [tabs, activeTab, handleTabClick]
+  )
+
+  return (
+    <div className={className}>
+      <nav className="flex justify-between" aria-label="Tabs" role="tablist">
+        {tabButtons}
       </nav>
     </div>
   )
-}
+})
+
+TabNavigation.displayName = 'TabNavigation'

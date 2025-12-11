@@ -174,22 +174,41 @@ export const PartyStep2Schema = z.object({
     .max(200, 'Address Line 3 must be 200 characters or less'),
 
   telephoneNumber: z
-    .string()
-    .max(20, 'Telephone Number must be 20 characters or less')
-    .regex(/^[\d\s\-\(\)]*$/, 'Telephone Number must be valid')
-    .optional()
-    .or(z.literal('')),
+    .union([
+      z.string().max(20, 'Telephone Number must be 20 characters or less'),
+      z.literal(''),
+    ])
+    .refine(
+      (val) => {
+        if (!val || val === '') return true
+        // Allow digits, spaces, hyphens, parentheses, plus signs, and forward slashes
+        return /^[\d\s\-\(\)\+\/]*$/.test(val)
+      },
+      'Telephone Number must be valid'
+    )
+    .optional(),
 
   mobileNumber: z
-    .string()
-    .max(20, 'Mobile Number must be 20 characters or less')
-    .regex(/^[\d\s\-\(\)]*$/, 'Mobile Number must be valid')
-    .optional()
-    .or(z.literal('')),
+    .union([
+      z.string().max(20, 'Mobile Number must be 20 characters or less'),
+      z.literal(''),
+    ])
+    .refine(
+      (val) => {
+        if (!val || val === '') return true
+        // Allow digits, spaces, hyphens, parentheses, plus signs, and forward slashes
+        return /^[\d\s\-\(\)\+\/]*$/.test(val)
+      },
+      'Mobile Number must be valid'
+    )
+    .optional(),
 
   emailAddress: z
     .string()
-    .email('Email Address must be valid')
+    .refine(
+      (val) => !val || val === '' || z.string().email().safeParse(val).success,
+      'Email Address must be valid'
+    )
     .max(100, 'Email Address must be 100 characters or less')
     .optional()
     .or(z.literal('')),
@@ -202,8 +221,13 @@ export const PartyStep2Schema = z.object({
 
   signatoryCifNumber: z
     .string()
-    .min(1, 'Signatory CIF Number is required')
-    .max(20, 'Signatory CIF Number must be 20 characters or less'),
+    .max(20, 'Signatory CIF Number must be 20 characters or less')
+    .refine(
+      (val) => !val || val === '' || val.length >= 1,
+      'Invalid input'
+    )
+    .optional()
+    .or(z.literal('')),
 
   notificationEmailAddress: z
     .string()

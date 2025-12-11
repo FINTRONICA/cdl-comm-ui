@@ -33,13 +33,11 @@ function EscrowAccountStepPageContent() {
 
   useEffect(() => {
     if (!escrowAccountId || escrowAccountId === 'undefined' || escrowAccountId === 'null') {
-      console.error('[EscrowAccountStepPage] Invalid escrowAccountId:', escrowAccountId)
       router.push('/master/escrow-account')
       return
     }
 
     if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 3) {
-      console.error('[EscrowAccountStepPage] Invalid stepNumber:', stepNumber)
       router.push(
         `/master/escrow-account/${escrowAccountId}/step/1${editing ? '?editing=true' : ''}`
       )
@@ -52,10 +50,12 @@ function EscrowAccountStepPageContent() {
   useEffect(() => {
     const fetchEscrowAccountData = async () => {
       if (!escrowAccountId || escrowAccountId === 'undefined' || escrowAccountId === 'null') {
-        console.error(
-          '[EscrowAccountStepPage] Invalid escrowAccountId, cannot fetch data:',
-          escrowAccountId
-        )
+        if (process.env.NODE_ENV === 'development') {
+          console.error(
+            '[EscrowAccountStepPage] Invalid escrowAccountId, cannot fetch data:',
+            escrowAccountId
+          )
+        }
         setError('Invalid escrow account ID')
         setIsLoadingData(false)
         return
@@ -64,14 +64,20 @@ function EscrowAccountStepPageContent() {
       try {
         setIsLoadingData(true)
         setError(null)
-        console.log('[EscrowAccountStepPage] Fetching escrow account data for ID:', escrowAccountId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[EscrowAccountStepPage] Fetching escrow account data for ID:', escrowAccountId)
+        }
         const data = await escrowAccountService.getEscrowAccount(escrowAccountId)
-        console.log('[EscrowAccountStepPage] Escrow account data fetched:', data)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[EscrowAccountStepPage] Escrow account data fetched:', data)
+        }
         setEscrowAccountData(data)
       } catch (err: unknown) {
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to fetch escrow account data'
-        console.error('[EscrowAccountStepPage] Error fetching escrow account data:', err)
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[EscrowAccountStepPage] Error fetching escrow account data:', err)
+        }
         setError(errorMessage)
       } finally {
         setIsLoadingData(false)
@@ -86,7 +92,9 @@ function EscrowAccountStepPageContent() {
     ) {
       fetchEscrowAccountData()
     } else if (!escrowAccountId || escrowAccountId === 'undefined' || escrowAccountId === 'null') {
-      console.error('[EscrowAccountStepPage] Missing or invalid escrowAccountId:', escrowAccountId)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[EscrowAccountStepPage] Missing or invalid escrowAccountId:', escrowAccountId)
+      }
       setError('Escrow Account ID is required')
       setIsLoadingData(false)
     }

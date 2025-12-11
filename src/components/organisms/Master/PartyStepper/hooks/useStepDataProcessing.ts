@@ -10,7 +10,11 @@ export const useStepDataProcessing = () => {
   }, [])
 
   const shouldProcessStepData = useCallback((stepStatus: any, partyId?: string, shouldResetForm?: boolean) => {
-    return !!(stepStatus && partyId && shouldResetForm)
+    // Process step data when (matching DeveloperStepper pattern):
+    // 1. stepStatus exists (data is loaded)
+    // 2. partyId exists (editing existing party) OR stepStatus has stepData (data available)
+    // 3. shouldResetForm is true (form needs to be initialized/reset)
+    return !!(stepStatus && stepStatus.stepData && (partyId || stepStatus.stepData) && shouldResetForm)
   }, [])
 
   return {

@@ -31,7 +31,6 @@ import {
   type Party,
 } from '@/services/api/masterApi/Customer/partyService'
 import type { PartyFilters } from '@/services/api/masterApi/Customer/partyService'
-import { useSidebarConfig } from '@/hooks/useSidebarConfig'
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { TEMPLATE_FILES } from '@/constants'
 import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
@@ -123,12 +122,6 @@ const PartiesPageImpl: React.FC = () => {
   const [currentApiSize, setCurrentApiSize] = useState(20)
   const [filters] = useState<PartyFilters>({})
 
-  const { getLabelResolver } = useSidebarConfig()
-
-  const partiesPageTitle = getLabelResolver
-    ? getLabelResolver('parties', 'Parties')
-    : 'Parties'
-
   const {
     data: apiResponse,
     isLoading: partiesLoading,
@@ -142,19 +135,11 @@ const PartiesPageImpl: React.FC = () => {
   const confirmDelete = useDeleteConfirmation()
 
   const partiesData = useMemo(() => {
-    console.log('[PartiesPage] apiResponse:', apiResponse)
-    console.log('[PartiesPage] apiResponse?.content:', apiResponse?.content)
-    console.log('[PartiesPage] apiResponse?.content length:', apiResponse?.content?.length)
-    
     if (apiResponse?.content && Array.isArray(apiResponse.content)) {
-      const mapped = apiResponse.content.map((item: Party) => {
-        console.log('[PartiesPage] Mapping party item:', item)
-        return mapPartyToUIData(item)
-      }) as PartyData[]
-      console.log('[PartiesPage] Mapped parties data:', mapped)
-      return mapped
+      return apiResponse.content.map((item: Party) =>
+        mapPartyToUIData(item)
+      ) as PartyData[]
     }
-    console.warn('[PartiesPage] No content in apiResponse or content is not an array')
     return []
   }, [apiResponse])
 
@@ -170,49 +155,52 @@ const PartiesPageImpl: React.FC = () => {
     [partyLabels, currentLanguage, getLabel]
   )
 
-  const tableColumns = [
-    {
-      key: 'partyFullName',
-      label: getPartyLabelDynamic('CDL_MP_PARTY_NAME'),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-    },
-    {
-      key: 'id',
-      label: getPartyLabelDynamic('CDL_MP_PARTY_ID'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'partyCifNumber',
-      label: getPartyLabelDynamic('CDL_MP_PARTY_CIF_NUMBER'),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-    },
-    {
-      key: 'emailAddress',
-      label: getPartyLabelDynamic('CDL_MP_PARTY_EMAIL'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'status',
-      label: getPartyLabelDynamic('CDL_MP_PARTY_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: getPartyLabelDynamic('CDL_MP_PARTY_ACTIONS'),
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  const tableColumns = useMemo(
+    () => [
+      {
+        key: 'partyFullName',
+        label: getPartyLabelDynamic('CDL_MP_PARTY_NAME'),
+        type: 'text' as const,
+        width: 'w-40',
+        sortable: true,
+      },
+      {
+        key: 'id',
+        label: getPartyLabelDynamic('CDL_MP_PARTY_ID'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'partyCifNumber',
+        label: getPartyLabelDynamic('CDL_MP_PARTY_CIF_NUMBER'),
+        type: 'text' as const,
+        width: 'w-40',
+        sortable: true,
+      },
+      {
+        key: 'emailAddress',
+        label: getPartyLabelDynamic('CDL_MP_PARTY_EMAIL'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'status',
+        label: getPartyLabelDynamic('CDL_COMMON_STATUS'),
+        type: 'status' as const,
+        width: 'w-32',
+        sortable: true,
+      },
+      {
+        key: 'actions',
+        label: getPartyLabelDynamic('CDL_COMMON_ACTION'),
+        type: 'actions' as const,
+        width: 'w-20',
+      },
+    ],
+    [getPartyLabelDynamic]
+  )
 
   const {
     search,
@@ -244,23 +232,29 @@ const PartiesPageImpl: React.FC = () => {
     initialRowsPerPage: currentApiSize,
   })
 
-  const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const hasSearch = Object.values(search).some((value) => value.trim())
 
-    if (hasSearch) {
-      localHandlePageChange(newPage)
-    } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
-    }
-  }
+      if (hasSearch) {
+        localHandlePageChange(newPage)
+      } else {
+        setCurrentApiPage(newPage)
+        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      }
+    },
+    [search, currentApiSize, localHandlePageChange, updatePagination]
+  )
 
-  const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+  const handleRowsPerPageChange = useCallback(
+    (newRowsPerPage: number) => {
+      setCurrentApiSize(newRowsPerPage)
+      setCurrentApiPage(1)
+      updatePagination(0, newRowsPerPage)
+      localHandleRowsPerPageChange(newRowsPerPage)
+    },
+    [localHandleRowsPerPageChange, updatePagination]
+  )
 
   const apiTotal = apiPagination?.totalElements || 0
   const apiTotalPages = apiPagination?.totalPages || 1
@@ -287,49 +281,61 @@ const PartiesPageImpl: React.FC = () => {
     iconAlt?: string
   }> = []
 
-  const handleRowDelete = (row: PartyData) => {
-    if (isDeleting) {
-      return
-    }
+  const handleRowDelete = useCallback(
+    (row: PartyData) => {
+      if (isDeleting) {
+        return
+      }
 
-    confirmDelete({
-      itemName: `party: ${row.partyFullName}`,
-      itemId: row.id,
-      onConfirm: async () => {
-        try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(row.id)
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(`Failed to delete party: ${errorMessage}`)
+      confirmDelete({
+        itemName: `party: ${row.partyFullName}`,
+        itemId: row.id,
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteMutation.mutateAsync(row.id)
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown error occurred'
+            if (process.env.NODE_ENV === 'development') {
+              console.error(`Failed to delete party: ${errorMessage}`)
+            }
 
-          throw error
-        } finally {
-          setIsDeleting(false)
-        }
-      },
-    })
-  }
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
+    },
+    [isDeleting, confirmDelete, deleteMutation]
+  )
 
-  const handleRowView = (row: PartyData) => {
-    router.push(`/party/${row.id}/step/1?view=true`)
-  }
+  const handleRowView = useCallback(
+    (row: PartyData) => {
+      router.push(`/master/party/${row.id}/step/1?mode=view`)
+    },
+    [router]
+  )
 
-  const handleRowEdit = (row: PartyData) => {
-    router.push(`/party/${row.id}/step/1?editing=true`) // Changed from ?edit=true to ?editing=true to match Capital Partner pattern
-  }
+  const handleRowEdit = useCallback(
+    (row: PartyData) => {
+      router.push(`/master/party/${row.id}/step/1?editing=true`)
+    },
+    [router]
+  )
 
-  const handleDownloadTemplate = async () => {
+  const handleDownloadTemplate = useCallback(async () => {
     try {
       await downloadTemplate(TEMPLATE_FILES.BUILD_PARTNER)
     } catch {
       // Silently handle download errors
     }
-  }
+  }, [downloadTemplate])
 
-  const renderExpandedContent = () => (
-    <div className="grid grid-cols-2 gap-8"></div>
+  const renderExpandedContent = useCallback(
+    () => <div className="grid grid-cols-2 gap-8"></div>,
+    []
   )
 
   return (
@@ -411,10 +417,10 @@ const PartiesPageImpl: React.FC = () => {
                   onRowDelete={handleRowDelete}
                   onRowView={handleRowView}
                   onRowEdit={handleRowEdit}
-                  deletePermissions={['party_delete']}
-                  viewPermissions={['party_view']}
-                  editPermissions={['party_update']}
-                  updatePermissions={['party_update']}
+                  deletePermissions={['*']}
+                  viewPermissions={['*']}
+                  editPermissions={['*']}
+                  updatePermissions={['*']}
                   sortConfig={sortConfig}
                   onSort={handleSort}
                 />

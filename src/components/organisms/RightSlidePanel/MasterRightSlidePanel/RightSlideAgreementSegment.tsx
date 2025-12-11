@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -12,13 +12,12 @@ import {
   Snackbar,
   InputAdornment,
 } from '@mui/material'
-import {
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
+import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { alpha, useTheme } from '@mui/material/styles'
 import {
   useSaveAgreementSegment,
   useAgreementSegment,
@@ -29,13 +28,12 @@ import {
   type AgreementSegmentFormData,
 } from '@/lib/validation/masterValidation/agreementSegmentSchemas'
 import type {
-        CreateAgreementSegmentRequest,
+  CreateAgreementSegmentRequest,
   UpdateAgreementSegmentRequest,
   AgreementSegment,
   TaskStatusDTO,
 } from '@/services/api/masterApi/Customer/agreementSegmentService'
 import { getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from '../panelTheme'
 import { useTaskStatuses } from '@/hooks/master/CustomerHook/useTaskStatus'
 import { idService } from '@/services/api/developerIdService'
@@ -50,16 +48,22 @@ interface RightSlideAgreementSegmentPanelProps {
   ) => void
   title?: string
   mode?: 'add' | 'edit'
-              actionData?: AgreementSegment | null
+  actionData?: AgreementSegment | null
   agreementSegmentIndex?: number | undefined
   taskStatusOptions?: TaskStatusDTO[]
   taskStatusLoading?: boolean
   taskStatusError?: unknown
 }
 
-export const RightSlideAgreementSegmentPanel: React.FC<
-    RightSlideAgreementSegmentPanelProps
-> = ({
+const DEFAULT_FORM_VALUES = {
+  agreementSegmentId: '',
+  segmentName: '',
+  segmentDescription: '',
+  active: true,
+  taskStatusDTO: null,
+} as const
+
+export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmentPanelProps> = ({
   isOpen,
   onClose,
   onAgreementSegmentAdded,
@@ -67,29 +71,23 @@ export const RightSlideAgreementSegmentPanel: React.FC<
   mode = 'add',
   actionData,
   agreementSegmentIndex,
-  taskStatusOptions: _propTaskStatusOptions = [], // eslint-disable-line @typescript-eslint/no-unused-vars
+  taskStatusOptions: _propTaskStatusOptions,
   taskStatusLoading: propTaskStatusLoading = false,
   taskStatusError: propTaskStatusError = null,
 }) => {
   const theme = useTheme()
-  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [generatedId, setGeneratedId] = useState<string>('')
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
-  
-  // Check if we're in edit mode
+
   const isEditMode = mode === 'edit'
-  const isReadOnly = false // Can be made a prop if needed
+  const saveAgreementSegmentMutation = useSaveAgreementSegment()
 
-    const saveAgreementSegmentMutation = useSaveAgreementSegment()
-
-      // Fetch full agreement segment data when in edit mode
-  const { 
-    data: apiAgreementSegmentData, 
-    isLoading: isLoadingApiData 
-  } = useAgreementSegment(
-    mode === 'edit' && actionData?.id ? String(actionData.id) : null
+  // Fetch full agreement segment data when in edit mode
+  const { data: apiAgreementSegmentData } = useAgreementSegment(
+    isEditMode && actionData?.id ? String(actionData.id) : null
   )
 
   // Fetch task statuses
@@ -98,7 +96,7 @@ export const RightSlideAgreementSegmentPanel: React.FC<
   const taskStatusError = propTaskStatusError || null
 
   // Dynamic labels
-  const getAgreementSegmentLabelDynamic = useCallback(
+  const getLabel = useCallback(
     (configId: string): string => {
       return getMasterLabel(configId)
     },
@@ -114,18 +112,12 @@ export const RightSlideAgreementSegmentPanel: React.FC<
     watch,
     formState: { errors },
   } = useForm<AgreementSegmentFormData & { agreementSegmentId?: string }>({
-    defaultValues: {
-      agreementSegmentId: '',
-      segmentName: '',
-      segmentDescription: '',
-      active: true,
-      taskStatusDTO: null,
-    },
+    defaultValues: DEFAULT_FORM_VALUES,
     mode: 'onChange',
   })
 
-  // Initialize business segment ID from form value
-  React.useEffect(() => {
+  // Sync generatedId with form value
+  useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === 'agreementSegmentId' && value.agreementSegmentId) {
         setGeneratedId(value.agreementSegmentId)
@@ -134,8 +126,8 @@ export const RightSlideAgreementSegmentPanel: React.FC<
     return () => subscription.unsubscribe()
   }, [watch])
 
-  // Function to generate new agreement segment ID
-  const handleGenerateNewId = async () => {
+  // Generate new agreement segment ID
+  const handleGenerateNewId = useCallback(async () => {
     try {
       setIsGeneratingId(true)
       const newIdResponse = idService.generateNewId('MAS')
@@ -144,57 +136,56 @@ export const RightSlideAgreementSegmentPanel: React.FC<
         shouldValidate: true,
         shouldDirty: true,
       })
-    } catch {
-      // Handle error silently
+    } catch (error) {
+      setErrorMessage('Failed to generate ID. Please try again.')
     } finally {
       setIsGeneratingId(false)
     }
-  }
+  }, [setValue])
 
-  // Track the last reset ID and mode to prevent unnecessary resets
-  const lastResetIdRef = React.useRef<string | number | null>(null)
-  const lastModeRef = React.useRef<'add' | 'edit' | null>(null)
-  const lastIsOpenRef = React.useRef<boolean>(false)
+  // Track form reset state
+  const lastResetIdRef = useRef<string | number | null>(null)
+  const lastModeRef = useRef<'add' | 'edit' | null>(null)
+  const lastIsOpenRef = useRef<boolean>(false)
 
-  // Helper function to transform data to form format
-  const transformDataToForm = React.useCallback((data: AgreementSegment | null) => {
+  // Transform data to form format
+  const transformDataToForm = useCallback((data: AgreementSegment | null) => {
     if (!data) return null
 
-    // Handle both API format (segmentName) and table format (agreementSegmentName)
-    const segmentName = 'segmentName' in data && data.segmentName
-      ? data.segmentName 
-      : 'agreementSegmentName' in data && (data as any).agreementSegmentName
-        ? (data as any).agreementSegmentName 
-        : ''
-    
-    const segmentDescription = 'segmentDescription' in data && data.segmentDescription
-      ? data.segmentDescription
-      : 'agreementSegmentDescription' in data && (data as any).agreementSegmentDescription
-        ? (data as any).agreementSegmentDescription
-        : ''
+    const segmentName =
+      'segmentName' in data && data.segmentName
+        ? data.segmentName
+        : 'agreementSegmentName' in data && (data as any).agreementSegmentName
+          ? (data as any).agreementSegmentName
+          : ''
 
-    const agreementSegmentId = data.uuid || (data.id ? `MAS-${data.id}` : '') || ''
+    const segmentDescription =
+      'segmentDescription' in data && data.segmentDescription
+        ? data.segmentDescription
+        : 'agreementSegmentDescription' in data &&
+            (data as any).agreementSegmentDescription
+          ? (data as any).agreementSegmentDescription
+          : ''
+
+    const agreementSegmentId =
+      data.uuid || (data.id ? `MAS-${data.id}` : '') || ''
 
     return {
       agreementSegmentId,
       segmentName: segmentName || '',
       segmentDescription: segmentDescription || '',
       active: 'active' in data ? (data.active ?? true) : true,
-      taskStatusDTO: data.taskStatusDTO?.id ? { id: data.taskStatusDTO.id } : null,
+      taskStatusDTO: data.taskStatusDTO?.id
+        ? { id: data.taskStatusDTO.id }
+        : null,
     }
   }, [])
 
   // Reset form when panel opens/closes or mode/data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) {
       if (lastIsOpenRef.current) {
-        reset({
-          agreementSegmentId: '',
-          segmentName: '',
-          segmentDescription: '',
-          active: true,
-          taskStatusDTO: null,
-        })
+        reset(DEFAULT_FORM_VALUES)
         setGeneratedId('')
         lastResetIdRef.current = null
         lastModeRef.current = null
@@ -203,7 +194,6 @@ export const RightSlideAgreementSegmentPanel: React.FC<
       return
     }
 
-    // Mark panel as open
     if (!lastIsOpenRef.current) {
       lastIsOpenRef.current = true
     }
@@ -211,14 +201,8 @@ export const RightSlideAgreementSegmentPanel: React.FC<
     // Handle ADD mode
     if (mode === 'add') {
       if (lastModeRef.current !== 'add') {
-      reset({
-        agreementSegmentId: '',
-        segmentName: '',
-        segmentDescription: '',
-        active: true,
-        taskStatusDTO: null,
-      })
-      setGeneratedId('')
+        reset(DEFAULT_FORM_VALUES)
+        setGeneratedId('')
         lastResetIdRef.current = null
         lastModeRef.current = 'add'
       }
@@ -228,32 +212,31 @@ export const RightSlideAgreementSegmentPanel: React.FC<
     // Handle EDIT mode
     if (mode === 'edit') {
       const currentId = actionData?.id ?? apiAgreementSegmentData?.id ?? null
-      
+
       if (!currentId) {
-        // No data available yet, don't reset
         return
       }
 
-      // Check if we need to reset
-      const shouldReset = 
+      const shouldReset =
         lastModeRef.current !== 'edit' ||
         lastResetIdRef.current !== currentId
 
-      // Use actionData immediately if available, then refine with API data when it arrives
       const dataToUse = apiAgreementSegmentData || actionData
 
       if (shouldReset && dataToUse) {
         const formData = transformDataToForm(dataToUse as AgreementSegment)
-        
+
         if (formData) {
           setGeneratedId(formData.agreementSegmentId)
           reset(formData)
           lastResetIdRef.current = currentId
           lastModeRef.current = 'edit'
         }
-      } else if (apiAgreementSegmentData && lastResetIdRef.current === apiAgreementSegmentData.id) {
+      } else if (
+        apiAgreementSegmentData &&
+        lastResetIdRef.current === apiAgreementSegmentData.id
+      ) {
         // Update form when API data arrives (refinement after initial actionData)
-        // Only update if the data actually changed
         const formData = transformDataToForm(apiAgreementSegmentData)
         if (formData) {
           setGeneratedId(formData.agreementSegmentId)
@@ -270,308 +253,326 @@ export const RightSlideAgreementSegmentPanel: React.FC<
     transformDataToForm,
   ])
 
+  const onSubmit = useCallback(
+    async (data: AgreementSegmentFormData & { agreementSegmentId?: string }) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
 
-  const onSubmit = async (data: AgreementSegmentFormData & { agreementSegmentId?: string }) => {
-    try {
-      setErrorMessage(null)
-      setSuccessMessage(null)
-
-      if (taskStatusLoading) {
-        setErrorMessage('Please wait for dropdown options to load before submitting.')
-        return
-      }
-
-      const validatedData = sanitizeAgreementSegmentData(data)
-      const currentDataToEdit = apiAgreementSegmentData || actionData
-      const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
-
-      // Validate agreement segment ID for new agreement segments
-      if (!isEditing && !data.agreementSegmentId && !generatedId) {
-                  setErrorMessage('Please generate a Agreement Segment ID before submitting.')
-        return
-      }
-      
-      const isValid = await trigger()
-      if (!isValid) {
-        const errors = []
-        if (!data.segmentName) errors.push('Agreement Segment Name is required')
-        if (!data.segmentDescription) errors.push('Agreement Segment Description is required')
-        if (errors.length > 0) {
-          setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
+        if (taskStatusLoading) {
+          setErrorMessage('Please wait for dropdown options to load before submitting.')
+          return
         }
-        return
-      }
-          const agreementSegmentId = isEditing ? String(currentDataToEdit?.id || '') : undefined
 
-      // Get the generated agreement segment ID (UUID) from form data
-      const formAgreementSegmentId = data.agreementSegmentId || generatedId
+        const validatedData = sanitizeAgreementSegmentData(data)
+        const currentDataToEdit = apiAgreementSegmentData || actionData
+        const isEditing = Boolean(isEditMode && currentDataToEdit?.id)
 
-      let agreementSegmentData: CreateAgreementSegmentRequest | UpdateAgreementSegmentRequest
+        // Validate agreement segment ID for new segments
+        if (!isEditing && !data.agreementSegmentId && !generatedId) {
+          setErrorMessage('Please generate an Agreement Segment ID before submitting.')
+          return
+        }
 
-      if (isEditing) {
-        agreementSegmentData = {
-          id: currentDataToEdit?.id,
-          segmentName: validatedData.segmentName,
-          segmentDescription: validatedData.segmentDescription,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formAgreementSegmentId && { uuid: formAgreementSegmentId }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as UpdateAgreementSegmentRequest
-      } else {
-        agreementSegmentData = {
-          segmentName: validatedData.segmentName,
-          segmentDescription: validatedData.segmentDescription,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formAgreementSegmentId && { uuid: formAgreementSegmentId }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as CreateAgreementSegmentRequest
-      }
+        const isValid = await trigger()
+        if (!isValid) {
+          const errors: string[] = []
+          if (!data.segmentName) {
+            errors.push('Agreement Segment Name is required')
+          }
+          if (!data.segmentDescription) {
+            errors.push('Agreement Segment Description is required')
+          }
+          if (errors.length > 0) {
+            setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
+          }
+          return
+        }
 
-      const result = await saveAgreementSegmentMutation.mutateAsync({
-              data: agreementSegmentData,
-        isEditing,
-        ...(agreementSegmentId && { agreementSegmentId }),
-      })
+        const agreementSegmentId = isEditing
+          ? String(currentDataToEdit?.id || '')
+          : undefined
+        const formAgreementSegmentId = data.agreementSegmentId || generatedId
 
-      // Update generatedId with the UUID from the response if available
-      if (result?.uuid) {
-        setGeneratedId(result.uuid)
-      }
+        let agreementSegmentData: CreateAgreementSegmentRequest | UpdateAgreementSegmentRequest
 
-      setSuccessMessage(
-        isEditing
-          ? 'Agreement Segment updated successfully!'
-          : 'Agreement Segment added successfully!'
-      )
-
-      if (
-        mode === 'edit' &&
-          onAgreementSegmentUpdated &&
-        agreementSegmentIndex !== null &&
-        agreementSegmentIndex !== undefined
-      ) {
-        onAgreementSegmentUpdated(result as AgreementSegment, agreementSegmentIndex)
-      } else if (onAgreementSegmentAdded) {
-        onAgreementSegmentAdded(result as AgreementSegment)
-      }
-      
-      // Refresh will be handled by parent component callbacks
-
-      setTimeout(() => {
-        reset()
-        setGeneratedId('')
-        handleClose()
-      }, 1500)
-    } catch (error: unknown) {
-      let errorMessage = 'Failed to add agreement segment. Please try again.'
-      if (error instanceof Error) {
-        if (error.message.includes('validation')) {
-          errorMessage = 'Please check your input and try again.'
+        if (isEditing) {
+          agreementSegmentData = {
+            id: currentDataToEdit?.id,
+            segmentName: validatedData.segmentName,
+            segmentDescription: validatedData.segmentDescription,
+            active: validatedData.active,
+            enabled: true,
+            deleted: false,
+            ...(formAgreementSegmentId && { uuid: formAgreementSegmentId }),
+            ...(validatedData.taskStatusDTO !== null &&
+              validatedData.taskStatusDTO?.id && {
+                taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+              }),
+          } as UpdateAgreementSegmentRequest
         } else {
-          errorMessage = error.message
+          agreementSegmentData = {
+            segmentName: validatedData.segmentName,
+            segmentDescription: validatedData.segmentDescription,
+            active: validatedData.active,
+            enabled: true,
+            deleted: false,
+            ...(formAgreementSegmentId && { uuid: formAgreementSegmentId }),
+            ...(validatedData.taskStatusDTO !== null &&
+              validatedData.taskStatusDTO?.id && {
+                taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+              }),
+          } as CreateAgreementSegmentRequest
         }
+
+        const result = await saveAgreementSegmentMutation.mutateAsync({
+          data: agreementSegmentData,
+          isEditing,
+          ...(agreementSegmentId && { agreementSegmentId }),
+        })
+
+        if (result?.uuid) {
+          setGeneratedId(result.uuid)
+        }
+
+        setSuccessMessage(
+          isEditing
+            ? 'Agreement Segment updated successfully!'
+            : 'Agreement Segment added successfully!'
+        )
+
+        if (
+          isEditMode &&
+          onAgreementSegmentUpdated &&
+          agreementSegmentIndex !== null &&
+          agreementSegmentIndex !== undefined
+        ) {
+          onAgreementSegmentUpdated(result as AgreementSegment, agreementSegmentIndex)
+        } else if (onAgreementSegmentAdded) {
+          onAgreementSegmentAdded(result as AgreementSegment)
+        }
+
+        setTimeout(() => {
+          reset(DEFAULT_FORM_VALUES)
+          setGeneratedId('')
+          handleClose()
+        }, 1500)
+      } catch (error: unknown) {
+        let errorMessage = 'Failed to save agreement segment. Please try again.'
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMessage = 'Please check your input and try again.'
+          } else {
+            errorMessage = error.message
+          }
+        }
+        setErrorMessage(errorMessage)
       }
-      setErrorMessage(errorMessage)
-    }
-  }
+    },
+    [
+      taskStatusLoading,
+      apiAgreementSegmentData,
+      actionData,
+      isEditMode,
+      generatedId,
+      trigger,
+      saveAgreementSegmentMutation,
+      agreementSegmentIndex,
+      onAgreementSegmentUpdated,
+      onAgreementSegmentAdded,
+      reset,
+    ]
+  )
 
-
-  const handleClose = () => {
-    reset()
+  const handleClose = useCallback(() => {
+    reset(DEFAULT_FORM_VALUES)
     setErrorMessage(null)
     setSuccessMessage(null)
     setGeneratedId('')
     onClose()
-  }
-  
+  }, [reset, onClose])
+
   // Style variables
   const isDark = theme.palette.mode === 'dark'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
-  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
   const labelSx = tokens.label
   const valueSx = tokens.value
-  
-  // View mode styles
-  const viewModeStyles = React.useMemo(
+
+  const viewModeStyles = useMemo(
     () => ({
       backgroundColor: isDark ? alpha('#1E293B', 0.5) : '#F9FAFB',
       borderColor: isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB',
     }),
     [isDark]
   )
-  
-  // Field styles for the ID field
-  const fieldStyles = React.useMemo(
-    () => ({
-      ...commonFieldStyles,
-    }),
-    [commonFieldStyles]
-  )
-  
-  const labelStyles = React.useMemo(
-    () => ({
-      ...labelSx,
-    }),
-    [labelSx]
-  )
-  
-  const valueStyles = React.useMemo(
-    () => ({
-      ...valueSx,
-    }),
-    [valueSx]
-  )
 
-  const renderTextField = (
-          name: 'segmentName' | 'segmentDescription',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (_value, formValues) => {
-            const result = validateAgreementSegmentSchema(formValues as AgreementSegmentFormData & { agreementSegmentId?: string })
-            if (result.success) {
-              return true
-            } else {
-              const fieldError = result.errors?.issues.find(
-                (issue) => issue.path.some((p) => String(p) === name)
+  const renderTextField = useCallback(
+    (
+      name: 'segmentName' | 'segmentDescription',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (_value, formValues) => {
+              const result = validateAgreementSegmentSchema(
+                formValues as AgreementSegmentFormData & { agreementSegmentId?: string }
+              )
+              if (result.success) {
+                return true
+              }
+              const fieldError = result.errors?.issues.find((issue) =>
+                issue.path.some((p) => String(p) === name)
               )
               return fieldError ? fieldError.message : true
-            }
-          },
-        }}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={label}
-            fullWidth
-            required={required}
-            error={!!errors[name]}
-            helperText={errors[name]?.message?.toString()}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={errors[name] ? errorFieldStyles : commonFieldStyles}
-          />
-        )}
-      />
-    </Grid>
-  )
-
-  const renderAgreementSegmentIdField = (
-    name: 'agreementSegmentId',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue=""
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (value) => {
-            if (mode === 'add' && (!value || (typeof value === 'string' && value.trim() === ''))) {
-              return 'Agreement Segment ID is required. Please generate an ID.'
-            }
-            return true
-          },
-        }}
-        render={({ field }) => {
-          const fieldError = errors[name as keyof typeof errors]
-          return (
+            },
+          }}
+          render={({ field }) => (
             <TextField
               {...field}
-              fullWidth
               label={label}
+              fullWidth
               required={required}
-              value={field.value || generatedId}
-              error={!!fieldError}
-              helperText={fieldError?.message?.toString()}
-            onChange={(e) => {
-              setGeneratedId(e.target.value)
-              field.onChange(e)
-            }}
-            disabled={isReadOnly || isEditMode}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end" sx={{ mr: 0 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleGenerateNewId}
-                    disabled={isGeneratingId || isReadOnly || isEditMode}
-                    sx={{
-                      color: theme.palette.primary.contrastText,
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      background: theme.palette.primary.main,
-                      '&:hover': {
-                        background: theme.palette.primary.dark,
-                      },
-                      minWidth: '100px',
-                      height: '32px',
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '11px',
-                      lineHeight: '14px',
-                      letterSpacing: '0.3px',
-                      px: 1,
-                    }}
-                  >
-                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
-                  </Button>
-                </InputAdornment>
-              ),
-              sx: valueStyles,
-            }}
-              InputLabelProps={{
-                sx: {
-                  ...labelStyles,
-                  ...(!!fieldError && {
-                    color: theme.palette.error.main,
-                    '&.Mui-focused': { color: theme.palette.error.main },
-                    '&.MuiFormLabel-filled': { color: theme.palette.error.main },
-                  }),
-                },
-              }}
-              sx={{
-                ...fieldStyles,
-                ...((isReadOnly || isEditMode) && {
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: viewModeStyles.backgroundColor,
-                    color: textSecondary,
-                    '& fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                  },
-                }),
-              }}
+              error={!!errors[name]}
+              helperText={errors[name]?.message?.toString()}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={errors[name] ? errorFieldStyles : commonFieldStyles}
             />
-          )
-        }}
-      />
-    </Grid>
+          )}
+        />
+      </Grid>
+    ),
+    [control, errors, labelSx, valueSx, errorFieldStyles, commonFieldStyles]
+  )
+
+  const renderAgreementSegmentIdField = useCallback(
+    (
+      name: 'agreementSegmentId',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          defaultValue=""
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value) => {
+              if (
+                mode === 'add' &&
+                (!value || (typeof value === 'string' && value.trim() === ''))
+              ) {
+                return 'Agreement Segment ID is required. Please generate an ID.'
+              }
+              return true
+            },
+          }}
+          render={({ field }) => {
+            const fieldError = errors[name as keyof typeof errors]
+            return (
+              <TextField
+                {...field}
+                fullWidth
+                label={label}
+                required={required}
+                value={field.value || generatedId}
+                error={!!fieldError}
+                helperText={fieldError?.message?.toString()}
+                onChange={(e) => {
+                  setGeneratedId(e.target.value)
+                  field.onChange(e)
+                }}
+                disabled={isEditMode}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end" sx={{ mr: 0 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleGenerateNewId}
+                        disabled={isGeneratingId || isEditMode}
+                        sx={{
+                          color: theme.palette.primary.contrastText,
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          background: theme.palette.primary.main,
+                          '&:hover': {
+                            background: theme.palette.primary.dark,
+                          },
+                          minWidth: '100px',
+                          height: '32px',
+                          fontFamily: 'Outfit, sans-serif',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '11px',
+                          lineHeight: '14px',
+                          letterSpacing: '0.3px',
+                          px: 1,
+                        }}
+                      >
+                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                      </Button>
+                    </InputAdornment>
+                  ),
+                  sx: valueSx,
+                }}
+                InputLabelProps={{
+                  sx: {
+                    ...labelSx,
+                    ...(!!fieldError && {
+                      color: theme.palette.error.main,
+                      '&.Mui-focused': { color: theme.palette.error.main },
+                      '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                    }),
+                  },
+                }}
+                sx={{
+                  ...commonFieldStyles,
+                  ...(isEditMode && {
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      color: textSecondary,
+                      '& fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                  }),
+                }}
+              />
+            )
+          }}
+        />
+      </Grid>
+    ),
+    [
+      control,
+      errors,
+      generatedId,
+      isEditMode,
+      mode,
+      handleGenerateNewId,
+      isGeneratingId,
+      theme,
+      valueSx,
+      labelSx,
+      commonFieldStyles,
+      viewModeStyles,
+      textSecondary,
+    ]
   )
 
   return (
@@ -609,11 +610,11 @@ export const RightSlideAgreementSegmentPanel: React.FC<
             pl: 3,
           }}
         >
-          {mode === 'edit'
-            ? `${getAgreementSegmentLabelDynamic('CDL_COMMON_UPDATE')} ${getAgreementSegmentLabelDynamic('CDL_MAS_NAME')}`
-            : `${getAgreementSegmentLabelDynamic('CDL_COMMON_ADD')} ${getAgreementSegmentLabelDynamic('CDL_MAS_NAME')}`}
+          {isEditMode
+            ? `${getLabel('CDL_COMMON_UPDATE')} ${getLabel('CDL_MAS_NAME')}`
+            : `${getLabel('CDL_COMMON_ADD')} ${getLabel('CDL_MAS_NAME')}`}
           <IconButton
-            onClick={onClose}
+            onClick={handleClose}
             sx={{
               color: theme.palette.text.secondary,
               '&:hover': {
@@ -654,19 +655,19 @@ export const RightSlideAgreementSegmentPanel: React.FC<
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
               {renderAgreementSegmentIdField(
                 'agreementSegmentId',
-                        getAgreementSegmentLabelDynamic('CDL_MAS_ID'),
+                getLabel('CDL_MAS_ID'),
                 12,
                 true
               )}
               {renderTextField(
                 'segmentName',
-                getAgreementSegmentLabelDynamic('CDL_MAS_NAME'),
+                getLabel('CDL_MAS_NAME'),
                 12,
                 true
               )}
               {renderTextField(
                 'segmentDescription',
-                getAgreementSegmentLabelDynamic('CDL_MAS_DESCRIPTION'),
+                getLabel('CDL_MAS_DESCRIPTION'),
                 12,
                 true
               )}
@@ -712,7 +713,7 @@ export const RightSlideAgreementSegmentPanel: React.FC<
                         : undefined,
                   }}
                 >
-                  {getAgreementSegmentLabelDynamic('CDL_COMMON_CANCEL')}
+                  {getLabel('CDL_COMMON_CANCEL')}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
@@ -721,7 +722,7 @@ export const RightSlideAgreementSegmentPanel: React.FC<
                   variant="outlined"
                   color="primary"
                   type="submit"
-                      disabled={saveAgreementSegmentMutation.isPending || taskStatusLoading}
+                  disabled={saveAgreementSegmentMutation.isPending || taskStatusLoading}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -758,12 +759,12 @@ export const RightSlideAgreementSegmentPanel: React.FC<
                   }}
                 >
                   {saveAgreementSegmentMutation.isPending
-                    ? mode === 'edit'
-                      ? getAgreementSegmentLabelDynamic('CDL_COMMON_UPDATING')
-                      : getAgreementSegmentLabelDynamic('CDL_COMMON_ADDING')
-                    : mode === 'edit'
-                      ? getAgreementSegmentLabelDynamic('CDL_COMMON_UPDATE')
-                      : getAgreementSegmentLabelDynamic('CDL_COMMON_ADD')}
+                    ? isEditMode
+                      ? getLabel('CDL_COMMON_UPDATING')
+                      : getLabel('CDL_COMMON_ADDING')
+                    : isEditMode
+                      ? getLabel('CDL_COMMON_UPDATE')
+                      : getLabel('CDL_COMMON_ADD')}
                 </Button>
               </Grid>
             </Grid>

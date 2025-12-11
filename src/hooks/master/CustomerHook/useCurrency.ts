@@ -26,14 +26,14 @@ export function useCurrencies(
       { page: pagination.page, size: pagination.size, filters },
     ],
     queryFn: () =>
-        currencyService.getCurrencies(
+      currencyService.getCurrencies(
         pagination.page,
         pagination.size,
         filters
       ),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Always refetch when component mounts (e.g., tab navigation)
+    refetchOnMount: true,
     retry: 3,
   })
 
@@ -78,7 +78,7 @@ export function useDeleteCurrency() {
   const queryClient = useQueryClient()
 
   return useMutation({
-              mutationFn: (id: string) => currencyService.deleteCurrency(id),
+    mutationFn: (id: string) => currencyService.deleteCurrency(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CURRENCIES_QUERY_KEY] })
     },
@@ -86,7 +86,7 @@ export function useDeleteCurrency() {
   })
 }
 
-        export function useSaveCurrency() {
+export function useSaveCurrency() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -100,7 +100,10 @@ export function useDeleteCurrency() {
       currencyId?: string
     }) => {
       if (isEditing && currencyId) {
-          return currencyService.updateCurrency(currencyId, data as UpdateCurrencyRequest)
+        return currencyService.updateCurrency(
+          currencyId,
+          data as UpdateCurrencyRequest
+        )
       } else {
         return currencyService.createCurrency(data as CreateCurrencyRequest)
       }
@@ -128,4 +131,3 @@ export function useAllCurrencies() {
     retry: 3,
   })
 }
-

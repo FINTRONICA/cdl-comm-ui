@@ -433,7 +433,8 @@ export class BeneficiaryService {
 
 // UI-friendly Beneficiary interface for table display
 export interface BeneficiaryUIData {
-  id: string
+  id: string // Numeric ID as string for API operations
+  displayId: string // Formatted ID for UI display (BENEFICIARY-{id})
   beneficiaryFullName: string
   beneficiaryAccountNumber: string
   beneficiaryBankName: string
@@ -455,8 +456,12 @@ export const mapBeneficiaryToUIData = (
     return taskStatusDTO.code || 'ACTIVE'
   }
 
+  // Format ID as BENEFICIARY-{id} for display, or use uuid if available
+  const displayId = apiData.uuid || `BENEFICIARY-${apiData.id}`
+
   return {
-    id: apiData.id.toString(),
+    id: apiData.id.toString(), // Keep numeric ID for API operations
+    displayId: displayId, // Formatted ID for UI display
     beneficiaryFullName: apiData.beneficiaryFullName || 'N/A',
     beneficiaryAccountNumber: apiData.beneficiaryAccountNumber || 'N/A',
     beneficiaryBankName: apiData.beneficiaryBankName || 'N/A',

@@ -211,7 +211,9 @@ const AgreementSubTypePageImpl: React.FC = () => {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error(`Failed to delete agreement sub type: ${errorMessage}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Failed to delete agreement sub type: ${errorMessage}`)
+      }
     } finally {
       setIsDeleting(false)
     }
@@ -250,7 +252,9 @@ const AgreementSubTypePageImpl: React.FC = () => {
       // Use a generic template name for investment, or create one if needed
       await downloadTemplate('BusinessSubSegmentTemplate.xlsx')
     } catch (error) {
-      console.error('Failed to download template:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to download template:', error)
+      }
     }
   }, [downloadTemplate])
 
@@ -260,7 +264,9 @@ const AgreementSubTypePageImpl: React.FC = () => {
   }, [refreshAgreementSubTypes])
 
   const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Upload error:', error)
+    }
   }, [])
 
   const handleAgreementSubTypeAdded = useCallback(() => {

@@ -133,14 +133,14 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
     },
     {
       key: 'status',
-      label: getBusinessSubSegmentLabelDynamic('CDL_MBSS_STATUS'),
+      label: getBusinessSubSegmentLabelDynamic('CDL_COMMON_STATUS'),
       type: 'status' as const,
       width: 'w-32',
       sortable: true,
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: getBusinessSubSegmentLabelDynamic('CDL_COMMON_ACTIONS'),
       type: 'actions' as const,
       width: 'w-20',
     },

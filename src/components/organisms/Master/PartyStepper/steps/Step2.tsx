@@ -66,7 +66,7 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
   const labelStyles = React.useMemo(() => sharedLabelSx(theme), [theme])
   const valueStyles = React.useMemo(() => sharedValueSx(theme), [theme])
   const cardBaseStyles = React.useMemo(
-    () => (sharedCardStyles as any)(theme),
+    () => (sharedCardStyles as (t: ReturnType<typeof useTheme>) => Record<string, unknown>)(theme),
     [theme]
   )
   const viewModeStyles = viewModeInputStyles(theme)
@@ -88,10 +88,8 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
 
   // Fetch parties for dropdown
-  const {
-    data: partyOptions = [],
-    isLoading: loadingParties,
-  } = usePartiesForDropdown()
+  const { data: partyOptions = [], isLoading: loadingParties } =
+    usePartiesForDropdown()
 
   // Dynamic label support (Phase 1: foundation)
   const { data: partyLabels, getLabel } = usePartyLabelsWithCache()
@@ -109,7 +107,7 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
     [partyLabels, currentLanguage, getLabel]
   )
 
-  // Initialize developer ID from form value
+  // Initialize authorized signatory ID from form value
   useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === 'id' && value.id) {
@@ -118,25 +116,97 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
     })
     return () => subscription.unsubscribe()
   }, [watch])
+  
 
   // Handle Fetch Details button click
   const handleFetchDetails = async () => {
     const currentCif = watch('customerCifNumber')
-    if (!currentCif) {
+    if (!currentCif || !currentCif.trim()) {
       return
     }
 
     try {
       const customerDetails =
-        await partyService.getCustomerDetailsByCif(currentCif)
+        await partyService.getCustomerDetailsByCif(currentCif.trim())
 
-      // Populate only the name fields from customer details and clear validation errors
-      setValue('signatoryFullName', customerDetails.name.firstName, {
-        shouldValidate: true,
-        shouldDirty: true,
-      })
-    } catch {
-      // Handle error silently
+      // Clear any existing errors for fields we're about to populate
+      clearErrors([
+        'signatoryFullName',
+        'addressLine1',
+        'addressLine2',
+        'addressLine3',
+        'emailAddress',
+        'telephoneNumber',
+        'mobileNumber',
+      ] as (keyof typeof errors)[])
+
+      // Populate fields from customer details (matching Step1 pattern)
+      if (customerDetails?.name?.firstName) {
+        setValue('signatoryFullName', customerDetails.name.firstName, {
+          shouldValidate: false, // Don't validate immediately to avoid errors
+          shouldDirty: true,
+        })
+      }
+      
+      // Populate address fields if available
+      if (customerDetails?.contact?.address) {
+        if (customerDetails.contact.address.line1) {
+          setValue('addressLine1', customerDetails.contact.address.line1, {
+            shouldValidate: false,
+            shouldDirty: true,
+          })
+        }
+        if (customerDetails.contact.address.line2) {
+          setValue('addressLine2', customerDetails.contact.address.line2, {
+            shouldValidate: false,
+            shouldDirty: true,
+          })
+        }
+        // Combine city, state, country for addressLine3
+        const addressLine3Parts = [
+          customerDetails.contact.address.city,
+          customerDetails.contact.address.state,
+          customerDetails.contact.address.country,
+        ].filter(Boolean)
+        if (addressLine3Parts.length > 0) {
+          setValue('addressLine3', addressLine3Parts.join(', '), {
+            shouldValidate: false,
+            shouldDirty: true,
+          })
+        }
+      }
+      
+      // Populate contact fields if available
+      if (customerDetails?.contact?.preferredEmail) {
+        setValue('emailAddress', customerDetails.contact.preferredEmail, {
+          shouldValidate: false,
+          shouldDirty: true,
+        })
+      }
+      if (customerDetails?.contact?.preferredPhone) {
+        const phoneNumber = customerDetails.contact.preferredPhone
+        setValue('telephoneNumber', phoneNumber, {
+          shouldValidate: false,
+          shouldDirty: true,
+        })
+        setValue('mobileNumber', phoneNumber, {
+          shouldValidate: false,
+          shouldDirty: true,
+        })
+      }
+      
+      // Trigger validation after a short delay to ensure fields are set
+      setTimeout(() => {
+        // Re-validate the populated fields
+        setValue('signatoryFullName', watch('signatoryFullName'), {
+          shouldValidate: true,
+        })
+      }, 100)
+      
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[PartyStepper Step2] Error fetching customer details:', error)
+      }
     }
   }
 
@@ -164,33 +234,58 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
 
     const loadExisting = async () => {
       try {
-        const authorizedSignatories = await partyService.getPartyAuthorizedSignatory(partyId)
-        if (authorizedSignatories && Array.isArray(authorizedSignatories) && authorizedSignatories.length > 0) {
+        const authorizedSignatories =
+          await partyService.getPartyAuthorizedSignatory(partyId)
+        if (
+          authorizedSignatories &&
+          Array.isArray(authorizedSignatories) &&
+          authorizedSignatories.length > 0
+        ) {
           const firstSignatory = authorizedSignatories[0]
           // Load cifExistsDTO if available
-          if (firstSignatory && firstSignatory.cifExistsDTO && typeof firstSignatory.cifExistsDTO === 'object' && 'id' in firstSignatory.cifExistsDTO) {
-            setValue('cifExistsDTO.id', (firstSignatory.cifExistsDTO as { id?: number }).id, {
-              shouldValidate: true,
-              shouldDirty: false,
-            })
+          if (
+            firstSignatory &&
+            firstSignatory.cifExistsDTO &&
+            typeof firstSignatory.cifExistsDTO === 'object' &&
+            'id' in firstSignatory.cifExistsDTO
+          ) {
+            setValue(
+              'cifExistsDTO.id',
+              (firstSignatory.cifExistsDTO as { id?: number }).id,
+              {
+                shouldValidate: true,
+                shouldDirty: false,
+              }
+            )
           }
           // Load partyDTO if available
-          if (firstSignatory && firstSignatory.partyDTO && typeof firstSignatory.partyDTO === 'object' && 'id' in firstSignatory.partyDTO) {
+          if (
+            firstSignatory &&
+            firstSignatory.partyDTO &&
+            typeof firstSignatory.partyDTO === 'object' &&
+            'id' in firstSignatory.partyDTO
+          ) {
             const partyIdValue = (firstSignatory.partyDTO as { id?: number }).id
             if (partyIdValue) {
               setValue('partyDropdown', partyIdValue.toString(), {
-                shouldValidate: true,
-                shouldDirty: false,
-              })
-              setValue('partyDTO', { id: partyIdValue }, {
-                shouldValidate: true,
-                shouldDirty: false,
-              })
+              shouldValidate: true,
+              shouldDirty: false,
+            })
+              setValue(
+                'partyDTO',
+                { id: partyIdValue },
+                {
+                  shouldValidate: true,
+                  shouldDirty: false,
+                }
+              )
             }
           }
         }
-      } catch {
-        // ignore; leave empty if fetch fails
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[PartyStepper Step2] Error loading existing authorized signatory data:', error)
+        }
       }
     }
 
@@ -206,13 +301,17 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
 
       if (selectedParty) {
         // Set partyDTO as an object with id property to match transformer expectations
-        setValue('partyDTO', { id: parseInt(selectedParty.settingValue) }, {
-          shouldValidate: true,
-          shouldDirty: true,
-          shouldTouch: true,
-        })
+        setValue(
+          'partyDTO',
+          { id: parseInt(selectedParty.settingValue) },
+          {
+            shouldValidate: true,
+            shouldDirty: true,
+            shouldTouch: true,
+          }
+        )
         // Clear any prior manual errors for this field
-        clearErrors(['partyDTO'] as unknown as any)
+        clearErrors(['partyDTO'] as (keyof typeof errors)[])
       }
     },
     [partyOptions, setValue, clearErrors]
@@ -230,7 +329,7 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
       <Controller
         name={name}
         control={control}
-        defaultValue={defaultValue === undefined ? '' : defaultValue}
+        defaultValue={defaultValue === undefined || defaultValue === null ? '' : defaultValue}
         rules={{
           required: required ? `${label} is required` : false,
         }}
@@ -243,6 +342,10 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
             disabled={disabled || isReadOnly}
             error={!!errors[name]}
             helperText={errors[name]?.message?.toString()}
+            value={field.value ?? ''}
+            onChange={(e) => {
+              field.onChange(e.target.value)
+            }}
             InputLabelProps={{
               sx: {
                 ...labelStyles,
@@ -256,7 +359,7 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
             InputProps={{
               sx: {
                 ...valueStyles,
-                ...(isReadOnly && {
+                ...((isReadOnly || disabled) && {
                   color: textSecondary,
                 }),
               },
@@ -512,7 +615,9 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
             control={
               <Checkbox
                 checked={field.value === true}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.checked)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  field.onChange(e.target.checked)
+                }
                 disabled={isReadOnly}
                 sx={{
                   color: neutralBorderColor,
@@ -614,6 +719,10 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
             disabled={isReadOnly}
             error={!!errors[name]}
             helperText={errors[name]?.message?.toString()}
+            value={field.value ?? ''}
+            onChange={(e) => {
+              field.onChange(e.target.value)
+            }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -678,6 +787,8 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
     </Grid>
   )
 
+  // Note: renderPartyIdField is kept for potential future use but not currently used in Step2
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const renderPartyIdField = (
     name: string,
     label: string,
@@ -698,12 +809,13 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
             fullWidth
             label={label}
             required={required}
-            value={field.value || generatedId}
+            value={field.value || generatedId || ''}
             error={!!errors[name]}
             helperText={errors[name]?.message?.toString()}
             onChange={(e) => {
-              setGeneratedId(e.target.value)
-              field.onChange(e)
+              const value = e.target.value
+              setGeneratedId(value)
+              field.onChange(value)
             }}
             disabled={isReadOnly || isEditMode}
             InputProps={{
@@ -782,21 +894,6 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
       >
         <CardContent sx={{ color: textPrimary }}>
           <Grid container rowSpacing={4} columnSpacing={2}>
-            {renderPartySelectField(
-              'partyDropdown',
-              'CDL_MP_AUTHORIZED_SIGNATORY_PARTY_SELECT',
-              'Party',
-              partyOptions,
-              6,
-              true,
-              loadingParties
-            )}
-            {renderPartyIdField(
-              'id',
-              getPartyLabelDynamic('CDL_MP_PARTY_ID'),
-              6,
-              true
-            )}
             {renderTextFieldWithButton(
               'customerCifNumber',
               getPartyLabelDynamic(
@@ -806,61 +903,71 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
               6,
               true
             )}
+            {renderPartySelectField(
+              'partyDropdown',
+              'CDL_MP_AUTHORIZED_SIGNATORY_PARTY_SELECT',
+              'Party',
+              partyOptions,
+              6,
+              true,
+              loadingParties
+            )}
             {renderTextField(
               'signatoryFullName',
               getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_NAME'),
               '',
               6,
-              false,
+              false, // Keep editable after fetch
               true
             )}
             {renderTextField(
-              'addressLine1',
-              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_1'),
+              'emailAddress',
+              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_EMAIL_ID'),
               '',
               6,
-              false,
-              true
-            )}
-            {renderTextField(
-              'addressLine2',
-              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_2'),
-              '',
-              6,
-              false,
-              true
-            )}
-            {renderTextField(
-              'addressLine3',
-              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_3'),
-              '',
-              6,
-              false,
-              true
+              false, // Keep editable after fetch
+              false
             )}
             {renderTextField(
               'telephoneNumber',
               getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_TELEPHONE_NO'),
               '',
-              4,
-              false,
+              6,
+              false, // Keep editable after fetch
               false
             )}
             {renderTextField(
               'mobileNumber',
               getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_MOBILE_NO'),
               '',
-              4,
-              false,
+              6,
+              false, // Keep editable after fetch
               false
             )}
+
             {renderTextField(
-              'emailAddress',
-              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_EMAIL_ID'),
+              'addressLine1',
+              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_1'),
               '',
               4,
-              false,
-              false
+              false, // Keep editable after fetch
+              true
+            )}
+            {renderTextField(
+              'addressLine2',
+              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_2'),
+              '',
+              4,
+              false, // Keep editable after fetch
+              true
+            )}
+            {renderTextField(
+              'addressLine3',
+              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_3'),
+              '',
+              4,
+              false, // Keep editable after fetch
+              true
             )}
 
             {renderTextField(
@@ -869,17 +976,9 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
                 'CDL_MP_AUTHORIZED_SIGNATORY_NOTIFICATION_CONTACT_NAME'
               ),
               '',
-              4,
+              6,
               false,
               false
-            )}
-
-            {renderTextFieldWithButton(
-              'signatoryCifNumber',
-              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_CIF_NUMBER'),
-              'Fetch Details',
-              6,
-              true
             )}
             {renderTextField(
               'notificationEmailAddress',
@@ -887,7 +986,7 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
                 'CDL_MP_AUTHORIZED_SIGNATORY_NOTIFICATION_EMAIL'
               ),
               '',
-              4,
+              6,
               false,
               false
             )}
@@ -897,7 +996,7 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
                 'CDL_MP_AUTHORIZED_SIGNATORY_NOTIFICATION_SIGNATURE_FILE'
               ),
               '',
-              4,
+              6,
               false,
               false
             )}
@@ -907,15 +1006,16 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
                 'CDL_MP_AUTHORIZED_SIGNATORY_NOTIFICATION_SIGNATURE_MIME_TYPE'
               ),
               '',
-              4,
+              6,
               false,
               false
             )}
+
             {renderTextField(
               'teamLeaderName',
               getPartyLabelDynamic('CDL_MP_PARTY_TEAM_LEADER_NAME'),
               '',
-              4,
+              6,
               false,
               false
             )}
@@ -924,10 +1024,18 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
               'additionalRemarks',
               getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_REMARKS'),
               '',
-              4,
+              6,
               false,
               false
             )}
+
+            {/* {renderTextFieldWithButton(
+              'signatoryCifNumber',
+              getPartyLabelDynamic('CDL_MP_AUTHORIZED_SIGNATORY_CIF_NUMBER'),
+              'Fetch Details',
+              6,
+              true
+            )} */}
           </Grid>
         </CardContent>
       </Card>

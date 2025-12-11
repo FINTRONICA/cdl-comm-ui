@@ -381,21 +381,27 @@ export class PartyService {
     }
     const url = `${baseUrl}?${new URLSearchParams(allParams).toString()}`
 
-    console.log('[PartyService] Fetching parties from URL:', url)
-    console.log('[PartyService] Query parameters:', allParams)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[PartyService] Fetching parties from URL:', url)
+      console.log('[PartyService] Query parameters:', allParams)
+    }
 
     try {
       const result = await apiClient.get<PaginatedResponse<Party>>(url)
 
-      console.log('[PartyService] Raw API response:', result)
-      console.log('[PartyService] Response type:', typeof result)
-      console.log('[PartyService] Is array?', Array.isArray(result))
-      console.log('[PartyService] Has content?', 'content' in (result || {}))
-      console.log('[PartyService] Content length:', result?.content?.length || 0)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[PartyService] Raw API response:', result)
+        console.log('[PartyService] Response type:', typeof result)
+        console.log('[PartyService] Is array?', Array.isArray(result))
+        console.log('[PartyService] Has content?', 'content' in (result || {}))
+        console.log('[PartyService] Content length:', result?.content?.length || 0)
+      }
 
       // Handle case where API returns array directly instead of paginated response
       if (Array.isArray(result)) {
-        console.warn('[PartyService] API returned array directly, converting to paginated format')
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[PartyService] API returned array directly, converting to paginated format')
+        }
         return {
           content: result,
           page: {
@@ -409,7 +415,9 @@ export class PartyService {
 
       // Handle case where content might be missing
       if (result && !result.content) {
-        console.warn('[PartyService] API response missing content field, response:', result)
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[PartyService] API response missing content field, response:', result)
+        }
         return {
           content: [],
           page: {
@@ -431,7 +439,9 @@ export class PartyService {
         },
       }
     } catch (error) {
-      console.error('[PartyService] Error fetching parties:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[PartyService] Error fetching parties:', error)
+      }
       throw error
     }
   }
@@ -908,7 +918,9 @@ export class PartyService {
       
       return []
     } catch (error) {
-      console.error('[PartyService] Error fetching all parties:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[PartyService] Error fetching all parties:', error)
+      }
       throw new Error('Failed to fetch parties')
     }
   }

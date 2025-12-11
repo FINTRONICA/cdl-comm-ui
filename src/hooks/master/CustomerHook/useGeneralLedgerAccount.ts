@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import {
   generalLedgerAccountService,
   type GeneralLedgerAccountFilters,
@@ -26,29 +26,31 @@ export function useGeneralLedgerAccounts(
       { page: pagination.page, size: pagination.size, filters },
     ],
     queryFn: () =>
-          generalLedgerAccountService.getGeneralLedgerAccount(
+      generalLedgerAccountService.getGeneralLedgerAccount(
         pagination.page,
         pagination.size,
         filters
       ),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Always refetch when component mounts (e.g., tab navigation)
+    refetchOnMount: true,
     retry: 3,
   })
 
-  if (query.data?.page) {
-    const newApiPagination = {
-      totalElements: query.data.page.totalElements,
-      totalPages: query.data.page.totalPages,
+  useEffect(() => {
+    if (query.data?.page) {
+      const newApiPagination = {
+        totalElements: query.data.page.totalElements,
+        totalPages: query.data.page.totalPages,
+      }
+      if (
+        newApiPagination.totalElements !== apiPagination.totalElements ||
+        newApiPagination.totalPages !== apiPagination.totalPages
+      ) {
+        setApiPagination(newApiPagination)
+      }
     }
-    if (
-      newApiPagination.totalElements !== apiPagination.totalElements ||
-      newApiPagination.totalPages !== apiPagination.totalPages
-    ) {
-      setApiPagination(newApiPagination)
-    }
-  }
+  }, [query.data, apiPagination.totalElements, apiPagination.totalPages])
 
   const updatePagination = useCallback((newPage: number, newSize: number) => {
     setPagination({ page: newPage, size: newSize })
@@ -78,7 +80,7 @@ export function useDeleteGeneralLedgerAccount() {
   const queryClient = useQueryClient()
 
   return useMutation({
-          mutationFn: (id: string) => generalLedgerAccountService.deleteGeneralLedgerAccount(id),
+    mutationFn: (id: string) => generalLedgerAccountService.deleteGeneralLedgerAccount(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GENERAL_LEDGER_ACCOUNTS_QUERY_KEY] })
     },
@@ -100,10 +102,14 @@ export function useSaveGeneralLedgerAccount() {
       generalLedgerAccountId?: string
     }) => {
       if (isEditing && generalLedgerAccountId) {
-            return generalLedgerAccountService.updateGeneralLedgerAccount(generalLedgerAccountId, data as UpdateGeneralLedgerAccountRequest)
-      } else {
-        return generalLedgerAccountService.createGeneralLedgerAccount(data as CreateGeneralLedgerAccountRequest)
+        return generalLedgerAccountService.updateGeneralLedgerAccount(
+          generalLedgerAccountId,
+          data as UpdateGeneralLedgerAccountRequest
+        )
       }
+      return generalLedgerAccountService.createGeneralLedgerAccount(
+        data as CreateGeneralLedgerAccountRequest
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GENERAL_LEDGER_ACCOUNTS_QUERY_KEY] })
@@ -122,10 +128,9 @@ export function useRefreshGeneralLedgerAccounts() {
 export function useAllGeneralLedgerAccounts() {
   return useQuery({
     queryKey: [GENERAL_LEDGER_ACCOUNTS_QUERY_KEY, 'all'],
-          queryFn: () => generalLedgerAccountService.getAllGeneralLedgerAccount(),
+    queryFn: () => generalLedgerAccountService.getAllGeneralLedgerAccount(),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 3,
   })
 }
-

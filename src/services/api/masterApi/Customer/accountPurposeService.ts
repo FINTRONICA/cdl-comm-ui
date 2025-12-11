@@ -141,7 +141,9 @@ export class AccountPurposeService {
         },
       }
     } catch (error) {
-      console.error('Error fetching account purposes:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching account purposes:', error)
+      }
       throw error
     }
   }
@@ -152,7 +154,9 @@ export class AccountPurposeService {
       const result = await apiClient.get<AccountPurpose>(url)
       return result
     } catch (error) {
-      console.error(`Error fetching account purpose with id ${id}:`, error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error fetching account purpose with id ${id}:`, error)
+      }
       throw error
     }
   }
@@ -167,7 +171,9 @@ export class AccountPurposeService {
       )
       return result
     } catch (error) {
-      console.error('Error creating account purpose:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error creating account purpose:', error)
+      }
       throw error
     }
   }
@@ -183,7 +189,9 @@ export class AccountPurposeService {
       )
       return result
     } catch (error) {
-      console.error(`Error updating account purpose with id ${id}:`, error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error updating account purpose with id ${id}:`, error)
+      }
       throw error
     }
   }
@@ -194,7 +202,9 @@ export class AccountPurposeService {
         buildApiUrl(API_ENDPOINTS.MASTER_ACCOUNT_PURPOSE.SOFT_DELETE(id))
       )
     } catch (error) {
-      console.error(`Error deleting account purpose with id ${id}:`, error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error deleting account purpose with id ${id}:`, error)
+      }
       throw error
     }
   }
@@ -213,7 +223,9 @@ export class AccountPurposeService {
       
       return []
     } catch (error) {
-      console.error('Error fetching all account purposes:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching all account purposes:', error)
+      }
       return []
     }
   }

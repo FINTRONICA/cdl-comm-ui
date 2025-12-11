@@ -12,9 +12,7 @@ import {
   Snackbar,
   InputAdornment,
 } from '@mui/material'
-import {
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
+import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -44,22 +42,17 @@ interface RightSlideCountryPanelProps {
   isOpen: boolean
   onClose: () => void
   onCountryAdded?: (country: Country) => void
-  onCountryUpdated?: (
-    country: Country,
-    index: number
-  ) => void
+  onCountryUpdated?: (country: Country, index: number) => void
   title?: string
   mode?: 'add' | 'edit'
-            actionData?: Country | null
+  actionData?: Country | null
   countryIndex?: number | undefined
   taskStatusOptions?: TaskStatusDTO[]
   taskStatusLoading?: boolean
   taskStatusError?: unknown
 }
 
-export const RightSlideCountryPanel: React.FC<
-  RightSlideCountryPanelProps
-> = ({
+export const RightSlideCountryPanel: React.FC<RightSlideCountryPanelProps> = ({
   isOpen,
   onClose,
   onCountryAdded,
@@ -77,12 +70,11 @@ export const RightSlideCountryPanel: React.FC<
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [generatedId, setGeneratedId] = useState<string>('')
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
-  
-  // Check if we're in edit mode
-  const isEditMode = mode === 'edit'
-  const isReadOnly = false // Can be made a prop if needed
 
-    const saveCountryMutation = useSaveCountry()
+  const isEditMode = mode === 'edit'
+  const isReadOnly = false
+
+  const saveCountryMutation = useSaveCountry()
 
   // Fetch full country data when in edit mode
   const { data: apiCountryData } = useCountry(
@@ -126,7 +118,7 @@ export const RightSlideCountryPanel: React.FC<
   }, [watch])
 
   // Function to generate new country ID
-  const handleGenerateNewId = async () => {
+  const handleGenerateNewId = useCallback(async () => {
     try {
       setIsGeneratingId(true)
       const newIdResponse = idService.generateNewId('CNT')
@@ -135,20 +127,29 @@ export const RightSlideCountryPanel: React.FC<
         shouldValidate: true,
         shouldDirty: true,
       })
-    } catch {
-      // Handle error silently
+    } catch (error) {
+      setErrorMessage(
+        'Failed to generate Country ID. Please try again or enter manually.'
+      )
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.error('Error generating ID:', error)
+      }
+      // Error is used in console.error above
+      void error
     } finally {
       setIsGeneratingId(false)
     }
-  }
+  }, [setValue])
 
   // Track the last reset ID and mode to prevent unnecessary resets
   const lastResetIdRef = useRef<string | number | null>(null)
   const lastModeRef = useRef<'add' | 'edit' | null>(null)
   const lastIsOpenRef = useRef<boolean>(false)
+
   // Reset form when panel opens/closes or mode/data changes
   useEffect(() => {
-      if (!isOpen) {
+    if (!isOpen) {
       if (lastIsOpenRef.current) {
         reset({
           countryId: '',
@@ -180,7 +181,7 @@ export const RightSlideCountryPanel: React.FC<
         return
       }
 
-            if (shouldReset && (apiCountryData || actionData)) {
+      if (shouldReset && (apiCountryData || actionData)) {
         const dataToUse = apiCountryData || actionData
         if (!dataToUse) return
 
@@ -234,13 +235,29 @@ export const RightSlideCountryPanel: React.FC<
           }
         }
 
-        if (fieldName === 'description' && value && typeof value === 'string' && value.trim() !== '') {
+        // Validate description field
+        if (fieldName === 'description') {
+          if (!value || (typeof value === 'string' && value.trim() === '')) {
+            return 'Description is required'
+          }
+          if (typeof value === 'string' && value.length > 500) {
+            return 'Description must be 500 characters or less'
+          }
+        }
+
+        // Run full schema validation for description
+        if (
+          fieldName === 'description' &&
+          value &&
+          typeof value === 'string' &&
+          value.trim() !== ''
+        ) {
           const result = validateCountrySchema(allValues)
           if (result.success) {
             return true
           } else {
-            const fieldError = result.errors?.issues.find(
-              (issue) => issue.path.some((p) => String(p) === fieldName)
+            const fieldError = result.errors?.issues.find((issue) =>
+              issue.path.some((p) => String(p) === fieldName)
             )
             return fieldError ? fieldError.message : true
           }
@@ -254,120 +271,151 @@ export const RightSlideCountryPanel: React.FC<
     [mode]
   )
 
-  const onSubmit = async (data: CountryFormData & { countryId?: string }) => {
-    try {
-      setErrorMessage(null)
-      setSuccessMessage(null)
+  const onSubmit = useCallback(
+    async (data: CountryFormData & { countryId?: string }) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
 
-      if (taskStatusLoading) {
-        setErrorMessage('Please wait for dropdown options to load before submitting.')
-        return
-      }
-
-      const validatedData = sanitizeCountryData(data)
-      const currentDataToEdit = apiCountryData || actionData
-      const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
-
-      // Validate country ID for new countries
-      if (!isEditing && !data.countryId && !generatedId) {
-        setErrorMessage('Please generate a Country ID before submitting.')
-        return
-      }
-
-      const isValid = await trigger()
-      if (!isValid) {
-        const errors = []
-        if (!data.description) errors.push('Description is required')
-        if (errors.length > 0) {
-          setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
+        if (taskStatusLoading) {
+          setErrorMessage(
+            'Please wait for dropdown options to load before submitting.'
+          )
+          return
         }
-        return
-      }
-                const countryId = isEditing ? String(currentDataToEdit?.id || '') : undefined
 
-      // Get the generated country ID (UUID) from form data
-      const formCountryId = data.countryId || generatedId
+        const validatedData = sanitizeCountryData(data)
+        const currentDataToEdit = apiCountryData || actionData
+        const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
 
-      let countryData: CreateCountryRequest | UpdateCountryRequest
+        // Validate country ID for new countries
+        if (!isEditing && !data.countryId && !generatedId) {
+          setErrorMessage('Please generate a Country ID before submitting.')
+          return
+        }
 
-      if (isEditing) {
-        countryData = {
-          id: currentDataToEdit?.id,
-          description: validatedData.description,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          taskStatusDTO: validatedData.taskStatusDTO,
-          ...(formCountryId && { uuid: formCountryId }),
-        } as UpdateCountryRequest
-      } else {
-        countryData = {
-          description: validatedData.description,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          taskStatusDTO: validatedData.taskStatusDTO,
-          ...(formCountryId && { uuid: formCountryId }),
-        } as CreateCountryRequest
-      }
+        // Validate required fields
+        if (!validatedData.description || validatedData.description.trim() === '') {
+          setErrorMessage('Description is required.')
+          return
+        }
 
-      const result = await saveCountryMutation.mutateAsync({
-        data: countryData,
-        isEditing,
-        ...(countryId && { countryId }),
-      })
+        const isValid = await trigger()
+        if (!isValid) {
+          const validationErrors: string[] = []
+          if (!data.description || data.description.trim() === '') {
+            validationErrors.push('Description is required')
+          }
+          if (validationErrors.length > 0) {
+            setErrorMessage(
+              `Please fill in the required fields: ${validationErrors.join(', ')}`
+            )
+          }
+          return
+        }
 
-      // Update generatedId with the UUID from the response if available
-      if (result?.uuid) {
-        setGeneratedId(result.uuid)
-      }
+        const countryId = isEditing
+          ? String(currentDataToEdit?.id || '')
+          : undefined
 
-      setSuccessMessage(
-        isEditing
-          ? 'Country updated successfully!'
-          : 'Country added successfully!'
-      )
+        // Get the generated country ID (UUID) from form data
+        const formCountryId = data.countryId || generatedId
 
-      if (
-        mode === 'edit' &&
-        onCountryUpdated &&
-        countryIndex !== null &&
-        countryIndex !== undefined
-      ) {
-        onCountryUpdated(result as Country, countryIndex)
-      } else if (onCountryAdded) {
-        onCountryAdded(result as Country)
-      }
-      
-      // Refresh will be handled by parent component callbacks
+        let countryData: CreateCountryRequest | UpdateCountryRequest
 
-      setTimeout(() => {
-        reset()
-        setGeneratedId('')
-        handleClose()
-      }, 1500)
-    } catch (error: unknown) {
-      let errorMessage = 'Failed to add country. Please try again.'
-      if (error instanceof Error) {
-        if (error.message.includes('validation')) {
-          errorMessage = 'Please check your input and try again.'
+        if (isEditing) {
+          countryData = {
+            id: currentDataToEdit?.id,
+            description: validatedData.description,
+            active: validatedData.active,
+            enabled: true,
+            deleted: false,
+            taskStatusDTO: validatedData.taskStatusDTO,
+            ...(formCountryId && { uuid: formCountryId }),
+          } as UpdateCountryRequest
         } else {
-          errorMessage = error.message
+          countryData = {
+            description: validatedData.description,
+            active: validatedData.active,
+            enabled: true,
+            deleted: false,
+            taskStatusDTO: validatedData.taskStatusDTO,
+            ...(formCountryId && { uuid: formCountryId }),
+          } as CreateCountryRequest
         }
+
+        const result = await saveCountryMutation.mutateAsync({
+          data: countryData,
+          isEditing,
+          ...(countryId && { countryId }),
+        })
+
+        // Update generatedId with the UUID from the response if available
+        if (result?.uuid) {
+          setGeneratedId(result.uuid)
+        }
+
+        setSuccessMessage(
+          isEditing
+            ? 'Country updated successfully!'
+            : 'Country added successfully!'
+        )
+
+        if (
+          mode === 'edit' &&
+          onCountryUpdated &&
+          countryIndex !== null &&
+          countryIndex !== undefined
+        ) {
+          onCountryUpdated(result as Country, countryIndex)
+        } else if (onCountryAdded) {
+          onCountryAdded(result as Country)
+        }
+
+        // Auto-close after success
+        setTimeout(() => {
+          reset()
+          setGeneratedId('')
+          onClose()
+        }, 1500)
+      } catch (error: unknown) {
+        let errorMessage = 'Failed to save country. Please try again.'
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMessage = 'Please check your input and try again.'
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Network error. Please check your connection and try again.'
+          } else {
+            errorMessage = error.message || errorMessage
+          }
+        }
+        setErrorMessage(errorMessage)
       }
-      setErrorMessage(errorMessage)
-    }
-  }
+    },
+    [
+      taskStatusLoading,
+      apiCountryData,
+      actionData,
+      mode,
+      generatedId,
+      trigger,
+      saveCountryMutation,
+      countryIndex,
+      onCountryUpdated,
+      onCountryAdded,
+      reset,
+      onClose,
+    ]
+  )
 
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     reset()
     setErrorMessage(null)
     setSuccessMessage(null)
     setGeneratedId('')
     onClose()
-  }
-  
+  }, [reset, onClose])
+
   // Style variables
   const isDark = theme.palette.mode === 'dark'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
@@ -375,7 +423,7 @@ export const RightSlideCountryPanel: React.FC<
   const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
   const labelSx = tokens.label
   const valueSx = tokens.value
-  
+
   // View mode styles
   const viewModeStyles = useMemo(
     () => ({
@@ -384,7 +432,7 @@ export const RightSlideCountryPanel: React.FC<
     }),
     [isDark]
   )
-  
+
   // Field styles for the ID field
   const fieldStyles = useMemo(
     () => ({
@@ -392,14 +440,14 @@ export const RightSlideCountryPanel: React.FC<
     }),
     [commonFieldStyles]
   )
-  
+
   const labelStyles = useMemo(
     () => ({
       ...labelSx,
     }),
     [labelSx]
   )
-  
+
   const valueStyles = useMemo(
     () => ({
       ...valueSx,
@@ -407,135 +455,161 @@ export const RightSlideCountryPanel: React.FC<
     [valueSx]
   )
 
-  const renderTextField = (
-    name: 'description',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        rules={{
-          validate: (value, formValues) =>
-            validateCountryField(name, value, formValues),
-        }}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={label}
-            fullWidth
-            required={required}
-            multiline
-            rows={4}
-            error={!!errors[name]}
-            helperText={errors[name]?.message?.toString()}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={errors[name] ? errorFieldStyles : commonFieldStyles}
-          />
-        )}
-      />
-    </Grid>
-  )
-
-  const renderCountryIdField = (
-    name: 'countryId',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue=""
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (value, formValues) =>
-            validateCountryField(name, value, formValues as CountryFormData & { countryId?: string }),
-        }}
-        render={({ field }) => {
-          const fieldError = errors[name as keyof typeof errors]
-          return (
+  const renderTextField = useCallback(
+    (
+      name: 'description',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value, formValues) =>
+              validateCountryField(name, value, formValues),
+          }}
+          render={({ field }) => (
             <TextField
               {...field}
-              fullWidth
               label={label}
+              fullWidth
               required={required}
-              value={field.value || generatedId}
-              error={!!fieldError}
-              helperText={fieldError?.message?.toString()}
-            onChange={(e) => {
-              setGeneratedId(e.target.value)
-              field.onChange(e)
-            }}
-            disabled={isReadOnly || isEditMode}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end" sx={{ mr: 0 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleGenerateNewId}
-                    disabled={isGeneratingId || isReadOnly || isEditMode}
-                    sx={{
-                      color: theme.palette.primary.contrastText,
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      background: theme.palette.primary.main,
-                      '&:hover': {
-                        background: theme.palette.primary.dark,
-                      },
-                      minWidth: '100px',
-                      height: '32px',
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '11px',
-                      lineHeight: '14px',
-                      letterSpacing: '0.3px',
-                      px: 1,
-                    }}
-                  >
-                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
-                  </Button>
-                </InputAdornment>
-              ),
-              sx: valueStyles,
-            }}
-              InputLabelProps={{
-                sx: {
-                  ...labelStyles,
-                  ...(!!fieldError && {
-                    color: theme.palette.error.main,
-                    '&.Mui-focused': { color: theme.palette.error.main },
-                    '&.MuiFormLabel-filled': { color: theme.palette.error.main },
-                  }),
-                },
-              }}
-              sx={{
-                ...fieldStyles,
-                ...((isReadOnly || isEditMode) && {
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: viewModeStyles.backgroundColor,
-                    color: textSecondary,
-                    '& fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                  },
-                }),
-              }}
+              error={!!errors[name]}
+              helperText={errors[name]?.message?.toString()}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={errors[name] ? errorFieldStyles : commonFieldStyles}
             />
-          )
-        }}
-      />
-    </Grid>
+          )}
+        />
+      </Grid>
+    ),
+    [control, errors, labelSx, valueSx, errorFieldStyles, commonFieldStyles, validateCountryField]
+  )
+
+  const renderCountryIdField = useCallback(
+    (
+      name: 'countryId',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          defaultValue=""
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value, formValues) =>
+              validateCountryField(
+                name,
+                value,
+                formValues as CountryFormData & { countryId?: string }
+              ),
+          }}
+          render={({ field }) => {
+            const fieldError = errors[name as keyof typeof errors]
+            return (
+              <TextField
+                {...field}
+                fullWidth
+                label={label}
+                required={required}
+                value={field.value || generatedId}
+                error={!!fieldError}
+                helperText={fieldError?.message?.toString()}
+                onChange={(e) => {
+                  setGeneratedId(e.target.value)
+                  field.onChange(e)
+                }}
+                disabled={isReadOnly || isEditMode}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end" sx={{ mr: 0 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleGenerateNewId}
+                        disabled={isGeneratingId || isReadOnly || isEditMode}
+                        sx={{
+                          color: theme.palette.primary.contrastText,
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          background: theme.palette.primary.main,
+                          '&:hover': {
+                            background: theme.palette.primary.dark,
+                          },
+                          minWidth: '100px',
+                          height: '32px',
+                          fontFamily: 'Outfit, sans-serif',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '11px',
+                          lineHeight: '14px',
+                          letterSpacing: '0.3px',
+                          px: 1,
+                        }}
+                      >
+                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                      </Button>
+                    </InputAdornment>
+                  ),
+                  sx: valueStyles,
+                }}
+                InputLabelProps={{
+                  sx: {
+                    ...labelStyles,
+                    ...(!!fieldError && {
+                      color: theme.palette.error.main,
+                      '&.Mui-focused': { color: theme.palette.error.main },
+                      '&.MuiFormLabel-filled': {
+                        color: theme.palette.error.main,
+                      },
+                    }),
+                  },
+                }}
+                sx={{
+                  ...fieldStyles,
+                  ...((isReadOnly || isEditMode) && {
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      color: textSecondary,
+                      '& fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                  }),
+                }}
+              />
+            )
+          }}
+        />
+      </Grid>
+    ),
+    [
+      control,
+      errors,
+      generatedId,
+      isReadOnly,
+      isEditMode,
+      handleGenerateNewId,
+      isGeneratingId,
+      theme,
+      valueStyles,
+      labelStyles,
+      fieldStyles,
+      viewModeStyles,
+      textSecondary,
+      validateCountryField,
+    ]
   )
 
   return (
@@ -622,7 +696,7 @@ export const RightSlideCountryPanel: React.FC<
                 12,
                 true
               )}
-            
+
               {renderTextField(
                 'description',
                 getCountryLabelDynamic('CDL_MCNT_DESCRIPTION'),

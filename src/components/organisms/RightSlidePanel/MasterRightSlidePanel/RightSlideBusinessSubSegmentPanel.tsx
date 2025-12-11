@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -14,24 +14,23 @@ import {
   Select,
   MenuItem,
   FormControl,
-  FormHelperText,
   InputLabel,
-  CircularProgress
+  CircularProgress,
+  OutlinedInput,
 } from '@mui/material'
-import {
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
+import { Refresh as RefreshIcon, KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { alpha, useTheme } from '@mui/material/styles'
+
+import { FormError } from '../../../atoms/FormError'
 import {
   useSaveBusinessSubSegment,
   useBusinessSubSegment,
 } from '@/hooks/master/CustomerHook/useBusinessSubSegment'
 import { useAllBusinessSegments } from '@/hooks/master/CustomerHook/useBusinessSegment'
-import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
-
 import {
   validateBusinessSubSegmentData,
   sanitizeBusinessSubSegmentData,
@@ -44,7 +43,6 @@ import type {
   TaskStatusDTO,
 } from '@/services/api/masterApi/Customer/businessSubSegmentService'
 import { getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from '../panelTheme'
 import { useTaskStatuses } from '@/hooks/master/CustomerHook/useTaskStatus'
 import { idService } from '@/services/api/developerIdService'
@@ -66,6 +64,26 @@ interface RightSlideBusinessSubSegmentPanelProps {
   taskStatusError?: unknown
 }
 
+type TableDataWithBusinessSubSegmentFields = BusinessSubSegment & {
+  businessSubSegmentName?: string
+  businessSubSegmentDescription?: string
+}
+
+type OptionItem = {
+  label: string
+  value: string | number
+  id?: string | number
+}
+
+const DEFAULT_FORM_VALUES: BusinessSubSegmentFormData & { businessSubSegmentId?: string } = {
+  businessSubSegmentId: '',
+  subSegmentName: '',
+  subSegmentDescription: '',
+  businessSegmentNameDTO: null,
+  active: true,
+  taskStatusDTO: null,
+}
+
 export const RightSlideBusinessSubSegmentPanel: React.FC<
   RightSlideBusinessSubSegmentPanelProps
 > = ({
@@ -76,34 +94,35 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
   mode = 'add',
   actionData,
   businessSubSegmentIndex,
-  taskStatusOptions: _propTaskStatusOptions = [], // eslint-disable-line @typescript-eslint/no-unused-vars
+  taskStatusOptions: _propTaskStatusOptions = [],
   taskStatusLoading: propTaskStatusLoading = false,
   taskStatusError: propTaskStatusError = null,
 }) => {
   const theme = useTheme()
-  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [generatedId, setGeneratedId] = useState<string>('')
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
-  
-  // Check if we're in edit mode
+
   const isEditMode = mode === 'edit'
-  const isReadOnly = false // Can be made a prop if needed
+  const isReadOnly = false
 
   const saveBusinessSubSegmentMutation = useSaveBusinessSubSegment()
 
   // Fetch full business segment data when in edit mode
-  const { data: apiBusinessSubSegmentData } = useBusinessSubSegment(
-    mode === 'edit' && actionData?.id ? String(actionData.id) : null
+  const editId = useMemo(
+    () => (mode === 'edit' && actionData?.id ? String(actionData.id) : null),
+    [mode, actionData?.id]
   )
+  const { data: apiBusinessSubSegmentData } = useBusinessSubSegment(editId)
 
   // Fetch task statuses
   const { isLoading: taskStatusesLoading } = useTaskStatuses()
   const taskStatusLoading = propTaskStatusLoading || taskStatusesLoading
   const taskStatusError = propTaskStatusError || null
 
-  // Fetch all business segments for dropdown
+  // Fetch all business segments for dropdown - memoized to prevent unnecessary refetches
   const {
     data: businessSegmentsData,
     isLoading: businessSegmentsLoading,
@@ -111,11 +130,10 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
   } = useAllBusinessSegments()
 
   // Transform business segments to dropdown options
-  const businessSegmentOptions = React.useMemo(() => {
+  const businessSegmentOptions = useMemo(() => {
     if (!businessSegmentsData || !Array.isArray(businessSegmentsData)) {
       return []
     }
-    
     return businessSegmentsData.map((segment) => ({
       label: segment.segmentName,
       value: segment.id,
@@ -125,8 +143,23 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
 
   // Dynamic labels
   const getBusinessSubSegmentLabelDynamic = useCallback(
-    (configId: string): string => {
-      return getMasterLabel(configId)
+    (configId: string): string => getMasterLabel(configId),
+    []
+  )
+
+  // Helper: Extract field values from data source (handles both API and table data formats)
+  const extractFieldValues = useCallback(
+    (data: BusinessSubSegment | TableDataWithBusinessSubSegmentFields) => {
+      const tableData = data as TableDataWithBusinessSubSegmentFields
+      return {
+        subSegmentName:
+          tableData.subSegmentName || tableData.businessSubSegmentName || '',
+        subSegmentDescription:
+          tableData.subSegmentDescription ||
+          tableData.businessSubSegmentDescription ||
+          '',
+        businessSubSegmentId: data.uuid || `MBSS-${data.id}` || '',
+      }
     },
     []
   )
@@ -137,32 +170,14 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
     reset,
     trigger,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<BusinessSubSegmentFormData & { businessSubSegmentId?: string }>({
-    defaultValues: {
-      businessSubSegmentId: '',
-      subSegmentName: '',
-      subSegmentDescription: '',
-      businessSegmentNameDTO: null,
-      active: true,
-      taskStatusDTO: null,
-    },
+    defaultValues: DEFAULT_FORM_VALUES,
     mode: 'onChange',
   })
 
-  // Initialize business segment ID from form value
-  React.useEffect(() => {
-    const subscription = watch((value, { name }) => {
-      if (name === 'businessSubSegmentId' && value.businessSubSegmentId) {
-        setGeneratedId(value.businessSubSegmentId)
-      }
-    })
-    return () => subscription.unsubscribe()
-  }, [watch])
-
   // Function to generate new business segment ID
-  const handleGenerateNewId = async () => {
+  const handleGenerateNewId = useCallback(async () => {
     try {
       setIsGeneratingId(true)
       const newIdResponse = idService.generateNewId('MBSU')
@@ -171,29 +186,23 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
         shouldValidate: true,
         shouldDirty: true,
       })
-    } catch {
-      // Handle error silently
+    } catch (error) {
+      setErrorMessage('Failed to generate ID. Please try again.')
     } finally {
       setIsGeneratingId(false)
     }
-  }
+  }, [setValue])
 
   // Track the last reset ID and mode to prevent unnecessary resets
-  const lastResetIdRef = React.useRef<string | number | null>(null)
-  const lastModeRef = React.useRef<'add' | 'edit' | null>(null)
-  const lastIsOpenRef = React.useRef<boolean>(false)
+  const lastResetIdRef = useRef<string | number | null>(null)
+  const lastModeRef = useRef<'add' | 'edit' | null>(null)
+  const lastIsOpenRef = useRef<boolean>(false)
+
   // Reset form when panel opens/closes or mode/data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) {
       if (lastIsOpenRef.current) {
-        reset({
-          businessSubSegmentId: '',
-          subSegmentName: '',
-          subSegmentDescription: '',
-          businessSegmentNameDTO: null,
-          active: true,
-          taskStatusDTO: null,
-        })
+        reset(DEFAULT_FORM_VALUES)
         setGeneratedId('')
         lastResetIdRef.current = null
         lastModeRef.current = null
@@ -206,6 +215,7 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
       lastIsOpenRef.current = true
     }
 
+    // Wait for dropdowns to load in edit mode
     if (mode === 'edit' && (taskStatusLoading || businessSegmentsLoading)) {
       return
     }
@@ -223,17 +233,42 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
       const dataToUse = apiBusinessSubSegmentData || actionData
       if (!dataToUse) return
 
-      const businessSubSegmentId = dataToUse.uuid || `MBSU-${dataToUse.id}` || ''
+      const { subSegmentName, subSegmentDescription, businessSubSegmentId } =
+        extractFieldValues(dataToUse)
       setGeneratedId(businessSubSegmentId)
+
+      // Extract businessSegmentNameDTO - handle both API format (object) and table format (string/id)
+      let businessSegmentNameDTOValue: { id: number } | null = null
+      const tableData = dataToUse as TableDataWithBusinessSubSegmentFields
+
+      // Check if it's an object (API format)
+      if (
+        dataToUse.businessSegmentNameDTO &&
+        typeof dataToUse.businessSegmentNameDTO === 'object' &&
+        'id' in dataToUse.businessSegmentNameDTO
+      ) {
+        businessSegmentNameDTOValue = { id: dataToUse.businessSegmentNameDTO.id }
+      }
+      // Check if it's a string (table format)
+      else if (
+        tableData.businessSegmentNameDTO &&
+        typeof (tableData.businessSegmentNameDTO as unknown) === 'string'
+      ) {
+        const segmentNameStr = tableData.businessSegmentNameDTO as unknown as string
+        const matchingSegment = businessSegmentOptions.find(
+          (opt) => opt.label === segmentNameStr || String(opt.id) === segmentNameStr
+        )
+        if (matchingSegment) {
+          businessSegmentNameDTOValue = { id: matchingSegment.id }
+        }
+      }
 
       reset({
         businessSubSegmentId: businessSubSegmentId,
-        subSegmentName: dataToUse.subSegmentName || '',
-        subSegmentDescription: dataToUse.subSegmentDescription || '',
+        subSegmentName: subSegmentName,
+        subSegmentDescription: subSegmentDescription,
         active: dataToUse.active ?? true,
-        businessSegmentNameDTO: dataToUse.businessSegmentNameDTO?.id
-          ? { id: dataToUse.businessSegmentNameDTO.id }
-          : null,
+        businessSegmentNameDTO: businessSegmentNameDTOValue,
         taskStatusDTO: dataToUse.taskStatusDTO?.id
           ? { id: dataToUse.taskStatusDTO.id }
           : null,
@@ -242,20 +277,11 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
       lastResetIdRef.current = dataToUse.id
       lastModeRef.current = mode
     } else if (mode === 'add') {
-      reset({
-        businessSubSegmentId: '',
-        subSegmentName: '',
-        subSegmentDescription: '',
-        businessSegmentNameDTO: null,
-        active: true,
-        taskStatusDTO: null,
-      })
+      reset(DEFAULT_FORM_VALUES)
       setGeneratedId('')
-
       lastResetIdRef.current = null
       lastModeRef.current = mode
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isOpen,
     mode,
@@ -264,32 +290,17 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
     taskStatusLoading,
     businessSegmentsLoading,
     reset,
+    extractFieldValues,
+    businessSegmentOptions,
   ])
 
-  const validateBusinessSegmentField = React.useCallback(
+  const validateBusinessSegmentField = useCallback(
     (
       fieldName: string,
       value: unknown,
       allValues: BusinessSubSegmentFormData & { businessSubSegmentId?: string }
     ) => {
       try {
-        const requiredFields: Record<string, string> = {
-          subSegmentName: 'Business Sub Segment Name is required',
-          subSegmentDescription: 'Business Sub Segment Description is required',
-          businessSegmentNameDTO: 'Business Segment Name is required',
-        }
-
-        if (requiredFields[fieldName]) {
-          if (fieldName === 'businessSegmentNameDTO') {
-            // Validate object with id
-            if (!value || (typeof value === 'object' && !('id' in value) || (value as { id?: number })?.id === undefined)) {
-              return requiredFields[fieldName]
-            }
-          } else if (!value || (typeof value === 'string' && value.trim() === '')) {
-            return requiredFields[fieldName]
-          }
-        }
-
         // Validate business segment ID for new business segments (not in edit mode)
         if (fieldName === 'businessSubSegmentId' && mode === 'add') {
           if (!value || (typeof value === 'string' && value.trim() === '')) {
@@ -297,20 +308,14 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
           }
         }
 
-        if (
-          (fieldName === 'subSegmentName' || fieldName === 'subSegmentDescription') &&
-          value &&
-          typeof value === 'string' &&
-          value.trim() !== ''
-        ) {
-          const result = validateBusinessSubSegmentData(allValues)
-          if (result.success) {
-            return true
-          } else {
-            const fieldError = result.errors?.issues.find(
-              (issue) => issue.path.some((p) => String(p) === fieldName)
-            )
-            return fieldError ? fieldError.message : true
+        // Use schema validation for all fields
+        const result = validateBusinessSubSegmentData(allValues)
+        if (!result.success && result.errors) {
+          const fieldError = result.errors.issues.find((issue) =>
+            issue.path.some((p) => String(p) === fieldName)
+          )
+          if (fieldError) {
+            return fieldError.message
           }
         }
 
@@ -322,511 +327,474 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
     [mode]
   )
 
-  const onSubmit = async (data: BusinessSubSegmentFormData & { businessSubSegmentId?: string }) => {
-    try {
-      setErrorMessage(null)
-      setSuccessMessage(null)
+  const onSubmit = useCallback(
+    async (data: BusinessSubSegmentFormData & { businessSubSegmentId?: string }) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
 
-      if (taskStatusLoading || businessSegmentsLoading) {
-        setErrorMessage('Please wait for dropdown options to load before submitting.')
-        return
-      }
-
-      const validatedData = sanitizeBusinessSubSegmentData(data)
-      const currentDataToEdit = apiBusinessSubSegmentData || actionData
-      const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
-
-      // Validate business segment ID for new business segments
-      if (!isEditing && !data.businessSubSegmentId && !generatedId) {
-        setErrorMessage('Please generate a Business Segment ID before submitting.')
-        return
-      }
-
-      const isValid = await trigger()
-      if (!isValid) {
-        const errors = []
-        if (!data.subSegmentName) errors.push('Business Sub Segment Name is required')
-        if (!data.subSegmentDescription) errors.push('Business Sub Segment Description is required')
-        if (!data.businessSegmentNameDTO || !data.businessSegmentNameDTO.id) errors.push('Business Segment Name is required')
-        if (errors.length > 0) {
-          setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
+        if (taskStatusLoading || businessSegmentsLoading) {
+          setErrorMessage('Please wait for dropdown options to load before submitting.')
+          return
         }
-        return
-      }
-      const businessSubSegmentId = isEditing ? String(currentDataToEdit?.id || '') : undefined
 
-      // Get the generated business segment ID (UUID) from form data
-      const formBusinessSubSegmentId = data.businessSubSegmentId || generatedId
+        const validatedData = sanitizeBusinessSubSegmentData(data)
+        const currentDataToEdit = apiBusinessSubSegmentData || actionData
+        const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
 
-      let businessSubSegmentData: CreateBusinessSubSegmentRequest | UpdateBusinessSubSegmentRequest
+        // Validate business segment ID for new business segments
+        if (!isEditing && !data.businessSubSegmentId && !generatedId) {
+          setErrorMessage('Please generate a Business Segment ID before submitting.')
+          return
+        }
 
-      if (isEditing) {
-        businessSubSegmentData = {
-          id: currentDataToEdit?.id,
-          businessSubSegmentName: validatedData.subSegmentName,
-          businessSubSegmentDescription: validatedData.subSegmentDescription,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formBusinessSubSegmentId && { uuid: formBusinessSubSegmentId }),
-          ...(validatedData.businessSegmentNameDTO !== null && validatedData.businessSegmentNameDTO?.id && {
-            businessSegmentNameDTO: { id: validatedData.businessSegmentNameDTO.id },
-          }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as UpdateBusinessSubSegmentRequest
-      } else {
-        businessSubSegmentData = {
-          businessSubSegmentName: validatedData.subSegmentName,
-          businessSubSegmentDescription: validatedData.subSegmentDescription,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formBusinessSubSegmentId && { uuid: formBusinessSubSegmentId }),
-          ...(validatedData.businessSegmentNameDTO !== null && validatedData.businessSegmentNameDTO?.id && {
-            businessSegmentNameDTO: { id: validatedData.businessSegmentNameDTO.id },
-          }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as CreateBusinessSubSegmentRequest
-      }
+        // Validate using schema
+        const validationResult = validateBusinessSubSegmentData(data)
+        if (!validationResult.success) {
+          const fieldErrors =
+            validationResult.errors?.issues.map((issue) => {
+              const fieldName = issue.path.join('.')
+              return `${fieldName}: ${issue.message}`
+            }) || []
+          setErrorMessage(`Please fix the validation errors: ${fieldErrors.join(', ')}`)
+          return
+        }
 
-      const result = await saveBusinessSubSegmentMutation.mutateAsync({
-        data: businessSubSegmentData,
-        isEditing,
-        ...(businessSubSegmentId && { businessSubSegmentId }),
-      })
+        const isValid = await trigger()
+        if (!isValid) {
+          setErrorMessage('Please fix the form errors before submitting.')
+          return
+        }
 
-      // Update generatedId with the UUID from the response if available
-      if (result?.uuid) {
-        setGeneratedId(result.uuid)
-      }
+        // Get the business sub segment ID for the update call
+        const businessSubSegmentId =
+          isEditing && currentDataToEdit?.id ? String(currentDataToEdit.id) : undefined
 
-      setSuccessMessage(
-        isEditing
-          ? 'Business Sub Segment updated successfully!'
-          : 'Business Sub Segment added successfully!'
-      )
+        // Get the generated business segment ID (UUID) from form data
+        const formBusinessSubSegmentId = data.businessSubSegmentId || generatedId
 
-      if (
-        mode === 'edit' &&
-        onBusinessSubSegmentUpdated &&
-        businessSubSegmentIndex !== null &&
-        businessSubSegmentIndex !== undefined
-      ) {
-        onBusinessSubSegmentUpdated(result as BusinessSubSegment, businessSubSegmentIndex)
-      } else if (onBusinessSubSegmentAdded) {
-        onBusinessSubSegmentAdded(result as BusinessSubSegment)
-      }
-      
-      // Refresh will be handled by parent component callbacks
+        let businessSubSegmentData: CreateBusinessSubSegmentRequest | UpdateBusinessSubSegmentRequest
 
-      setTimeout(() => {
-        reset()
-        setGeneratedId('')
-        handleClose()
-      }, 1500)
-    } catch (error: unknown) {
-      let errorMessage = 'Failed to add business sub segment. Please try again.'
-      if (error instanceof Error) {
-        if (error.message.includes('validation')) {
-          errorMessage = 'Please check your input and try again.'
+        if (isEditing) {
+          businessSubSegmentData = {
+            id: currentDataToEdit?.id,
+            subSegmentName: validatedData.subSegmentName,
+            subSegmentDescription: validatedData.subSegmentDescription,
+            active: validatedData.active,
+            enabled: true,
+            deleted: false,
+            ...(formBusinessSubSegmentId && { uuid: formBusinessSubSegmentId }),
+            ...(validatedData.businessSegmentNameDTO !== null &&
+              validatedData.businessSegmentNameDTO?.id && {
+                businessSegmentNameDTO: { id: validatedData.businessSegmentNameDTO.id },
+              }),
+            ...(validatedData.taskStatusDTO !== null &&
+              validatedData.taskStatusDTO?.id && {
+                taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+              }),
+          } as UpdateBusinessSubSegmentRequest
         } else {
-          errorMessage = error.message
+          businessSubSegmentData = {
+            subSegmentName: validatedData.subSegmentName,
+            subSegmentDescription: validatedData.subSegmentDescription,
+            businessSegmentNameDTO: validatedData.businessSegmentNameDTO,
+            active: validatedData.active,
+            enabled: true,
+            deleted: false,
+            ...(formBusinessSubSegmentId && { uuid: formBusinessSubSegmentId }),
+            ...(validatedData.taskStatusDTO !== null &&
+              validatedData.taskStatusDTO?.id && {
+                taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+              }),
+          } as CreateBusinessSubSegmentRequest
         }
+
+        const result = await saveBusinessSubSegmentMutation.mutateAsync({
+          data: businessSubSegmentData,
+          isEditing,
+          ...(businessSubSegmentId && { businessSegmentId: businessSubSegmentId }),
+        })
+
+        // Update generatedId with the UUID from the response if available
+        if (result?.uuid) {
+          setGeneratedId(result.uuid)
+        }
+
+        setSuccessMessage(
+          isEditing
+            ? 'Business Sub Segment updated successfully!'
+            : 'Business Sub Segment added successfully!'
+        )
+
+        if (
+          mode === 'edit' &&
+          onBusinessSubSegmentUpdated &&
+          businessSubSegmentIndex !== null &&
+          businessSubSegmentIndex !== undefined
+        ) {
+          onBusinessSubSegmentUpdated(result as BusinessSubSegment, businessSubSegmentIndex)
+        } else if (onBusinessSubSegmentAdded) {
+          onBusinessSubSegmentAdded(result as BusinessSubSegment)
+        }
+
+        setTimeout(() => {
+          reset(DEFAULT_FORM_VALUES)
+          setGeneratedId('')
+          handleClose()
+        }, 1500)
+      } catch (error: unknown) {
+        let errorMessage = 'Failed to save business sub segment. Please try again.'
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMessage = 'Please check your input and try again.'
+          } else {
+            errorMessage = error.message
+          }
+        }
+        setErrorMessage(errorMessage)
       }
-      setErrorMessage(errorMessage)
-    }
-  }
+    },
+    [
+      taskStatusLoading,
+      businessSegmentsLoading,
+      apiBusinessSubSegmentData,
+      actionData,
+      mode,
+      generatedId,
+      trigger,
+      saveBusinessSubSegmentMutation,
+      businessSubSegmentIndex,
+      onBusinessSubSegmentUpdated,
+      onBusinessSubSegmentAdded,
+      reset,
+    ]
+  )
 
-
-  const handleClose = () => {
-    reset()
+  const handleClose = useCallback(() => {
+    reset(DEFAULT_FORM_VALUES)
     setErrorMessage(null)
     setSuccessMessage(null)
     setGeneratedId('')
     onClose()
-  }
-  
+  }, [reset, onClose])
+
   // Style variables
   const isDark = theme.palette.mode === 'dark'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
-  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
   const labelSx = tokens.label
   const valueSx = tokens.value
-  
+
   // View mode styles
-  const viewModeStyles = React.useMemo(
+  const viewModeStyles = useMemo(
     () => ({
       backgroundColor: isDark ? alpha('#1E293B', 0.5) : '#F9FAFB',
       borderColor: isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB',
     }),
     [isDark]
   )
-  
-  // Field styles for the ID field
-  const fieldStyles = React.useMemo(
+
+  // Select styles with theme-aware colors
+  const selectStyles = useMemo(
     () => ({
-      ...commonFieldStyles,
+      height: '46px',
+      borderRadius: '8px',
+      backgroundColor: isDark
+        ? alpha('#1E293B', 0.5)
+        : theme.palette.background.paper,
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: isDark ? alpha('#FFFFFF', 0.3) : alpha('#000000', 0.23),
+        borderWidth: '1px',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: isDark ? alpha('#FFFFFF', 0.5) : alpha('#000000', 0.87),
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: theme.palette.primary.main,
+      },
+      '& .MuiSelect-icon': {
+        color: isDark ? '#FFFFFF' : theme.palette.text.primary,
+      },
+      '& .MuiInputBase-input': {
+        color: isDark ? '#FFFFFF' : theme.palette.text.primary,
+      },
     }),
-    [commonFieldStyles]
-  )
-  
-  const labelStyles = React.useMemo(
-    () => ({
-      ...labelSx,
-    }),
-    [labelSx]
-  )
-  
-  const valueStyles = React.useMemo(
-    () => ({
-      ...valueSx,
-    }),
-    [valueSx]
+    [theme, isDark]
   )
 
-  
-  const renderTextField = (
-    name: 'subSegmentName' | 'subSegmentDescription',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        rules={{
-          validate: (value, formValues) =>
-            validateBusinessSegmentField(name, value, formValues),
-        }}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={label}
-            fullWidth
-            required={required}
-            error={!!errors[name]}
-            helperText={errors[name]?.message?.toString()}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={errors[name] ? errorFieldStyles : commonFieldStyles}
-          />
-        )}
-      />
-    </Grid>
-  )
-  type OptionItem = {
-    label: string
-    value: string | number
-    id?: string | number
-  }
-
-
-  const renderSelectField = (
-    name: keyof BusinessSubSegmentFormData,
-    label: string,
-    options?: OptionItem[] | string[],
-    gridSize: number = 6,
-    required: boolean = true,
-    showRedAsterisk: boolean = false,
-    extraProps: {
-      isLoading?: boolean
-      disabled?: boolean
-      onChange?: (value: string | number) => void
-      placeholder?: string
-    } = {}
-  ) => {
-    const resolvedOptions: OptionItem[] | string[] =
-      options && options.length > 0 ? options : []
-
-    return (
-      <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
+  const renderTextField = useCallback(
+    (
+      name: 'subSegmentName' | 'subSegmentDescription',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
         <Controller
           name={name}
           control={control}
-          defaultValue={''}
-          rules={
-          name === 'businessSegmentNameDTO'
-            ? {
-                validate: (value: unknown) => {
-                  if (required) {
-                    if (
-                      !value ||
-                      typeof value !== 'object' ||
-                      value === null ||
-                      !('id' in value) ||
-                      (value as { id?: number }).id === undefined
-                    ) {
-                      return `${label} is required`
-                    }
+          rules={{
+            validate: (value, formValues) =>
+              validateBusinessSegmentField(name, value, formValues),
+          }}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label={label}
+              fullWidth
+              required={required}
+              error={!!errors[name]}
+              helperText={errors[name]?.message?.toString()}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={errors[name] ? errorFieldStyles : commonFieldStyles}
+            />
+          )}
+        />
+      </Grid>
+    ),
+    [control, errors, labelSx, valueSx, errorFieldStyles, commonFieldStyles, validateBusinessSegmentField]
+  )
+
+  const renderSelectField = useCallback(
+    (
+      name: keyof BusinessSubSegmentFormData,
+      label: string,
+      options?: OptionItem[] | string[],
+      gridSize: number = 6,
+      required: boolean = true,
+      showRedAsterisk: boolean = false,
+      extraProps: {
+        isLoading?: boolean
+        disabled?: boolean
+        onChange?: (value: string | number) => void
+        placeholder?: string
+      } = {}
+    ) => {
+      const resolvedOptions: OptionItem[] | string[] =
+        options && options.length > 0 ? options : []
+      const loading = extraProps.isLoading || false
+      const displayLabel = loading
+        ? getBusinessSubSegmentLabelDynamic('CDL_COMMON_LOADING')
+        : extraProps.placeholder ?? label
+
+      return (
+        <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
+          <Controller
+            name={name}
+            control={control}
+            defaultValue={name === 'businessSegmentNameDTO' ? null : ''}
+            rules={{
+              validate: (value: unknown, formValues) => {
+                const fieldData = { ...formValues, [name]: value }
+                const result = validateBusinessSubSegmentData(fieldData)
+                if (!result.success && result.errors) {
+                  const fieldError = result.errors.issues.find((issue) =>
+                    issue.path.some((p) => String(p) === name)
+                  )
+                  if (fieldError) {
+                    return fieldError.message
                   }
-                  return true
-                },
-              }
-            : {}
-        }
-          render={({ field, fieldState }) => {
-            const hasError = !!fieldState.error
-
-            const fieldStyles = hasError
-              ? {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
                 }
-              : {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[600], 0.7)
-                          : '#CAD5E2',
-                      borderWidth: '1px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[300], 0.8)
-                          : '#94A3B8',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-
-            const dynamicLabelSx = {
-              ...labelSx,
-              ...(hasError && {
-                color: theme.palette.error.main,
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              ...(showRedAsterisk && {
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              '&.Mui-focused': {
-                color: hasError
-                  ? theme.palette.error.main
-                  : theme.palette.primary.main,
+                return true
               },
-            }
+            }}
+            render={({ field }) => {
+              const selectValue =
+                name === 'businessSegmentNameDTO'
+                  ? (field.value as { id?: number } | null)?.id ?? ''
+                  : field.value ?? ''
 
-            return (
-              <FormControl
-                fullWidth
-                error={hasError}
-                disabled={!!extraProps.disabled || !!extraProps.isLoading}
-              >
-                <InputLabel
-                  sx={dynamicLabelSx}
-                  id={`${String(name)}-label`}
+              return (
+                <FormControl
+                  fullWidth
+                  error={!!errors[name]}
                   required={required}
+                  disabled={!!extraProps.disabled || loading}
                 >
-                  {extraProps.placeholder ?? label}
-                </InputLabel>
-
-                <Select
-                  labelId={`${String(name)}-label`}
-                  id={`${String(name)}-select`}
-                  name={field.name}
-                  value={
-                    name === 'businessSegmentNameDTO'
-                      ? (field.value as { id?: number } | null)?.id ?? ''
-                      : field.value ?? ''
-                  }
-                  onChange={(e) => {
-                    const val = (e.target as HTMLInputElement).value
-                    if (name === 'businessSegmentNameDTO') {
-                      // Store as object with id
-                      field.onChange(val ? { id: Number(val) } : null)
-                      if (extraProps.onChange) extraProps.onChange(Number(val))
-                    } else {
-                      field.onChange(val)
-                      if (extraProps.onChange) extraProps.onChange(val)
-                    }
-                  }}
-                  onBlur={field.onBlur}
-                  disabled={!!extraProps.disabled || !!extraProps.isLoading}
-                  label={extraProps.placeholder ?? label}
-                  sx={{
-                    ...valueSx,
-                    ...fieldStyles,
-                  }}
-                  IconComponent={KeyboardArrowDownIcon}
-                >
-                  {extraProps.isLoading ? (
-                    <MenuItem disabled>
-                      <CircularProgress size={16} sx={{ mr: 1 }} />
-                      Loading {label.toLowerCase()}...
-                    </MenuItem>
-                  ) : Array.isArray(resolvedOptions) &&
-                    resolvedOptions.length > 0 ? (
-                    resolvedOptions.map((opt) =>
-                      typeof opt === 'string' ? (
-                        <MenuItem key={opt} value={opt}>
-                          {opt}
-                        </MenuItem>
-                      ) : (
-                        <MenuItem key={opt.id ?? opt.value} value={opt.value}>
-                          {opt.label}
-                        </MenuItem>
+                  <InputLabel sx={labelSx}>{displayLabel}</InputLabel>
+                  <Select
+                    name={field.name}
+                    value={selectValue}
+                    onChange={(e) => {
+                      const val = (e.target as HTMLInputElement).value
+                      if (name === 'businessSegmentNameDTO') {
+                        field.onChange(val ? { id: Number(val) } : null)
+                        if (extraProps.onChange) extraProps.onChange(Number(val))
+                      } else {
+                        field.onChange(val)
+                        if (extraProps.onChange) extraProps.onChange(val)
+                      }
+                    }}
+                    onBlur={field.onBlur}
+                    input={<OutlinedInput label={displayLabel} />}
+                    label={displayLabel}
+                    sx={{ ...selectStyles, ...valueSx }}
+                    IconComponent={KeyboardArrowDownIcon}
+                    disabled={!!extraProps.disabled || loading}
+                  >
+                    {loading ? (
+                      <MenuItem disabled>
+                        <CircularProgress size={16} sx={{ mr: 1 }} />
+                        {getBusinessSubSegmentLabelDynamic('CDL_COMMON_LOADING')}{' '}
+                        {label.toLowerCase()}...
+                      </MenuItem>
+                    ) : Array.isArray(resolvedOptions) && resolvedOptions.length > 0 ? (
+                      resolvedOptions.map((opt) =>
+                        typeof opt === 'string' ? (
+                          <MenuItem key={opt} value={opt}>
+                            {opt}
+                          </MenuItem>
+                        ) : (
+                          <MenuItem key={opt.id ?? opt.value} value={opt.value}>
+                            {opt.label}
+                          </MenuItem>
+                        )
                       )
-                    )
-                  ) : (
-                    <MenuItem disabled>
-                      No {label.toLowerCase()} available
-                    </MenuItem>
-                  )}
-                </Select>
+                    ) : (
+                      <MenuItem disabled>No {label.toLowerCase()} available</MenuItem>
+                    )}
+                  </Select>
+                  <FormError
+                    error={(errors[name]?.message as string) || ''}
+                    touched={true}
+                  />
+                </FormControl>
+              )
+            }}
+          />
+        </Grid>
+      )
+    },
+    [
+      control,
+      errors,
+      labelSx,
+      valueSx,
+      selectStyles,
+      getBusinessSubSegmentLabelDynamic,
+    ]
+  )
 
-                {hasError && (
-                  <FormHelperText>
-                    {fieldState.error?.message ?? 'Supporting text'}
-                  </FormHelperText>
-                )}
-              </FormControl>
+  const renderBusinessSubSegmentIdField = useCallback(
+    (
+      name: 'businessSubSegmentId',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          defaultValue=""
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value, formValues) =>
+              validateBusinessSegmentField(
+                name,
+                value,
+                formValues as BusinessSubSegmentFormData & { businessSubSegmentId?: string }
+              ),
+          }}
+          render={({ field }) => {
+            const fieldError = errors[name as keyof typeof errors]
+            return (
+              <TextField
+                {...field}
+                fullWidth
+                label={label}
+                required={required}
+                value={field.value || generatedId}
+                error={!!fieldError}
+                helperText={fieldError?.message?.toString()}
+                onChange={(e) => {
+                  setGeneratedId(e.target.value)
+                  field.onChange(e)
+                }}
+                disabled={isReadOnly || isEditMode}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end" sx={{ mr: 0 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleGenerateNewId}
+                        disabled={isGeneratingId || isReadOnly || isEditMode}
+                        sx={{
+                          color: theme.palette.primary.contrastText,
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          background: theme.palette.primary.main,
+                          '&:hover': {
+                            background: theme.palette.primary.dark,
+                          },
+                          minWidth: '100px',
+                          height: '32px',
+                          fontFamily: 'Outfit, sans-serif',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '11px',
+                          lineHeight: '14px',
+                          letterSpacing: '0.3px',
+                          px: 1,
+                        }}
+                      >
+                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                      </Button>
+                    </InputAdornment>
+                  ),
+                  sx: valueSx,
+                }}
+                InputLabelProps={{
+                  sx: {
+                    ...labelSx,
+                    ...(!!fieldError && {
+                      color: theme.palette.error.main,
+                      '&.Mui-focused': { color: theme.palette.error.main },
+                      '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                    }),
+                  },
+                }}
+                sx={{
+                  ...commonFieldStyles,
+                  ...((isReadOnly || isEditMode) && {
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      color: textSecondary,
+                      '& fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                  }),
+                }}
+              />
             )
           }}
         />
       </Grid>
-    )
-  }
-
-
-  const renderBusinessSubSegmentIdField = (
-    name: 'businessSubSegmentId',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue=""
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (value, formValues) =>
-            validateBusinessSegmentField(name, value, formValues as BusinessSubSegmentFormData & { businessSubSegmentId?: string }),
-        }}
-        render={({ field }) => {
-          const fieldError = errors[name as keyof typeof errors]
-          return (
-            <TextField
-              {...field}
-              fullWidth
-              label={label}
-              required={required}
-              value={field.value || generatedId}
-              error={!!fieldError}
-              helperText={fieldError?.message?.toString()}
-            onChange={(e) => {
-              setGeneratedId(e.target.value)
-              field.onChange(e)
-            }}
-            disabled={isReadOnly || isEditMode}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end" sx={{ mr: 0 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleGenerateNewId}
-                    disabled={isGeneratingId || isReadOnly || isEditMode}
-                    sx={{
-                      color: theme.palette.primary.contrastText,
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      background: theme.palette.primary.main,
-                      '&:hover': {
-                        background: theme.palette.primary.dark,
-                      },
-                      minWidth: '100px',
-                      height: '32px',
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '11px',
-                      lineHeight: '14px',
-                      letterSpacing: '0.3px',
-                      px: 1,
-                    }}
-                  >
-                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
-                  </Button>
-                </InputAdornment>
-              ),
-              sx: valueStyles,
-            }}
-              InputLabelProps={{
-                sx: {
-                  ...labelStyles,
-                  ...(!!fieldError && {
-                    color: theme.palette.error.main,
-                    '&.Mui-focused': { color: theme.palette.error.main },
-                    '&.MuiFormLabel-filled': { color: theme.palette.error.main },
-                  }),
-                },
-              }}
-              sx={{
-                ...fieldStyles,
-                ...((isReadOnly || isEditMode) && {
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: viewModeStyles.backgroundColor,
-                    color: textSecondary,
-                    '& fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                  },
-                }),
-              }}
-            />
-          )
-        }}
-      />
-    </Grid>
+    ),
+    [
+      control,
+      errors,
+      generatedId,
+      isReadOnly,
+      isEditMode,
+      handleGenerateNewId,
+      isGeneratingId,
+      theme,
+      valueSx,
+      labelSx,
+      commonFieldStyles,
+      viewModeStyles,
+      textSecondary,
+      validateBusinessSegmentField,
+    ]
   )
 
   return (
@@ -868,7 +836,7 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
             ? `${getBusinessSubSegmentLabelDynamic('CDL_COMMON_UPDATE')} ${getBusinessSubSegmentLabelDynamic('CDL_MBSS_NAME')}`
             : `${getBusinessSubSegmentLabelDynamic('CDL_COMMON_ADD')} ${getBusinessSubSegmentLabelDynamic('CDL_MBSS_NAME')}`}
           <IconButton
-            onClick={onClose}
+            onClick={handleClose}
             sx={{
               color: theme.palette.text.secondary,
               '&:hover': {
@@ -924,21 +892,21 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
                 getBusinessSubSegmentLabelDynamic('CDL_MBSS_DESCRIPTION'),
                 12,
                 true
-              )}    
-            
+              )}
 
-            {renderSelectField(
-              'businessSegmentNameDTO',
-              `${getBusinessSubSegmentLabelDynamic('CDL_MBS_NAME')}`,
-              businessSegmentOptions as OptionItem[],
-              12,
-              true,
-              true,
-              {
-                isLoading: businessSegmentsLoading,
-                disabled: saveBusinessSubSegmentMutation.isPending || taskStatusLoading,
-              }
-            )}
+              {renderSelectField(
+                'businessSegmentNameDTO',
+                getBusinessSubSegmentLabelDynamic('CDL_MBS_NAME'),
+                businessSegmentOptions as OptionItem[],
+                12,
+                true,
+                true,
+                {
+                  isLoading: businessSegmentsLoading,
+                  disabled:
+                    saveBusinessSubSegmentMutation.isPending || taskStatusLoading,
+                }
+              )}
             </Grid>
           </DialogContent>
 
@@ -966,7 +934,11 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
                   fullWidth
                   variant="outlined"
                   onClick={handleClose}
-                  disabled={saveBusinessSubSegmentMutation.isPending || taskStatusLoading || businessSegmentsLoading}
+                  disabled={
+                    saveBusinessSubSegmentMutation.isPending ||
+                    taskStatusLoading ||
+                    businessSegmentsLoading
+                  }
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -990,7 +962,11 @@ export const RightSlideBusinessSubSegmentPanel: React.FC<
                   variant="outlined"
                   color="primary"
                   type="submit"
-                  disabled={saveBusinessSubSegmentMutation.isPending || taskStatusLoading || businessSegmentsLoading}
+                  disabled={
+                    saveBusinessSubSegmentMutation.isPending ||
+                    taskStatusLoading ||
+                    businessSegmentsLoading
+                  }
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,

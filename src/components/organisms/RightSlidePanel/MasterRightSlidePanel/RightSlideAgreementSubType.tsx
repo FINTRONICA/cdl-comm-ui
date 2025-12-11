@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -14,40 +14,40 @@ import {
   Select,
   MenuItem,
   FormControl,
-  FormHelperText,
   InputLabel,
-  CircularProgress
+  CircularProgress,
+  OutlinedInput,
 } from '@mui/material'
 import {
   Refresh as RefreshIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
 } from '@mui/icons-material'
-import { Controller, useForm } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
+import { Controller, useForm } from 'react-hook-form'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { alpha, useTheme } from '@mui/material/styles'
+import { FormError } from '@/components/atoms/FormError'
 import {
   useSaveAgreementSubType,
   useAgreementSubType,
 } from '@/hooks/master/CustomerHook/useAgreementSubType'
 import { useAllAgreementTypes } from '@/hooks/master/CustomerHook/useAgreementType'
+import { useTaskStatuses } from '@/hooks/master/CustomerHook/useTaskStatus'
 import type { AgreementType } from '@/services/api/masterApi/Customer/agreementTypeService'
-import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
-
-import {
-  sanitizeAgreementSubTypeData,
-  type AgreementSubTypeFormData,
-  validateAgreementSubTypeData,
-} from '@/lib/validation/masterValidation/agreementSubTypeSchemas'
 import type {
   CreateAgreementSubTypeRequest,
   UpdateAgreementSubTypeRequest,
   AgreementSubType,
   TaskStatusDTO,
 } from '@/services/api/masterApi/Customer/agreementSubTypeService'
+import {
+  sanitizeAgreementSubTypeData,
+  type AgreementSubTypeFormData,
+  validateAgreementSubTypeData,
+} from '@/lib/validation/masterValidation/agreementSubTypeSchemas'
 import { getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from '../panelTheme'
-import { useTaskStatuses } from '@/hooks/master/CustomerHook/useTaskStatus'
 import { idService } from '@/services/api/developerIdService'
 
 interface RightSlideAgreementSubTypePanelProps {
@@ -67,6 +67,12 @@ interface RightSlideAgreementSubTypePanelProps {
   taskStatusError?: unknown
 }
 
+interface OptionItem {
+  label: string
+  value: string | number
+  id?: string | number
+}
+
 export const RightSlideAgreementSubTypePanel: React.FC<
   RightSlideAgreementSubTypePanelProps
 > = ({
@@ -82,29 +88,33 @@ export const RightSlideAgreementSubTypePanel: React.FC<
   taskStatusError: propTaskStatusError = null,
 }) => {
   const theme = useTheme()
-  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [generatedId, setGeneratedId] = useState<string>('')
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
-  
-  // Check if we're in edit mode
-  const isEditMode = mode === 'edit'
-  const isReadOnly = false // Can be made a prop if needed
 
+  const isEditMode = mode === 'edit'
+  const isReadOnly = false
+
+  // Refs to prevent duplicate API calls and unnecessary resets
+  const hasFetchedRef = useRef<boolean>(false)
+  const lastResetIdRef = useRef<string | number | null>(null)
+  const lastModeRef = useRef<'add' | 'edit' | null>(null)
+  const lastIsOpenRef = useRef<boolean>(false)
+
+  // Mutations and queries
   const saveAgreementSubTypeMutation = useSaveAgreementSubType()
 
-  // Fetch full business segment data when in edit mode
   const { data: apiAgreementSubTypeData } = useAgreementSubType(
-    mode === 'edit' && actionData?.id ? String(actionData.id) : null
+    isEditMode && actionData?.id ? String(actionData.id) : null
   )
 
-  // Fetch task statuses
   const { isLoading: taskStatusesLoading } = useTaskStatuses()
   const taskStatusLoading = propTaskStatusLoading || taskStatusesLoading
   const taskStatusError = propTaskStatusError || null
 
-  // Fetch all agreement types for dropdown - refetch when panel opens
+  // Fetch agreement types - FIXED: Prevent double calls
   const {
     data: agreementTypesData,
     isLoading: agreementTypesLoading,
@@ -112,33 +122,37 @@ export const RightSlideAgreementSubTypePanel: React.FC<
     refetch: refetchAgreementTypes,
   } = useAllAgreementTypes()
 
-  // Refetch agreement types when panel opens
-  React.useEffect(() => {
-    if (isOpen) {
+  // FIXED: Use ref to ensure API is called only once when panel opens
+  useEffect(() => {
+    if (isOpen && !hasFetchedRef.current) {
+      hasFetchedRef.current = true
       refetchAgreementTypes()
+    } else if (!isOpen) {
+      hasFetchedRef.current = false
     }
   }, [isOpen, refetchAgreementTypes])
 
   // Transform agreement types to dropdown options
-  const agreementTypeOptions = React.useMemo(() => {
+  const agreementTypeOptions = useMemo<OptionItem[]>(() => {
     if (!agreementTypesData) {
       return []
     }
-    
-    // Handle both array and paginated response
-    const types: AgreementType[] = Array.isArray(agreementTypesData) 
-      ? agreementTypesData 
+
+    const types: AgreementType[] = Array.isArray(agreementTypesData)
+      ? agreementTypesData
       : (agreementTypesData as { content?: AgreementType[] })?.content || []
-    
+
     if (!Array.isArray(types) || types.length === 0) {
       return []
     }
-    
-    return types.map((type: AgreementType) => ({
-      label: type.agreementTypeName || '',
-      value: type.id,
-      id: type.id,
-    })).filter((opt) => opt.label && opt.value)
+
+    return types
+      .map((type: AgreementType) => ({
+        label: type.agreementTypeName || '',
+        value: type.id,
+        id: type.id,
+      }))
+      .filter((opt) => opt.label && opt.value)
   }, [agreementTypesData])
 
   // Dynamic labels
@@ -149,6 +163,7 @@ export const RightSlideAgreementSubTypePanel: React.FC<
     []
   )
 
+  // Form setup
   const {
     control,
     handleSubmit,
@@ -169,8 +184,8 @@ export const RightSlideAgreementSubTypePanel: React.FC<
     mode: 'onChange',
   })
 
-  // Initialize business segment ID from form value
-  React.useEffect(() => {
+  // Sync generated ID with form
+  useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === 'agreementSubTypeId' && value.agreementSubTypeId) {
         setGeneratedId(value.agreementSubTypeId)
@@ -179,8 +194,8 @@ export const RightSlideAgreementSubTypePanel: React.FC<
     return () => subscription.unsubscribe()
   }, [watch])
 
-  // Function to generate new business segment ID
-  const handleGenerateNewId = async () => {
+  // Generate new ID handler
+  const handleGenerateNewId = useCallback(async () => {
     try {
       setIsGeneratingId(true)
       const newIdResponse = idService.generateNewId('MASU')
@@ -190,22 +205,18 @@ export const RightSlideAgreementSubTypePanel: React.FC<
         shouldDirty: true,
       })
     } catch {
-      // Handle error silently
+      setErrorMessage('Failed to generate ID. Please try again.')
     } finally {
       setIsGeneratingId(false)
     }
-  }
+  }, [setValue])
 
-  // Track the last reset ID and mode to prevent unnecessary resets
-  const lastResetIdRef = React.useRef<string | number | null>(null)
-  const lastModeRef = React.useRef<'add' | 'edit' | null>(null)
-  const lastIsOpenRef = React.useRef<boolean>(false)
   // Reset form when panel opens/closes or mode/data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) {
       if (lastIsOpenRef.current) {
         reset({
-            agreementSubTypeId: '',
+          agreementSubTypeId: '',
           subTypeName: '',
           subTypeDescription: '',
           agreementTypeDTO: null,
@@ -224,57 +235,71 @@ export const RightSlideAgreementSubTypePanel: React.FC<
       lastIsOpenRef.current = true
     }
 
-    // Wait for both agreement types and agreement sub type data to load in edit mode
-    if (mode === 'edit' && (taskStatusLoading || agreementTypesLoading || (!apiAgreementSubTypeData && !actionData))) {
+    // Wait for data to load in edit mode
+    if (
+      isEditMode &&
+      (taskStatusLoading ||
+        agreementTypesLoading ||
+        (!apiAgreementSubTypeData && !actionData))
+    ) {
       return
     }
 
     const currentId = (apiAgreementSubTypeData?.id || actionData?.id) ?? null
     const shouldReset =
       lastModeRef.current !== mode ||
-      (mode === 'edit' && lastResetIdRef.current !== currentId)
+      (isEditMode && lastResetIdRef.current !== currentId)
 
     if (!shouldReset) {
       return
     }
 
-    if (mode === 'edit' && (apiAgreementSubTypeData || actionData)) {
+    if (isEditMode && (apiAgreementSubTypeData || actionData)) {
       const dataToUse = apiAgreementSubTypeData || actionData
       if (!dataToUse) return
 
       const agreementSubTypeId = dataToUse.uuid || `MASU-${dataToUse.id}` || ''
       setGeneratedId(agreementSubTypeId)
 
-      // Ensure agreement type options are available before setting the form value
       const agreementTypeId = dataToUse.agreementTypeDTO?.id
       const taskStatusId = dataToUse.taskStatusDTO?.id
 
-      reset({
-        agreementSubTypeId: agreementSubTypeId,
-        subTypeName: dataToUse.subTypeName || '',
-        subTypeDescription: dataToUse.subTypeDescription || '',
-        active: dataToUse.active ?? true,
-        agreementTypeDTO: agreementTypeId ? { id: agreementTypeId } : null,
-        taskStatusDTO: taskStatusId ? { id: taskStatusId } : null,
-      }, {
-        keepDefaultValues: false,
-      })
+      reset(
+        {
+          agreementSubTypeId: agreementSubTypeId,
+          subTypeName: dataToUse.subTypeName || '',
+          subTypeDescription: dataToUse.subTypeDescription || '',
+          active: dataToUse.active ?? true,
+          agreementTypeDTO: agreementTypeId ? { id: agreementTypeId } : null,
+          taskStatusDTO: taskStatusId ? { id: taskStatusId } : null,
+        },
+        {
+          keepDefaultValues: false,
+        }
+      )
 
-      // Use setValue to ensure the dropdown value is set after options are loaded
-      // This is important because the options might not be available immediately
+      // Set dropdown values after options are loaded
       if (agreementTypeId && agreementTypeOptions.length > 0) {
-        const optionExists = agreementTypeOptions.some(opt => opt.value === agreementTypeId)
+        const optionExists = agreementTypeOptions.some(
+          (opt) => opt.value === agreementTypeId
+        )
         if (optionExists) {
-          setValue('agreementTypeDTO', { id: agreementTypeId }, { shouldValidate: true, shouldDirty: false })
+          setValue('agreementTypeDTO', { id: agreementTypeId }, {
+            shouldValidate: true,
+            shouldDirty: false,
+          })
         }
       }
       if (taskStatusId) {
-        setValue('taskStatusDTO', { id: taskStatusId }, { shouldValidate: true, shouldDirty: false })
+        setValue('taskStatusDTO', { id: taskStatusId }, {
+          shouldValidate: true,
+          shouldDirty: false,
+        })
       }
 
       lastResetIdRef.current = dataToUse.id
       lastModeRef.current = mode
-    } else if (mode === 'add') {
+    } else if (!isEditMode) {
       reset({
         agreementSubTypeId: '',
         subTypeName: '',
@@ -284,569 +309,576 @@ export const RightSlideAgreementSubTypePanel: React.FC<
         taskStatusDTO: null,
       })
       setGeneratedId('')
-
       lastResetIdRef.current = null
       lastModeRef.current = mode
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isOpen,
     mode,
-    apiAgreementSubTypeData?.id,
-    apiAgreementSubTypeData?.agreementTypeDTO?.id,
-    apiAgreementSubTypeData?.subTypeName,
-    actionData?.id,
-    actionData?.agreementTypeDTO?.id,
-    actionData?.subTypeName,
+    isEditMode,
+    apiAgreementSubTypeData,
+    actionData,
     taskStatusLoading,
     agreementTypesLoading,
-    agreementTypesData,
-    agreementTypeOptions.length,
+    agreementTypeOptions,
     reset,
     setValue,
   ])
 
-  // Separate effect to update dropdown values when options become available
-  React.useEffect(() => {
-    if (mode === 'edit' && isOpen && agreementTypeOptions.length > 0) {
+  // Update dropdown values when options become available
+  useEffect(() => {
+    if (isEditMode && isOpen && agreementTypeOptions.length > 0) {
       const dataToUse = apiAgreementSubTypeData || actionData
       if (dataToUse?.agreementTypeDTO?.id) {
         const agreementTypeId = dataToUse.agreementTypeDTO.id
-        const optionExists = agreementTypeOptions.some(opt => opt.value === agreementTypeId)
+        const optionExists = agreementTypeOptions.some(
+          (opt) => opt.value === agreementTypeId
+        )
         if (optionExists) {
           const currentValue = watch('agreementTypeDTO')
-          if (!currentValue || (currentValue as { id?: number })?.id !== agreementTypeId) {
-            setValue('agreementTypeDTO', { id: agreementTypeId }, { shouldValidate: false, shouldDirty: false })
+          if (
+            !currentValue ||
+            (currentValue as { id?: number })?.id !== agreementTypeId
+          ) {
+            setValue('agreementTypeDTO', { id: agreementTypeId }, {
+              shouldValidate: false,
+              shouldDirty: false,
+            })
           }
         }
       }
     }
-  }, [mode, isOpen, agreementTypeOptions, apiAgreementSubTypeData, actionData, setValue, watch])
+  }, [
+    isEditMode,
+    isOpen,
+    agreementTypeOptions,
+    apiAgreementSubTypeData,
+    actionData,
+    setValue,
+    watch,
+  ])
 
-
-  const onSubmit = async (data: AgreementSubTypeFormData & { agreementSubTypeId?: string }) => {
-    try {
-      setErrorMessage(null)
-      setSuccessMessage(null)
-
-      if (taskStatusLoading || agreementTypesLoading) {
-        setErrorMessage('Please wait for dropdown options to load before submitting.')
-        return
-      }
-
-      const validatedData = sanitizeAgreementSubTypeData(data)
-      const currentDataToEdit = apiAgreementSubTypeData || actionData
-      const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
-
-      // Validate business segment ID for new business segments
-      if (!isEditing && !data.agreementSubTypeId && !generatedId) {
-        setErrorMessage('Please generate a Agreement Sub Type ID before submitting.')
-        return
-      }
-
-      const isValid = await trigger()
-      if (!isValid) {
-        const errors = []
-        if (!data.subTypeName) errors.push('Agreement Sub Type Name is required')
-        if (!data.subTypeDescription) errors.push('Agreement Sub Type Description is required')
-        if (!data.agreementTypeDTO || !data.agreementTypeDTO.id) errors.push('Agreement Type Name is required')
-        if (errors.length > 0) {
-          setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
-        }
-        return
-      }
-      const agreementSubTypeId = isEditing ? String(currentDataToEdit?.id || '') : undefined
-
-      // Get the generated business segment ID (UUID) from form data
-      const formAgreementSubTypeId = data.agreementSubTypeId || generatedId
-
-      let agreementSubTypeData: CreateAgreementSubTypeRequest | UpdateAgreementSubTypeRequest
-
-      if (isEditing) {
-        agreementSubTypeData = {
-          id: currentDataToEdit?.id,
-          subTypeName: validatedData.subTypeName,
-          subTypeDescription: validatedData.subTypeDescription,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formAgreementSubTypeId && { uuid: formAgreementSubTypeId }),
-                    ...(validatedData.agreementTypeDTO !== null && validatedData.agreementTypeDTO?.id && {
-            agreementTypeDTO: { id: validatedData.agreementTypeDTO.id },
-          }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as UpdateAgreementSubTypeRequest
-      } else {
-        agreementSubTypeData = {
-          subTypeName: validatedData.subTypeName,
-          subTypeDescription: validatedData.subTypeDescription,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formAgreementSubTypeId && { uuid: formAgreementSubTypeId }),
-                ...(validatedData.agreementTypeDTO !== null && validatedData.agreementTypeDTO?.id && {
-            agreementTypeDTO: { id: validatedData.agreementTypeDTO.id },
-          }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as CreateAgreementSubTypeRequest
-      }
-
-      const result = await saveAgreementSubTypeMutation.mutateAsync({
-        data: agreementSubTypeData,
-        isEditing,
-        ...(agreementSubTypeId && { agreementSubTypeId }),
-      })
-
-      // Update generatedId with the UUID from the response if available
-      if (result?.uuid) {
-        setGeneratedId(result.uuid)
-      }
-
-      setSuccessMessage(
-        isEditing
-          ? 'Agreement Sub Type updated successfully!'
-          : 'Agreement Sub Type added successfully!'
-      )
-
-      if (
-        mode === 'edit' &&
-        onAgreementSubTypeUpdated &&
-        agreementSubTypeIndex !== null &&
-        agreementSubTypeIndex !== undefined
-      ) {
-        onAgreementSubTypeUpdated(result as AgreementSubType, agreementSubTypeIndex)
-      } else if (onAgreementSubTypeAdded) {
-        onAgreementSubTypeAdded(result as AgreementSubType)
-      }
-      
-      // Refresh will be handled by parent component callbacks
-
-      setTimeout(() => {
-        reset()
-        setGeneratedId('')
-        handleClose()
-      }, 1500)
-    } catch (error: unknown) {
-      let errorMessage = 'Failed to add agreement sub type. Please try again.'
-      if (error instanceof Error) {
-        if (error.message.includes('validation')) {
-          errorMessage = 'Please check your input and try again.'
-        } else {
-          errorMessage = error.message
-        }
-      }
-      setErrorMessage(errorMessage)
-    }
-  }
-
-
-  const handleClose = () => {
+  // Close handler
+  const handleClose = useCallback(() => {
     reset()
     setErrorMessage(null)
     setSuccessMessage(null)
     setGeneratedId('')
     onClose()
-  }
-  
+  }, [reset, onClose])
+
+  // Form submission handler
+  const onSubmit = useCallback(
+    async (data: AgreementSubTypeFormData & { agreementSubTypeId?: string }) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
+
+        if (taskStatusLoading || agreementTypesLoading) {
+          setErrorMessage(
+            'Please wait for dropdown options to load before submitting.'
+          )
+          return
+        }
+
+        const validatedData = sanitizeAgreementSubTypeData(data)
+        const currentDataToEdit = apiAgreementSubTypeData || actionData
+        const isEditing = Boolean(isEditMode && currentDataToEdit?.id)
+
+        // Validate ID for new records
+        if (!isEditing && !data.agreementSubTypeId && !generatedId) {
+          setErrorMessage(
+            'Please generate an Agreement Sub Type ID before submitting.'
+          )
+          return
+        }
+
+        // Validate form
+        const isValid = await trigger()
+        if (!isValid) {
+          const validationErrors: string[] = []
+          if (!data.subTypeName?.trim()) {
+            validationErrors.push('Agreement Sub Type Name is required')
+          }
+          if (!data.subTypeDescription?.trim()) {
+            validationErrors.push('Agreement Sub Type Description is required')
+          }
+          if (!data.agreementTypeDTO?.id) {
+            validationErrors.push('Agreement Type is required')
+          }
+          if (validationErrors.length > 0) {
+            setErrorMessage(
+              `Please fill in the required fields: ${validationErrors.join(', ')}`
+            )
+          }
+          return
+        }
+
+        const agreementSubTypeId = isEditing
+          ? String(currentDataToEdit?.id || '')
+          : undefined
+        const formAgreementSubTypeId = data.agreementSubTypeId || generatedId
+
+        // Build request payload
+        const basePayload = {
+          subTypeName: validatedData.subTypeName,
+          subTypeDescription: validatedData.subTypeDescription,
+          active: validatedData.active,
+          enabled: true,
+          deleted: false,
+          ...(formAgreementSubTypeId && { uuid: formAgreementSubTypeId }),
+          ...(validatedData.agreementTypeDTO?.id && {
+            agreementTypeDTO: { id: validatedData.agreementTypeDTO.id },
+          }),
+          ...(validatedData.taskStatusDTO?.id && {
+            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+          }),
+        }
+
+        const requestPayload: CreateAgreementSubTypeRequest | UpdateAgreementSubTypeRequest =
+          isEditing
+            ? {
+                ...basePayload,
+                id: currentDataToEdit?.id,
+              }
+            : basePayload
+
+        const result = await saveAgreementSubTypeMutation.mutateAsync({
+          data: requestPayload,
+          isEditing,
+          ...(agreementSubTypeId && { agreementSubTypeId }),
+        })
+
+        if (result?.uuid) {
+          setGeneratedId(result.uuid)
+        }
+
+        setSuccessMessage(
+          isEditing
+            ? 'Agreement Sub Type updated successfully!'
+            : 'Agreement Sub Type added successfully!'
+        )
+
+        if (
+          isEditMode &&
+          onAgreementSubTypeUpdated &&
+          agreementSubTypeIndex !== null &&
+          agreementSubTypeIndex !== undefined
+        ) {
+          onAgreementSubTypeUpdated(result as AgreementSubType, agreementSubTypeIndex)
+        } else if (onAgreementSubTypeAdded) {
+          onAgreementSubTypeAdded(result as AgreementSubType)
+        }
+
+        setTimeout(() => {
+          reset()
+          setGeneratedId('')
+          handleClose()
+        }, 1500)
+      } catch (error: unknown) {
+        let errorMsg = 'Failed to save agreement sub type. Please try again.'
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMsg = 'Please check your input and try again.'
+          } else {
+            errorMsg = error.message
+          }
+        }
+        setErrorMessage(errorMsg)
+      }
+    },
+    [
+      taskStatusLoading,
+      agreementTypesLoading,
+      apiAgreementSubTypeData,
+      actionData,
+      isEditMode,
+      generatedId,
+      trigger,
+      saveAgreementSubTypeMutation,
+      agreementSubTypeIndex,
+      onAgreementSubTypeUpdated,
+      onAgreementSubTypeAdded,
+      reset,
+      handleClose,
+    ]
+  )
+
   // Style variables
   const isDark = theme.palette.mode === 'dark'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
-  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
   const labelSx = tokens.label
   const valueSx = tokens.value
-  
-  // View mode styles
-  const viewModeStyles = React.useMemo(
+
+  // Select styles matching reference code
+  const selectStyles = useMemo(
+    () => ({
+      height: '46px',
+      borderRadius: '8px',
+      backgroundColor: isDark
+        ? alpha('#1E293B', 0.5)
+        : theme.palette.background.paper,
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: isDark
+          ? alpha('#FFFFFF', 0.3)
+          : alpha('#000000', 0.23),
+        borderWidth: '1px',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: isDark
+          ? alpha('#FFFFFF', 0.5)
+          : alpha('#000000', 0.87),
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: theme.palette.primary.main,
+      },
+      '& .MuiSelect-icon': {
+        color: isDark ? '#FFFFFF' : theme.palette.text.primary,
+      },
+      '& .MuiInputBase-input': {
+        color: isDark ? '#FFFFFF' : theme.palette.text.primary,
+      },
+    }),
+    [theme, isDark]
+  )
+
+  const viewModeStyles = useMemo(
     () => ({
       backgroundColor: isDark ? alpha('#1E293B', 0.5) : '#F9FAFB',
       borderColor: isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB',
     }),
     [isDark]
   )
-  
-  // Field styles for the ID field
-  const fieldStyles = React.useMemo(
+
+  const fieldStyles = useMemo(
     () => ({
       ...commonFieldStyles,
     }),
     [commonFieldStyles]
   )
-  
-  const labelStyles = React.useMemo(
+
+  const labelStyles = useMemo(
     () => ({
       ...labelSx,
     }),
     [labelSx]
   )
-  
-  const valueStyles = React.useMemo(
+
+  const valueStyles = useMemo(
     () => ({
       ...valueSx,
     }),
     [valueSx]
   )
 
-  
-  const renderTextField = (
-    name: 'subTypeName' | 'subTypeDescription',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (value) => {
-            if (required && (!value || (typeof value === 'string' && value.trim() === ''))) {
-              return `${label} is required`
-            }
-            // Additional validation using zod schema
-            const result = validateAgreementSubTypeData({ [name]: value } as Partial<AgreementSubTypeFormData>)
-            if (!result.success) {
-              const fieldError = result.errors?.issues.find(
-                (issue) => issue.path.some((p) => String(p) === name)
-              )
-              return fieldError ? fieldError.message : true
-            }
-            return true
-          },
-        }}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={label}
-            fullWidth
-            required={required}
-            error={!!errors[name]}
-            helperText={errors[name]?.message?.toString()}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={errors[name] ? errorFieldStyles : commonFieldStyles}
-          />
-        )}
-      />
-    </Grid>
-  )
-  type OptionItem = {
-    label: string
-    value: string | number
-    id?: string | number
-  }
-
-
-  const renderSelectField = (
-    name: keyof AgreementSubTypeFormData,
-    label: string,
-    options?: OptionItem[] | string[],
-    gridSize: number = 6,
-    required: boolean = true,
-    showRedAsterisk: boolean = false,
-    extraProps: {
-      isLoading?: boolean
-      disabled?: boolean
-      onChange?: (value: string | number) => void
-      placeholder?: string
-    } = {}
-  ) => {
-    const resolvedOptions: OptionItem[] | string[] =
-      options && options.length > 0 ? options : []
-
-    return (
-      <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
+  // Render text field
+  const renderTextField = useCallback(
+    (
+      name: 'subTypeName' | 'subTypeDescription',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
         <Controller
           name={name}
           control={control}
-          defaultValue={''}
-          rules={
-            name === 'agreementTypeDTO'
-            ? {
-                validate: (value: unknown) => {
-                  if (required) {
-                    if (
-                      !value ||
-                      typeof value !== 'object' ||
-                      value === null ||
-                      !('id' in value) ||
-                      (value as { id?: number }).id === undefined
-                    ) {
-                      return `${label} is required`
-                    }
-                  }
-                  return true
-                },
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value) => {
+              if (required && (!value || (typeof value === 'string' && value.trim() === ''))) {
+                return `${label} is required`
               }
-            : {}
-        }
-          render={({ field, fieldState }) => {
-            const hasError = !!fieldState.error
+              const result = validateAgreementSubTypeData({
+                [name]: value,
+              } as Partial<AgreementSubTypeFormData>)
+              if (!result.success) {
+                const fieldError = result.errors?.issues.find((issue) =>
+                  issue.path.some((p) => String(p) === name)
+                )
+                return fieldError ? fieldError.message : true
+              }
+              return true
+            },
+          }}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label={label}
+              fullWidth
+              required={required}
+              error={!!errors[name]}
+              helperText={errors[name]?.message?.toString()}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={errors[name] ? errorFieldStyles : commonFieldStyles}
+            />
+          )}
+        />
+      </Grid>
+    ),
+    [control, errors, labelSx, valueSx, errorFieldStyles, commonFieldStyles]
+  )
 
-            const fieldStyles = hasError
-              ? {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
+  // Render select field
+  const renderSelectField = useCallback(
+    (
+      name: 'agreementTypeDTO' | 'taskStatusDTO',
+      label: string,
+      options: OptionItem[],
+      gridSize: number = 6,
+      required = false,
+      loading = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value: unknown) => {
+              if (required) {
+                if (
+                  !value ||
+                  (typeof value === 'object' &&
+                    value !== null &&
+                    !('id' in value)) ||
+                  (typeof value === 'object' &&
+                    value !== null &&
+                    'id' in value &&
+                    (value as { id?: number }).id === undefined)
+                ) {
+                  return `${label} is required`
                 }
-              : {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[600], 0.7)
-                          : '#CAD5E2',
-                      borderWidth: '1px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[300], 0.8)
-                          : '#94A3B8',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-
-            const dynamicLabelSx = {
-              ...labelSx,
-              ...(hasError && {
-                color: theme.palette.error.main,
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              ...(showRedAsterisk && {
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              '&.Mui-focused': {
-                color: hasError
-                  ? theme.palette.error.main
-                  : theme.palette.primary.main,
-              },
-            }
+              }
+              return true
+            },
+          }}
+          defaultValue={null}
+          render={({ field }) => {
+            const fieldValue =
+              typeof field.value === 'object' &&
+              field.value !== null &&
+              'id' in field.value
+                ? String(field.value.id)
+                : field.value
+                  ? String(field.value)
+                  : ''
 
             return (
               <FormControl
                 fullWidth
-                error={hasError}
-                disabled={!!extraProps.disabled || !!extraProps.isLoading}
+                error={!!errors[name]}
+                required={required}
+                disabled={loading || isReadOnly}
               >
-                <InputLabel
-                  sx={dynamicLabelSx}
-                  id={`${String(name)}-label`}
-                  required={required}
-                >
-                  {extraProps.placeholder ?? label}
+                <InputLabel sx={labelStyles}>
+                  {loading
+                    ? getAgreementSubTypeLabelDynamic('CDL_COMMON_LOADING')
+                    : label}
                 </InputLabel>
-
                 <Select
-                  labelId={`${String(name)}-label`}
-                  id={`${String(name)}-select`}
-                  name={field.name}
-                  value={
-                    name === 'agreementTypeDTO'
-                      ? (field.value as { id?: number } | null)?.id ?? ''
-                      : field.value ?? ''
-                  }
+                  {...field}
+                  value={fieldValue}
                   onChange={(e) => {
-                    const val = (e.target as HTMLInputElement).value
-                        if (name === 'agreementTypeDTO') {
-                      // Store as object with id
-                      field.onChange(val ? { id: Number(val) } : null)
-                      if (extraProps.onChange) extraProps.onChange(Number(val))
-                    } else {
-                      field.onChange(val)
-                      if (extraProps.onChange) extraProps.onChange(val)
-                    }
+                    const selectedValue = e.target.value
+                    field.onChange(
+                      selectedValue ? { id: Number(selectedValue) } : null
+                    )
                   }}
-                  onBlur={field.onBlur}
-                  disabled={!!extraProps.disabled || !!extraProps.isLoading}
-                  label={extraProps.placeholder ?? label}
-                  sx={{
-                    ...valueSx,
-                    ...fieldStyles,
-                  }}
+                  input={
+                    <OutlinedInput
+                      label={
+                        loading
+                          ? getAgreementSubTypeLabelDynamic('CDL_COMMON_LOADING')
+                          : label
+                      }
+                    />
+                  }
+                  label={
+                    loading
+                      ? getAgreementSubTypeLabelDynamic('CDL_COMMON_LOADING')
+                      : label
+                  }
+                  sx={{ ...selectStyles, ...valueStyles }}
                   IconComponent={KeyboardArrowDownIcon}
+                  disabled={loading || isReadOnly}
                 >
-                  {extraProps.isLoading ? (
+                  {loading ? (
                     <MenuItem disabled>
                       <CircularProgress size={16} sx={{ mr: 1 }} />
-                      Loading {label.toLowerCase()}...
+                      {getAgreementSubTypeLabelDynamic('CDL_COMMON_LOADING')}
                     </MenuItem>
-                  ) : Array.isArray(resolvedOptions) &&
-                    resolvedOptions.length > 0 ? (
-                    resolvedOptions.map((opt) =>
-                      typeof opt === 'string' ? (
-                        <MenuItem key={opt} value={opt}>
-                          {opt}
-                        </MenuItem>
-                      ) : (
-                        <MenuItem key={opt.id ?? opt.value} value={opt.value}>
-                          {opt.label}
-                        </MenuItem>
-                      )
-                    )
+                  ) : options && options.length > 0 ? (
+                    options.map((option) => (
+                      <MenuItem
+                        key={option.id ?? option.value}
+                        value={String(option.value)}
+                      >
+                        {option.label}
+                      </MenuItem>
+                    ))
                   ) : (
                     <MenuItem disabled>
                       No {label.toLowerCase()} available
                     </MenuItem>
                   )}
                 </Select>
-
-                {hasError && (
-                  <FormHelperText>
-                    {fieldState.error?.message ?? 'Supporting text'}
-                  </FormHelperText>
-                )}
+                <FormError
+                  error={(errors[name]?.message as string) || ''}
+                  touched={true}
+                />
               </FormControl>
             )
           }}
         />
       </Grid>
-    )
-  }
-
-
-  const renderAgreementSubTypeIdField = (
-    name: 'agreementSubTypeId',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue=""
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (value) => {
-            if (required && mode === 'add' && (!value || (typeof value === 'string' && value.trim() === ''))) {
-              return `${label} is required. Please generate an ID.`
-            }
-            return true
-          },
-        }}
-        render={({ field }) => {
-          const fieldError = errors[name as keyof typeof errors]
-          return (
-            <TextField
-              {...field}
-              fullWidth
-              label={label}
-              required={required}
-              value={field.value || generatedId}
-              error={!!fieldError}
-              helperText={fieldError?.message?.toString()}
-            onChange={(e) => {
-              setGeneratedId(e.target.value)
-              field.onChange(e)
-            }}
-            disabled={isReadOnly || isEditMode}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end" sx={{ mr: 0 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleGenerateNewId}
-                    disabled={isGeneratingId || isReadOnly || isEditMode}
-                    sx={{
-                      color: theme.palette.primary.contrastText,
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      background: theme.palette.primary.main,
-                      '&:hover': {
-                        background: theme.palette.primary.dark,
-                      },
-                      minWidth: '100px',
-                      height: '32px',
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '11px',
-                      lineHeight: '14px',
-                      letterSpacing: '0.3px',
-                      px: 1,
-                    }}
-                  >
-                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
-                  </Button>
-                </InputAdornment>
-              ),
-              sx: valueStyles,
-            }}
-              InputLabelProps={{
-                sx: {
-                  ...labelStyles,
-                  ...(!!fieldError && {
-                    color: theme.palette.error.main,
-                    '&.Mui-focused': { color: theme.palette.error.main },
-                    '&.MuiFormLabel-filled': { color: theme.palette.error.main },
-                  }),
-                },
-              }}
-              sx={{
-                ...fieldStyles,
-                ...((isReadOnly || isEditMode) && {
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: viewModeStyles.backgroundColor,
-                    color: textSecondary,
-                    '& fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                  },
-                }),
-              }}
-            />
-          )
-        }}
-      />
-    </Grid>
+    ),
+    [
+      control,
+      errors,
+      labelStyles,
+      selectStyles,
+      valueStyles,
+      isReadOnly,
+      getAgreementSubTypeLabelDynamic,
+    ]
   )
+
+  // Render ID field
+  const renderAgreementSubTypeIdField = useCallback(
+    (
+      name: 'agreementSubTypeId',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          defaultValue=""
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value) => {
+              if (
+                required &&
+                !isEditMode &&
+                (!value || (typeof value === 'string' && value.trim() === ''))
+              ) {
+                return `${label} is required. Please generate an ID.`
+              }
+              return true
+            },
+          }}
+          render={({ field }) => {
+            const fieldError = errors[name as keyof typeof errors]
+            return (
+              <TextField
+                {...field}
+                fullWidth
+                label={label}
+                required={required}
+                value={field.value || generatedId}
+                error={!!fieldError}
+                helperText={fieldError?.message?.toString()}
+                onChange={(e) => {
+                  setGeneratedId(e.target.value)
+                  field.onChange(e)
+                }}
+                disabled={isReadOnly || isEditMode}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end" sx={{ mr: 0 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleGenerateNewId}
+                        disabled={
+                          isGeneratingId || isReadOnly || isEditMode
+                        }
+                        sx={{
+                          color: theme.palette.primary.contrastText,
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          background: theme.palette.primary.main,
+                          '&:hover': {
+                            background: theme.palette.primary.dark,
+                          },
+                          minWidth: '100px',
+                          height: '32px',
+                          fontFamily: 'Outfit, sans-serif',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '11px',
+                          lineHeight: '14px',
+                          letterSpacing: '0.3px',
+                          px: 1,
+                        }}
+                      >
+                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                      </Button>
+                    </InputAdornment>
+                  ),
+                  sx: valueStyles,
+                }}
+                InputLabelProps={{
+                  sx: {
+                    ...labelStyles,
+                    ...(!!fieldError && {
+                      color: theme.palette.error.main,
+                      '&.Mui-focused': { color: theme.palette.error.main },
+                      '&.MuiFormLabel-filled': {
+                        color: theme.palette.error.main,
+                      },
+                    }),
+                  },
+                }}
+                sx={{
+                  ...fieldStyles,
+                  ...((isReadOnly || isEditMode) && {
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      color: textSecondary,
+                      '& fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                  }),
+                }}
+              />
+            )
+          }}
+        />
+      </Grid>
+    ),
+    [
+      control,
+      errors,
+      generatedId,
+      isEditMode,
+      isReadOnly,
+      isGeneratingId,
+      handleGenerateNewId,
+      labelStyles,
+      valueStyles,
+      fieldStyles,
+      viewModeStyles,
+      textSecondary,
+      theme,
+    ]
+  )
+
+  const isLoading =
+    saveAgreementSubTypeMutation.isPending ||
+    taskStatusLoading ||
+    agreementTypesLoading
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -883,7 +915,7 @@ export const RightSlideAgreementSubTypePanel: React.FC<
             pl: 3,
           }}
         >
-          {mode === 'edit'
+          {isEditMode
             ? `${getAgreementSubTypeLabelDynamic('CDL_COMMON_UPDATE')} ${getAgreementSubTypeLabelDynamic('CDL_MAT_NAME')}`
             : `${getAgreementSubTypeLabelDynamic('CDL_COMMON_ADD')} ${getAgreementSubTypeLabelDynamic('CDL_MAT_NAME')}`}
           <IconButton
@@ -907,7 +939,7 @@ export const RightSlideAgreementSubTypePanel: React.FC<
               backgroundColor: tokens.paper.backgroundColor as string,
             }}
           >
-                {(taskStatusError || agreementTypesError) && (
+            {(taskStatusError || agreementTypesError) && (
               <Alert
                 severity="error"
                 variant="outlined"
@@ -927,7 +959,7 @@ export const RightSlideAgreementSubTypePanel: React.FC<
 
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
               {renderAgreementSubTypeIdField(
-                    'agreementSubTypeId',
+                'agreementSubTypeId',
                 getAgreementSubTypeLabelDynamic('CDL_MATSS_ID'),
                 12,
                 true
@@ -943,21 +975,16 @@ export const RightSlideAgreementSubTypePanel: React.FC<
                 getAgreementSubTypeLabelDynamic('CDL_MATSS_DESCRIPTION'),
                 12,
                 true
-              )}    
-            
+              )}
 
-            {renderSelectField(
-              'agreementTypeDTO',
-              `${getAgreementSubTypeLabelDynamic('CDL_MAT_NAME')}`,
-              agreementTypeOptions as OptionItem[],
-              12,
-              true,
-              true,
-              {
-                    isLoading: agreementTypesLoading,
-                disabled: saveAgreementSubTypeMutation.isPending || taskStatusLoading,
-              }
-            )}
+              {renderSelectField(
+                'agreementTypeDTO',
+                getAgreementSubTypeLabelDynamic('CDL_MAT_NAME'),
+                agreementTypeOptions,
+                12,
+                true,
+                isLoading
+              )}
             </Grid>
           </DialogContent>
 
@@ -985,7 +1012,7 @@ export const RightSlideAgreementSubTypePanel: React.FC<
                   fullWidth
                   variant="outlined"
                   onClick={handleClose}
-                  disabled={saveAgreementSubTypeMutation.isPending || taskStatusLoading || agreementTypesLoading}
+                  disabled={isLoading}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -1009,7 +1036,7 @@ export const RightSlideAgreementSubTypePanel: React.FC<
                   variant="outlined"
                   color="primary"
                   type="submit"
-                  disabled={saveAgreementSubTypeMutation.isPending || taskStatusLoading || agreementTypesLoading}
+                  disabled={isLoading}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -1045,11 +1072,11 @@ export const RightSlideAgreementSubTypePanel: React.FC<
                     },
                   }}
                 >
-                    {saveAgreementSubTypeMutation.isPending
-                    ? mode === 'edit'
+                  {saveAgreementSubTypeMutation.isPending
+                    ? isEditMode
                       ? getAgreementSubTypeLabelDynamic('CDL_COMMON_UPDATING')
-                            : getAgreementSubTypeLabelDynamic('CDL_COMMON_ADDING')
-                    : mode === 'edit'
+                      : getAgreementSubTypeLabelDynamic('CDL_COMMON_ADDING')
+                    : isEditMode
                       ? getAgreementSubTypeLabelDynamic('CDL_COMMON_UPDATE')
                       : getAgreementSubTypeLabelDynamic('CDL_COMMON_ADD')}
                 </Button>

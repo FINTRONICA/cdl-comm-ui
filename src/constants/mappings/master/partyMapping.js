@@ -1,33 +1,33 @@
 export const PARTY_LABELS = {
   // Party Details
-  'CDL_MP_PARTY_CIF_NUMBER': 'Party CIF Number',
-  'CDL_MP_PARTY_ID': 'Party ID',
-  'CDL_MP_PARTY_NAME': 'Party Name',
-  'CDL_MP_PARTY_ADDRESS_1': 'Party Address 1',
-  'CDL_MP_PARTY_ADDRESS_2': 'Party Address 2',
-  'CDL_MP_PARTY_ADDRESS_3': 'Party Address 3',
+  'CDL_PARTY_DETAILS': 'Party Details',
+  'CDL_MP_PARTY_CIF_NUMBER': 'Party cif ',
+  'CDL_MP_PARTY_ID': ' ID',
+  'CDL_MP_PARTY_NAME': ' Name',
+  'CDL_MP_PARTY_ADDRESS_1': ' Address 1',
+  'CDL_MP_PARTY_ADDRESS_2': ' Address 2',
+  'CDL_MP_PARTY_ADDRESS_3': ' Address 3',
   'CDL_MP_PARTY_TELEPHONE_NO': 'Telephone No',
   'CDL_MP_PARTY_MOBILE_NO': 'Mobile No',
   'CDL_MP_PARTY_EMAIL': 'Email',
-  'CDL_MP_PARTY_BANK_IDENTIFIER': 'Bank Identifier',
-  'CDL_MP_PARTY_PASSPORT_IDENTIFICATION_DETAILS': 'Passport Identification Details',
-  'CDL_MP_PARTY_PROJECT_ACCOUNT_OWNER_NAME':'Project Account Owner Name',
-  'CDL_MP_PARTY_ARM_NAME':'Assistant Relation ship Manager Name',
-  'CDL_MP_PARTY_TEAM_LEADER_NAME':'Team Leader Name',
+  'CDL_MP_PARTY_BANK_IDENTIFIER': 'Bank identifier',
+  'CDL_MP_PARTY_PASSPORT_IDENTIFICATION_DETAILS': 'Passport identification details',
+  'CDL_MP_PARTY_PROJECT_ACCOUNT_OWNER_NAME':'Project Account owner ame',
+  'CDL_MP_PARTY_ARM_NAME':'Assistant relationship manager name',
+  'CDL_MP_PARTY_TEAM_LEADER_NAME':'Team leader name',
   'CDL_MP_PARTY_REMARKS':'Remarks',
-  'CDL_MP_PARTY_RM_NAME':'Relation ship Manager Name',
-  'CDL_MP_PARTY_BACKUP_PROJECT_ACCOUNT_OWNER_NAME': 'Backup Project Account Owner Name',
-  'CDL_MP_PARTY_CONSTITUENT_DTO':'Constituent DTO',
-  'CDL_MP_PARTY_ROLE_DTO':'Role DTO',
-  'CDL_MP_PARTY_TASK_STATUS_DTO':'Task Status DTO',
-  'CDL_MP_PARTY_STATUS':'Status',
-  'CDL_MP_PARTY_ACTIONS':'Actions',
-  'CDL_MP_PARTY_ACTIVE':'Active',
+  'CDL_MP_PARTY_RM_NAME':'Relationship manager name',
+  'CDL_MP_PARTY_BACKUP_PROJECT_ACCOUNT_OWNER_NAME': 'Backup project account owner name',
+  'CDL_MP_PARTY_CONSTITUENT_DTO':'Constituent ',
+  'CDL_MP_PARTY_ROLE_DTO':'Role ',
+  'CDL_MP_PARTY_TASK_STATUS_DTO':'Task status ',
+  
 
 
 
   // AuthorizedSignatory Signatory
-  'CDL_MP_AUTHORIZED_SIGNATORY_CUSTOMER_CIF_NUMBER': ' Customer Cif Number',
+  'CDL_AUTHORIZED_SIGNATORY_DETAILS': 'Authorized Signatory Details',
+  'CDL_MP_AUTHORIZED_SIGNATORY_CUSTOMER_CIF_NUMBER': ' Authorized signatory cif',
   'CDL_MP_AUTHORIZED_SIGNATORY_NAME': 'Name',
   'CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_1': ' Address 1',
   'CDL_MP_AUTHORIZED_SIGNATORY_ADDRESS_2': ' Address 2',
@@ -48,7 +48,27 @@ export const PARTY_LABELS = {
   'CDL_MP_AUTHORIZED_SIGNATORY_ENABLED':'enabled',
   'CDL_MP_AUTHORIZED_SIGNATORY_DELETED':'deleted',
   'CDL_MP_AUTHORIZED_SIGNATORY_ACTIONS':'Actions',
-  'CDL_MP_AUTHORIZED_SIGNATORY_PARTY_SELECT': 'Party'
+  'CDL_MP_AUTHORIZED_SIGNATORY_PARTY_SELECT': 'Party',
+
+
+   // Common UI labels
+   'CDL_COMMON_ACTION': 'Action',
+   'CDL_COMMON_STATUS': 'Status',
+   'CDL_COMMON_ACTIONS': 'Actions',
+   'CDL_COMMON_RETRY': 'Retry',
+   'CDL_COMMON_CANCEL': 'Cancel',
+   'CDL_COMMON_ADD': 'Add',
+   'CDL_COMMON_UPDATE': 'Update',
+   'CDL_COMMON_ADDING': 'Adding...',
+   'CDL_COMMON_UPDATING': 'Updating...',
+   'CDL_COMMON_LOADING': 'Loading...',
+   'CDL_COMMON_VALIDATE_ACCOUNT': 'Validate Account',
+   'CDL_COMMON_VALIDATE_BIC': 'Validate BIC',
+   'CDL_COMMON_REQUIRED_FIELDS_PREFIX': 'Please fill in the required fields:',
+   'CDL_COMMON_DROPDOWNS_LOAD_FAILED': 'Failed to load dropdown options. Please refresh the page.',
+   'CDL_COMMON_SUBMIT_WAIT': 'Please wait for dropdown options to load before submitting.',
+   'Documents (Optional)': 'CDL_DOCUMENT',  //stepper label
+
 }
 export const getPartyLabel = (configId) => {
 return PARTY_LABELS[configId] || configId

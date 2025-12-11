@@ -179,7 +179,9 @@ const EscrowAccountsPageImpl: React.FC = () => {
           } catch (error) {
             const errorMessage =
               error instanceof Error ? error.message : 'Unknown error occurred'
-            console.error(`Failed to delete escrow account: ${errorMessage}`)
+            if (process.env.NODE_ENV === 'development') {
+              console.error(`Failed to delete escrow account: ${errorMessage}`)
+            }
             throw error
           } finally {
             setIsDeleting(false)

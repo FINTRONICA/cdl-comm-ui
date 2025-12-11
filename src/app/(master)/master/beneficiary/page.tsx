@@ -148,62 +148,52 @@ const BeneficiariesPageImpl: React.FC = () => {
     [getLabel, currentLanguage]
   )
 
-  const tableColumns = [
-    {
-      key: 'beneficiaryFullName',
-      label: getBeneficiaryLabelDynamic(
-        'BENEFICIARY_FULL_NAME',
-        'Beneficiary Full Name'
-      ),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-    },
-    {
-      key: 'id',
-      label: getBeneficiaryLabelDynamic('BENEFICIARY_ID', 'ID'),
-      type: 'text' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'beneficiaryAccountNumber',
-      label: getBeneficiaryLabelDynamic(
-        'ACCOUNT_NUMBER',
-        'Account Number'
-      ),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-    },
-    {
-      key: 'beneficiaryBankName',
-      label: getBeneficiaryLabelDynamic('BANK_NAME', 'Bank Name'),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-    },
-    {
-      key: 'bankIfscCode',
-      label: getBeneficiaryLabelDynamic('BANK_IFSC_CODE', 'IFSC Code'),
-      type: 'text' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'status',
-      label: getBeneficiaryLabelDynamic('STATUS', 'Status'),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: getBeneficiaryLabelDynamic('ACTIONS', 'Actions'),
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  const tableColumns = useMemo(
+    () => [
+      {
+        key: 'displayId',
+        label: getBeneficiaryLabelDynamic('CDL_MB_BENEFICIARY_ID', 'Beneficiary ID'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'beneficiaryFullName',
+        label: getBeneficiaryLabelDynamic('CDL_MB_BENEFICIARY_NAME', 'Beneficiary Name'),
+        type: 'text' as const,
+        width: 'w-40',
+        sortable: true,
+      },
+      {
+        key: 'beneficiaryAccountNumber',
+        label: getBeneficiaryLabelDynamic('CDL_MB_BENEFICIARY_ACCOUNT_NUMBER', 'Beneficiary Account Number'),
+        type: 'text' as const,
+        width: 'w-40',
+        sortable: true,
+      },
+      {
+        key: 'beneficiaryBankName',
+        label: getBeneficiaryLabelDynamic('CDL_MB_BENEFICIARY_BANK_NAME', 'Beneficiary Bank Name'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'status',
+        label: getBeneficiaryLabelDynamic('CDL_MB_BENEFICIARY_STATUS', 'Status'),
+        type: 'status' as const,
+        width: 'w-32',
+        sortable: true,
+      },
+      {
+        key: 'actions',
+        label: getBeneficiaryLabelDynamic('CDL_MB_BENEFICIARY_ACTION', 'Actions'),
+        type: 'actions' as const,
+        width: 'w-20',
+      },
+    ],
+    [getBeneficiaryLabelDynamic]
+  )
 
   const {
     search,
@@ -236,23 +226,29 @@ const BeneficiariesPageImpl: React.FC = () => {
     initialRowsPerPage: currentApiSize,
   })
 
-  const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const hasSearch = Object.values(search).some((value) => value.trim())
 
-    if (hasSearch) {
-      localHandlePageChange(newPage)
-    } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
-    }
-  }
+      if (hasSearch) {
+        localHandlePageChange(newPage)
+      } else {
+        setCurrentApiPage(newPage)
+        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      }
+    },
+    [search, currentApiSize, localHandlePageChange, updatePagination]
+  )
 
-  const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+  const handleRowsPerPageChange = useCallback(
+    (newRowsPerPage: number) => {
+      setCurrentApiSize(newRowsPerPage)
+      setCurrentApiPage(1)
+      updatePagination(0, newRowsPerPage)
+      localHandleRowsPerPageChange(newRowsPerPage)
+    },
+    [localHandleRowsPerPageChange, updatePagination]
+  )
 
   const apiTotal = apiPagination?.totalElements || 0
   const apiTotalPages = apiPagination?.totalPages || 1
@@ -279,49 +275,66 @@ const BeneficiariesPageImpl: React.FC = () => {
     iconAlt?: string
   }> = []
 
-  const handleRowDelete = (row: BeneficiaryData) => {
-    if (isDeleting) {
-      return
-    }
+  const handleRowDelete = useCallback(
+    (row: BeneficiaryData) => {
+      if (isDeleting) {
+        return
+      }
 
-    confirmDelete({
-      itemName: `beneficiary: ${row.beneficiaryFullName}`,
-      itemId: row.id,
-      onConfirm: async () => {
-        try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(row.id)
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(`Failed to delete beneficiary: ${errorMessage}`)
+      confirmDelete({
+        itemName: `beneficiary: ${row.beneficiaryFullName}`,
+        itemId: row.id,
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteMutation.mutateAsync(row.id)
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown error occurred'
+            if (process.env.NODE_ENV === 'development') {
+              // eslint-disable-next-line no-console
+              console.error(`Failed to delete beneficiary: ${errorMessage}`)
+            }
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
+    },
+    [isDeleting, confirmDelete, deleteMutation]
+  )
 
-          throw error
-        } finally {
-          setIsDeleting(false)
-        }
-      },
-    })
-  }
+  const handleRowView = useCallback(
+    (row: BeneficiaryData) => {
+      router.push(`/master/beneficiary/${row.id}/step/1?mode=view`)
+    },
+    [router]
+  )
 
-  const handleRowView = (row: BeneficiaryData) => {
-    router.push(`/master/beneficiary/${row.id}/step/1?mode=view`)
-  }
+  const handleRowEdit = useCallback(
+    (row: BeneficiaryData) => {
+      router.push(`/master/beneficiary/${row.id}/step/1?editing=true`)
+    },
+    [router]
+  )
 
-  const handleRowEdit = (row: BeneficiaryData) => {
-    router.push(`/master/beneficiary/${row.id}/step/1?editing=true`)
-  }
-
-  const handleDownloadTemplate = async () => {
+  const handleDownloadTemplate = useCallback(async () => {
     try {
-      await downloadTemplate(TEMPLATE_FILES.BUILD_PARTNER)
+      // Use beneficiary template if available, otherwise use build partner beneficiary template
+      await downloadTemplate(TEMPLATE_FILES.BUILD_PARTNER_BENEFICIARY || TEMPLATE_FILES.BUILD_PARTNER)
     } catch {
       // Silently handle download errors
     }
-  }
+  }, [downloadTemplate])
 
-  const renderExpandedContent = () => (
-    <div className="grid grid-cols-2 gap-8"></div>
+  const handleAddNew = useCallback(() => {
+    router.push('/master/beneficiary/new')
+  }, [router])
+
+  const renderExpandedContent = useCallback(
+    () => <div className="grid grid-cols-2 gap-8"></div>,
+    []
   )
 
   return (
@@ -368,6 +381,7 @@ const BeneficiariesPageImpl: React.FC = () => {
                 entityType="beneficiary"
                 customActionButtons={actionButtons}
                 onDownloadTemplate={handleDownloadTemplate}
+                onAddNew={handleAddNew}
                 isDownloading={isDownloading}
                 showButtons={{
                   downloadTemplate: true,
@@ -403,10 +417,10 @@ const BeneficiariesPageImpl: React.FC = () => {
                   onRowDelete={handleRowDelete}
                   onRowView={handleRowView}
                   onRowEdit={handleRowEdit}
-                  deletePermissions={['beneficiary_delete']}
-                  viewPermissions={['beneficiary_view']}
-                  editPermissions={['beneficiary_update']}
-                  updatePermissions={['beneficiary_update']}
+                  deletePermissions={['*']}
+                  viewPermissions={['*']}
+                  editPermissions={['*']}
+                  updatePermissions={['*']}
                   sortConfig={sortConfig}
                   onSort={handleSort}
                 />

@@ -134,15 +134,60 @@ export const processStepData = (activeStep: number, stepStatus: { stepData: Reco
 
 
   if (activeStep === 0) {
+    // Process date fields first
     processedData = processDateFields(currentStepData)
+    // Process boolean fields
     processedData = processBooleanFields(processedData)
     
-
+    // List of text fields that should be converted from null to empty string
+    const textFields = [
+      'partyCifNumber', 'partyFullName', 'addressLine1', 'addressLine2', 'addressLine3',
+      'telephoneNumber', 'mobileNumber', 'emailAddress', 'bankIdentifier',
+      'passportIdentificationDetails', 'backupProjectAccountOwnerName',
+      'projectAccountOwnerName', 'assistantRelationshipManagerName',
+      'teamLeaderName', 'additionalRemarks', 'relationshipManagerName', 'id'
+    ]
+    
+    // Copy all other fields from currentStepData (matching DeveloperStepper pattern)
+    // This ensures all fields from the API are properly mapped to the form
     Object.keys(currentStepData).forEach(key => {
-      if (!processedData[key]) {
-        processedData[key] = currentStepData[key]
+      const value = currentStepData[key]
+      
+      // Convert null/undefined to empty string for text fields to prevent React warnings
+      // This ensures controlled components always have a string value
+      if (textFields.includes(key)) {
+        // Convert null/undefined to empty string for text fields
+        processedData[key] = (value === null || value === undefined) ? '' : (typeof value === 'string' ? value : String(value))
+      } else if (!(key in processedData)) {
+        // For non-text fields, copy as-is
+        processedData[key] = value
       }
     })
+    
+    // Ensure id field is properly set if available (convert to string for form)
+    if (currentStepData.id !== undefined && currentStepData.id !== null) {
+      processedData.id = currentStepData.id.toString()
+    } else if (!processedData.id) {
+      processedData.id = ''
+    }
+    
+    // Ensure all text fields have empty string default instead of null (final check)
+    textFields.forEach(field => {
+      if (processedData[field] === null || processedData[field] === undefined) {
+        processedData[field] = ''
+      }
+    })
+    
+    // Ensure nested DTOs are properly structured
+    if (currentStepData.partyConstituentDTO && typeof currentStepData.partyConstituentDTO === 'object' && 'id' in currentStepData.partyConstituentDTO) {
+      processedData.partyConstituentDTO = currentStepData.partyConstituentDTO
+    }
+    if (currentStepData.roleDTO && typeof currentStepData.roleDTO === 'object' && 'id' in currentStepData.roleDTO) {
+      processedData.roleDTO = currentStepData.roleDTO
+    }
+    if (currentStepData.taskStatusDTO && typeof currentStepData.taskStatusDTO === 'object' && 'id' in currentStepData.taskStatusDTO) {
+      processedData.taskStatusDTO = currentStepData.taskStatusDTO
+    }
   }
 
 

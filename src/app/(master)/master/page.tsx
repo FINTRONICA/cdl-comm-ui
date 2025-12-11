@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 
 // Tab configuration mapping tab IDs to routes
 const TAB_ROUTES: Record<string, string> = {
-  customer: '/party',
+  customer: '/master/party',
   account: '/account-purpose',
   investment: '/investment',
   segment: '/business-segment',

@@ -125,6 +125,7 @@ export function useAllBusinessSegments() {
     queryFn: () => businessSegmentService.getAllBusinessSegments(),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // Prevent double calls when component remounts
     retry: 3,
   })
 }

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -12,13 +12,12 @@ import {
   Snackbar,
   InputAdornment,
 } from '@mui/material'
-import {
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
+import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { alpha, useTheme } from '@mui/material/styles'
 import {
   useSaveAgreementType,
   useAgreementType,
@@ -35,7 +34,6 @@ import type {
   TaskStatusDTO,
 } from '@/services/api/masterApi/Customer/agreementTypeService'
 import { getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from '../panelTheme'
 import { useTaskStatuses } from '@/hooks/master/CustomerHook/useTaskStatus'
 import { idService } from '@/services/api/developerIdService'
@@ -50,12 +48,19 @@ interface RightSlideAgreementTypePanelProps {
   ) => void
   title?: string
   mode?: 'add' | 'edit'
-        actionData?: AgreementType | null
+  actionData?: AgreementType | null
   agreementTypeIndex?: number | undefined
   taskStatusOptions?: TaskStatusDTO[]
   taskStatusLoading?: boolean
   taskStatusError?: unknown
 }
+
+const SNACKBAR_AUTO_HIDE_DURATION = {
+  ERROR: 6000,
+  SUCCESS: 3000,
+} as const
+
+const PANEL_CLOSE_DELAY = 1500
 
 export const RightSlideAgreementTypePanel: React.FC<
   RightSlideAgreementTypePanelProps
@@ -67,26 +72,25 @@ export const RightSlideAgreementTypePanel: React.FC<
   mode = 'add',
   actionData,
   agreementTypeIndex,
-  taskStatusOptions: _propTaskStatusOptions = [], // eslint-disable-line @typescript-eslint/no-unused-vars
+  taskStatusOptions: _propTaskStatusOptions = [],
   taskStatusLoading: propTaskStatusLoading = false,
   taskStatusError: propTaskStatusError = null,
 }) => {
   const theme = useTheme()
-  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [generatedId, setGeneratedId] = useState<string>('')
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
-  
-  // Check if we're in edit mode
-  const isEditMode = mode === 'edit'
-  const isReadOnly = false // Can be made a prop if needed
 
-        const saveAgreementTypeMutation = useSaveAgreementType()
+  const isEditMode = mode === 'edit'
+  const isReadOnly = false
+
+  const saveAgreementTypeMutation = useSaveAgreementType()
 
   // Fetch full agreement type data when in edit mode
   const { data: apiAgreementTypeData } = useAgreementType(
-    mode === 'edit' && actionData?.id ? String(actionData.id) : null
+    isEditMode && actionData?.id ? String(actionData.id) : null
   )
 
   // Fetch task statuses
@@ -94,11 +98,8 @@ export const RightSlideAgreementTypePanel: React.FC<
   const taskStatusLoading = propTaskStatusLoading || taskStatusesLoading
   const taskStatusError = propTaskStatusError || null
 
-  // Dynamic labels
-  const getAgreementTypeLabelDynamic = useCallback(
-    (configId: string): string => {
-      return getMasterLabel(configId)
-    },
+  const getAgreementTypeLabel = useCallback(
+    (configId: string): string => getMasterLabel(configId),
     []
   )
 
@@ -122,7 +123,7 @@ export const RightSlideAgreementTypePanel: React.FC<
   })
 
   // Initialize agreement type ID from form value
-  React.useEffect(() => {
+  useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === 'agreementTypeId' && value.agreementTypeId) {
         setGeneratedId(value.agreementTypeId)
@@ -131,8 +132,7 @@ export const RightSlideAgreementTypePanel: React.FC<
     return () => subscription.unsubscribe()
   }, [watch])
 
-  // Function to generate new agreement type ID
-  const handleGenerateNewId = async () => {
+  const handleGenerateNewId = useCallback(async () => {
     try {
       setIsGeneratingId(true)
       const newIdResponse = idService.generateNewId('MAT')
@@ -141,19 +141,21 @@ export const RightSlideAgreementTypePanel: React.FC<
         shouldValidate: true,
         shouldDirty: true,
       })
-    } catch {
-      // Handle error silently
+    } catch (error) {
+      console.error('Error generating ID:', error)
+      setErrorMessage('Failed to generate ID. Please try again.')
     } finally {
       setIsGeneratingId(false)
     }
-  }
+  }, [setValue])
 
   // Track the last reset ID and mode to prevent unnecessary resets
-  const lastResetIdRef = React.useRef<string | number | null>(null)
-  const lastModeRef = React.useRef<'add' | 'edit' | null>(null)
-  const lastIsOpenRef = React.useRef<boolean>(false)
+  const lastResetIdRef = useRef<string | number | null>(null)
+  const lastModeRef = useRef<'add' | 'edit' | null>(null)
+  const lastIsOpenRef = useRef<boolean>(false)
+
   // Reset form when panel opens/closes or mode/data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) {
       if (lastIsOpenRef.current) {
         reset({
@@ -196,7 +198,7 @@ export const RightSlideAgreementTypePanel: React.FC<
       setGeneratedId(agreementTypeId)
 
       reset({
-                agreementTypeId: agreementTypeId,
+        agreementTypeId: agreementTypeId,
         agreementTypeName: dataToUse.agreementTypeName || '',
         agreementTypeDescription: dataToUse.agreementTypeDescription || '',
         active: dataToUse.active ?? true,
@@ -216,11 +218,9 @@ export const RightSlideAgreementTypePanel: React.FC<
         taskStatusDTO: null,
       })
       setGeneratedId('')
-
       lastResetIdRef.current = null
       lastModeRef.current = mode
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isOpen,
     mode,
@@ -228,14 +228,16 @@ export const RightSlideAgreementTypePanel: React.FC<
     actionData?.id,
     taskStatusLoading,
     reset,
+    apiAgreementTypeData,
+    actionData,
   ])
 
-  const validateAgreementTypeField = React.useCallback(
+  const validateAgreementTypeField = useCallback(
     (
       fieldName: string,
       value: unknown,
       allValues: AgreementTypeFormData & { agreementTypeId?: string }
-    ) => {
+    ): string | boolean => {
       try {
         const requiredFields: Record<string, string> = {
           agreementTypeName: 'Agreement Type Name is required',
@@ -248,7 +250,7 @@ export const RightSlideAgreementTypePanel: React.FC<
           }
         }
 
-        // Validate agreement type ID for new agreement types (not in edit mode)
+        // Validate agreement type ID for new agreement types
         if (fieldName === 'agreementTypeId' && mode === 'add') {
           if (!value || (typeof value === 'string' && value.trim() === '')) {
             return 'Agreement Type ID is required. Please generate an ID.'
@@ -256,7 +258,8 @@ export const RightSlideAgreementTypePanel: React.FC<
         }
 
         if (
-          (fieldName === 'agreementTypeName' || fieldName === 'agreementTypeDescription') &&
+          (fieldName === 'agreementTypeName' ||
+            fieldName === 'agreementTypeDescription') &&
           value &&
           typeof value === 'string' &&
           value.trim() !== ''
@@ -264,12 +267,11 @@ export const RightSlideAgreementTypePanel: React.FC<
           const result = validateAgreementTypeData(allValues)
           if (result.success) {
             return true
-          } else {
-            const fieldError = result.errors?.issues.find(
-              (issue) => issue.path.some((p) => String(p) === fieldName)
-            )
-            return fieldError ? fieldError.message : true
           }
+          const fieldError = result.errors?.issues.find((issue) =>
+            issue.path.some((p) => String(p) === fieldName)
+          )
+          return fieldError ? fieldError.message : true
         }
 
         return true
@@ -280,293 +282,318 @@ export const RightSlideAgreementTypePanel: React.FC<
     [mode]
   )
 
-    const onSubmit = async (data: AgreementTypeFormData & { agreementTypeId?: string }) => {
-    try {
-      setErrorMessage(null)
-      setSuccessMessage(null)
+  const onSubmit = useCallback(
+    async (data: AgreementTypeFormData & { agreementTypeId?: string }) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
 
-      if (taskStatusLoading) {
-        setErrorMessage('Please wait for dropdown options to load before submitting.')
-        return
-      }
-
-      const validatedData = sanitizeAgreementTypeData(data)
-      const currentDataToEdit = apiAgreementTypeData || actionData
-      const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
-
-      // Validate agreement type ID for new agreement types
-      if (!isEditing && !data.agreementTypeId && !generatedId) {
-        setErrorMessage('Please generate an Agreement Type ID before submitting.')
-        return
-      }
-
-      const isValid = await trigger()
-      if (!isValid) {
-        const errors = []
-        if (!data.agreementTypeName) errors.push('Agreement Type Name is required')
-        if (!data.agreementTypeDescription) errors.push('Agreement Type Description is required')
-        if (errors.length > 0) {
-          setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
+        if (taskStatusLoading) {
+          setErrorMessage(
+            'Please wait for dropdown options to load before submitting.'
+          )
+          return
         }
-        return
-      }
-      const agreementTypeId = isEditing ? String(currentDataToEdit?.id || '') : undefined
 
-      // Get the generated agreement type ID (UUID) from form data
-      const formAgreementTypeId = data.agreementTypeId || generatedId
+        const validatedData = sanitizeAgreementTypeData(data)
+        const currentDataToEdit = apiAgreementTypeData || actionData
+        const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
 
-      let agreementTypeData: CreateAgreementTypeRequest | UpdateAgreementTypeRequest
+        // Validate agreement type ID for new agreement types
+        if (!isEditing && !data.agreementTypeId && !generatedId) {
+          setErrorMessage('Please generate an Agreement Type ID before submitting.')
+          return
+        }
 
-      if (isEditing) {
-        agreementTypeData = {
-          id: currentDataToEdit?.id,
-          agreementTypeName: validatedData.agreementTypeName,
-          agreementTypeDescription: validatedData.agreementTypeDescription,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formAgreementTypeId && { uuid: formAgreementTypeId }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-            } as UpdateAgreementTypeRequest
-      } else {
-        agreementTypeData = {
-          agreementTypeName: validatedData.agreementTypeName,
-          agreementTypeDescription: validatedData.agreementTypeDescription,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formAgreementTypeId && { uuid: formAgreementTypeId }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as CreateAgreementTypeRequest
-      }
+        const isValid = await trigger()
+        if (!isValid) {
+          const errors: string[] = []
+          if (!data.agreementTypeName) {
+            errors.push('Agreement Type Name is required')
+          }
+          if (!data.agreementTypeDescription) {
+            errors.push('Agreement Type Description is required')
+          }
+          if (errors.length > 0) {
+            setErrorMessage(
+              `Please fill in the required fields: ${errors.join(', ')}`
+            )
+          }
+          return
+        }
 
-      const result = await saveAgreementTypeMutation.mutateAsync({
-        data: agreementTypeData,
-        isEditing,
-        ...(agreementTypeId && { agreementTypeId }),
-      })
+        const agreementTypeId = isEditing
+          ? String(currentDataToEdit?.id || '')
+          : undefined
 
-      // Update generatedId with the UUID from the response if available
-      if (result?.uuid) {
-        setGeneratedId(result.uuid)
-      }
+        const formAgreementTypeId = data.agreementTypeId || generatedId
 
-      setSuccessMessage(
-        isEditing
-          ? 'Agreement Type updated successfully!'
-          : 'Agreement Type added successfully!'
-      )
+        let agreementTypeData: CreateAgreementTypeRequest | UpdateAgreementTypeRequest
 
-      if (
-        mode === 'edit' &&
-                onAgreementTypeUpdated &&
-        agreementTypeIndex !== null &&
-        agreementTypeIndex !== undefined
-      ) {
-        onAgreementTypeUpdated(result as AgreementType, agreementTypeIndex)
-      } else if (onAgreementTypeAdded) {
-        onAgreementTypeAdded(result as AgreementType)
-      }
-      
-      // Refresh will be handled by parent component callbacks
-
-      setTimeout(() => {
-        reset()
-        setGeneratedId('')
-        handleClose()
-      }, 1500)
-    } catch (error: unknown) {
-      let errorMessage = 'Failed to add agreement type. Please try again.'
-      if (error instanceof Error) {
-        if (error.message.includes('validation')) {
-          errorMessage = 'Please check your input and try again.'
+        if (isEditing) {
+          agreementTypeData = {
+            id: currentDataToEdit?.id,
+            agreementTypeName: validatedData.agreementTypeName,
+            agreementTypeDescription: validatedData.agreementTypeDescription,
+            active: validatedData.active,
+            enabled: true,
+            deleted: false,
+            ...(formAgreementTypeId && { uuid: formAgreementTypeId }),
+            ...(validatedData.taskStatusDTO !== null &&
+              validatedData.taskStatusDTO?.id && {
+                taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+              }),
+          } as UpdateAgreementTypeRequest
         } else {
-          errorMessage = error.message
+          agreementTypeData = {
+            agreementTypeName: validatedData.agreementTypeName,
+            agreementTypeDescription: validatedData.agreementTypeDescription,
+            active: validatedData.active,
+            enabled: true,
+            deleted: false,
+            ...(formAgreementTypeId && { uuid: formAgreementTypeId }),
+            ...(validatedData.taskStatusDTO !== null &&
+              validatedData.taskStatusDTO?.id && {
+                taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+              }),
+          } as CreateAgreementTypeRequest
         }
+
+        const result = await saveAgreementTypeMutation.mutateAsync({
+          data: agreementTypeData,
+          isEditing,
+          ...(agreementTypeId && { agreementTypeId }),
+        })
+
+        if (result?.uuid) {
+          setGeneratedId(result.uuid)
+        }
+
+        setSuccessMessage(
+          isEditing
+            ? 'Agreement Type updated successfully!'
+            : 'Agreement Type added successfully!'
+        )
+
+        if (
+          mode === 'edit' &&
+          onAgreementTypeUpdated &&
+          agreementTypeIndex !== null &&
+          agreementTypeIndex !== undefined
+        ) {
+          onAgreementTypeUpdated(result as AgreementType, agreementTypeIndex)
+        } else if (onAgreementTypeAdded) {
+          onAgreementTypeAdded(result as AgreementType)
+        }
+
+        setTimeout(() => {
+          reset()
+          setGeneratedId('')
+          handleClose()
+        }, PANEL_CLOSE_DELAY)
+      } catch (error: unknown) {
+        let errorMessage = 'Failed to save agreement type. Please try again.'
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMessage = 'Please check your input and try again.'
+          } else {
+            errorMessage = error.message
+          }
+        }
+        setErrorMessage(errorMessage)
       }
-      setErrorMessage(errorMessage)
-    }
-  }
+    },
+    [
+      taskStatusLoading,
+      apiAgreementTypeData,
+      actionData,
+      mode,
+      generatedId,
+      trigger,
+      saveAgreementTypeMutation,
+      agreementTypeIndex,
+      onAgreementTypeUpdated,
+      onAgreementTypeAdded,
+      reset,
+    ]
+  )
 
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     reset()
     setErrorMessage(null)
     setSuccessMessage(null)
     setGeneratedId('')
     onClose()
-  }
-  
+  }, [reset, onClose])
+
   // Style variables
   const isDark = theme.palette.mode === 'dark'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
-  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
   const labelSx = tokens.label
   const valueSx = tokens.value
-  
-  // View mode styles
-  const viewModeStyles = React.useMemo(
+
+  const viewModeStyles = useMemo(
     () => ({
       backgroundColor: isDark ? alpha('#1E293B', 0.5) : '#F9FAFB',
       borderColor: isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB',
     }),
     [isDark]
   )
-  
-  // Field styles for the ID field
-  const fieldStyles = React.useMemo(
-    () => ({
-      ...commonFieldStyles,
-    }),
-    [commonFieldStyles]
-  )
-  
-  const labelStyles = React.useMemo(
-    () => ({
-      ...labelSx,
-    }),
-    [labelSx]
-  )
-  
-  const valueStyles = React.useMemo(
-    () => ({
-      ...valueSx,
-    }),
-    [valueSx]
-  )
 
-  const renderTextField = (
-    name: 'agreementTypeName' | 'agreementTypeDescription',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        rules={{
-          validate: (value, formValues) =>
-            validateAgreementTypeField(name, value, formValues),
-        }}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={label}
-            fullWidth
-            required={required}
-            error={!!errors[name]}
-            helperText={errors[name]?.message?.toString()}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={errors[name] ? errorFieldStyles : commonFieldStyles}
-          />
-        )}
-      />
-    </Grid>
-  )
-
-  const renderAgreementTypeIdField = (
-    name: 'agreementTypeId',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue=""
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (value, formValues) =>
-            validateAgreementTypeField(name, value, formValues as AgreementTypeFormData & { agreementTypeId?: string }),
-        }}
-        render={({ field }) => {
-          const fieldError = errors[name as keyof typeof errors]
-          return (
+  const renderTextField = useCallback(
+    (
+      name: 'agreementTypeName' | 'agreementTypeDescription',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={{
+            validate: (value, formValues) =>
+              validateAgreementTypeField(name, value, formValues),
+          }}
+          render={({ field }) => (
             <TextField
               {...field}
-              fullWidth
               label={label}
+              fullWidth
               required={required}
-              value={field.value || generatedId}
-              error={!!fieldError}
-              helperText={fieldError?.message?.toString()}
-            onChange={(e) => {
-              setGeneratedId(e.target.value)
-              field.onChange(e)
-            }}
-            disabled={isReadOnly || isEditMode}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end" sx={{ mr: 0 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleGenerateNewId}
-                    disabled={isGeneratingId || isReadOnly || isEditMode}
-                    sx={{
-                      color: theme.palette.primary.contrastText,
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      background: theme.palette.primary.main,
-                      '&:hover': {
-                        background: theme.palette.primary.dark,
-                      },
-                      minWidth: '100px',
-                      height: '32px',
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '11px',
-                      lineHeight: '14px',
-                      letterSpacing: '0.3px',
-                      px: 1,
-                    }}
-                  >
-                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
-                  </Button>
-                </InputAdornment>
-              ),
-              sx: valueStyles,
-            }}
-              InputLabelProps={{
-                sx: {
-                  ...labelStyles,
-                  ...(!!fieldError && {
-                    color: theme.palette.error.main,
-                    '&.Mui-focused': { color: theme.palette.error.main },
-                    '&.MuiFormLabel-filled': { color: theme.palette.error.main },
-                  }),
-                },
-              }}
-              sx={{
-                ...fieldStyles,
-                ...((isReadOnly || isEditMode) && {
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: viewModeStyles.backgroundColor,
-                    color: textSecondary,
-                    '& fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                  },
-                }),
-              }}
+              error={!!errors[name]}
+              helperText={errors[name]?.message?.toString()}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={errors[name] ? errorFieldStyles : commonFieldStyles}
             />
-          )
-        }}
-      />
-    </Grid>
+          )}
+        />
+      </Grid>
+    ),
+    [control, errors, labelSx, valueSx, errorFieldStyles, commonFieldStyles, validateAgreementTypeField]
+  )
+
+  const renderAgreementTypeIdField = useCallback(
+    (
+      name: 'agreementTypeId',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          defaultValue=""
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value, formValues) =>
+              validateAgreementTypeField(
+                name,
+                value,
+                formValues as AgreementTypeFormData & { agreementTypeId?: string }
+              ),
+          }}
+          render={({ field }) => {
+            const fieldError = errors[name as keyof typeof errors]
+            return (
+              <TextField
+                {...field}
+                fullWidth
+                label={label}
+                required={required}
+                value={field.value || generatedId}
+                error={!!fieldError}
+                helperText={fieldError?.message?.toString()}
+                onChange={(e) => {
+                  setGeneratedId(e.target.value)
+                  field.onChange(e)
+                }}
+                disabled={isReadOnly || isEditMode}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end" sx={{ mr: 0 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleGenerateNewId}
+                        disabled={isGeneratingId || isReadOnly || isEditMode}
+                        sx={{
+                          color: theme.palette.primary.contrastText,
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          background: theme.palette.primary.main,
+                          '&:hover': {
+                            background: theme.palette.primary.dark,
+                          },
+                          minWidth: '100px',
+                          height: '32px',
+                          fontFamily: 'Outfit, sans-serif',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '11px',
+                          lineHeight: '14px',
+                          letterSpacing: '0.3px',
+                          px: 1,
+                        }}
+                      >
+                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                      </Button>
+                    </InputAdornment>
+                  ),
+                  sx: valueSx,
+                }}
+                InputLabelProps={{
+                  sx: {
+                    ...labelSx,
+                    ...(!!fieldError && {
+                      color: theme.palette.error.main,
+                      '&.Mui-focused': { color: theme.palette.error.main },
+                      '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                    }),
+                  },
+                }}
+                sx={{
+                  ...commonFieldStyles,
+                  ...((isReadOnly || isEditMode) && {
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      color: textSecondary,
+                      '& fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                  }),
+                }}
+              />
+            )
+          }}
+        />
+      </Grid>
+    ),
+    [
+      control,
+      errors,
+      generatedId,
+      isReadOnly,
+      isEditMode,
+      handleGenerateNewId,
+      isGeneratingId,
+      theme,
+      valueSx,
+      labelSx,
+      commonFieldStyles,
+      viewModeStyles,
+      textSecondary,
+      validateAgreementTypeField,
+    ]
   )
 
   return (
@@ -605,10 +632,10 @@ export const RightSlideAgreementTypePanel: React.FC<
           }}
         >
           {mode === 'edit'
-            ? `${getAgreementTypeLabelDynamic('CDL_COMMON_UPDATE')} ${getAgreementTypeLabelDynamic('CDL_MAT_NAME')}`
-            : `${getAgreementTypeLabelDynamic('CDL_COMMON_ADD')} ${getAgreementTypeLabelDynamic('CDL_MAT_NAME')}`}
+            ? `${getAgreementTypeLabel('CDL_COMMON_UPDATE')} ${getAgreementTypeLabel('CDL_MAT_NAME')}`
+            : `${getAgreementTypeLabel('CDL_COMMON_ADD')} ${getAgreementTypeLabel('CDL_MAT_NAME')}`}
           <IconButton
-            onClick={onClose}
+            onClick={handleClose}
             sx={{
               color: theme.palette.text.secondary,
               '&:hover': {
@@ -649,19 +676,19 @@ export const RightSlideAgreementTypePanel: React.FC<
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
               {renderAgreementTypeIdField(
                 'agreementTypeId',
-                        getAgreementTypeLabelDynamic('CDL_MAT_ID'),
+                getAgreementTypeLabel('CDL_MAT_ID'),
                 12,
                 true
               )}
               {renderTextField(
                 'agreementTypeName',
-                getAgreementTypeLabelDynamic('CDL_MAT_NAME'),
+                getAgreementTypeLabel('CDL_MAT_NAME'),
                 12,
                 true
               )}
               {renderTextField(
                 'agreementTypeDescription',
-                getAgreementTypeLabelDynamic('CDL_MAT_DESCRIPTION'),
+                getAgreementTypeLabel('CDL_MAT_DESCRIPTION'),
                 12,
                 true
               )}
@@ -707,7 +734,7 @@ export const RightSlideAgreementTypePanel: React.FC<
                         : undefined,
                   }}
                 >
-                  {getAgreementTypeLabelDynamic('CDL_COMMON_CANCEL')}
+                  {getAgreementTypeLabel('CDL_COMMON_CANCEL')}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
@@ -752,13 +779,13 @@ export const RightSlideAgreementTypePanel: React.FC<
                     },
                   }}
                 >
-                    {saveAgreementTypeMutation.isPending
+                  {saveAgreementTypeMutation.isPending
                     ? mode === 'edit'
-                      ? getAgreementTypeLabelDynamic('CDL_COMMON_UPDATING')
-                      : getAgreementTypeLabelDynamic('CDL_COMMON_ADDING')
+                      ? getAgreementTypeLabel('CDL_COMMON_UPDATING')
+                      : getAgreementTypeLabel('CDL_COMMON_ADDING')
                     : mode === 'edit'
-                      ? getAgreementTypeLabelDynamic('CDL_COMMON_UPDATE')
-                      : getAgreementTypeLabelDynamic('CDL_COMMON_ADD')}
+                      ? getAgreementTypeLabel('CDL_COMMON_UPDATE')
+                      : getAgreementTypeLabel('CDL_COMMON_ADD')}
                 </Button>
               </Grid>
             </Grid>
@@ -767,7 +794,7 @@ export const RightSlideAgreementTypePanel: React.FC<
 
         <Snackbar
           open={!!errorMessage}
-          autoHideDuration={6000}
+          autoHideDuration={SNACKBAR_AUTO_HIDE_DURATION.ERROR}
           onClose={() => setErrorMessage(null)}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
@@ -782,7 +809,7 @@ export const RightSlideAgreementTypePanel: React.FC<
 
         <Snackbar
           open={!!successMessage}
-          autoHideDuration={3000}
+          autoHideDuration={SNACKBAR_AUTO_HIDE_DURATION.SUCCESS}
           onClose={() => setSuccessMessage(null)}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >

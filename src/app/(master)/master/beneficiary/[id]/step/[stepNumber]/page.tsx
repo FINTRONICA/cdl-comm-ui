@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import BeneficiaryStepperWrapper from '@/components/organisms/Master/BeneficiaryStepper'
 import { GlobalLoading } from '@/components/atoms'
@@ -18,7 +18,7 @@ function BeneficiaryStepPageContent() {
   const [isValidating, setIsValidating] = useState(true)
   const [beneficiaryData, setBeneficiaryData] =
     useState<MasterBeneficiaryResponse | null>(null)
-  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [isLoadingData, setIsLoadingData] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const beneficiaryId = params?.id as string | undefined
@@ -27,20 +27,18 @@ function BeneficiaryStepPageContent() {
 
   const mode = searchParams.get('mode')
   const editing = searchParams.get('editing')
-  const view = searchParams.get('view')
-  const isViewMode = mode === 'view' || view === 'true'
+  const isViewMode = mode === 'view' || searchParams.get('view') === 'true'
   const isEditingMode = editing === 'true'
 
+  // Validate URL parameters - memoized to prevent unnecessary re-runs
   useEffect(() => {
     if (!beneficiaryId || beneficiaryId === 'undefined' || beneficiaryId === 'null') {
-      console.error('[BeneficiaryStepPage] Invalid beneficiaryId:', beneficiaryId)
-      router.push('/master/beneficiary')
+      router.replace('/master/beneficiary')
       return
     }
 
     if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 3) {
-      console.error('[BeneficiaryStepPage] Invalid stepNumber:', stepNumber)
-      router.push(
+      router.replace(
         `/master/beneficiary/${beneficiaryId}/step/1${editing ? '?editing=true' : ''}`
       )
       return
@@ -49,35 +47,29 @@ function BeneficiaryStepPageContent() {
     setIsValidating(false)
   }, [beneficiaryId, stepNumber, router, editing])
 
-  useEffect(() => {
-    const fetchBeneficiaryData = async () => {
-      if (!beneficiaryId || beneficiaryId === 'undefined' || beneficiaryId === 'null') {
-        console.error(
-          '[BeneficiaryStepPage] Invalid beneficiaryId, cannot fetch data:',
-          beneficiaryId
-        )
-        setError('Invalid beneficiary ID')
-        setIsLoadingData(false)
-        return
-      }
-
-      try {
-        setIsLoadingData(true)
-        setError(null)
-        console.log('[BeneficiaryStepPage] Fetching beneficiary data for ID:', beneficiaryId)
-        const data = await beneficiaryService.getBeneficiary(beneficiaryId)
-        console.log('[BeneficiaryStepPage] Beneficiary data fetched:', data)
-        setBeneficiaryData(data)
-      } catch (err: unknown) {
-        const errorMessage =
-          err instanceof Error ? err.message : 'Failed to fetch beneficiary data'
-        console.error('[BeneficiaryStepPage] Error fetching beneficiary data:', err)
-        setError(errorMessage)
-      } finally {
-        setIsLoadingData(false)
-      }
+  // Fetch beneficiary data
+  const fetchBeneficiaryData = useCallback(async () => {
+    if (!beneficiaryId || beneficiaryId === 'undefined' || beneficiaryId === 'null') {
+      setError('Invalid beneficiary ID')
+      setIsLoadingData(false)
+      return
     }
 
+    try {
+      setIsLoadingData(true)
+      setError(null)
+      const data = await beneficiaryService.getBeneficiary(beneficiaryId)
+      setBeneficiaryData(data)
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch beneficiary data'
+      setError(errorMessage)
+    } finally {
+      setIsLoadingData(false)
+    }
+  }, [beneficiaryId])
+
+  useEffect(() => {
     if (
       beneficiaryId &&
       beneficiaryId !== 'undefined' &&
@@ -85,12 +77,8 @@ function BeneficiaryStepPageContent() {
       !isValidating
     ) {
       fetchBeneficiaryData()
-    } else if (!beneficiaryId || beneficiaryId === 'undefined' || beneficiaryId === 'null') {
-      console.error('[BeneficiaryStepPage] Missing or invalid beneficiaryId:', beneficiaryId)
-      setError('Beneficiary ID is required')
-      setIsLoadingData(false)
     }
-  }, [beneficiaryId, isValidating])
+  }, [beneficiaryId, isValidating, fetchBeneficiaryData])
 
   if (isValidating || isLoadingData) {
     return (
@@ -178,4 +166,3 @@ export default function BeneficiaryStepPage() {
     </Suspense>
   )
 }
-

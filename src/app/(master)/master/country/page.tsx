@@ -23,12 +23,10 @@ interface CountryTableData extends Country, Record<string, unknown> {
   description: string
 }
 
-
 export const CountryPageClient = dynamic(
   () => Promise.resolve(CountryPageImpl),
   {
     ssr: false,
-    // Removed loading prop to prevent duplicate loading - page handles its own loading state
   }
 )
 
@@ -74,35 +72,31 @@ const CountryPageImpl: React.FC = () => {
     })) as CountryTableData[]
   }, [countriesResponse])
 
-  const tableColumns = useMemo(() => [
-    {
-      key: 'countryId',
-      label: getCountryLabelDynamic('CDL_MCNT_ID'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'description',
-      label: getCountryLabelDynamic('CDL_MCNT_DESCRIPTION'),
-      type: 'text' as const,
-      width: 'w-96',
-      sortable: true,
-    },
-    {
-      key: 'active',
-      label: getCountryLabelDynamic('CDL_MCNT_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: getCountryLabelDynamic('CDL_COMMON_ACTIONS'),
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ], [getCountryLabelDynamic])
+  const tableColumns = useMemo(
+    () => [
+      {
+        key: 'countryId',
+        label: getCountryLabelDynamic('CDL_MCNT_ID'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'description',
+        label: getCountryLabelDynamic('CDL_MCNT_DESCRIPTION'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'actions',
+        label: getCountryLabelDynamic('CDL_COMMON_ACTIONS'),
+        type: 'actions' as const,
+        width: 'w-20',
+      },
+    ],
+    [getCountryLabelDynamic]
+  )
 
   const {
     search,
@@ -128,33 +122,37 @@ const CountryPageImpl: React.FC = () => {
     initialRowsPerPage: currentApiSize,
   })
 
-  const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const hasSearch = Object.values(search).some((value) => value.trim())
 
-    if (hasSearch) {
-      localHandlePageChange(newPage)
-    } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
-    }
-  }
+      if (hasSearch) {
+        localHandlePageChange(newPage)
+      } else {
+        setCurrentApiPage(newPage)
+        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      }
+    },
+    [search, localHandlePageChange, currentApiSize, updatePagination]
+  )
 
-  const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+  const handleRowsPerPageChange = useCallback(
+    (newRowsPerPage: number) => {
+      setCurrentApiSize(newRowsPerPage)
+      setCurrentApiPage(1)
+      updatePagination(0, newRowsPerPage)
+      localHandleRowsPerPageChange(newRowsPerPage)
+    },
+    [localHandleRowsPerPageChange, updatePagination]
+  )
 
   const apiTotal = apiPagination?.totalElements || 0
   const apiTotalPages = apiPagination?.totalPages || 1
-
   const hasActiveSearch = Object.values(search).some((value) => value.trim())
 
   const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
   const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
   const effectivePage = hasActiveSearch ? localPage : currentApiPage
-
   const effectiveStartItem = hasActiveSearch
     ? startItem
     : (currentApiPage - 1) * currentApiSize + 1
@@ -162,37 +160,45 @@ const CountryPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (isDeleting || !deleteItem) return
+
     setIsDeleting(true)
     try {
       await deleteCountryMutation.mutateAsync(String(deleteItem.id))
-          refreshCountries()
+      refreshCountries()
       setIsDeleteModalOpen(false)
       setDeleteItem(null)
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error(`Failed to delete country: ${errorMessage}`)
+      // Error is handled by the mutation's onError
+      // User feedback is provided through error state
+      if (error instanceof Error) {
+        // Could add toast notification here if needed
+      }
     } finally {
       setIsDeleting(false)
     }
-  }
+  }, [isDeleting, deleteItem, deleteCountryMutation, refreshCountries])
 
-  const handleRowDelete = (row: CountryTableData) => {
-    if (isDeleting) return
-    setDeleteItem(row)
-    setIsDeleteModalOpen(true)
-  }
+  const handleRowDelete = useCallback(
+    (row: CountryTableData) => {
+      if (isDeleting) return
+      setDeleteItem(row)
+      setIsDeleteModalOpen(true)
+    },
+    [isDeleting]
+  )
 
-  const handleRowEdit = (row: CountryTableData) => {
-    // Find index in the full data array (not just paginated)
-    const index = countryData.findIndex((item) => item.id === row.id)
-    setEditingItem(row)
-    setEditingItemIndex(index >= 0 ? index : null)
-    setPanelMode('edit')
-    setIsPanelOpen(true)
-  }
+  const handleRowEdit = useCallback(
+    (row: CountryTableData) => {
+      const index = countryData.findIndex((item) => item.id === row.id)
+      setEditingItem(row)
+      setEditingItemIndex(index >= 0 ? index : null)
+      setPanelMode('edit')
+      setIsPanelOpen(true)
+    },
+    [countryData]
+  )
 
   const handleAddNew = useCallback(() => {
     setEditingItem(null)
@@ -209,10 +215,10 @@ const CountryPageImpl: React.FC = () => {
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      // Use a generic template name for investment, or create one if needed
-      await downloadTemplate('ProductProgramTemplate.xlsx')
-    } catch (error) {
-      console.error('Failed to download template:', error)
+      await downloadTemplate('CountryTemplate.xlsx')
+    } catch {
+      // Error handling is done by the hook
+      // Could add toast notification here if needed
     }
   }, [downloadTemplate])
 
@@ -222,7 +228,12 @@ const CountryPageImpl: React.FC = () => {
   }, [refreshCountries])
 
   const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error)
+    // Error is logged by UploadDialog component
+    // Could add toast notification here if needed
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.error('Upload error:', error)
+    }
   }, [])
 
   const handleCountryAdded = useCallback(() => {
@@ -235,56 +246,69 @@ const CountryPageImpl: React.FC = () => {
     handleClosePanel()
   }, [handleClosePanel, refreshCountries])
 
-  const renderExpandedContent = (row: CountryTableData) => (
-    <div className="grid grid-cols-2 gap-8">
-      <div className="space-y-4">
-        <h4 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">Details</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600 dark:text-gray-400">
-              {getCountryLabelDynamic('CDL_MCNT_ID')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-              {row.countryId || row.uuid || `CNT-${row.id}` || '-'}
-            </span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-gray-600 dark:text-gray-400">
-              {getCountryLabelDynamic('CDL_MCNT_DESCRIPTION')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-              {row.description || '-'}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600 dark:text-gray-400">
-              Active:
-            </span>
-            <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-              {row.active ? 'Yes' : 'No'}
-            </span>
-          </div>
-          {row.taskStatusDTO && (
+  const renderExpandedContent = useCallback(
+    (row: CountryTableData) => (
+      <div className="grid grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h4 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Details
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600 dark:text-gray-400">
-                Task Status:
+                {getCountryLabelDynamic('CDL_MCNT_ID')}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.taskStatusDTO.name || '-'}
+                {row.countryId || row.uuid || `CNT-${row.id}` || '-'}
               </span>
             </div>
-          )}
+            <div className="col-span-2">
+              <span className="text-gray-600 dark:text-gray-400">
+                {getCountryLabelDynamic('CDL_MCNT_DESCRIPTION')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.description || '-'}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Active:</span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.active ? 'Yes' : 'No'}
+              </span>
+            </div>
+            {row.taskStatusDTO && (
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Task Status:
+                </span>
+                <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                  {row.taskStatusDTO.name || '-'}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    ),
+    [getCountryLabelDynamic]
   )
+
+  const getDeleteMessage = useCallback(() => {
+    if (!deleteItem) return ''
+    const identifier =
+      deleteItem.description ||
+      deleteItem.uuid ||
+      `CNT-${deleteItem.id}` ||
+      'this country'
+    return `Are you sure you want to delete ${identifier}?`
+  }, [deleteItem])
 
   return (
     <>
       <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
         <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
           <PageActionButtons
-              entityType="country"
+            entityType="country"
             onAddNew={handleAddNew}
             onDownloadTemplate={handleDownloadTemplate}
             onUploadDetails={() => setIsUploadDialogOpen(true)}
@@ -304,7 +328,7 @@ const CountryPageImpl: React.FC = () => {
             </div>
           ) : countriesError ? (
             <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-red-600">
+              <div className="text-red-600 dark:text-red-400">
                 Error loading countries. Please try again.
               </div>
             </div>
@@ -331,7 +355,6 @@ const CountryPageImpl: React.FC = () => {
                 onRowExpansionChange={handleRowExpansionChange}
                 renderExpandedContent={renderExpandedContent}
                 onRowDelete={handleRowDelete}
-                // onRowView={handleRowView}
                 onRowEdit={handleRowEdit}
                 sortConfig={sortConfig}
                 onSort={handleSort}
@@ -345,7 +368,7 @@ const CountryPageImpl: React.FC = () => {
         open={isDeleteModalOpen}
         onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
         title={getCountryLabelDynamic('CDL_COMMON_ACTION')}
-        message={`Are you sure you want to delete this country: ${deleteItem?.description || deleteItem?.uuid || `CNT-${deleteItem?.id}` || ''}?`}
+        message={getDeleteMessage()}
         actions={[
           {
             label: 'Cancel',
@@ -365,13 +388,13 @@ const CountryPageImpl: React.FC = () => {
         ]}
       />
       {isPanelOpen && (
-          <RightSlideCountryPanel
+        <RightSlideCountryPanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onCountryAdded={handleCountryAdded}
           onCountryUpdated={handleCountryUpdated}
           mode={panelMode}
-          actionData={editingItem as Country | null}
+          actionData={editingItem}
           {...(editingItemIndex !== null && {
             countryIndex: editingItemIndex,
           })}
@@ -384,7 +407,7 @@ const CountryPageImpl: React.FC = () => {
           onClose={() => setIsUploadDialogOpen(false)}
           onUploadSuccess={handleUploadSuccess}
           onUploadError={handleUploadError}
-            title="Upload Country Data"
+          title="Upload Country Data"
           entityType="country"
         />
       )}

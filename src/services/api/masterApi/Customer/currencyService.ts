@@ -51,19 +51,16 @@ export interface CurrencyFilters {
 }
 
 export class CurrencyService {
-    async getCurrencies(
+  async getCurrencies(
     page = 0,
     size = 20,
-        filters?: CurrencyFilters
+    filters?: CurrencyFilters
   ): Promise<PaginatedResponse<Currency>> {
     const apiFilters: Record<string, string> = {}
-    if (filters) {
-      if (filters.description) {
-        apiFilters['description.contains'] = filters.description
-      }
+    if (filters?.description) {
+      apiFilters['description.contains'] = filters.description
     }
 
-    // Build URL - Use base endpoint and add all params
     const baseUrl = buildApiUrl('/currency')
     const allParams = {
       'deleted.equals': 'false',
@@ -75,15 +72,17 @@ export class CurrencyService {
 
     try {
       const result = await apiClient.get<PaginatedResponse<Currency>>(url)
-      return result || {
-        content: [],
-        page: {
-          size: 0,
-          number: page,
-          totalElements: 0,
-          totalPages: 0,
-        },
-      }
+      return (
+        result || {
+          content: [],
+          page: {
+            size: 0,
+            number: page,
+            totalElements: 0,
+            totalPages: 0,
+          },
+        }
+      )
     } catch (error) {
       throw error
     }
@@ -99,9 +98,7 @@ export class CurrencyService {
     }
   }
 
-  async createCurrency(
-          data: CreateCurrencyRequest
-  ): Promise<Currency> {
+  async createCurrency(data: CreateCurrencyRequest): Promise<Currency> {
     try {
       const result = await apiClient.post<Currency>(
         buildApiUrl(API_ENDPOINTS.MASTER_CURRENCY.SAVE),
@@ -113,10 +110,10 @@ export class CurrencyService {
     }
   }
 
-        async updateCurrency(
+  async updateCurrency(
     id: string,
-              updates: UpdateCurrencyRequest    
-        ): Promise<Currency> {
+    updates: UpdateCurrencyRequest
+  ): Promise<Currency> {
     try {
       const result = await apiClient.put<Currency>(
         buildApiUrl(API_ENDPOINTS.MASTER_CURRENCY.UPDATE(id)),
@@ -141,22 +138,29 @@ export class CurrencyService {
   async getAllCurrencies(): Promise<Currency[]> {
     try {
       const url = buildApiUrl(API_ENDPOINTS.MASTER_CURRENCY.FIND_ALL)
-      const result = await apiClient.get<Currency[] | PaginatedResponse<Currency>>(url)
-      
+      const result = await apiClient.get<
+        Currency[] | PaginatedResponse<Currency>
+      >(url)
+
       // Handle different response structures
       if (Array.isArray(result)) {
         return result
-              } else if (result && typeof result === 'object' && 'content' in result && Array.isArray((result as PaginatedResponse<Currency>).content)) {
+      } else if (
+        result &&
+        typeof result === 'object' &&
+        'content' in result &&
+        Array.isArray((result as PaginatedResponse<Currency>).content)
+      ) {
         return (result as PaginatedResponse<Currency>).content
       }
-      
+
       return []
     } catch (error) {
-      console.error('Error fetching all currencies:', error)
+      // Return empty array on error to prevent UI crashes
+      // Error is logged by the API client
       return []
     }
   }
 }
 
-    export const currencyService = new CurrencyService()
-
+export const currencyService = new CurrencyService()

@@ -73,6 +73,7 @@ export class GeneralLedgerAccountService {
     filters?: GeneralLedgerAccountFilters
   ): Promise<PaginatedResponse<GeneralLedgerAccount>> {
     const apiFilters: Record<string, string> = {}
+    
     if (filters) {
       if (filters.ledgerAccountNumber) {
         apiFilters['ledgerAccountNumber.contains'] = filters.ledgerAccountNumber
@@ -88,7 +89,6 @@ export class GeneralLedgerAccountService {
       }
     }
 
-    // Build URL - Use correct endpoint
     const baseUrl = buildApiUrl(API_ENDPOINTS.MASTER_GENERAL_LEDGER_ACCOUNT.GET_ALL)
     const allParams = {
       ...buildPaginationParams(page, size),
@@ -123,7 +123,7 @@ export class GeneralLedgerAccountService {
   }
 
   async createGeneralLedgerAccount(
-              data: CreateGeneralLedgerAccountRequest
+    data: CreateGeneralLedgerAccountRequest
   ): Promise<GeneralLedgerAccount> {
     try {
       const result = await apiClient.post<GeneralLedgerAccount>(
@@ -139,7 +139,7 @@ export class GeneralLedgerAccountService {
   async updateGeneralLedgerAccount(
     id: string,
     updates: UpdateGeneralLedgerAccountRequest
-        ): Promise<GeneralLedgerAccount> {
+  ): Promise<GeneralLedgerAccount> {
     try {
       const result = await apiClient.put<GeneralLedgerAccount>(
         buildApiUrl(API_ENDPOINTS.MASTER_GENERAL_LEDGER_ACCOUNT.UPDATE(id)),
@@ -166,20 +166,23 @@ export class GeneralLedgerAccountService {
       const url = buildApiUrl(API_ENDPOINTS.MASTER_GENERAL_LEDGER_ACCOUNT.FIND_ALL)
       const result = await apiClient.get<GeneralLedgerAccount[] | PaginatedResponse<GeneralLedgerAccount>>(url)
       
-      // Handle different response structures
       if (Array.isArray(result)) {
         return result
-      } else if (result && typeof result === 'object' && 'content' in result && Array.isArray((result as PaginatedResponse<GeneralLedgerAccount>).content)) {
-        return (result as PaginatedResponse<GeneralLedgerAccount>).content
+      }
+      
+      if (result && typeof result === 'object' && 'content' in result) {
+        const paginatedResult = result as PaginatedResponse<GeneralLedgerAccount>
+        if (Array.isArray(paginatedResult.content)) {
+          return paginatedResult.content
+        }
       }
       
       return []
     } catch (error) {
-      console.error('Error fetching all general ledger account:', error)
+      // Return empty array on error to prevent UI breakage
       return []
     }
   }
 }
 
-      export const generalLedgerAccountService = new GeneralLedgerAccountService()
-
+export const generalLedgerAccountService = new GeneralLedgerAccountService()

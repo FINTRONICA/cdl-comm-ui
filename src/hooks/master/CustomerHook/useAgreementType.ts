@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-import React from 'react'
 import {
   agreementTypeService,
   type AgreementTypeFilters,
@@ -26,40 +25,29 @@ export function useAgreementTypes(
       AGREEMENT_TYPES_QUERY_KEY,
       { page: pagination.page, size: pagination.size, filters },
     ],
-    queryFn: async () => {
-      try {
-        const result = await agreementTypeService.getAgreementTypes(
-          pagination.page,
-          pagination.size,
-          filters
-        )
-        return result
-      } catch (error) {
-        console.error('Error fetching agreement types:', error)
-        throw error
-      }
-    },
+    queryFn: () =>
+      agreementTypeService.getAgreementTypes(
+        pagination.page,
+        pagination.size,
+        filters
+      ),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Always refetch when component mounts (e.g., tab navigation)
     retry: 3,
   })
 
-  // Update pagination state when data changes
-  React.useEffect(() => {
-    if (query.data?.page) {
-      const newApiPagination = {
-        totalElements: query.data.page.totalElements,
-        totalPages: query.data.page.totalPages,
-      }
-      if (
-        newApiPagination.totalElements !== apiPagination.totalElements ||
-        newApiPagination.totalPages !== apiPagination.totalPages
-      ) {
-        setApiPagination(newApiPagination)
-      }
+  if (query.data?.page) {
+    const newApiPagination = {
+      totalElements: query.data.page.totalElements,
+      totalPages: query.data.page.totalPages,
     }
-  }, [query.data?.page, apiPagination.totalElements, apiPagination.totalPages])
+    if (
+      newApiPagination.totalElements !== apiPagination.totalElements ||
+      newApiPagination.totalPages !== apiPagination.totalPages
+    ) {
+      setApiPagination(newApiPagination)
+    }
+  }
 
   const updatePagination = useCallback((newPage: number, newSize: number) => {
     setPagination({ page: newPage, size: newSize })
@@ -133,21 +121,9 @@ export function useRefreshAgreementTypes() {
 export function useAllAgreementTypes() {
   return useQuery({
     queryKey: [AGREEMENT_TYPES_QUERY_KEY, 'all'],
-    queryFn: async () => {
-      try {
-        const result = await agreementTypeService.getAllAgreementTypes()
-        if (process.env.NODE_ENV === 'development') {
-          console.log('useAllAgreementTypes result:', result)
-        }
-        return result
-      } catch (error) {
-        console.error('Error in useAllAgreementTypes:', error)
-        throw error
-      }
-    },
+    queryFn: () => agreementTypeService.getAllAgreementTypes(),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Always refetch when component mounts
     retry: 3,
   })
 }

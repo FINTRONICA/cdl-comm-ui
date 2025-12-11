@@ -1,8 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import React from 'react'
-import { useCallback, useState, useMemo } from 'react'
+import React, { useCallback, useState, useMemo } from 'react'
 import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
@@ -24,20 +23,10 @@ interface CurrencyTableData extends Currency, Record<string, unknown> {
   status?: string
 }
 
-const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
-
 export const CurrencyPageClient = dynamic(
   () => Promise.resolve(CurrencyPageImpl),
   {
     ssr: false,
-    // Removed loading prop to prevent duplicate loading - page handles its own loading state
   }
 )
 
@@ -58,7 +47,7 @@ const CurrencyPageImpl: React.FC = () => {
 
   // API hooks
   const {
-        data: currenciesResponse,
+    data: currenciesResponse,
     isLoading: currenciesLoading,
     error: currenciesError,
     updatePagination,
@@ -75,7 +64,7 @@ const CurrencyPageImpl: React.FC = () => {
 
   // Transform API data to table format
   const currencyData = useMemo(() => {
-      if (!currenciesResponse?.content) return []
+    if (!currenciesResponse?.content) return []
     return currenciesResponse.content.map((currency: Currency) => ({
       id: currency.id,
       uuid: currency.uuid,
@@ -86,46 +75,41 @@ const CurrencyPageImpl: React.FC = () => {
       deleted: currency.deleted,
       taskStatusDTO: currency.taskStatusDTO,
       status: currency.taskStatusDTO?.name || '',
-    })) as CurrencyTableData[]   
+    })) as CurrencyTableData[]
   }, [currenciesResponse])
 
-      const getCurrencyLabelDynamic = useCallback(
+  const getCurrencyLabelDynamic = useCallback(
     (configId: string): string => {
       return getMasterLabel(configId)
     },
     []
   )
 
-  const tableColumns = [
-    {
-      key: 'currencyId',
-      label: getCurrencyLabelDynamic('CDL_MCUR_ID'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-  
-    {
-      key: 'description',
-      label: getCurrencyLabelDynamic('CDL_MCUR_DESCRIPTION'),
-      type: 'text' as const,
-      width: 'w-96',
-      sortable: true,
-    },
-    {
-      key: 'status',
-      label: getCurrencyLabelDynamic('CDL_MPP_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  const tableColumns = useMemo(
+    () => [
+      {
+        key: 'currencyId',
+        label: getCurrencyLabelDynamic('CDL_MCUR_ID'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'description',
+        label: getCurrencyLabelDynamic('CDL_MCUR_DESCRIPTION'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'actions',
+        label: getCurrencyLabelDynamic('CDL_COMMON_ACTIONS'),
+        type: 'actions' as const,
+        width: 'w-20',
+      },
+    ],
+    [getCurrencyLabelDynamic]
+  )
 
   const {
     search,
@@ -151,23 +135,29 @@ const CurrencyPageImpl: React.FC = () => {
     initialRowsPerPage: currentApiSize,
   })
 
-  const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const hasSearch = Object.values(search).some((value) => value.trim())
 
-    if (hasSearch) {
-      localHandlePageChange(newPage)
-    } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
-    }
-  }
+      if (hasSearch) {
+        localHandlePageChange(newPage)
+      } else {
+        setCurrentApiPage(newPage)
+        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      }
+    },
+    [search, localHandlePageChange, currentApiSize, updatePagination]
+  )
 
-  const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+  const handleRowsPerPageChange = useCallback(
+    (newRowsPerPage: number) => {
+      setCurrentApiSize(newRowsPerPage)
+      setCurrentApiPage(1)
+      updatePagination(0, newRowsPerPage)
+      localHandleRowsPerPageChange(newRowsPerPage)
+    },
+    [localHandleRowsPerPageChange, updatePagination]
+  )
 
   const apiTotal = apiPagination?.totalElements || 0
   const apiTotalPages = apiPagination?.totalPages || 1
@@ -185,8 +175,9 @@ const CurrencyPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (isDeleting || !deleteItem) return
+
     setIsDeleting(true)
     try {
       await deleteCurrencyMutation.mutateAsync(String(deleteItem.id))
@@ -194,28 +185,32 @@ const CurrencyPageImpl: React.FC = () => {
       setIsDeleteModalOpen(false)
       setDeleteItem(null)
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error(`Failed to delete currency: ${errorMessage}`)
+      // Error is handled by the mutation's error state
+      // User feedback is provided through the UI
     } finally {
       setIsDeleting(false)
     }
-  }
+  }, [isDeleting, deleteItem, deleteCurrencyMutation, refreshCurrencies])
 
-  const handleRowDelete = (row: CurrencyTableData) => {
-    if (isDeleting) return
-    setDeleteItem(row)
-    setIsDeleteModalOpen(true)
-  }
+  const handleRowDelete = useCallback(
+    (row: CurrencyTableData) => {
+      if (isDeleting) return
+      setDeleteItem(row)
+      setIsDeleteModalOpen(true)
+    },
+    [isDeleting]
+  )
 
-  const handleRowEdit = (row: CurrencyTableData) => {
-    // Find index in the full data array (not just paginated)
-    const index = currencyData.findIndex((item) => item.id === row.id)
-    setEditingItem(row)
-    setEditingItemIndex(index >= 0 ? index : null)
-    setPanelMode('edit')
-    setIsPanelOpen(true)
-  }
+  const handleRowEdit = useCallback(
+    (row: CurrencyTableData) => {
+      const index = currencyData.findIndex((item) => item.id === row.id)
+      setEditingItem(row)
+      setEditingItemIndex(index >= 0 ? index : null)
+      setPanelMode('edit')
+      setIsPanelOpen(true)
+    },
+    [currencyData]
+  )
 
   const handleAddNew = useCallback(() => {
     setEditingItem(null)
@@ -232,10 +227,9 @@ const CurrencyPageImpl: React.FC = () => {
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      // Use a generic template name for investment, or create one if needed
-      await downloadTemplate('ProductProgramTemplate.xlsx')
+      await downloadTemplate('CurrencyTemplate.xlsx')
     } catch (error) {
-      console.error('Failed to download template:', error)
+      // Error handling is done by the hook
     }
   }, [downloadTemplate])
 
@@ -245,11 +239,15 @@ const CurrencyPageImpl: React.FC = () => {
   }, [refreshCurrencies])
 
   const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error)
+    // Error is displayed by the UploadDialog component
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.error('Currency upload error:', error)
+    }
   }, [])
 
   const handleCurrencyAdded = useCallback(() => {
-        refreshCurrencies()
+    refreshCurrencies()
     handleClosePanel()
   }, [handleClosePanel, refreshCurrencies])
 
@@ -258,30 +256,35 @@ const CurrencyPageImpl: React.FC = () => {
     handleClosePanel()
   }, [handleClosePanel, refreshCurrencies])
 
-  const renderExpandedContent = (row: CurrencyTableData) => (
-    <div className="grid grid-cols-2 gap-8">
-      <div className="space-y-4">
-        <h4 className="mb-4 text-sm font-semibold text-gray-900">Details</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">
-              {getCurrencyLabelDynamic('CDL_MCUR_ID')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.currencyId || row.uuid || `MCUR-${row.id}` || '-'}
-            </span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-gray-600">
-              {getCurrencyLabelDynamic('CDL_MCUR_DESCRIPTION')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.description || '-'}
-            </span>
+  const renderExpandedContent = useCallback(
+    (row: CurrencyTableData) => (
+      <div className="grid grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h4 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Details
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">
+                {getCurrencyLabelDynamic('CDL_MCUR_ID')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.currencyId || row.uuid || `MCUR-${row.id}` || '-'}
+              </span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-gray-600 dark:text-gray-400">
+                {getCurrencyLabelDynamic('CDL_MCUR_DESCRIPTION')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.description || '-'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    ),
+    [getCurrencyLabelDynamic]
   )
 
   return (
@@ -289,7 +292,7 @@ const CurrencyPageImpl: React.FC = () => {
       <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
         <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
           <PageActionButtons
-              entityType="currency"
+            entityType="currency"
             onAddNew={handleAddNew}
             onDownloadTemplate={handleDownloadTemplate}
             onUploadDetails={() => setIsUploadDialogOpen(true)}
@@ -309,7 +312,7 @@ const CurrencyPageImpl: React.FC = () => {
             </div>
           ) : currenciesError ? (
             <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-red-600">
+              <div className="text-red-600 dark:text-red-400">
                 Error loading currencies. Please try again.
               </div>
             </div>
@@ -335,9 +338,7 @@ const CurrencyPageImpl: React.FC = () => {
                 expandedRows={expandedRows}
                 onRowExpansionChange={handleRowExpansionChange}
                 renderExpandedContent={renderExpandedContent}
-                statusOptions={statusOptions}
                 onRowDelete={handleRowDelete}
-                // onRowView={handleRowView}
                 onRowEdit={handleRowEdit}
                 sortConfig={sortConfig}
                 onSort={handleSort}
@@ -370,6 +371,7 @@ const CurrencyPageImpl: React.FC = () => {
           },
         ]}
       />
+
       {isPanelOpen && (
         <RightSlideCurrencyPanel
           isOpen={isPanelOpen}
@@ -390,7 +392,7 @@ const CurrencyPageImpl: React.FC = () => {
           onClose={() => setIsUploadDialogOpen(false)}
           onUploadSuccess={handleUploadSuccess}
           onUploadError={handleUploadError}
-            title="Upload Currency Data"
+          title="Upload Currency Data"
           entityType="currency"
         />
       )}

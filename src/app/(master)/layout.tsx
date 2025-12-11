@@ -109,12 +109,37 @@ export default function MasterLayout({
     })
   }, [getTabLabel])
 
-  // Handle tab change - navigate to corresponding route
+  // Prefetch tab routes for faster navigation (only prefetch visible/adjacent tabs)
+  useEffect(() => {
+    // Prefetch all tab routes in the background for instant navigation
+    const prefetchRoutes = async () => {
+      // Use requestIdleCallback for non-blocking prefetch
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        window.requestIdleCallback(() => {
+          Object.values(TAB_ROUTES).forEach((route) => {
+            router.prefetch(route)
+          })
+        })
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          Object.values(TAB_ROUTES).forEach((route) => {
+            router.prefetch(route)
+          })
+        }, 100)
+      }
+    }
+    prefetchRoutes()
+  }, [router])
+
+  // Handle tab change - navigate to corresponding route with optimized performance
   const handleTabChange = useCallback(
     (tabId: string) => {
       const route = TAB_ROUTES[tabId]
       if (route && route !== pathname) {
-        router.push(route)
+        // Use replace instead of push for faster navigation when switching tabs
+        // This prevents adding to history stack and improves performance
+        router.replace(route)
       }
     },
     [router, pathname]
@@ -147,8 +172,8 @@ export default function MasterLayout({
       activeTab={activeTab || TAB_CONFIG[0]?.id || 'customer'}
       onTabChange={handleTabChange}
     >
-      {/* Key prop forces remount on route change, dynamic imports handle their own loading */}
-      <div key={pathname}>{children}</div>
+      {/* Children - React Query handles caching, no need to force remount */}
+      {children}
     </TablePageLayout>
   )
 }

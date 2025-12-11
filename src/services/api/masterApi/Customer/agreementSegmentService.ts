@@ -64,13 +64,10 @@ export class AgreementSegmentService {
     filters?: AgreementSegmentFilters
   ): Promise<PaginatedResponse<AgreementSegment>> {
     const apiFilters: Record<string, string> = {}
-    if (filters) {
-      if (filters.name) {
-        apiFilters['segmentName.contains'] = filters.name
-      }
+    if (filters?.name) {
+      apiFilters['segmentName.contains'] = filters.name
     }
 
-    // Build URL - Use base endpoint and add all params
     const baseUrl = buildApiUrl('/agreement-segment')
     const allParams = {
       'deleted.equals': 'false',
@@ -82,15 +79,17 @@ export class AgreementSegmentService {
 
     try {
       const result = await apiClient.get<PaginatedResponse<AgreementSegment>>(url)
-      return result || {
-        content: [],
-        page: {
-          size: 0,
-          number: page,
-          totalElements: 0,
-          totalPages: 0,
-        },
-      }
+      return (
+        result || {
+          content: [],
+          page: {
+            size: 0,
+            number: page,
+            totalElements: 0,
+            totalPages: 0,
+          },
+        }
+      )
     } catch (error) {
       throw error
     }
@@ -148,22 +147,30 @@ export class AgreementSegmentService {
   async getAllAgreementSegments(): Promise<AgreementSegment[]> {
     try {
       const url = buildApiUrl(API_ENDPOINTS.MASTER_AGREEMENT_SEGMENT.FIND_ALL)
-      const result = await apiClient.get<AgreementSegment[] | PaginatedResponse<AgreementSegment>>(url)
-      
+      const result = await apiClient.get<
+        AgreementSegment[] | PaginatedResponse<AgreementSegment>
+      >(url)
+
       // Handle different response structures
       if (Array.isArray(result)) {
         return result
-      } else if (result && typeof result === 'object' && 'content' in result && Array.isArray((result as PaginatedResponse<AgreementSegment>).content)) {
+      }
+      if (
+        result &&
+        typeof result === 'object' &&
+        'content' in result &&
+        Array.isArray((result as PaginatedResponse<AgreementSegment>).content)
+      ) {
         return (result as PaginatedResponse<AgreementSegment>).content
       }
-      
+
       return []
     } catch (error) {
-      console.error('Error fetching all agreement segments:', error)
+      // Return empty array on error to prevent UI crashes
+      // Error logging should be handled by the calling component
       return []
     }
   }
 }
 
 export const agreementSegmentService = new AgreementSegmentService()
-

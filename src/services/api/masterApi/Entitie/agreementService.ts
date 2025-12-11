@@ -368,12 +368,14 @@ export class AgreementService {
       }
       throw new Error(`No customer details found with CIF: ${cif}`)
     } catch (error) {
-      // Log the error for debugging
-      console.error('Error fetching customer details:', {
-        cif,
-        endpoint: API_ENDPOINTS.CUSTOMER_DETAILS.GET_BY_CIF(cif),
-        error: error instanceof Error ? error.message : String(error),
-      })
+      // Log the error for debugging in development only
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching customer details:', {
+          cif,
+          endpoint: API_ENDPOINTS.CUSTOMER_DETAILS.GET_BY_CIF(cif),
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
       throw error
     }
   }

@@ -1,8 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import React from 'react'
-import { useCallback, useState, useMemo } from 'react'
+import React, { useCallback, useState, useMemo } from 'react'
 import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
@@ -21,7 +20,7 @@ import { AgreementSegment } from '@/services/api/masterApi/Customer/agreementSeg
 
 interface AgreementSegmentData extends Record<string, unknown> {
   id: number
-    agreementSegmentId?: string
+  agreementSegmentId?: string
   uuid?: string
   agreementSegmentName: string
   agreementSegmentDescription: string
@@ -30,24 +29,14 @@ interface AgreementSegmentData extends Record<string, unknown> {
   deleted?: boolean
 }
 
-const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
-
 export const AgreementSegmentPageClient = dynamic(
   () => Promise.resolve(AgreementSegmentPageImpl),
   {
     ssr: false,
-    // Removed loading prop to prevent duplicate loading - page handles its own loading state
   }
 )
 
-          const AgreementSegmentPageImpl: React.FC = () => {
+const AgreementSegmentPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
   const [editingItem, setEditingItem] = useState<AgreementSegment | null>(null)
@@ -80,63 +69,68 @@ export const AgreementSegmentPageClient = dynamic(
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
   // Transform API data to table format
-        const agreementSegmentData = useMemo(() => {
-        if (!agreementSegmentsResponse?.content) return []
-    return agreementSegmentsResponse.content.map((agreementSegment: AgreementSegment) => ({
-      id: agreementSegment.id,
-      agreementSegmentId: agreementSegment.uuid || `MAS-${agreementSegment.id}`,
-      uuid: agreementSegment.uuid,
-      agreementSegmentName: agreementSegment.segmentName,
-      agreementSegmentDescription: agreementSegment.segmentDescription,
-      active: agreementSegment.active,
-      enabled: agreementSegment.enabled,
-      deleted: agreementSegment.deleted,
-    })) as AgreementSegmentData[]
+  const agreementSegmentData = useMemo(() => {
+    if (!agreementSegmentsResponse?.content) return []
+    return agreementSegmentsResponse.content.map(
+      (agreementSegment: AgreementSegment) => ({
+        id: agreementSegment.id,
+        agreementSegmentId: agreementSegment.uuid || `MAS-${agreementSegment.id}`,
+        uuid: agreementSegment.uuid,
+        agreementSegmentName: agreementSegment.segmentName,
+        agreementSegmentDescription: agreementSegment.segmentDescription,
+        active: agreementSegment.active,
+        enabled: agreementSegment.enabled,
+        deleted: agreementSegment.deleted,
+      })
+    ) as AgreementSegmentData[]
   }, [agreementSegmentsResponse])
 
-  const getAgreementSegmentLabelDynamic = useCallback(
+  const getAgreementSegmentLabel = useCallback(
     (configId: string): string => {
       return getMasterLabel(configId)
     },
     []
   )
 
-  const tableColumns = [
-    {
-      key: 'agreementSegmentId',
-      label: getAgreementSegmentLabelDynamic('CDL_MAS_ID'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'agreementSegmentName',
-      label: getAgreementSegmentLabelDynamic('CDL_MAS_NAME'),
-      type: 'text' as const,
-      width: 'w-64',
-      sortable: true,
-    },
-    {
-      key: 'agreementSegmentDescription',
-      label: getAgreementSegmentLabelDynamic('CDL_MAS_DESCRIPTION'),
-      type: 'text' as const,
-      width: 'w-96',
-      sortable: true,
-    },
-    {
-      key: 'status',
-      label: getAgreementSegmentLabelDynamic('CDL_MAS_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  const tableColumns = useMemo(
+    () => [
+      {
+        key: 'agreementSegmentId',
+        label: getAgreementSegmentLabel('CDL_MAS_ID'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'agreementSegmentName',
+        label: getAgreementSegmentLabel('CDL_MAS_NAME'),
+        type: 'text' as const,
+        width: 'w-64',
+        sortable: true,
+      },
+      {
+        key: 'agreementSegmentDescription',
+        label: getAgreementSegmentLabel('CDL_MAS_DESCRIPTION'),
+        type: 'text' as const,
+        width: 'w-96',
+        sortable: true,
+      },
+      {
+        key: 'status',
+        label: getAgreementSegmentLabel('CDL_MAS_STATUS'),
+        type: 'status' as const,
+        width: 'w-32',
+        sortable: true,
+      },
+      {
+        key: 'actions',
+        label: 'Actions',
+        type: 'actions' as const,
+        width: 'w-20',
+      },
+    ],
+    [getAgreementSegmentLabel]
+  )
 
   const {
     search,
@@ -158,31 +152,40 @@ export const AgreementSegmentPageClient = dynamic(
     handleSort,
   } = useTableState({
     data: agreementSegmentData,
-    searchFields: ['agreementSegmentId', 'agreementSegmentName', 'agreementSegmentDescription'],
+    searchFields: [
+      'agreementSegmentId',
+      'agreementSegmentName',
+      'agreementSegmentDescription',
+    ],
     initialRowsPerPage: currentApiSize,
   })
 
-  const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const hasSearch = Object.values(search).some((value) => value.trim())
 
-    if (hasSearch) {
-      localHandlePageChange(newPage)
-    } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
-    }
-  }
+      if (hasSearch) {
+        localHandlePageChange(newPage)
+      } else {
+        setCurrentApiPage(newPage)
+        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      }
+    },
+    [search, localHandlePageChange, currentApiSize, updatePagination]
+  )
 
-  const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+  const handleRowsPerPageChange = useCallback(
+    (newRowsPerPage: number) => {
+      setCurrentApiSize(newRowsPerPage)
+      setCurrentApiPage(1)
+      updatePagination(0, newRowsPerPage)
+      localHandleRowsPerPageChange(newRowsPerPage)
+    },
+    [localHandleRowsPerPageChange, updatePagination]
+  )
 
   const apiTotal = apiPagination?.totalElements || 0
   const apiTotalPages = apiPagination?.totalPages || 1
-
   const hasActiveSearch = Object.values(search).some((value) => value.trim())
 
   const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
@@ -196,49 +199,54 @@ export const AgreementSegmentPageClient = dynamic(
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = async () => {
-                if (isDeleting || !deleteItem) return
+  const confirmDelete = useCallback(async () => {
+    if (isDeleting || !deleteItem) return
+
     setIsDeleting(true)
     try {
       await deleteAgreementSegmentMutation.mutateAsync(String(deleteItem.id))
-          refreshAgreementSegments()
+      refreshAgreementSegments()
       setIsDeleteModalOpen(false)
       setDeleteItem(null)
     } catch (error) {
-      console.error(`Failed to delete agreement segment: ${error}`)
+      // Error is handled by the mutation's error state
+      // User feedback is provided through the UI
     } finally {
       setIsDeleting(false)
     }
-  }
+  }, [isDeleting, deleteItem, deleteAgreementSegmentMutation, refreshAgreementSegments])
 
-  const handleRowDelete = (row: AgreementSegmentData) => {
-    if (isDeleting) return
-    setDeleteItem(row)
-    setIsDeleteModalOpen(true)
-  }
+  const handleRowDelete = useCallback(
+    (row: AgreementSegmentData) => {
+      if (isDeleting) return
+      setDeleteItem(row)
+      setIsDeleteModalOpen(true)
+    },
+    [isDeleting]
+  )
 
-  const handleRowEdit = (row: AgreementSegmentData) => {
-    // Find index in the full data array (not just paginated)
-    const index = agreementSegmentData.findIndex((item) => item.id === row.id)
-    
-    // Convert table data format to API format for the panel
-    // This ensures the panel receives data in the correct format immediately
-    const apiFormatData: AgreementSegment = {
-      id: row.id,
-      uuid: row.uuid || row.agreementSegmentId,
-      segmentName: row.agreementSegmentName,
-      segmentDescription: row.agreementSegmentDescription,
-      active: row.active ?? true,
-      enabled: row.enabled ?? true,
-      deleted: row.deleted ?? false,
-      // taskStatusDTO will be fetched from API if needed
-    }
-    
-    setEditingItem(apiFormatData)
-    setEditingItemIndex(index >= 0 ? index : null)
-    setPanelMode('edit')
-    setIsPanelOpen(true)
-  }
+  const handleRowEdit = useCallback(
+    (row: AgreementSegmentData) => {
+      const index = agreementSegmentData.findIndex((item) => item.id === row.id)
+
+      // Convert table data format to API format for the panel
+      const apiFormatData: AgreementSegment = {
+        id: row.id,
+        uuid: row.uuid || row.agreementSegmentId,
+        segmentName: row.agreementSegmentName,
+        segmentDescription: row.agreementSegmentDescription,
+        active: row.active ?? true,
+        enabled: row.enabled ?? true,
+        deleted: row.deleted ?? false,
+      }
+
+      setEditingItem(apiFormatData)
+      setEditingItemIndex(index >= 0 ? index : null)
+      setPanelMode('edit')
+      setIsPanelOpen(true)
+    },
+    [agreementSegmentData]
+  )
 
   const handleAddNew = useCallback(() => {
     setEditingItem(null)
@@ -255,10 +263,9 @@ export const AgreementSegmentPageClient = dynamic(
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      // Use a generic template name for agreement type, or create one if needed
-      await downloadTemplate('AgreementTypeTemplate.xlsx')
+      await downloadTemplate('AgreementSegmentTemplate.xlsx')
     } catch (error) {
-      console.error('Failed to download template:', error)
+      // Error handling is done by the hook
     }
   }, [downloadTemplate])
 
@@ -268,10 +275,15 @@ export const AgreementSegmentPageClient = dynamic(
   }, [refreshAgreementSegments])
 
   const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error)
+    // Error is handled by UploadDialog component
+    // Logging for debugging purposes only
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.error('Upload error:', error)
+    }
   }, [])
 
-              const handleAgreementSegmentAdded = useCallback(() => {
+  const handleAgreementSegmentAdded = useCallback(() => {
     refreshAgreementSegments()
     handleClosePanel()
   }, [handleClosePanel, refreshAgreementSegments])
@@ -281,38 +293,43 @@ export const AgreementSegmentPageClient = dynamic(
     handleClosePanel()
   }, [handleClosePanel, refreshAgreementSegments])
 
-  const renderExpandedContent = (row: AgreementSegmentData) => (
-    <div className="grid grid-cols-2 gap-8">
-      <div className="space-y-4">
-        <h4 className="mb-4 text-sm font-semibold text-gray-900">Details</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">
-                  {getAgreementSegmentLabelDynamic('CDL_MAS_ID')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.agreementSegmentId || '-'}
-            </span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-gray-600">
-              {getAgreementSegmentLabelDynamic('CDL_MAS_NAME')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.agreementSegmentName || '-'}
-            </span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-gray-600">
-              {getAgreementSegmentLabelDynamic('CDL_MAS_DESCRIPTION')}:
-            </span>
-            <span className="ml-2 font-medium text-gray-800">
-              {row.agreementSegmentDescription || '-'}
-            </span>
+  const renderExpandedContent = useCallback(
+    (row: AgreementSegmentData) => (
+      <div className="grid grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h4 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Details
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">
+                {getAgreementSegmentLabel('CDL_MAS_ID')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.agreementSegmentId || '-'}
+              </span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-gray-600 dark:text-gray-400">
+                {getAgreementSegmentLabel('CDL_MAS_NAME')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.agreementSegmentName || '-'}
+              </span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-gray-600 dark:text-gray-400">
+                {getAgreementSegmentLabel('CDL_MAS_DESCRIPTION')}:
+              </span>
+              <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
+                {row.agreementSegmentDescription || '-'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    ),
+    [getAgreementSegmentLabel]
   )
 
   return (
@@ -320,7 +337,7 @@ export const AgreementSegmentPageClient = dynamic(
       <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
         <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
           <PageActionButtons
-              entityType="agreementSegment"
+            entityType="agreementSegment"
             onAddNew={handleAddNew}
             onDownloadTemplate={handleDownloadTemplate}
             onUploadDetails={() => setIsUploadDialogOpen(true)}
@@ -338,9 +355,9 @@ export const AgreementSegmentPageClient = dynamic(
             <div className="flex items-center justify-center flex-1">
               <GlobalLoading />
             </div>
-                                ) : agreementSegmentsError ? (
+          ) : agreementSegmentsError ? (
             <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-red-600">
+              <div className="text-red-600 dark:text-red-400">
                 Error loading agreement segments. Please try again.
               </div>
             </div>
@@ -366,9 +383,7 @@ export const AgreementSegmentPageClient = dynamic(
                 expandedRows={expandedRows}
                 onRowExpansionChange={handleRowExpansionChange}
                 renderExpandedContent={renderExpandedContent}
-                statusOptions={statusOptions}
                 onRowDelete={handleRowDelete}
-                // onRowView={handleRowView}
                 onRowEdit={handleRowEdit}
                 sortConfig={sortConfig}
                 onSort={handleSort}
@@ -401,8 +416,9 @@ export const AgreementSegmentPageClient = dynamic(
           },
         ]}
       />
+
       {isPanelOpen && (
-            <RightSlideAgreementSegmentPanel
+        <RightSlideAgreementSegmentPanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onAgreementSegmentAdded={handleAgreementSegmentAdded}
@@ -410,7 +426,7 @@ export const AgreementSegmentPageClient = dynamic(
           mode={panelMode}
           actionData={editingItem}
           {...(editingItemIndex !== null && {
-                    agreementSegmentIndex: editingItemIndex,
+            agreementSegmentIndex: editingItemIndex,
           })}
         />
       )}

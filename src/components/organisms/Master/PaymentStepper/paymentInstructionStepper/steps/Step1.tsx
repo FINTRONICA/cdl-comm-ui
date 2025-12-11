@@ -13,6 +13,7 @@ import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { Controller, useFormContext } from 'react-hook-form'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
+import dayjs, { type Dayjs } from 'dayjs'
 import { getPaymentInstructionLabel } from '@/constants/mappings/master/paymentMapping'
 import { usePaymentInstructionLabelsWithCache } from '@/hooks/master/PaymentHook'
 import { useAppStore } from '@/store'
@@ -177,32 +178,49 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
           required: required ? `${label} is required` : false,
           validate: (value: unknown) => validateStandingInstructionField(0, name, value),
         }}
-        render={({ field }) => (
-          <DatePicker
-            label={label}
-            value={field.value}
-            onChange={field.onChange}
-            format="DD/MM/YYYY"
-            disabled={isReadOnly}
-            slots={{
-              openPickerIcon: CalendarTodayOutlinedIcon,
-            }}
-            slotProps={{
-              textField: {
-                fullWidth: true,
-                required: required,
-                error: !!errors[name],
-                helperText: errors[name]?.message?.toString(),
-                sx: dateFieldStyles,
-                InputLabelProps: { sx: labelStyles },
-                InputProps: {
-                  sx: valueStyles,
-                  style: { height: '46px' },
+        render={({ field }) => {
+          // Convert string dates to dayjs objects
+          let dateValue: Dayjs | null = null
+          if (field.value) {
+            if (typeof field.value === 'string' && field.value.trim() !== '') {
+              const parsed = dayjs(field.value)
+              dateValue = parsed.isValid() ? parsed : null
+            } else if (field.value instanceof Date) {
+              dateValue = dayjs(field.value)
+            } else if (dayjs.isDayjs(field.value)) {
+              dateValue = field.value
+            }
+          }
+
+          return (
+            <DatePicker
+              label={label}
+              value={dateValue}
+              onChange={(newValue) => {
+                field.onChange(newValue)
+              }}
+              format="DD/MM/YYYY"
+              disabled={isReadOnly}
+              slots={{
+                openPickerIcon: CalendarTodayOutlinedIcon,
+              }}
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  required: required,
+                  error: !!errors[name],
+                  helperText: errors[name]?.message?.toString(),
+                  sx: dateFieldStyles,
+                  InputLabelProps: { sx: labelStyles },
+                  InputProps: {
+                    sx: valueStyles,
+                    style: { height: '46px' },
+                  },
                 },
-              },
-            }}
-          />
-        )}
+              }}
+            />
+          )
+        }}
       />
     </Grid>
   )

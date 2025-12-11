@@ -15,7 +15,9 @@ export const BusinessSubSegmentSchema = z.object({
       id: z.number().positive('Business Segment ID must be a positive number'),
     })
     .nullable()
-    .optional(),
+    .refine((val) => val !== null && val !== undefined && val.id !== undefined, {
+      message: 'Business Segment Name is required',
+    }),
   taskStatusDTO: z
     .object({
       id: z.number().positive('Task Status ID must be a positive number'),

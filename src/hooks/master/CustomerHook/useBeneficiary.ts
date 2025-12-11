@@ -35,7 +35,7 @@ export function useBeneficiaries(
       ),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Always refetch when component mounts (e.g., tab navigation)
+    refetchOnMount: false, // Prevent double calls - use manual refetch when needed
     retry: 3,
   })
 
@@ -151,6 +151,7 @@ export function useBeneficiaryById(beneficiaryId: string | number | null) {
     enabled: !!beneficiaryId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // Prevent double calls on mount
     retry: 3,
   })
 }

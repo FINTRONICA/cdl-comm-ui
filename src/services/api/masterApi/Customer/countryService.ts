@@ -152,7 +152,9 @@ export class CountryService {
       
       return []
     } catch (error) {
-      console.error('Error fetching all countries:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching all countries:', error)
+      }
       return []
     }
   }

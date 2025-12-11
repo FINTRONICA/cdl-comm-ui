@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -11,14 +11,23 @@ import {
   Alert,
   Snackbar,
   InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  OutlinedInput,
+  CircularProgress,
 } from '@mui/material'
 import {
   Refresh as RefreshIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
 } from '@mui/icons-material'
-import { Controller, useForm } from 'react-hook-form'
+import { FormError } from '@/components/atoms/FormError'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
+import { Controller, useForm } from 'react-hook-form'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { alpha, useTheme } from '@mui/material/styles'
 import {
   useSaveAccountPurpose,
   useAccountPurpose,
@@ -32,15 +41,11 @@ import type {
   CreateAccountPurposeRequest,
   UpdateAccountPurposeRequest,
   AccountPurpose,
-  CriticalityDTO,
 } from '@/services/api/masterApi/Customer/accountPurposeService'
 import { getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from '../panelTheme'
-import { useTaskStatuses } from '@/hooks/master/CustomerHook/useTaskStatus'
 import { idService } from '@/services/api/developerIdService'
 import { useApplicationSettings } from '@/hooks/useApplicationSettings'
-import { Autocomplete } from '@mui/material'
 
 interface RightSlideAccountPurposePanelProps {
   isOpen: boolean
@@ -54,12 +59,6 @@ interface RightSlideAccountPurposePanelProps {
   mode?: 'add' | 'edit'
             actionData?: AccountPurpose | null
   accountPurposeIndex?: number | null | undefined | string | number
-  criticalityOptions?: CriticalityDTO[]
-  criticalityLoading?: boolean
-  criticalityError?: unknown
-  taskStatusLoading?: boolean
-  // taskStatusError kept for potential future use
-  taskStatusError?: unknown
 }
 
 export const RightSlideAccountPurposePanel: React.FC<
@@ -72,55 +71,47 @@ export const RightSlideAccountPurposePanel: React.FC<
   mode = 'add',
   actionData,
   accountPurposeIndex,
-  criticalityOptions: _propCriticalityOptions = [], // eslint-disable-line @typescript-eslint/no-unused-vars
-  criticalityLoading: propCriticalityLoading = false,
-  criticalityError: propCriticalityError = null,
-  taskStatusLoading: propTaskStatusLoading = false,
-  taskStatusError: _propTaskStatusError = null, // eslint-disable-line @typescript-eslint/no-unused-vars
 }) => {
   const theme = useTheme()
-  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [generatedId, setGeneratedId] = useState<string>('')
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
   
-  // Check if we're in edit mode
   const isEditMode = mode === 'edit'
-  const isReadOnly = false // Can be made a prop if needed
+  const isReadOnly = false
 
     const saveAccountPurposeMutation = useSaveAccountPurpose()
 
-  // Fetch full product program data when in edit mode
+  // Fetch full account purpose data when in edit mode
   const { data: apiAccountPurposeData } = useAccountPurpose(
-    mode === 'edit' && actionData?.id ? String(actionData.id) : null
+    isEditMode && actionData?.id ? String(actionData.id) : null
   )
 
-  // Fetch task statuses (optional field, not blocking)
-  const { isLoading: taskStatusesLoading } = useTaskStatuses()
-  const taskStatusLoading = propTaskStatusLoading ?? taskStatusesLoading
-  // Note: taskStatusError is kept for potential future use but not currently displayed
-
   // Fetch criticality options from application settings
-  const { data: criticalityOptions = [], loading: criticalityLoading } = useApplicationSettings('CRITICALITY')
-  const effectiveCriticalityLoading = propCriticalityLoading || criticalityLoading
-  const effectiveCriticalityError = propCriticalityError || null
+  // FIXED: React Query handles caching, no need for manual refetch prevention
+  const {
+    data: criticalityOptions = [],
+    loading: criticalityLoading,
+    error: criticalityError,
+  } = useApplicationSettings('CRITICALITY')
 
-  // Dynamic labels
-  const getAccountPurposeLabelDynamic = useCallback(
+  // Memoized label getter
+  const getAccountPurposeLabel = useCallback(
     (configId: string): string => {
       return getMasterLabel(configId)
     },
     []
   )
 
+  // Form setup
   const {
     control,
     handleSubmit,
     reset,
     trigger,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<AccountPurposeFormData & { accountPurposeId?: string }>({
     defaultValues: {
@@ -134,39 +125,13 @@ export const RightSlideAccountPurposePanel: React.FC<
     mode: 'onChange',
   })
 
-  // Initialize business segment ID from form value
-  React.useEffect(() => {
-    const subscription = watch((value, { name }) => {
-      if (name === 'accountPurposeId' && value.accountPurposeId) {
-        setGeneratedId(value.accountPurposeId as string   )
-      }
-    })
-    return () => subscription.unsubscribe()
-  }, [watch])
+  // Track form reset state to prevent unnecessary resets
+  const lastResetIdRef = useRef<string | number | null>(null)
+  const lastModeRef = useRef<'add' | 'edit' | null>(null)
+  const lastIsOpenRef = useRef<boolean>(false)
 
-  // Function to generate new account purpose ID
-  const handleGenerateNewId = async () => {
-    try {
-      setIsGeneratingId(true)
-      const newIdResponse = idService.generateNewId('AP')
-      setGeneratedId(newIdResponse.id)
-      setValue('accountPurposeId', newIdResponse.id, {
-        shouldValidate: true,
-        shouldDirty: true,
-      })
-    } catch {
-      // Handle error silently
-    } finally {
-      setIsGeneratingId(false)
-    }
-  }
-
-  // Track the last reset ID and mode to prevent unnecessary resets
-  const lastResetIdRef = React.useRef<string | number | null>(null)
-  const lastModeRef = React.useRef<'add' | 'edit' | null>(null)
-  const lastIsOpenRef = React.useRef<boolean>(false)
   // Reset form when panel opens/closes or mode/data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) {
       if (lastIsOpenRef.current) {
         reset({
@@ -189,21 +154,20 @@ export const RightSlideAccountPurposePanel: React.FC<
       lastIsOpenRef.current = true
     }
 
-    const currentId = (apiAccountPurposeData?.id || actionData?.id) ?? null
+    const currentId =
+      (apiAccountPurposeData?.id || actionData?.id) ?? null
     const shouldReset =
       lastModeRef.current !== mode ||
       (mode === 'edit' && lastResetIdRef.current !== currentId) ||
       (mode === 'edit' && !lastResetIdRef.current && currentId)
 
     if (mode === 'edit') {
-      // Wait for API data to load if we're in edit mode, but use actionData as fallback
-      // Note: taskStatus is optional and not blocking form submission
-
       if (shouldReset && (apiAccountPurposeData || actionData)) {
         const dataToUse = apiAccountPurposeData || actionData
         if (!dataToUse) return
 
-        const accountPurposeId = dataToUse.uuid || `AP-${dataToUse.id}` || ''
+        const accountPurposeId =
+          dataToUse.uuid || `AP-${dataToUse.id}` || ''
         setGeneratedId(accountPurposeId)
 
         reset({
@@ -234,20 +198,32 @@ export const RightSlideAccountPurposePanel: React.FC<
         taskStatusDTO: null,
       })
       setGeneratedId('')
-
       lastResetIdRef.current = null
       lastModeRef.current = mode
     }
-  }, [
-    isOpen,
-    mode,
-    apiAccountPurposeData,
-    actionData,
-    taskStatusLoading,
-    reset,
-  ])
+  }, [isOpen, mode, apiAccountPurposeData, actionData, reset])
 
-  const validateAccountPurposeField = React.useCallback(
+  // Generate new ID handler
+  const handleGenerateNewId = useCallback(async () => {
+    try {
+      setIsGeneratingId(true)
+      const newIdResponse = idService.generateNewId('AP')
+      setGeneratedId(newIdResponse.id)
+      setValue('accountPurposeId', newIdResponse.id, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error ? error.message : 'Failed to generate ID'
+      setErrorMessage(`Failed to generate ID: ${errorMsg}. Please try again.`)
+    } finally {
+      setIsGeneratingId(false)
+    }
+  }, [setValue])
+
+  // Field validation
+  const validateAccountPurposeField = useCallback(
     (
       fieldName: keyof AccountPurposeFormData | 'accountPurposeId',
       value: unknown,
@@ -265,15 +241,17 @@ export const RightSlideAccountPurposePanel: React.FC<
           }
         }
 
-        // Validate account purpose ID for new account purposes (not in edit mode)
+        // Validate account purpose ID for new account purposes
         if (fieldName === 'accountPurposeId' && mode === 'add') {
           if (!value || (typeof value === 'string' && value.trim() === '')) {
             return 'Account Purpose ID is required. Please generate an ID.'
           }
         }
 
+        // Validate field length and format using schema
         if (
-          (fieldName === 'accountPurposeCode' || fieldName === 'accountPurposeName') &&
+          (fieldName === 'accountPurposeCode' ||
+            fieldName === 'accountPurposeName') &&
           value &&
           typeof value === 'string' &&
           value.trim() !== ''
@@ -282,8 +260,8 @@ export const RightSlideAccountPurposePanel: React.FC<
           if (result.success) {
             return true
           } else {
-            const fieldError = result.errors?.issues.find(
-              (issue) => issue.path.some((p) => String(p) === fieldName)
+            const fieldError = result.errors?.issues.find((issue) =>
+              issue.path.some((p) => String(p) === fieldName)
             )
             return fieldError ? fieldError.message : true
           }
@@ -291,20 +269,25 @@ export const RightSlideAccountPurposePanel: React.FC<
 
         return true
       } catch {
+        // Silent fail for validation errors
         return true
       }
     },
     [mode]
   )
 
-  const onSubmit = async (data: AccountPurposeFormData & { accountPurposeId?: string }) => {
+  // Form submission handler
+  const onSubmit = useCallback(
+    async (data: AccountPurposeFormData & { accountPurposeId?: string }) => {
     try {
       setErrorMessage(null)
       setSuccessMessage(null)
 
-      // Note: Removed taskStatusLoading check as taskStatus is optional
-      if (effectiveCriticalityLoading) {
-        setErrorMessage('Please wait for dropdown options to load before submitting.')
+        // Wait for criticality options to load
+        if (criticalityLoading) {
+          setErrorMessage(
+            'Please wait for dropdown options to load before submitting.'
+          )
         return
       }
 
@@ -312,33 +295,39 @@ export const RightSlideAccountPurposePanel: React.FC<
       const currentDataToEdit = apiAccountPurposeData || actionData
       const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
 
-      // Validate account purpose ID for new account purposes
+        // Validate account purpose ID for new account purposes
       if (!isEditing && !data.accountPurposeId && !generatedId) {
-        setErrorMessage('Please generate an Account Purpose ID before submitting.')
+          setErrorMessage(
+            'Please generate an Account Purpose ID before submitting.'
+          )
         return
       }
 
+        // Trigger validation
       const isValid = await trigger()
       if (!isValid) {
-        const errors = []
-        if (!data.accountPurposeCode) errors.push('Account Purpose Code is required')
-        if (!data.accountPurposeName) errors.push('Account Purpose Name is required')
-        if (errors.length > 0) {
-          setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
+          const validationErrors: string[] = []
+          if (!data.accountPurposeCode?.trim()) {
+            validationErrors.push('Account Purpose Code is required')
+          }
+          if (!data.accountPurposeName?.trim()) {
+            validationErrors.push('Account Purpose Name is required')
+          }
+          if (validationErrors.length > 0) {
+            setErrorMessage(
+              `Please fill in the required fields: ${validationErrors.join(', ')}`
+            )
         }
         return
       }
 
-      const accountPurposeId = isEditing ? String(currentDataToEdit?.id || '') : undefined
-
-      // Get the generated account purpose ID (UUID) from form data
+        const accountPurposeId = isEditing
+          ? String(currentDataToEdit?.id || '')
+          : undefined
       const formAccountPurposeId = data.accountPurposeId || generatedId
 
-      let accountPurposeData: CreateAccountPurposeRequest | UpdateAccountPurposeRequest
-
-      if (isEditing) {
-        accountPurposeData = {
-          id: currentDataToEdit?.id,
+        // Build request payload
+        const basePayload = {
           accountPurposeCode: validatedData.accountPurposeCode,
           accountPurposeName: validatedData.accountPurposeName,
           active: validatedData.active,
@@ -348,34 +337,28 @@ export const RightSlideAccountPurposePanel: React.FC<
           ...(validatedData.criticalityDTO && {
             criticalityDTO: { id: validatedData.criticalityDTO.id },
           }),
-          ...(validatedData.taskStatusDTO && validatedData.taskStatusDTO.id && {
+          ...(validatedData.taskStatusDTO &&
+            validatedData.taskStatusDTO.id && {
             taskStatusDTO: { id: validatedData.taskStatusDTO.id },
           }),
-        } as UpdateAccountPurposeRequest
-      } else {
-        accountPurposeData = {
-          accountPurposeCode: validatedData.accountPurposeCode,
-          accountPurposeName: validatedData.accountPurposeName,
-          active: validatedData.active,
-          enabled: true,
-          deleted: false,
-          ...(formAccountPurposeId && { uuid: formAccountPurposeId }),
-          ...(validatedData.criticalityDTO && {
-            criticalityDTO: { id: validatedData.criticalityDTO.id },
-          }),
-          ...(validatedData.taskStatusDTO && validatedData.taskStatusDTO.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as CreateAccountPurposeRequest
-      }
+        }
 
+        const requestPayload: CreateAccountPurposeRequest | UpdateAccountPurposeRequest =
+          isEditing
+            ? {
+                ...basePayload,
+                id: currentDataToEdit?.id,
+              }
+            : basePayload
+
+        // Submit mutation
       const result = await saveAccountPurposeMutation.mutateAsync({
-        data: accountPurposeData,
+          data: requestPayload,
         isEditing,
         ...(accountPurposeId && { accountPurposeId }),
       })
 
-      // Update generatedId with the UUID from the response if available
+        // Update generatedId with UUID from response
       if (result?.uuid) {
         setGeneratedId(result.uuid)
       }
@@ -386,6 +369,7 @@ export const RightSlideAccountPurposePanel: React.FC<
           : 'Account Purpose added successfully!'
       )
 
+        // Call appropriate callback
       if (
         mode === 'edit' &&
         onAccountPurposeUpdated &&
@@ -397,75 +381,100 @@ export const RightSlideAccountPurposePanel: React.FC<
         onAccountPurposeAdded(result as AccountPurpose)
       }
       
-      // Refresh will be handled by parent component callbacks
-
+        // Close panel after delay
       setTimeout(() => {
         reset()
         setGeneratedId('')
-        handleClose()
+          onClose()
       }, 1500)
     } catch (error: unknown) {
-      let errorMessage = 'Failed to save account purpose. Please try again.'
+        let errorMsg = 'Failed to save account purpose. Please try again.'
       if (error instanceof Error) {
         if (error.message.includes('validation')) {
-          errorMessage = 'Please check your input and try again.'
+            errorMsg = 'Please check your input and try again.'
         } else {
-          errorMessage = error.message
+            errorMsg = error.message || errorMsg
+          }
         }
+        setErrorMessage(errorMsg)
       }
-      setErrorMessage(errorMessage)
-    }
-  }
+    },
+    [
+      mode,
+      apiAccountPurposeData,
+      actionData,
+      generatedId,
+      criticalityLoading,
+      trigger,
+      saveAccountPurposeMutation,
+      accountPurposeIndex,
+      onAccountPurposeAdded,
+      onAccountPurposeUpdated,
+      reset,
+      onClose,
+    ]
+  )
 
-
-  const handleClose = () => {
+  // Close handler
+  const handleClose = useCallback(() => {
     reset()
     setErrorMessage(null)
     setSuccessMessage(null)
     setGeneratedId('')
     onClose()
-  }
+  }, [reset, onClose])
   
   // Style variables
   const isDark = theme.palette.mode === 'dark'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
-  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
   const labelSx = tokens.label
   const valueSx = tokens.value
   
-  // View mode styles
-  const viewModeStyles = React.useMemo(
+  // Select styles matching reference code
+  const selectStyles = useMemo(
+    () => ({
+      height: '46px',
+      borderRadius: '8px',
+      backgroundColor: isDark
+        ? alpha('#1E293B', 0.5)
+        : theme.palette.background.paper,
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: isDark
+          ? alpha('#FFFFFF', 0.3)
+          : alpha('#000000', 0.23),
+        borderWidth: '1px',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: isDark
+          ? alpha('#FFFFFF', 0.5)
+          : alpha('#000000', 0.87),
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: theme.palette.primary.main,
+      },
+      '& .MuiSelect-icon': {
+        color: isDark ? '#FFFFFF' : theme.palette.text.primary,
+      },
+      '& .MuiInputBase-input': {
+        color: isDark ? '#FFFFFF' : theme.palette.text.primary,
+      },
+    }),
+    [theme, isDark]
+  )
+
+  const viewModeStyles = useMemo(
     () => ({
       backgroundColor: isDark ? alpha('#1E293B', 0.5) : '#F9FAFB',
       borderColor: isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB',
     }),
     [isDark]
   )
-  
-  // Field styles for the ID field
-  const fieldStyles = React.useMemo(
-    () => ({
-      ...commonFieldStyles,
-    }),
-    [commonFieldStyles]
-  )
-  
-  const labelStyles = React.useMemo(
-    () => ({
-      ...labelSx,
-    }),
-    [labelSx]
-  )
-  
-  const valueStyles = React.useMemo(
-    () => ({
-      ...valueSx,
-    }),
-    [valueSx]
-  )
 
-  const renderTextField = (
+  // Render text field helper
+  const renderTextField = useCallback(
+    (
     name: 'accountPurposeCode' | 'accountPurposeName',
     label: string,
     gridSize: number = 6,
@@ -494,9 +503,21 @@ export const RightSlideAccountPurposePanel: React.FC<
         )}
       />
     </Grid>
+    ),
+    [
+      control,
+      errors,
+      labelSx,
+      valueSx,
+      errorFieldStyles,
+      commonFieldStyles,
+      validateAccountPurposeField,
+    ]
   )
 
-  const renderAccountPurposeIdField = (
+  // Render account purpose ID field helper
+  const renderAccountPurposeIdField = useCallback(
+    (
     name: 'accountPurposeId',
     label: string,
     gridSize: number = 6,
@@ -510,7 +531,13 @@ export const RightSlideAccountPurposePanel: React.FC<
         rules={{
           required: required ? `${label} is required` : false,
           validate: (value, formValues) =>
-            validateAccountPurposeField(name, value, formValues as AccountPurposeFormData & { accountPurposeId?: string }),
+              validateAccountPurposeField(
+                name,
+                value,
+                formValues as AccountPurposeFormData & {
+                  accountPurposeId?: string
+                }
+              ),
         }}
         render={({ field }) => {
           const fieldError = errors[name as keyof typeof errors]
@@ -536,7 +563,9 @@ export const RightSlideAccountPurposePanel: React.FC<
                     size="small"
                     startIcon={<RefreshIcon />}
                     onClick={handleGenerateNewId}
-                    disabled={isGeneratingId || isReadOnly || isEditMode}
+                        disabled={
+                          isGeneratingId || isReadOnly || isEditMode
+                        }
                     sx={{
                       color: theme.palette.primary.contrastText,
                       borderRadius: '8px',
@@ -560,20 +589,22 @@ export const RightSlideAccountPurposePanel: React.FC<
                   </Button>
                 </InputAdornment>
               ),
-              sx: valueStyles,
+                  sx: valueSx,
             }}
               InputLabelProps={{
                 sx: {
-                  ...labelStyles,
+                    ...labelSx,
                   ...(!!fieldError && {
                     color: theme.palette.error.main,
                     '&.Mui-focused': { color: theme.palette.error.main },
-                    '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                      '&.MuiFormLabel-filled': {
+                        color: theme.palette.error.main,
+                      },
                   }),
                 },
               }}
               sx={{
-                ...fieldStyles,
+                  ...commonFieldStyles,
                 ...((isReadOnly || isEditMode) && {
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: viewModeStyles.backgroundColor,
@@ -592,7 +623,153 @@ export const RightSlideAccountPurposePanel: React.FC<
         }}
       />
     </Grid>
+    ),
+    [
+      control,
+      errors,
+      generatedId,
+      isReadOnly,
+      isEditMode,
+      handleGenerateNewId,
+      isGeneratingId,
+      theme,
+      valueSx,
+      labelSx,
+      commonFieldStyles,
+      viewModeStyles,
+      textSecondary,
+      validateAccountPurposeField,
+    ]
   )
+
+  // Render select field for criticality
+  const renderSelectField = useCallback(
+    (
+      name: 'criticalityDTO',
+      label: string,
+      options: typeof criticalityOptions,
+      gridSize: number = 6,
+      required = false,
+      loading = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={{
+            validate: (value) => {
+              if (required) {
+                if (
+                  !value ||
+                  (typeof value === 'object' &&
+                    value !== null &&
+                    !('id' in value)) ||
+                  (typeof value === 'object' &&
+                    value !== null &&
+                    'id' in value &&
+                    (value as { id?: number }).id === undefined)
+                ) {
+                  return `${label} is required`
+                }
+              }
+              return true
+            },
+          }}
+          defaultValue={null}
+          render={({ field }) => {
+            const fieldValue =
+              typeof field.value === 'object' &&
+              field.value !== null &&
+              'id' in field.value
+                ? String(field.value.id)
+                : field.value
+                  ? String(field.value)
+                  : ''
+
+            return (
+              <FormControl
+                fullWidth
+                error={!!errors[name]}
+                required={required}
+                disabled={loading || isReadOnly}
+              >
+                <InputLabel sx={labelSx}>
+                  {loading
+                    ? getAccountPurposeLabel('CDL_COMMON_LOADING')
+                    : label}
+                </InputLabel>
+                <Select
+                  {...field}
+                  value={fieldValue}
+                  onChange={(e) => {
+                    const selectedValue = e.target.value
+                    const selectedOption = options.find(
+                      (opt) => String(opt.id) === String(selectedValue)
+                    )
+                    field.onChange(
+                      selectedOption ? { id: selectedOption.id } : null
+                    )
+                  }}
+                  input={
+                    <OutlinedInput
+                      label={
+                        loading
+                          ? getAccountPurposeLabel('CDL_COMMON_LOADING')
+                          : label
+                      }
+                    />
+                  }
+                  label={
+                    loading
+                      ? getAccountPurposeLabel('CDL_COMMON_LOADING')
+                      : label
+                  }
+                  sx={{ ...selectStyles, ...valueSx }}
+                  IconComponent={KeyboardArrowDownIcon}
+                  disabled={loading || isReadOnly}
+                >
+                  {loading ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={16} sx={{ mr: 1 }} />
+                      {getAccountPurposeLabel('CDL_COMMON_LOADING')}
+                    </MenuItem>
+                  ) : options && options.length > 0 ? (
+                    options.map((option) => (
+                      <MenuItem key={option.id} value={String(option.id)}>
+                        {option.displayName || option.settingValue || ''}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      No {label.toLowerCase()} available
+                    </MenuItem>
+                  )}
+                </Select>
+                {errors[name] && (
+                  <FormError
+                    error={(errors[name]?.message as string) || ''}
+                    touched={true}
+                  />
+                )}
+              </FormControl>
+            )
+          }}
+        />
+      </Grid>
+    ),
+    [
+      control,
+      errors,
+      labelSx,
+      selectStyles,
+      valueSx,
+      isReadOnly,
+      getAccountPurposeLabel,
+    ]
+  )
+
+  const isLoading =
+    saveAccountPurposeMutation.isPending || criticalityLoading
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -630,10 +807,10 @@ export const RightSlideAccountPurposePanel: React.FC<
           }}
         >
           {mode === 'edit'
-            ? `${getAccountPurposeLabelDynamic('CDL_COMMON_UPDATE')} ${getAccountPurposeLabelDynamic('CDL_MAP_NAME')}`
-            : `${getAccountPurposeLabelDynamic('CDL_COMMON_ADD')} ${getAccountPurposeLabelDynamic('CDL_MAP_NAME')}`}
+            ? `${getAccountPurposeLabel('CDL_COMMON_UPDATE')} ${getAccountPurposeLabel('CDL_MAP_NAME')}`
+            : `${getAccountPurposeLabel('CDL_COMMON_ADD')} ${getAccountPurposeLabel('CDL_MAP_NAME')}`}
           <IconButton
-            onClick={onClose}
+            onClick={handleClose}
             sx={{
               color: theme.palette.text.secondary,
               '&:hover': {
@@ -653,7 +830,7 @@ export const RightSlideAccountPurposePanel: React.FC<
               backgroundColor: tokens.paper.backgroundColor as string,
             }}
           >
-            {effectiveCriticalityError && (
+            {criticalityError && (
               <Alert
                 severity="error"
                 variant="outlined"
@@ -674,66 +851,30 @@ export const RightSlideAccountPurposePanel: React.FC<
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
               {renderAccountPurposeIdField(
                 'accountPurposeId',
-                getAccountPurposeLabelDynamic('CDL_MAP_ID'),
+                getAccountPurposeLabel('CDL_MAP_ID'),
                 12,
                 true
               )}
               {renderTextField(
                 'accountPurposeCode',
-                getAccountPurposeLabelDynamic('CDL_MAP_CODE'),
+                getAccountPurposeLabel('CDL_MAP_CODE'),
                 12,
                 true
               )}
               {renderTextField(
                 'accountPurposeName',
-                getAccountPurposeLabelDynamic('CDL_MAP_NAME'),
+                getAccountPurposeLabel('CDL_MAP_NAME'),
                 12,
                 true
               )}
-              <Grid size={{ xs: 12, md: 12 }}>
-                <Controller
-                  name="criticalityDTO"
-                  control={control}
-                  render={({ field }) => (
-                    <Autocomplete
-                      {...field}
-                      options={criticalityOptions}
-                      getOptionLabel={(option) => 
-                        typeof option === 'object' && option !== null
-                          ? (option.displayName || option.settingValue || '')
-                          : String(option)
-                      }
-                      isOptionEqualToValue={(option, value) => 
-                        option.id === (typeof value === 'object' && value !== null ? value.id : value)
-                      }
-                      value={
-                        criticalityOptions.find(
-                          (opt) => opt.id === (field.value?.id || null)
-                        ) || null
-                      }
-                      onChange={(_, newValue) => {
-                        field.onChange(
-                          newValue ? { id: newValue.id } : null
-                        )
-                      }}
-                      loading={effectiveCriticalityLoading}
-                      disabled={isReadOnly || effectiveCriticalityLoading}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label={getAccountPurposeLabelDynamic('CDL_MAP_CRITICALITY')}
-                          error={!!errors.criticalityDTO}
-                          helperText={errors.criticalityDTO?.message?.toString()}
-                          size="medium"
-                          InputLabelProps={{ sx: labelSx }}
-                          InputProps={{ ...params.InputProps, sx: valueSx }}
-                          sx={errors.criticalityDTO ? errorFieldStyles : commonFieldStyles}
-                        />
-                      )}
-                    />
-                  )}
-                />
-              </Grid>
+              {renderSelectField(
+                'criticalityDTO',
+                getAccountPurposeLabel('CDL_MAP_CRITICALITY'),
+                criticalityOptions,
+                12,
+                false,
+                criticalityLoading
+              )}
             </Grid>
           </DialogContent>
 
@@ -761,7 +902,7 @@ export const RightSlideAccountPurposePanel: React.FC<
                   fullWidth
                   variant="outlined"
                   onClick={handleClose}
-                  disabled={saveAccountPurposeMutation.isPending || effectiveCriticalityLoading}
+                  disabled={isLoading}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -776,7 +917,7 @@ export const RightSlideAccountPurposePanel: React.FC<
                         : undefined,
                   }}
                 >
-                  {getAccountPurposeLabelDynamic('CDL_COMMON_CANCEL')}
+                  {getAccountPurposeLabel('CDL_COMMON_CANCEL')}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
@@ -785,7 +926,7 @@ export const RightSlideAccountPurposePanel: React.FC<
                   variant="outlined"
                   color="primary"
                   type="submit"
-                  disabled={saveAccountPurposeMutation.isPending || effectiveCriticalityLoading}
+                  disabled={isLoading}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -823,11 +964,11 @@ export const RightSlideAccountPurposePanel: React.FC<
                 >
                   {saveAccountPurposeMutation.isPending
                     ? mode === 'edit'
-                      ? getAccountPurposeLabelDynamic('CDL_COMMON_UPDATING')
-                      : getAccountPurposeLabelDynamic('CDL_COMMON_ADDING')
+                      ? getAccountPurposeLabel('CDL_COMMON_UPDATING')
+                      : getAccountPurposeLabel('CDL_COMMON_ADDING')
                     : mode === 'edit'
-                      ? getAccountPurposeLabelDynamic('CDL_COMMON_UPDATE')
-                      : getAccountPurposeLabelDynamic('CDL_COMMON_ADD')}
+                      ? getAccountPurposeLabel('CDL_COMMON_UPDATE')
+                      : getAccountPurposeLabel('CDL_COMMON_ADD')}
                 </Button>
               </Grid>
             </Grid>

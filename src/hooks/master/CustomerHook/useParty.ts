@@ -33,7 +33,7 @@ export function useBuildPartners(
       ),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Always refetch when component mounts (e.g., tab navigation)
+    refetchOnMount: false, // Use React Query cache - only refetch when data is stale
     retry: 3,
   })
 
@@ -490,11 +490,18 @@ export function usePartiesForDropdown() {
     queryFn: async () => {
       const parties = await partyService.findAllParties()
       // Transform parties to dropdown format: { id, displayName, settingValue }
-      return parties.map((party) => ({
-        id: party.id,
-        displayName: party.partyFullName || `Party ${party.id}`,
-        settingValue: party.id.toString(),
-      }))
+      return parties.map((party) => {
+        const partyName = party.partyFullName || `Party ${party.id}`
+        const relationshipManager = party.relationshipManagerName
+        const displayName = relationshipManager
+          ? `${partyName} - ${relationshipManager}`
+          : partyName
+        return {
+          id: party.id,
+          displayName,
+          settingValue: party.id.toString(),
+        }
+      })
     },
     enabled: !!isAuthenticated,
     staleTime: 5 * 60 * 1000, // 5 minutes

@@ -117,6 +117,9 @@ const getDonutChartOptions = (
   credits: {
     enabled: false,
   },
+  accessibility: {
+    enabled: false, // Disable accessibility module to remove warning
+  },
   tooltip: {
     backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
     style: {
@@ -632,6 +635,9 @@ const StatusBars = ({
     credits: {
       enabled: false,
     },
+    accessibility: {
+      enabled: false, // Disable accessibility module to remove warning
+    },
     // Add responsive design
     responsive: {
       rules: [
@@ -766,6 +772,9 @@ const GuaranteeChart = ({
     credits: {
       enabled: false,
     },
+    accessibility: {
+      enabled: false, // Disable accessibility module to remove warning
+    },
     // Add responsive design
     responsive: {
       rules: [
@@ -825,7 +834,9 @@ const Dashboard = () => {
       setIsSubmitting(true)
       await refetch()
     } catch (error) {
-      console.error('Error refetching dashboard data:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error refetching dashboard data:', error)
+      }
     } finally {
       setIsSubmitting(false)
     }

@@ -27,8 +27,6 @@ function PartyStepPageContent() {
   const stepNumberParam = params?.stepNumber as string | undefined
   const stepNumber = stepNumberParam ? parseInt(stepNumberParam) : NaN
 
-  console.log('[PartyStepPage] Route params:', { id: partyId, stepNumber: stepNumberParam, allParams: params })
-
   // Get mode and editing from URL params (matching capital partner pattern)
   const mode = searchParams.get('mode')
   const editing = searchParams.get('editing') // Changed from 'edit' to 'editing' to match Capital Partner pattern
@@ -40,15 +38,13 @@ function PartyStepPageContent() {
   useEffect(() => {
     // Check if partyId is valid
     if (!partyId || partyId === 'undefined' || partyId === 'null') {
-      console.error('[PartyStepPage] Invalid partyId:', partyId)
-      router.push('/party')
+      router.push('/master/party')
       return
     }
 
     // Check if stepNumber is valid
     if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 4) {
-      console.error('[PartyStepPage] Invalid stepNumber:', stepNumber)
-      router.push(`/party/${partyId}/step/1${editing ? '?editing=true' : ''}`)
+      router.push(`/master/party/${partyId}/step/1${editing ? '?editing=true' : ''}`)
       return
     }
 
@@ -60,7 +56,6 @@ function PartyStepPageContent() {
     const fetchPartyData = async () => {
       // Validate partyId before making API call
       if (!partyId || partyId === 'undefined' || partyId === 'null') {
-        console.error('[PartyStepPage] Invalid partyId, cannot fetch data:', partyId)
         setError('Invalid party ID')
         setIsLoadingData(false)
         return
@@ -69,13 +64,10 @@ function PartyStepPageContent() {
       try {
         setIsLoadingData(true)
         setError(null)
-        console.log('[PartyStepPage] Fetching party data for ID:', partyId)
         const data = await partyService.getParty(partyId)
-        console.log('[PartyStepPage] Party data fetched:', data)
         setPartyData(data)
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch party data'
-        console.error('[PartyStepPage] Error fetching party data:', err)
         setError(errorMessage)
       } finally {
         setIsLoadingData(false)
@@ -85,7 +77,6 @@ function PartyStepPageContent() {
     if (partyId && partyId !== 'undefined' && partyId !== 'null' && !isValidating) {
       fetchPartyData()
     } else if (!partyId || partyId === 'undefined' || partyId === 'null') {
-      console.error('[PartyStepPage] Missing or invalid partyId:', partyId)
       setError('Party ID is required')
       setIsLoadingData(false)
     }

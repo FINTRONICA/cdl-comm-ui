@@ -65,7 +65,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
   const labelStyles = React.useMemo(() => sharedLabelSx(theme), [theme])
   const valueStyles = React.useMemo(() => sharedValueSx(theme), [theme])
   const cardBaseStyles = React.useMemo(
-    () => (sharedCardStyles as any)(theme),
+    () => (sharedCardStyles as (theme: typeof theme) => Record<string, unknown>)(theme),
     [theme]
   )
   const viewModeStyles = viewModeInputStyles(theme)
@@ -114,21 +114,23 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
   // Handle Fetch Details button click
   const handleFetchDetails = async () => {
     const currentCif = watch('partyCifNumber')
-    if (!currentCif) {
+    if (!currentCif || !currentCif.trim()) {
       return
     }
 
     try {
       const customerDetails =
-        await partyService.getCustomerDetailsByCif(currentCif)
+        await partyService.getCustomerDetailsByCif(currentCif.trim())
 
-      // Populate only the name fields from customer details and clear validation errors
-      setValue('partyFullName', customerDetails.name.firstName, {
-        shouldValidate: true,
-        shouldDirty: true,
-      })
-    } catch {
-      // Handle error silently
+      // TODO: Add field population logic here when requirements are provided
+      // customerDetails contains the fetched data
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[PartyStepper Step1] Customer details fetched:', customerDetails)
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[PartyStepper Step1] Error fetching customer details:', error)
+      }
     }
   }
 
@@ -150,35 +152,53 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
     }
   }
 
-  // Prepopulate regulator in edit mode based on existing details
-  // Load existing party data when in edit mode
+  // Prepopulate dropdowns in edit mode based on existing details
+  // This ensures dropdown fields are populated when editing existing party
   useEffect(() => {
     if (!isEditMode || !partyId) return
 
     const loadExisting = async () => {
       try {
         const details = await partyService.getParty(partyId)
-        // Load partyConstituentDTO if available
+        // Load partyConstituentDTO if available (matching DeveloperStepper pattern)
         if (details.partyConstituentDTO && typeof details.partyConstituentDTO === 'object' && 'id' in details.partyConstituentDTO) {
-          setValue('partyConstituentDTO.id', (details.partyConstituentDTO as { id?: number }).id, {
-            shouldValidate: true,
-            shouldDirty: false,
-          })
+          const constituentId = (details.partyConstituentDTO as { id?: number }).id
+          if (constituentId) {
+            setValue('partyConstituentDTO.id', constituentId, {
+              shouldValidate: true,
+              shouldDirty: false,
+            })
+          }
         }
         // Load roleDTO if available
         if (details.roleDTO && typeof details.roleDTO === 'object' && 'id' in details.roleDTO) {
-          setValue('roleDTO.id', (details.roleDTO as { id?: number }).id, {
-            shouldValidate: true,
-            shouldDirty: false,
-          })
+          const roleId = (details.roleDTO as { id?: number }).id
+          if (roleId) {
+            setValue('roleDTO.id', roleId, {
+              shouldValidate: true,
+              shouldDirty: false,
+            })
+          }
         }
-      } catch {
-        // ignore; leave empty if fetch fails
+        // Load taskStatusDTO if available
+        if (details.taskStatusDTO && typeof details.taskStatusDTO === 'object' && 'id' in details.taskStatusDTO) {
+          const taskStatusId = (details.taskStatusDTO as { id?: number }).id
+          if (taskStatusId) {
+            setValue('taskStatusDTO.id', taskStatusId, {
+              shouldValidate: true,
+              shouldDirty: false,
+            })
+          }
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[PartyStepper Step1] Error loading existing party data:', error)
+        }
       }
     }
 
     loadExisting()
-  }, [isEditMode, partyId, setValue])
+  }, [isEditMode, partyId, setValue, watch])
 
   const renderTextField = (
     name: string,
@@ -192,7 +212,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
       <Controller
         name={name}
         control={control}
-        defaultValue={defaultValue === undefined ? '' : defaultValue}
+        defaultValue={defaultValue === undefined || defaultValue === null ? '' : defaultValue}
         rules={{
           required: required ? `${label} is required` : false,
         }}
@@ -205,6 +225,10 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
             disabled={disabled || isReadOnly}
             error={!!errors[name]}
             helperText={errors[name]?.message?.toString()}
+            value={field.value ?? ''}
+            onChange={(e) => {
+              field.onChange(e.target.value)
+            }}
             InputLabelProps={{
               sx: {
                 ...labelStyles,
@@ -472,6 +496,10 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
             disabled={isReadOnly}
             error={!!errors[name]}
             helperText={errors[name]?.message?.toString()}
+            value={field.value ?? ''}
+            onChange={(e) => {
+              field.onChange(e.target.value)
+            }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -556,12 +584,13 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
             fullWidth
             label={label}
             required={required}
-            value={field.value || generatedId}
+            value={field.value || generatedId || ''}
             error={!!errors[name]}
             helperText={errors[name]?.message?.toString()}
             onChange={(e) => {
-              setGeneratedId(e.target.value)
-              field.onChange(e)
+              const value = e.target.value
+              setGeneratedId(value)
+              field.onChange(value)
             }}
             disabled={isReadOnly || isEditMode}
             InputProps={{
@@ -660,36 +689,20 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
               6,
               false,
               true
-            )}
+            )} 
             {renderTextField(
-              'addressLine1',
-              getPartyLabelDynamic('CDL_MP_PARTY_ADDRESS_1'),
+              'emailAddress',
+              getPartyLabelDynamic('CDL_MP_PARTY_EMAIL'),
               '',
               6,
               false,
-              true
+              false
             )}
-            {renderTextField(
-              'addressLine2',
-              getPartyLabelDynamic('CDL_MP_PARTY_ADDRESS_2'),
-              '',
-              6,
-              false,
-              true
-            )}
-            {renderTextField(
-              'addressLine3',
-              getPartyLabelDynamic('CDL_MP_PARTY_ADDRESS_3'),
-              '',
-              6,
-              false,
-              true
-            )}
-            {renderTextField(
+             {renderTextField(
               'telephoneNumber',
               getPartyLabelDynamic('CDL_MP_PARTY_TELEPHONE_NO'),
               '',
-              4,
+              6,
               false,
               false
             )}
@@ -697,15 +710,48 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
               'mobileNumber',
               getPartyLabelDynamic('CDL_MP_PARTY_MOBILE_NO'),
               '',
-              4,
+              6,
               false,
               false
             )}
             {renderTextField(
-              'emailAddress',
-              getPartyLabelDynamic('CDL_MP_PARTY_EMAIL_ID'),
+              'addressLine1',
+              getPartyLabelDynamic('CDL_MP_PARTY_ADDRESS_1'),
               '',
               4,
+              false,
+              true
+            )}
+            {renderTextField(
+              'addressLine2',
+              getPartyLabelDynamic('CDL_MP_PARTY_ADDRESS_2'),
+              '',
+              4,
+              false,
+              true
+            )}
+            {renderTextField(
+              'addressLine3',
+              getPartyLabelDynamic('CDL_MP_PARTY_ADDRESS_3'),
+              '',
+              4,
+              false,
+              true
+            )}
+           
+           {renderTextField(
+              'assistantRelationshipManagerName',
+              getPartyLabelDynamic('CDL_MP_PARTY_ARM_NAME'),
+              '',
+              6,
+              false,
+              false
+            )}
+              {renderTextField(
+              'relationshipManagerName',
+              getPartyLabelDynamic('CDL_MP_PARTY_RM_NAME'),
+              '',
+              6,
               false,
               false
             )}
@@ -714,7 +760,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
               'bankIdentifier',
               getPartyLabelDynamic('CDL_MP_PARTY_BANK_IDENTIFIER'),
               '',
-              4,
+              6,
               false,
               false
             )}
@@ -724,7 +770,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
                 'CDL_MP_PARTY_PASSPORT_IDENTIFICATION_DETAILS'
               ),
               '',
-              4,
+              6,
               false,
               false
             )}
@@ -732,50 +778,33 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
               'projectAccountOwnerName',
               getPartyLabelDynamic('CDL_MP_PARTY_PROJECT_ACCOUNT_OWNER_NAME'),
               '',
-              4,
+              6,
               false,
               false
-            )}
-            {renderTextField(
-              'assistantRelationshipManagerName',
-              getPartyLabelDynamic('CDL_MP_PARTY_ARM_NAME'),
-              '',
-              4,
-              false,
-              false
-            )}
-            {renderTextField(
-              'teamLeaderName',
-              getPartyLabelDynamic('CDL_MP_PARTY_TEAM_LEADER_NAME'),
-              '',
-              4,
-              false,
-              false
-            )}
-
-            {renderTextField(
-              'relationshipManagerName',
-              getPartyLabelDynamic('CDL_MP_PARTY_RM_NAME'),
-              '',
-              4,
-              false,
-              false
-            )}
-            {renderTextField(
+            )} {renderTextField(
               'backupProjectAccountOwnerName',
               getPartyLabelDynamic(
                 'CDL_MP_PARTY_BACKUP_PROJECT_ACCOUNT_OWNER_NAME'
               ),
               '',
-              4,
+              6,
               false,
               false
             )}
+            
+            {renderTextField(
+              'teamLeaderName',
+              getPartyLabelDynamic('CDL_MP_PARTY_TEAM_LEADER_NAME'),
+              '',
+              6,
+              false,
+              false
+            )}           
             {renderTextField(
               'additionalRemarks',
               getPartyLabelDynamic('CDL_MP_PARTY_REMARKS'),
               '',
-              4,
+              6,
               false,
               false
             )}

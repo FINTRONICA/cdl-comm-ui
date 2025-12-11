@@ -159,7 +159,9 @@ export class EnhancedSessionService {
       // Get refresh token from storage
       const refreshToken = this.getRefreshToken();
       if (!refreshToken) {
-        console.warn('No refresh token available');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('No refresh token available');
+        }
         return;
       }
 
@@ -202,7 +204,10 @@ export class EnhancedSessionService {
       this.setupTokenRefreshFromSeconds(response.expires_in);
       
     } catch (error) {
-      console.error('Token refresh error:', error);
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Token refresh error:', error);
+      }
       // Only logout if token is actually expired, not just if refresh failed
       // Network errors or temporary server issues shouldn't cause immediate logout
       const { token } = getAuthCookies();

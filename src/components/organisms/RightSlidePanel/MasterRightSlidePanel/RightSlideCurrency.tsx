@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -12,9 +12,7 @@ import {
   Snackbar,
   InputAdornment,
 } from '@mui/material'
-import {
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
+import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -29,7 +27,7 @@ import {
   type CurrencyFormData,
 } from '@/lib/validation/masterValidation/CurrencySchemas'
 import type {
-        CreateCurrencyRequest,
+  CreateCurrencyRequest,
   UpdateCurrencyRequest,
   Currency,
   TaskStatusDTO,
@@ -44,13 +42,10 @@ interface RightSlideCurrencyPanelProps {
   isOpen: boolean
   onClose: () => void
   onCurrencyAdded?: (currency: Currency) => void
-  onCurrencyUpdated?: (
-    currency: Currency,
-    index: number
-  ) => void
+  onCurrencyUpdated?: (currency: Currency, index: number) => void
   title?: string
   mode?: 'add' | 'edit'
-                actionData?: Currency | null
+  actionData?: Currency | null
   currencyIndex?: number | undefined
   taskStatusOptions?: TaskStatusDTO[]
   taskStatusLoading?: boolean
@@ -72,21 +67,18 @@ export const RightSlideCurrencyPanel: React.FC<
   taskStatusError: propTaskStatusError = null,
 }) => {
   const theme = useTheme()
-  const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [generatedId, setGeneratedId] = useState<string>('')
   const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
-  
-  // Check if we're in edit mode
-  const isEditMode = mode === 'edit'
-  const isReadOnly = false // Can be made a prop if needed
 
-    const saveCurrencyMutation = useSaveCurrency()
+  const isEditMode = mode === 'edit'
+  const saveCurrencyMutation = useSaveCurrency()
 
   // Fetch full currency data when in edit mode
   const { data: apiCurrencyData } = useCurrency(
-    mode === 'edit' && actionData?.id ? String(actionData.id) : null
+    isEditMode && actionData?.id ? String(actionData.id) : null
   )
 
   // Fetch task statuses
@@ -94,7 +86,6 @@ export const RightSlideCurrencyPanel: React.FC<
   const taskStatusLoading = propTaskStatusLoading || taskStatusesLoading
   const taskStatusError = propTaskStatusError || null
 
-  // Dynamic labels
   const getCurrencyLabelDynamic = useCallback(
     (configId: string): string => {
       return getMasterLabel(configId)
@@ -120,8 +111,8 @@ export const RightSlideCurrencyPanel: React.FC<
     mode: 'onChange',
   })
 
-  // Initialize business segment ID from form value
-  React.useEffect(() => {
+  // Sync currencyId from form to generatedId state
+  useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === 'currencyId' && value.currencyId) {
         setGeneratedId(value.currencyId)
@@ -130,33 +121,17 @@ export const RightSlideCurrencyPanel: React.FC<
     return () => subscription.unsubscribe()
   }, [watch])
 
-  // Function to generate new product program ID
-  const handleGenerateNewId = async () => {
-    try {
-      setIsGeneratingId(true)
-      const newIdResponse = idService.generateNewId('MCUR')
-      setGeneratedId(newIdResponse.id)
-      setValue('currencyId', newIdResponse.id, {
-        shouldValidate: true,
-        shouldDirty: true,
-      })
-    } catch {
-      // Handle error silently
-    } finally {
-      setIsGeneratingId(false)
-    }
-  }
-
   // Track the last reset ID and mode to prevent unnecessary resets
-  const lastResetIdRef = React.useRef<string | number | null>(null)
-  const lastModeRef = React.useRef<'add' | 'edit' | null>(null)
-  const lastIsOpenRef = React.useRef<boolean>(false)
+  const lastResetIdRef = useRef<string | number | null>(null)
+  const lastModeRef = useRef<'add' | 'edit' | null>(null)
+  const lastIsOpenRef = useRef<boolean>(false)
+
   // Reset form when panel opens/closes or mode/data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) {
       if (lastIsOpenRef.current) {
         reset({
-                    currencyId: '',
+          currencyId: '',
           description: '',
           isEnabled: true,
           taskStatusDTO: null,
@@ -176,27 +151,25 @@ export const RightSlideCurrencyPanel: React.FC<
     const currentId = (apiCurrencyData?.id || actionData?.id) ?? null
     const shouldReset =
       lastModeRef.current !== mode ||
-      (mode === 'edit' && lastResetIdRef.current !== currentId) ||
-      (mode === 'edit' && !lastResetIdRef.current && currentId)
+      (isEditMode && lastResetIdRef.current !== currentId) ||
+      (isEditMode && !lastResetIdRef.current && currentId)
 
-    if (mode === 'edit') {
+    if (isEditMode) {
       // Wait for API data to load if we're in edit mode, but use actionData as fallback
       if (taskStatusLoading && !actionData) {
         return
       }
 
-            if (shouldReset && (apiCurrencyData || actionData)) {
+      if (shouldReset && (apiCurrencyData || actionData)) {
         const dataToUse = apiCurrencyData || actionData
         if (!dataToUse) return
 
-            const currencyId = dataToUse.uuid || `MCUR-${dataToUse.id}` || ''
+        const currencyId = dataToUse.uuid || `MCUR-${dataToUse.id}` || ''
         setGeneratedId(currencyId)
-
-        const description = dataToUse.description || ''
 
         reset({
           currencyId: currencyId,
-          description: description, 
+          description: dataToUse.description || '',
           isEnabled: dataToUse.isEnabled ?? true,
           taskStatusDTO: dataToUse.taskStatusDTO?.id
             ? { id: dataToUse.taskStatusDTO.id }
@@ -208,28 +181,50 @@ export const RightSlideCurrencyPanel: React.FC<
       } else if (!shouldReset) {
         return
       }
-    } else if (mode === 'add') {
+    } else {
       reset({
-              currencyId: '',
+        currencyId: '',
         description: '',
         isEnabled: true,
         taskStatusDTO: null,
-        })
+      })
       setGeneratedId('')
-
       lastResetIdRef.current = null
       lastModeRef.current = mode
     }
   }, [
     isOpen,
     mode,
+    isEditMode,
     apiCurrencyData,
     actionData,
     taskStatusLoading,
     reset,
   ])
 
-  const validateCurrencyField = React.useCallback(
+  const handleGenerateNewId = useCallback(async () => {
+    try {
+      setIsGeneratingId(true)
+      const newIdResponse = idService.generateNewId('MCUR')
+      setGeneratedId(newIdResponse.id)
+      setValue('currencyId', newIdResponse.id, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+    } catch (error) {
+      setErrorMessage(
+        'Failed to generate Currency ID. Please try again or enter manually.'
+      )
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.error('Error generating currency ID:', error)
+      }
+    } finally {
+      setIsGeneratingId(false)
+    }
+  }, [setValue])
+
+  const validateCurrencyField = useCallback(
     (
       fieldName: keyof CurrencyFormData | 'currencyId',
       value: unknown,
@@ -246,15 +241,15 @@ export const RightSlideCurrencyPanel: React.FC<
           }
         }
 
-        // Validate product program ID for new product programs (not in edit mode)
-        if (fieldName === 'currencyId' && mode === 'add') {
+        // Validate currency ID for new currencies (not in edit mode)
+        if (fieldName === 'currencyId' && !isEditMode) {
           if (!value || (typeof value === 'string' && value.trim() === '')) {
             return 'Currency ID is required. Please generate an ID.'
           }
         }
 
         if (
-          (fieldName === 'description') &&
+          fieldName === 'description' &&
           value &&
           typeof value === 'string' &&
           value.trim() !== ''
@@ -263,8 +258,8 @@ export const RightSlideCurrencyPanel: React.FC<
           if (result.success) {
             return true
           } else {
-            const fieldError = result.errors?.issues.find(
-              (issue) => issue.path.some((p) => String(p) === fieldName)
+            const fieldError = result.errors?.issues.find((issue) =>
+              issue.path.some((p) => String(p) === fieldName)
             )
             return fieldError ? fieldError.message : true
           }
@@ -275,293 +270,318 @@ export const RightSlideCurrencyPanel: React.FC<
         return true
       }
     },
-    [mode]
+    [isEditMode, validateCurrencySchema]
   )
 
-      const onSubmit = async (data: CurrencyFormData & { currencyId?: string }) => {
-    try {
-      setErrorMessage(null)
-      setSuccessMessage(null)
+  const onSubmit = useCallback(
+    async (data: CurrencyFormData & { currencyId?: string }) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
 
-      if (taskStatusLoading) {
-        setErrorMessage('Please wait for dropdown options to load before submitting.')
-        return
-      }
-
-      const validatedData = sanitizeCurrencyData(data)
-      const currentDataToEdit = apiCurrencyData || actionData
-      const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
-
-      // Validate product program ID for new product programs
-      if (!isEditing && !data.currencyId && !generatedId) {
-        setErrorMessage('Please generate a Currency ID before submitting.')
-        return
-      }
-
-      const isValid = await trigger()
-      if (!isValid) {
-        const errors = []
-            if (!data.description) errors.push('Currency Description is required')
-        if (errors.length > 0) {
-          setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
+        if (taskStatusLoading) {
+          setErrorMessage(
+            getCurrencyLabelDynamic('CDL_COMMON_SUBMIT_WAIT')
+          )
+          return
         }
-        return
-      }
-      const currencyId = isEditing ? String(currentDataToEdit?.id || '') : undefined
 
-      // Get the generated product program ID (UUID) from form data
-      const formCurrencyId = data.currencyId || generatedId
+        const validatedData = sanitizeCurrencyData(data)
+        const currentDataToEdit = apiCurrencyData || actionData
+        const isEditing = Boolean(isEditMode && currentDataToEdit?.id)
+
+        // Validate currency ID for new currencies
+        if (!isEditing && !data.currencyId && !generatedId) {
+          setErrorMessage('Please generate a Currency ID before submitting.')
+          return
+        }
+
+        const isValid = await trigger()
+        if (!isValid) {
+          const errors: string[] = []
+          if (!data.description) {
+            errors.push('Currency Description is required')
+          }
+          if (errors.length > 0) {
+            setErrorMessage(
+              `${getCurrencyLabelDynamic('CDL_COMMON_REQUIRED_FIELDS_PREFIX')} ${errors.join(', ')}`
+            )
+          }
+          return
+        }
+
+        const currencyId = isEditing
+          ? String(currentDataToEdit?.id || '')
+          : undefined
+        const formCurrencyId = data.currencyId || generatedId
 
         let currencyData: CreateCurrencyRequest | UpdateCurrencyRequest
 
-      if (isEditing) {
-        currencyData = {
-          id: currentDataToEdit?.id,
-          description: validatedData.description,
-          isEnabled: validatedData.isEnabled,
-          enabled: true,
-          deleted: false,
-          ...(formCurrencyId && { uuid: formCurrencyId }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-            } as UpdateCurrencyRequest
-      } else {
-        currencyData = {
-          description: validatedData.description,
-          isEnabled: validatedData.isEnabled,
-          enabled: true,
-          deleted: false,
-          ...(formCurrencyId && { uuid: formCurrencyId }),
-          ...(validatedData.taskStatusDTO !== null && validatedData.taskStatusDTO?.id && {
-            taskStatusDTO: { id: validatedData.taskStatusDTO.id },
-          }),
-        } as CreateCurrencyRequest
-      }
-
-      const result = await saveCurrencyMutation.mutateAsync({
-        data: currencyData,
-        isEditing,
-        ...(currencyId && { currencyId }),
-      })
-
-      // Update generatedId with the UUID from the response if available
-      if (result?.uuid) {
-        setGeneratedId(result.uuid)
-      }
-
-      setSuccessMessage(
-        isEditing
-          ? 'Currency updated successfully!'
-          : 'Currency added successfully!'
-      )
-
-      if (
-        mode === 'edit' &&
-        onCurrencyUpdated &&
-        currencyIndex !== null &&
-        currencyIndex !== undefined
-      ) {
-        onCurrencyUpdated(result as Currency, currencyIndex)
-      } else if (onCurrencyAdded) {
-        onCurrencyAdded(result as Currency)
-      }
-      
-      // Refresh will be handled by parent component callbacks
-
-      setTimeout(() => {
-        reset()
-        setGeneratedId('')
-        handleClose()
-      }, 1500)
-    } catch (error: unknown) {
-      let errorMessage = 'Failed to add currency. Please try again.'
-      if (error instanceof Error) {
-        if (error.message.includes('validation')) {
-          errorMessage = 'Please check your input and try again.'
+        if (isEditing) {
+          currencyData = {
+            id: currentDataToEdit?.id,
+            description: validatedData.description,
+            isEnabled: validatedData.isEnabled,
+            enabled: true,
+            deleted: false,
+            ...(formCurrencyId && { uuid: formCurrencyId }),
+            ...(validatedData.taskStatusDTO !== null &&
+              validatedData.taskStatusDTO?.id && {
+                taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+              }),
+          } as UpdateCurrencyRequest
         } else {
-          errorMessage = error.message
+          currencyData = {
+            description: validatedData.description,
+            isEnabled: validatedData.isEnabled,
+            enabled: true,
+            deleted: false,
+            ...(formCurrencyId && { uuid: formCurrencyId }),
+            ...(validatedData.taskStatusDTO !== null &&
+              validatedData.taskStatusDTO?.id && {
+                taskStatusDTO: { id: validatedData.taskStatusDTO.id },
+              }),
+          } as CreateCurrencyRequest
         }
+
+        const result = await saveCurrencyMutation.mutateAsync({
+          data: currencyData,
+          isEditing,
+          ...(currencyId && { currencyId }),
+        })
+
+        // Update generatedId with the UUID from the response if available
+        if (result?.uuid) {
+          setGeneratedId(result.uuid)
+        }
+
+        setSuccessMessage(
+          isEditing
+            ? 'Currency updated successfully!'
+            : 'Currency added successfully!'
+        )
+
+        if (
+          isEditMode &&
+          onCurrencyUpdated &&
+          currencyIndex !== null &&
+          currencyIndex !== undefined
+        ) {
+          onCurrencyUpdated(result as Currency, currencyIndex)
+        } else if (onCurrencyAdded) {
+          onCurrencyAdded(result as Currency)
+        }
+
+        setTimeout(() => {
+          reset()
+          setGeneratedId('')
+          handleClose()
+        }, 1500)
+      } catch (error: unknown) {
+        let errorMessage = 'Failed to save currency. Please try again.'
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMessage = 'Please check your input and try again.'
+          } else {
+            errorMessage = error.message
+          }
+        }
+        setErrorMessage(errorMessage)
       }
-      setErrorMessage(errorMessage)
-    }
-  }
+    },
+    [
+      taskStatusLoading,
+      apiCurrencyData,
+      actionData,
+      isEditMode,
+      generatedId,
+      trigger,
+      saveCurrencyMutation,
+      onCurrencyUpdated,
+      onCurrencyAdded,
+      currencyIndex,
+      reset,
+      getCurrencyLabelDynamic,
+    ]
+  )
 
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     reset()
     setErrorMessage(null)
     setSuccessMessage(null)
     setGeneratedId('')
     onClose()
-  }
-  
+  }, [reset, onClose])
+
   // Style variables
   const isDark = theme.palette.mode === 'dark'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
-  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
   const labelSx = tokens.label
   const valueSx = tokens.value
-  
-  // View mode styles
-  const viewModeStyles = React.useMemo(
+
+  const viewModeStyles = useMemo(
     () => ({
       backgroundColor: isDark ? alpha('#1E293B', 0.5) : '#F9FAFB',
       borderColor: isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB',
     }),
     [isDark]
   )
-  
-  // Field styles for the ID field
-  const fieldStyles = React.useMemo(
-    () => ({
-      ...commonFieldStyles,
-    }),
-    [commonFieldStyles]
-  )
-  
-  const labelStyles = React.useMemo(
-    () => ({
-      ...labelSx,
-    }),
-    [labelSx]
-  )
-  
-  const valueStyles = React.useMemo(
-    () => ({
-      ...valueSx,
-    }),
-    [valueSx]
-  )
 
-  const renderTextField = (
-            name: 'description',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        rules={{
-          validate: (value, formValues) =>
-            validateCurrencyField(name, value, formValues),
-        }}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={label}
-            fullWidth
-            required={required}
-            error={!!errors[name]}
-            helperText={errors[name]?.message?.toString()}
-            InputLabelProps={{ sx: labelSx }}
-            InputProps={{ sx: valueSx }}
-            sx={errors[name] ? errorFieldStyles : commonFieldStyles}
-          />
-        )}
-      />
-    </Grid>
-  )
-
-      const renderCurrencyIdField = (
-    name: 'currencyId',
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue=""
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (value, formValues) =>
-            validateCurrencyField(name, value, formValues as CurrencyFormData & { currencyId?: string }),
-        }}
-        render={({ field }) => {
-          const fieldError = errors[name as keyof typeof errors]
-          return (
+  const renderTextField = useCallback(
+    (
+      name: 'description',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={{
+            validate: (value, formValues) =>
+              validateCurrencyField(name, value, formValues),
+          }}
+          render={({ field }) => (
             <TextField
               {...field}
-              fullWidth
               label={label}
+              fullWidth
               required={required}
-              value={field.value || generatedId}
-              error={!!fieldError}
-              helperText={fieldError?.message?.toString()}
-            onChange={(e) => {
-              setGeneratedId(e.target.value)
-              field.onChange(e)
-            }}
-            disabled={isReadOnly || isEditMode}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end" sx={{ mr: 0 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleGenerateNewId}
-                    disabled={isGeneratingId || isReadOnly || isEditMode}
-                    sx={{
-                      color: theme.palette.primary.contrastText,
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      background: theme.palette.primary.main,
-                      '&:hover': {
-                        background: theme.palette.primary.dark,
-                      },
-                      minWidth: '100px',
-                      height: '32px',
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '11px',
-                      lineHeight: '14px',
-                      letterSpacing: '0.3px',
-                      px: 1,
-                    }}
-                  >
-                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
-                  </Button>
-                </InputAdornment>
-              ),
-              sx: valueStyles,
-            }}
-              InputLabelProps={{
-                sx: {
-                  ...labelStyles,
-                  ...(!!fieldError && {
-                    color: theme.palette.error.main,
-                    '&.Mui-focused': { color: theme.palette.error.main },
-                    '&.MuiFormLabel-filled': { color: theme.palette.error.main },
-                  }),
-                },
-              }}
-              sx={{
-                ...fieldStyles,
-                ...((isReadOnly || isEditMode) && {
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: viewModeStyles.backgroundColor,
-                    color: textSecondary,
-                    '& fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: viewModeStyles.borderColor,
-                    },
-                  },
-                }),
-              }}
+              error={!!errors[name]}
+              helperText={errors[name]?.message?.toString()}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={errors[name] ? errorFieldStyles : commonFieldStyles}
             />
-          )
-        }}
-      />
-    </Grid>
+          )}
+        />
+      </Grid>
+    ),
+    [control, errors, validateCurrencyField, labelSx, valueSx, errorFieldStyles, commonFieldStyles]
+  )
+
+  const renderCurrencyIdField = useCallback(
+    (
+      name: 'currencyId',
+      label: string,
+      gridSize: number = 6,
+      required = false
+    ) => (
+      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+        <Controller
+          name={name}
+          control={control}
+          defaultValue=""
+          rules={{
+            required: required ? `${label} is required` : false,
+            validate: (value, formValues) =>
+              validateCurrencyField(
+                name,
+                value,
+                formValues as CurrencyFormData & { currencyId?: string }
+              ),
+          }}
+          render={({ field }) => {
+            const fieldError = errors[name as keyof typeof errors]
+            return (
+              <TextField
+                {...field}
+                fullWidth
+                label={label}
+                required={required}
+                value={field.value || generatedId}
+                error={!!fieldError}
+                helperText={fieldError?.message?.toString()}
+                onChange={(e) => {
+                  setGeneratedId(e.target.value)
+                  field.onChange(e)
+                }}
+                disabled={isEditMode}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end" sx={{ mr: 0 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleGenerateNewId}
+                        disabled={isGeneratingId || isEditMode}
+                        sx={{
+                          color: theme.palette.primary.contrastText,
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          background: theme.palette.primary.main,
+                          '&:hover': {
+                            background: theme.palette.primary.dark,
+                          },
+                          minWidth: '100px',
+                          height: '32px',
+                          fontFamily: 'Outfit, sans-serif',
+                          fontWeight: 500,
+                          fontStyle: 'normal',
+                          fontSize: '11px',
+                          lineHeight: '14px',
+                          letterSpacing: '0.3px',
+                          px: 1,
+                        }}
+                      >
+                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                      </Button>
+                    </InputAdornment>
+                  ),
+                  sx: valueSx,
+                }}
+                InputLabelProps={{
+                  sx: {
+                    ...labelSx,
+                    ...(!!fieldError && {
+                      color: theme.palette.error.main,
+                      '&.Mui-focused': { color: theme.palette.error.main },
+                      '&.MuiFormLabel-filled': {
+                        color: theme.palette.error.main,
+                      },
+                    }),
+                  },
+                }}
+                sx={{
+                  ...commonFieldStyles,
+                  ...(isEditMode && {
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      color: textSecondary,
+                      '& fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                  }),
+                }}
+              />
+            )
+          }}
+        />
+      </Grid>
+    ),
+    [
+      control,
+      errors,
+      generatedId,
+      isEditMode,
+      isGeneratingId,
+      validateCurrencyField,
+      handleGenerateNewId,
+      theme,
+      labelSx,
+      valueSx,
+      commonFieldStyles,
+      viewModeStyles,
+      textSecondary,
+    ]
   )
 
   return (
@@ -599,8 +619,8 @@ export const RightSlideCurrencyPanel: React.FC<
             pl: 3,
           }}
         >
-          {mode === 'edit'
-                  ? `${getCurrencyLabelDynamic('CDL_COMMON_UPDATE')} ${getCurrencyLabelDynamic('CDL_MCUR_NAME')}`
+          {isEditMode
+            ? `${getCurrencyLabelDynamic('CDL_COMMON_UPDATE')} ${getCurrencyLabelDynamic('CDL_MCUR_NAME')}`
             : `${getCurrencyLabelDynamic('CDL_COMMON_ADD')} ${getCurrencyLabelDynamic('CDL_MCUR_NAME')}`}
           <IconButton
             onClick={onClose}
@@ -609,7 +629,7 @@ export const RightSlideCurrencyPanel: React.FC<
               '&:hover': {
                 backgroundColor: theme.palette.action.hover,
               },
-            }}  
+            }}
           >
             <CancelOutlinedIcon fontSize="small" />
           </IconButton>
@@ -637,14 +657,14 @@ export const RightSlideCurrencyPanel: React.FC<
                   color: theme.palette.error.main,
                 }}
               >
-                Failed to load dropdown options. Please refresh the page.
+                {getCurrencyLabelDynamic('CDL_COMMON_DROPDOWNS_LOAD_FAILED')}
               </Alert>
             )}
 
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
-                    {renderCurrencyIdField(
+              {renderCurrencyIdField(
                 'currencyId',
-                        getCurrencyLabelDynamic('CDL_MCUR_ID'),
+                getCurrencyLabelDynamic('CDL_MCUR_ID'),
                 12,
                 true
               )}
@@ -652,7 +672,7 @@ export const RightSlideCurrencyPanel: React.FC<
                 'description',
                 getCurrencyLabelDynamic('CDL_MCUR_DESCRIPTION'),
                 12,
-                false
+                true
               )}
             </Grid>
           </DialogContent>
@@ -742,12 +762,12 @@ export const RightSlideCurrencyPanel: React.FC<
                   }}
                 >
                   {saveCurrencyMutation.isPending
-                    ? mode === 'edit'
-                          ? getCurrencyLabelDynamic('CDL_COMMON_UPDATING')
+                    ? isEditMode
+                      ? getCurrencyLabelDynamic('CDL_COMMON_UPDATING')
                       : getCurrencyLabelDynamic('CDL_COMMON_ADDING')
-                    : mode === 'edit'
-                      ? getCurrencyLabelDynamic('CDL_COMMON_UPDATE')
-                      : getCurrencyLabelDynamic('CDL_COMMON_ADD')}
+                    : isEditMode
+                    ? getCurrencyLabelDynamic('CDL_COMMON_UPDATE')
+                    : getCurrencyLabelDynamic('CDL_COMMON_ADD')}
                 </Button>
               </Grid>
             </Grid>

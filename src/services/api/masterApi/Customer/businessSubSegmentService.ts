@@ -88,10 +88,11 @@ export class BusinessSubSegmentService {
       }
     }
 
-    // Build URL - Use base endpoint and add filters
-    const baseUrl = buildApiUrl(API_ENDPOINTS.MASTER_BUSINESS_SUB_SEGMENT.GET_ALL)
+    // Build URL - Use base endpoint and add all params
+    const baseUrl = buildApiUrl('/business-sub-segment')
     const allParams = {
       'deleted.equals': 'false',
+      'enabled.equals': 'true',
       ...buildPaginationParams(page, size),
       ...apiFilters,
     }
@@ -159,6 +160,27 @@ export class BusinessSubSegmentService {
       )
     } catch (error) {
       throw error
+    }
+  }
+
+  async getAllBusinessSubSegments(): Promise<BusinessSubSegment[]> {
+    try {
+      const url = buildApiUrl(API_ENDPOINTS.MASTER_BUSINESS_SUB_SEGMENT.FIND_ALL)
+      const result = await apiClient.get<BusinessSubSegment[] | PaginatedResponse<BusinessSubSegment>>(url)
+      
+      // Handle different response structures
+      if (Array.isArray(result)) {
+        return result
+      } else if (result && typeof result === 'object' && 'content' in result && Array.isArray((result as PaginatedResponse<BusinessSubSegment>).content)) {
+        return (result as PaginatedResponse<BusinessSubSegment>).content
+      }
+      
+      return []
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching all business segments:', error)
+      }
+      return []
     }
   }
 }

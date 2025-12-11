@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Step,
   StepLabel,
@@ -25,16 +25,8 @@ import { BankAccountService } from '@/services/api/bankAccountService'
 import { realEstateAssetService } from '@/services/api/projectService'
 import dayjs from 'dayjs'
 
-import Step1 from './steps/Step1'
-import Step2 from './steps/Step2'
-import Step3 from './steps/Step3'
-import Step4 from './steps/Step4'
-import Step5 from './steps/Step5'
-import Step6 from './steps/Step6'
-import Step7 from './steps/Step7'
-import Step8 from './steps/Step8'
-import DocumentUploadFactory from '../DocumentUpload/DocumentUploadFactory'
-import { DocumentItem } from '../DeveloperStepper/developerTypes'
+// Lazy loading is handled by stepRenderer
+import { useStepContentRenderer } from './stepRenderer'
 import { useCreateDeveloperWorkflowRequest } from '@/hooks/workflow'
 
 import { ProjectData } from './types'
@@ -108,17 +100,20 @@ export default function StepperWrapper({
     useProjectStepStatus(projectId || '')
   const createProjectWorkflowRequest = useCreateDeveloperWorkflowRequest()
 
-  const steps = [
-    'Build Partner Assest Details',
-    'Documents',
-    'Account',
-    'Fee Details',
-    'Beneficiary Details',
-    'Payment Plan',
-    'Financial',
-    'Project Closure',
-    'Review',
-  ]
+  const steps = useMemo(
+    () => [
+      'Build Partner Assest Details',
+      'Documents',
+      'Account',
+      'Fee Details',
+      'Beneficiary Details',
+      'Payment Plan',
+      'Financial',
+      'Project Closure',
+      'Review',
+    ],
+    []
+  )
 
   if (typeof window !== 'undefined' && !projectId) {
     try {
@@ -1426,118 +1421,14 @@ export default function StepperWrapper({
     }
   }, [projectId, isEditingMode])
 
-  const getStepContent = (step: number) => {
-    switch (step) {
-      case 0:
-        return <Step1 isViewMode={isViewMode} projectId={projectId} />
-      case 1:
-        return (
-          <DocumentUploadFactory
-            type="BUILD_PARTNER_ASSET"
-            entityId={projectId || 'temp_project_id'}
-            isReadOnly={isViewMode}
-            isOptional={true}
-            onDocumentsChange={(documents: DocumentItem[]) => {
-              methods.setValue('documents', documents)
-            }}
-            formFieldName="documents"
-          />
-        )
-      case 2:
-        const watchedAccounts = methods.watch('accounts')
-        return (
-          <Step2
-            accounts={watchedAccounts}
-            onAccountsChange={(accounts) => {
-              setIsAddingContact(true)
-              methods.setValue('accounts', accounts)
-              setTimeout(() => setIsAddingContact(false), 100)
-            }}
-            projectId={projectId || ''}
-            isViewMode={isViewMode}
-          />
-        )
-      case 3:
-        const watchedFees = methods.watch('fees')
-        const buildPartnerIdForFees = methods
-          .watch('buildPartnerDTO.id')
-          ?.toString()
-
-        return (
-          <Step3
-            fees={watchedFees}
-            onFeesChange={(fees) => {
-              setIsAddingContact(true)
-              methods.setValue('fees', fees)
-              setTimeout(() => setIsAddingContact(false), 100)
-            }}
-            projectId={projectId || ''}
-            buildPartnerId={buildPartnerIdForFees}
-            isViewMode={isViewMode}
-          />
-        )
-      case 4:
-        const buildPartnerIdForBeneficiaries = methods
-          .watch('buildPartnerDTO.id')
-          ?.toString()
-        const watchedBeneficiaries = methods.watch('beneficiaries')
-
-        return (
-          <Step4
-            beneficiaries={watchedBeneficiaries}
-            onBeneficiariesChange={(beneficiaries) =>
-              methods.setValue('beneficiaries', beneficiaries)
-            }
-            projectId={projectId || ''}
-            buildPartnerId={buildPartnerIdForBeneficiaries}
-            isViewMode={isViewMode}
-          />
-        )
-      case 5:
-        const watchedPaymentPlan = methods.watch('paymentPlan') || []
-
-        return (
-          <Step5
-            paymentPlan={watchedPaymentPlan}
-            onPaymentPlanChange={(paymentPlan) =>
-              methods.setValue('paymentPlan', paymentPlan)
-            }
-            projectId={projectId || ''}
-            isViewMode={isViewMode}
-          />
-        )
-      case 6:
-        const watchedFinancialData = methods.watch('financialData')
-
-        return (
-          <Step6
-            financialData={watchedFinancialData}
-            onFinancialDataChange={(financialData) =>
-              methods.setValue('financialData', financialData)
-            }
-            isViewMode={isViewMode}
-          />
-        )
-      case 7:
-        return (
-          <Step7
-            projectId={projectId || 'temp_project_id'}
-            isViewMode={isViewMode}
-          />
-        )
-      case 8:
-        return (
-          <Step8
-            projectData={methods.getValues()}
-            onEditStep={handleEditStep}
-            projectId={projectId || ''}
-            isViewMode={isViewMode}
-          />
-        )
-      default:
-        return null
-    }
-  }
+  // Use step renderer with lazy loading
+  const stepRenderer = useStepContentRenderer({
+    activeStep,
+    projectId,
+    methods,
+    isViewMode,
+    onEditStep: handleEditStep,
+  })
 
   const transformDetailsData = (formData: ProjectData) => ({
     ...(projectId && { id: projectId }),
@@ -2126,7 +2017,7 @@ export default function StepperWrapper({
               </Stepper>
 
               <Box sx={formSectionSx}>
-                {getStepContent(activeStep)}
+                {stepRenderer.getStepContent(activeStep)}
 
                 <Box
                   display="flex"

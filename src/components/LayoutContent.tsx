@@ -158,7 +158,7 @@ const LayoutContentComponent = ({ children }: LayoutContentProps) => {
           pathname === '/beneficiary' ||
           pathname === '/country' ||
           pathname === '/currency' ||
-          pathname?.startsWith('/party/') ||
+          pathname?.startsWith('/master/party/') ||
           pathname?.startsWith('/account-purpose/') ||
           pathname?.startsWith('/investment/') ||
           pathname?.startsWith('/business-segment/') ||
@@ -174,7 +174,7 @@ const LayoutContentComponent = ({ children }: LayoutContentProps) => {
         )
       }
       if (route === '/party') {
-        return pathname === '/party' || pathname?.startsWith('/party/')
+        return pathname === '/master/party' || pathname?.startsWith('/master/party/')
       }
       if (route === '/investment') {
         return (

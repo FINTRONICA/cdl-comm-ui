@@ -39,7 +39,9 @@ export class AgreementSignatoryLabelsService {
             const response = await apiClient.get<AgreementSignatoryLabelResponse[]>(url)
             return Array.isArray(response) ? response : []
         } catch (error) {
-            console.error('Error fetching agreement signatory labels:', error)
+            if (process.env.NODE_ENV === 'development') {
+                console.error('Error fetching agreement signatory labels:', error)
+            }
             return []
         }
     }

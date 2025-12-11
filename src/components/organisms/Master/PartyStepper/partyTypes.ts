@@ -158,22 +158,23 @@ export interface PartyDetailsData {
 export interface PartyDataStepsData extends PartyDetailsData {
   // Step 1: Party Details
   id: string
-  partyCifNumber: string,
-  partyFullName: string,
-  addressLine1: string,
-  addressLine2: string,
-  addressLine3: string,
+  // All string fields can be empty strings in form (will be converted to null for API)
+  partyCifNumber: string | null,
+  partyFullName: string | null,
+  addressLine1: string | null,
+  addressLine2: string | null,
+  addressLine3: string | null,
   telephoneNumber: string,
-  mobileNumber: string,
-  emailAddress: string,
+  mobileNumber: string | null,
+  emailAddress: string | null,
   bankIdentifier: string,
-  passportIdentificationDetails: string,
-  backupProjectAccountOwnerName: string,
-  projectAccountOwnerName: string,
-  assistantRelationshipManagerName: string,
-  teamLeaderName: string,
-  additionalRemarks: string,
-  relationshipManagerName: string,
+  passportIdentificationDetails: string | null,
+  backupProjectAccountOwnerName: string | null,
+  projectAccountOwnerName: string | null,
+  assistantRelationshipManagerName: string | null,
+  teamLeaderName: string | null,
+  additionalRemarks: string | null,
+  relationshipManagerName: string | null,
   active: boolean,
   partyConstituentDTO: {
     id: number
