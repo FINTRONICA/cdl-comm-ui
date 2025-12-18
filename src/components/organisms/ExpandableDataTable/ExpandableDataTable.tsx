@@ -251,9 +251,9 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
         <table className="w-full min-w-[1200px] table-fixed bg-workflow-table">
           <thead className="sticky top-0 z-20 bg-workflow-table">
             <tr className="border-gray-200 dark:border-gray-700">
-              {columns.map((column) => (
+              {columns.map((column, colIndex) => (
                 <th
-                  key={column.key}
+                  key={`${column.key}-${colIndex}`}
                   className={`${column.width || 'w-auto'} text-xs font-semibold px-4 py-3.5 text-gray-900 dark:text-gray-100 ${column.type === 'checkbox' ? 'border-r border-gray-300 dark:border-gray-700 text-center w-4 h-4' : 'text-left'}`}
                 >
                   {column.type === 'checkbox' ? (
@@ -315,11 +315,12 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     onRowClick ? () => onRowClick(row, index) : undefined
                   }
                 >
-                  {columns.map((column) => {
+                  {columns.map((column, colIndex) => {
+                    const reactColumnKey = `${column.key}-${colIndex}`
                     if (column.type === 'expand') {
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className="w-8 px-2.5 py-1.5 whitespace-nowrap justify-center items-center"
                         >
                           <button
@@ -345,7 +346,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     if (column.type === 'checkbox') {
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className="w-8 px-2.5 py-1.5 whitespace-nowrap justify-center items-center"
                         >
                           <Checkbox
@@ -360,7 +361,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     if (column.type === 'actions') {
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className="w-20 px-2.5 py-1.5 whitespace-nowrap"
                         >
                           {renderActions ? (
@@ -400,7 +401,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     if (column.render) {
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100 max-w-0`}
                         >
                           <div
@@ -421,7 +422,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                       )
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100`}
                         >
                           <div className="flex flex-col">
@@ -439,7 +440,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     if (column.type === 'status' && value) {
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100`}
                         >
                           <StatusBadge status={value as string} />
@@ -450,7 +451,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     if (column.type === 'select' && column.options) {
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100`}
                         >
                           <MultiSelect
@@ -467,7 +468,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     if (column.type === 'custom' && renderCustomCell) {
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100 max-w-0`}
                         >
                           <div className="truncate">
@@ -484,7 +485,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     ) {
                       return (
                         <td
-                          key={column.key}
+                          key={reactColumnKey}
                           className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100`}
                         >
                           <button
@@ -502,7 +503,7 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     // Default cell for all other types
                     return (
                       <td
-                        key={column.key}
+                        key={reactColumnKey}
                         className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100 max-w-0`}
                       >
                         <div

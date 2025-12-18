@@ -55,8 +55,11 @@ export const TableRow: React.FC<TableRowProps> = ({
 
   return (
     <tr className="border-b border-gray-200 align-middle hover:bg-gray-50">
-      {columns.map((column) => (
-        <td key={column.key} className="px-6 py-4 whitespace-nowrap text-base align-middle">
+      {columns.map((column, colIndex) => (
+        <td
+          key={`${column.key}-${colIndex}`}
+          className="px-6 py-4 whitespace-nowrap text-base align-middle"
+        >
           {renderCell(column, data[column.key])}
         </td>
       ))}

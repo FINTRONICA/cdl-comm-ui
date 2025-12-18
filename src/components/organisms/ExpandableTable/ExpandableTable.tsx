@@ -173,9 +173,9 @@ export const ExpandableTable: React.FC<ExpandableTableProps> = ({
                   className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
                 />
               </th>
-              {columns.map((column) => (
+              {columns.map((column, colIndex) => (
                 <th
-                  key={column.key}
+                  key={`${column.key}-${colIndex}`}
                   className={`${column.width || 'w-auto'} text-left text-xs font-semibold px-4 py-3.5 text-[#1E2939] tracking-wider`}
                 >
                   <div className="flex items-center gap-1 font-outfit font-normal text-[12px] leading-[16px] tracking-normal">
@@ -194,9 +194,9 @@ export const ExpandableTable: React.FC<ExpandableTableProps> = ({
             <tr className="bg-[#FFFFFFBF] border-b border-gray-200">
               <th className="px-6 py-3"></th>
               <th className="px-2 py-3 border-r"></th>
-              {columns.map((column) => (
+              {columns.map((column, colIndex) => (
                 <th
-                  key={column.key}
+                  key={`${column.key}-${colIndex}`}
                   className={`${column.width || 'w-auto'} px-4 py-2`}
                 >
                   {column.searchable !== false ? (
@@ -271,8 +271,8 @@ export const ExpandableTable: React.FC<ExpandableTableProps> = ({
                       className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
                     />
                   </td>
-                  {columns.map((column) => (
-                    <td key={column.key} className="p-4 whitespace-nowrap">
+                  {columns.map((column, colIndex) => (
+                    <td key={`${column.key}-${colIndex}`} className="p-4 whitespace-nowrap">
                       {renderCell(column, row[column.key], rowIndex)}
                     </td>
                   ))}

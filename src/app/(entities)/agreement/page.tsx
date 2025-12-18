@@ -178,7 +178,8 @@ const AgreementsPageImpl: React.FC = () => {
       sortable: true,
     },
       {
-        key: 'primaryEscrowCifNumber',
+        // Agreement identifier from backend entity (mapAgreementToUIData sets `id`)
+        key: 'id',
         label: getAgreementLabelDynamic('CDL_ESCROW_AGREEMENT_ID'),
         type: 'text' as const,
         width: 'w-48',
@@ -235,7 +236,7 @@ const AgreementsPageImpl: React.FC = () => {
     data: agreementsData,
     searchFields: [
       'productManagerName',
-      'primaryEscrowCifNumber',
+      'id',
       'primaryEscrowCifNumber',
       'relationshipManagerName',
       'status',

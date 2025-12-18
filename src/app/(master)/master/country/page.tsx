@@ -78,14 +78,14 @@ const CountryPageImpl: React.FC = () => {
         key: 'countryId',
         label: getCountryLabelDynamic('CDL_MCNT_ID'),
         type: 'text' as const,
-        width: 'w-48',
+        width: 'w-62',
         sortable: true,
       },
       {
         key: 'description',
         label: getCountryLabelDynamic('CDL_MCNT_DESCRIPTION'),
         type: 'text' as const,
-        width: 'w-48',
+        width: 'w-62',
         sortable: true,
       },
       {
