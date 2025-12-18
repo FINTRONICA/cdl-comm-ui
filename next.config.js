@@ -52,7 +52,7 @@ const nextConfig = {
         basePath: false,
       },
       {
-        source: '/:path((?!commercial|products-hub|_next|next|api|favicon\\.ico).+)',
+        source: '/:path((?!commercial|_next|next|api|favicon\\.ico).+)',
         destination: '/commercial/:path',
         permanent: false,
         basePath: false,
