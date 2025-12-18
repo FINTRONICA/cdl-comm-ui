@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { stripBasePath } from '@/utils/basePath'
 
 // Tab configuration mapping tab IDs to routes
 const TAB_ROUTES: Record<string, string> = {
@@ -40,7 +41,7 @@ const TAB_CONFIG: Array<{ id: string }> = [
 // Redirect /master to first tab (party)
 const MasterPage = () => {
   const router = useRouter()
-  const pathname = usePathname()
+  const pathname = stripBasePath(usePathname())
 
   useEffect(() => {
     if (pathname === '/master') {

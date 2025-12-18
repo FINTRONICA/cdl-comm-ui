@@ -66,7 +66,9 @@ export function useAppInitialization(
         } else {
           setState({
             isInitializing: false,
-            labelsLoaded: false,
+            // Don't hard-block the whole UI when labels APIs are unavailable.
+            // The app has static fallback labels; we surface the error for debugging but continue.
+            labelsLoaded: true,
             labelsError: errorMessage,
           })
         }
@@ -82,7 +84,8 @@ export function useAppInitialization(
       } else {
         setState({
           isInitializing: false,
-          labelsLoaded: false,
+          // Same principle: do not block UI forever if backend is down / unreachable.
+          labelsLoaded: true,
           labelsError: errorMessage,
         })
       }

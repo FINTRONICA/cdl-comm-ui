@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useMemo, memo } from 'react'
 import { Sidebar } from './organisms/Sidebar'
 import { useAuthStore } from '@/store/authStore'
+import { stripBasePath } from '@/utils/basePath'
 
 const AUTHENTICATED_ROUTES = [
   '/dashboard',
@@ -46,7 +47,9 @@ interface LayoutContentProps {
 }
 
 const LayoutContentComponent = ({ children }: LayoutContentProps) => {
-  const pathname = usePathname()
+  const fullPathname = usePathname()
+
+  const pathname = stripBasePath(fullPathname)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
 
   const shouldShowSidebar = useMemo(() => {

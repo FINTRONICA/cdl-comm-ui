@@ -7,6 +7,7 @@ import { Tab } from '@/types/activities'
 import { useSidebarLabels } from '@/hooks/useSidebarLabels'
 import { SidebarLabelsService } from '@/services/api/sidebarLabelsService'
 import { useAppStore } from '@/store'
+import { stripBasePath } from '@/utils/basePath'
 
 // Tab configuration mapping tab IDs to routes
 // Note: (master) is a route group, so it doesn't appear in the URL
@@ -56,7 +57,8 @@ export default function MasterLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
-  const pathname = usePathname()
+  const fullPathname = usePathname()
+  const pathname = stripBasePath(fullPathname)
   const { data: sidebarLabels } = useSidebarLabels()
   const currentLanguage = useAppStore((state) => state.language)
 

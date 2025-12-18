@@ -19,6 +19,7 @@ import { useCreateWorkflowRequest } from '@/hooks/workflow'
 import { usePartyLabelsWithCache } from '@/hooks/master/CustomerHook/usePartyLabelsWithCache'
 import { getPartyLabel } from '@/constants/mappings/master/partyMapping'
 import { useAppStore } from '@/store'
+import { addBasePath, stripBasePath } from '@/utils/basePath'
 
 // import { STEP_LABELS } from './constants' // replaced by dynamic labels
 import { StepperProps } from './types'
@@ -67,7 +68,8 @@ export default function PartyStepperWrapper({
   const [isSaving, setIsSaving] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const pathname = usePathname()
+  const fullPathname = usePathname()
+  const pathname = stripBasePath(fullPathname)
   const isDarkMode = useIsDarkMode()
   
   // Detect if we're on /master/party/new route
@@ -224,7 +226,7 @@ export default function PartyStepperWrapper({
               : `/master/party/${partyId}/step/${nextUrlStep}`
             // Use hard navigation if still on /master/party/new or /party/new
             if (isNewPartyRoute || pathname === '/party/new' || pathname === '/master/party/new') {
-              window.location.href = docUrl
+              window.location.href = addBasePath(docUrl)
             } else {
               router.push(docUrl)
             }
@@ -413,7 +415,7 @@ export default function PartyStepperWrapper({
             // ALWAYS use hard navigation when on /master/party/new or /party/new to ensure route change
             // This is critical - Next.js needs a full page reload to switch from static to dynamic route
             if (isNewPartyRoute || pathname === '/party/new' || pathname === '/master/party/new' || !partyId) {
-              window.location.href = nextUrl
+              window.location.href = addBasePath(nextUrl)
               return // Exit early - page will reload
             } else {
               // Use router.push for normal navigation (matching DeveloperStepper pattern)

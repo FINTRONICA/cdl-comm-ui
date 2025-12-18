@@ -4,7 +4,8 @@ export const APP_CONFIG = {
   name: 'Escrow Central',
   version: '1.0.0',
   description: 'Financial escrow management system',
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  // Backend origin (avoid including `/api` here; clients append `/api/v1`)
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8083',
   defaultLocale: 'en',
   supportedLocales: ['en', 'es'],
 } as const

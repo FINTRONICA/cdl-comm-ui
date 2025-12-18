@@ -1,3 +1,5 @@
+import { addBasePath, stripBasePath } from './basePath'
+
 export class NavigationService {
   static navigate(router: any, path: string, replace: boolean = false): void {
     if (replace) {
@@ -145,14 +147,15 @@ export const getGlobalRouter = () => globalRouter
 
 export const serviceNavigation = {
   navigateTo: (path: string, replace: boolean = false) => {
+    const normalizedPath = stripBasePath(path)
     if (globalRouter) {
       if (replace) {
-        globalRouter.replace(path)
+        globalRouter.replace(normalizedPath)
       } else {
-        globalRouter.push(path)
+        globalRouter.push(normalizedPath)
       }
     } else if (typeof window !== 'undefined') {
-      window.location.href = path
+      window.location.href = addBasePath(normalizedPath)
     }
   },
 
@@ -162,9 +165,9 @@ export const serviceNavigation = {
       : '/login'
 
     if (globalRouter) {
-      globalRouter.replace(path)
+      globalRouter.replace(stripBasePath(path))
     } else if (typeof window !== 'undefined') {
-      window.location.href = path
+      window.location.href = addBasePath(path)
     }
   },
 
@@ -172,7 +175,7 @@ export const serviceNavigation = {
     if (globalRouter) {
       globalRouter.replace('/dashboard')
     } else if (typeof window !== 'undefined') {
-      window.location.href = '/dashboard'
+      window.location.href = addBasePath('/dashboard')
     }
   },
 
@@ -180,7 +183,7 @@ export const serviceNavigation = {
     if (globalRouter) {
       globalRouter.push('/')
     } else if (typeof window !== 'undefined') {
-      window.location.href = '/'
+      window.location.href = addBasePath('/')
     }
   },
 

@@ -2,6 +2,13 @@ const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ['bcryptjs'],
 
+  // Serve the whole app under `/commercial/*`
+  // Example: `/escrow-account` → `/commercial/escrow-account`
+  basePath: '/commercial',
+  // IMPORTANT: do NOT set assetPrefix to `/commercial` when basePath is already `/commercial`
+  // otherwise Next will generate `/commercial/commercial/_next/...` and assets will 404.
+  assetPrefix: '',
+
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -32,6 +39,25 @@ const nextConfig = {
       '@mui/icons-material',
       '@mui/x-date-pickers',
     ],
+  },
+
+  async redirects() {
+    return [
+      // Redirect root + non-basePath routes to the app mounted under `/commercial/*`
+      // (basePath is disabled for these rules so they apply to incoming raw paths)
+      {
+        source: '/',
+        destination: '/commercial',
+        permanent: false,
+        basePath: false,
+      },
+      {
+        source: '/:path((?!commercial|products-hub|_next|next|api|favicon\\.ico).+)',
+        destination: '/commercial/:path',
+        permanent: false,
+        basePath: false,
+      },
+    ]
   },
 
   async headers() {
