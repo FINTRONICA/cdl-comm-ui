@@ -118,9 +118,9 @@ export const ReportResultsTable: React.FC<ReportResultsTableProps> = ({
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 #
               </th>
-              {columns.map((column) => (
+              {columns.map((column, colIndex) => (
                 <th
-                  key={column.key}
+                  key={`${column.key}-${colIndex}`}
                   className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
                   {column.title}
@@ -138,9 +138,9 @@ export const ReportResultsTable: React.FC<ReportResultsTableProps> = ({
                   <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
                     {index + 1}
                   </td>
-                  {columns.map((column) => (
+                  {columns.map((column, colIndex) => (
                     <td
-                      key={column.key}
+                      key={`${column.key}-${colIndex}`}
                       className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
                     >
                       {formatCellValue(row[column.key], column.type)}

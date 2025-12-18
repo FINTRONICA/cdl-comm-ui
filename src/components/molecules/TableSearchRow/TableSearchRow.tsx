@@ -37,7 +37,8 @@ export const TableSearchRow: React.FC<TableSearchRowProps> = ({
 }) => {
   return (
     <tr className="sticky top-[52px] z-20 border-b border-gray-200 dark:border-gray-700 pb-4 bg-workflow-table">
-      {columns.map((column) => {
+      {columns.map((column, colIndex) => {
+        const reactColumnKey = `${column.key}-${colIndex}`
         if (
           column.type === 'expand' ||
           column.type === 'actions' ||
@@ -48,7 +49,7 @@ export const TableSearchRow: React.FC<TableSearchRowProps> = ({
         ) {
           return (
             <th
-              key={column.key}
+              key={reactColumnKey}
               className={`${column.width || ''} px-4 py-2 pb-4 ${column.type === 'checkbox' ? 'border-r border-gray-300 dark:border-gray-700 text-center align-middle' : ''}`}
             ></th>
           )
@@ -60,7 +61,7 @@ export const TableSearchRow: React.FC<TableSearchRowProps> = ({
 
           return (
             <th
-              key={column.key}
+              key={reactColumnKey}
               className={`${column.width || ''} px-4 py-2 pb-4 align-middle`}
             >
               <Select
@@ -79,7 +80,7 @@ export const TableSearchRow: React.FC<TableSearchRowProps> = ({
         // Default: text input
         return (
           <th
-            key={column.key}
+            key={reactColumnKey}
             className={`${column.width || ''} px-4 py-2 pb-4 align-middle`}
           >
             <input

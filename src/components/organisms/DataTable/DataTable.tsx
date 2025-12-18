@@ -89,9 +89,9 @@ export const DataTable: React.FC<DataTableProps> = ({
         <table className="w-full min-w-[1100px]">
           <thead>
             <tr className="border-b border-gray-200">
-              {columns.map((column) => (
+              {columns.map((column, colIndex) => (
                 <th
-                  key={column.key}
+                  key={`${column.key}-${colIndex}`}
                   className="px-6 py-3 text-left font-semibold text-sm text-gray-600 bg-white"
                 >
                   <div className="flex items-center gap-2">
@@ -111,8 +111,8 @@ export const DataTable: React.FC<DataTableProps> = ({
               ))}
             </tr>
             <tr className="border-b border-gray-100">
-              {columns.map((column) => (
-                <th key={column.key} className="px-6 py-2 bg-white">
+              {columns.map((column, colIndex) => (
+                <th key={`${column.key}-${colIndex}`} className="px-6 py-2 bg-white">
                   {column.type !== 'actions' && (
                     <input
                       className="w-full border border-gray-300 text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"

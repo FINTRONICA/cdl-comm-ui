@@ -17,11 +17,14 @@ import {
 } from '@/constants/sidebarConfig'
 import { useSidebarConfigWithLoading } from '@/hooks/useSidebarConfig'
 import { usePermissionFilteredSidebar } from '@/utils/sidebarPermissions'
+import { stripBasePath } from '@/utils/basePath'
 
 const Logo = lazy(() => import('./Logo'))
 
 const SidebarComponent = () => {
-  const pathname = usePathname()
+  const fullPathname = usePathname()
+  const pathname = stripBasePath(fullPathname)
+  
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const router = useRouter()
   const [expandedSections, setExpandedSections] = useState<string[]>([])
@@ -43,8 +46,13 @@ const SidebarComponent = () => {
 
   const isActive = useCallback(
     (href: string) => {
-      if (pathname === href) return true
-      if (pathname.startsWith(href + '/')) return true
+      if (!href || href === '#') return false
+
+      // Sidebar config may provide hrefs with or without `/commercial`
+      const normalizedHref = stripBasePath(href)
+
+      if (pathname === normalizedHref) return true
+      if (pathname.startsWith(normalizedHref + '/')) return true
 
       return false
     },
@@ -190,18 +198,18 @@ const SidebarComponent = () => {
   ) {
     return (
       <div className="w-62 flex flex-col px-4 border border-gray-200 dark:border-gray-700 ml-4 mt-[15px] bg-white dark:bg-gray-800 rounded-2xl">
-        <div className="w-32 h-8 mb-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        <div className="w-32 h-8 mb-4 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
 
         <div className="flex-1 space-y-4">
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
-              className="h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
+              className="h-10 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"
             ></div>
           ))}
         </div>
 
-        <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="p-4 text-sm text-center text-gray-500 dark:text-gray-400">
           {isLoading ? 'Loading...' : 'Waiting for labels...'}
         </div>
       </div>
@@ -214,7 +222,7 @@ const SidebarComponent = () => {
       <div>
         <Suspense
           fallback={
-            <div className="w-32 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="w-32 h-8 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
           }
         >
           <Logo />
@@ -222,7 +230,7 @@ const SidebarComponent = () => {
       </div>
 
      
-      <nav className="flex-1 overflow-y-auto scrollbar-hide py-4 border-t border-t-gray-300 dark:border-gray-700">
+      <nav className="flex-1 py-4 overflow-y-auto border-t scrollbar-hide border-t-gray-300 dark:border-gray-700">
         {memoizedNavigationSections.map((section: SidebarSection) => (
           <div key={section.id} className="">
            
@@ -241,7 +249,7 @@ const SidebarComponent = () => {
               >
                 {section.href ? (
                   <Link
-                    href={section.href}
+                    href={stripBasePath(section.href)}
                     className={`flex items-center gap-2 flex-1 p-1.5 rounded-lg transition-colors ${
                       isActive(section.href)
                         ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
@@ -262,7 +270,7 @@ const SidebarComponent = () => {
                   </Link>
                 ) : (
                   <div className="flex items-center gap-2 flex-1 p-1.5">
-                    <section.icon className="w-5 h-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
+                    <section.icon className="flex-shrink-0 w-5 h-5 text-gray-600 dark:text-gray-400" />
                     <h3 className="text-gray-600 dark:text-gray-400 text-start font-outfit font-medium text-[11px] leading-none uppercase align-middle flex-1">
                       {section.label}
                     </h3>
@@ -312,7 +320,7 @@ const SidebarComponent = () => {
                             {item.children.map((child) => (
                               <Link
                                 key={child.id}
-                                href={child.href || '#'}
+                                href={child.href ? stripBasePath(child.href) : '#'}
                                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                                   child.href && isActive(child.href)
                                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -335,7 +343,7 @@ const SidebarComponent = () => {
                       </>
                     ) : (
                       <Link
-                        href={item.href || '#'}
+                        href={item.href ? stripBasePath(item.href) : '#'}
                         className={`flex items-center gap-2 pl-[34px] py-2 pr-2 rounded-lg text-sm transition-colors font-outfit text-[13px] leading-[20px] align-middle ${
                           item.href && isActive(item.href)
                             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'

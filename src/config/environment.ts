@@ -122,7 +122,9 @@ export class EnvironmentConfig {
       const config: Environment = {
         // Application
         NODE_ENV: (envVars.NODE_ENV as 'development' | 'production' | 'test') || 'development',
-        NEXT_PUBLIC_API_URL: envVars.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+        // Expected: backend origin, not a path (e.g. `http://localhost:3001` or `https://api.example.com`)
+        // Default matches legacy dev backend used in this repo.
+        NEXT_PUBLIC_API_URL: envVars.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8083',
         
         // Security
         JWT_SECRET: envVars.JWT_SECRET || 'default-jwt-secret-change-in-production',
