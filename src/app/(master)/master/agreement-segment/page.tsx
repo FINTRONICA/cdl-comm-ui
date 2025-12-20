@@ -2,12 +2,11 @@
 
 import dynamic from 'next/dynamic'
 import React, { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideAgreementSegmentPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideAgreementSegment'
 import {
   useAgreementSegments,
@@ -17,6 +16,11 @@ import {
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
 import { AgreementSegment } from '@/services/api/masterApi/Customer/agreementSegmentService'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 interface AgreementSegmentData extends Record<string, unknown> {
   id: number
@@ -38,11 +42,9 @@ export const AgreementSegmentPageClient = dynamic(
 
 const AgreementSegmentPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<AgreementSegment | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<AgreementSegmentData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -66,6 +68,9 @@ const AgreementSegmentPageImpl: React.FC = () => {
 
   const refreshAgreementSegments = useRefreshAgreementSegments()
   const deleteAgreementSegmentMutation = useDeleteAgreementSegment()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
   // Transform API data to table format
@@ -199,40 +204,41 @@ const AgreementSegmentPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = useCallback(async () => {
-    if (isDeleting || !deleteItem) return
-
-    setIsDeleting(true)
-    try {
-      await deleteAgreementSegmentMutation.mutateAsync(String(deleteItem.id))
-      refreshAgreementSegments()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch (error) {
-      // Error is handled by the mutation's error state
-      // User feedback is provided through the UI
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [isDeleting, deleteItem, deleteAgreementSegmentMutation, refreshAgreementSegments])
-
   const handleRowDelete = useCallback(
-    (row: AgreementSegmentData) => {
-      if (isDeleting) return
-      setDeleteItem(row)
-      setIsDeleteModalOpen(true)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementSegmentData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
+
+      confirmDelete({
+        itemName: `agreement segment: ${row.agreementSegmentName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteAgreementSegmentMutation.mutateAsync(String(row.id))
+            refreshAgreementSegments()
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
     },
-    [isDeleting]
+    [deleteAgreementSegmentMutation, confirmDelete, isDeleting, refreshAgreementSegments]
   )
 
   const handleRowEdit = useCallback(
-    (row: AgreementSegmentData) => {
-      const index = agreementSegmentData.findIndex((item) => item.id === row.id)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementSegmentData, _index: number) => {
+      const dataIndex = agreementSegmentData.findIndex((item) => item.id === row.id)
 
       // Convert table data format to API format for the panel
       const apiFormatData: AgreementSegment = {
         id: row.id,
-        uuid: row.uuid || row.agreementSegmentId,
+        uuid: row.uuid || row.agreementSegmentId || '',
         segmentName: row.agreementSegmentName,
         segmentDescription: row.agreementSegmentDescription,
         active: row.active ?? true,
@@ -241,7 +247,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
       }
 
       setEditingItem(apiFormatData)
-      setEditingItemIndex(index >= 0 ? index : null)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
       setPanelMode('edit')
       setIsPanelOpen(true)
     },
@@ -264,7 +270,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
   const handleDownloadTemplate = useCallback(async () => {
     try {
       await downloadTemplate('AgreementSegmentTemplate.xlsx')
-    } catch (error) {
+    } catch {
       // Error handling is done by the hook
     }
   }, [downloadTemplate])
@@ -274,14 +280,36 @@ const AgreementSegmentPageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshAgreementSegments])
 
-  const handleUploadError = useCallback((error: string) => {
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
     // Error is handled by UploadDialog component
-    // Logging for debugging purposes only
-    if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
-      console.error('Upload error:', error)
-    }
   }, [])
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementSegmentData, _index: number) => {
+      confirmApprove({
+        itemName: `agreement segment: ${row.agreementSegmentName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'AGREEMENT_SEGMENT',
+              moduleName: 'AGREEMENT_SEGMENT',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshAgreementSegments()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshAgreementSegments]
+  )
 
   const handleAgreementSegmentAdded = useCallback(() => {
     refreshAgreementSegments()
@@ -363,7 +391,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<AgreementSegmentData>
+              <PermissionAwareDataTable<AgreementSegmentData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -384,7 +412,15 @@ const AgreementSegmentPageImpl: React.FC = () => {
                 onRowExpansionChange={handleRowExpansionChange}
                 renderExpandedContent={renderExpandedContent}
                 onRowDelete={handleRowDelete}
+                onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['agreement_segment_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['agreement_segment_update']}
+                editPermissions={['*']}
+                // approvePermissions={['agreement_segment_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['agreement_segment_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -393,29 +429,6 @@ const AgreementSegmentPageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Agreement Segment"
-        message={`Are you sure you want to delete this agreement segment: ${deleteItem?.agreementSegmentName || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
 
       {isPanelOpen && (
         <RightSlideAgreementSegmentPanel
@@ -423,7 +436,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
           onClose={handleClosePanel}
           onAgreementSegmentAdded={handleAgreementSegmentAdded}
           onAgreementSegmentUpdated={handleAgreementSegmentUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem}
           {...(editingItemIndex !== null && {
             agreementSegmentIndex: editingItemIndex,

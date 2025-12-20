@@ -2,12 +2,16 @@
 
 import dynamic from 'next/dynamic'
 import React, { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 import { RightSlideGeneralLedgerAccountPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideGeneralLedgerAccount'
 import {
   useGeneralLedgerAccounts,
@@ -53,11 +57,9 @@ export const GeneralLedgerAccountPageClient = dynamic(
 
 const GeneralLedgerAccountPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<GeneralLedgerAccountData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<GeneralLedgerAccountData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -78,6 +80,9 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
   )
 
   const deleteGeneralLedgerAccountMutation = useDeleteGeneralLedgerAccount()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
   const refreshGeneralLedgerAccounts = useRefreshGeneralLedgerAccounts()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
@@ -215,37 +220,38 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = useCallback(async () => {
-    if (isDeleting || !deleteItem) return
-    setIsDeleting(true)
-    try {
-      await deleteGeneralLedgerAccountMutation.mutateAsync(String(deleteItem.id))
-      refreshGeneralLedgerAccounts()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch {
-      // Error is handled by mutation, but we can add user feedback if needed
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [isDeleting, deleteItem, deleteGeneralLedgerAccountMutation, refreshGeneralLedgerAccounts])
-
   const handleRowDelete = useCallback(
-    (row: GeneralLedgerAccountData) => {
-      if (isDeleting) return
-      setDeleteItem(row)
-      setIsDeleteModalOpen(true)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: GeneralLedgerAccountData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
+
+      confirmDelete({
+        itemName: `general ledger account: ${row.ledgerAccountNumber}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteGeneralLedgerAccountMutation.mutateAsync(String(row.id))
+            refreshGeneralLedgerAccounts()
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
     },
-    [isDeleting]
+    [deleteGeneralLedgerAccountMutation, confirmDelete, isDeleting, refreshGeneralLedgerAccounts]
   )
 
   const handleRowEdit = useCallback(
-    (row: GeneralLedgerAccountData) => {
-      const index = generalLedgerAccountData.findIndex((item) => item.id === row.id)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: GeneralLedgerAccountData, _index: number) => {
+      const dataIndex = generalLedgerAccountData.findIndex((item) => item.id === row.id)
       setEditingItem(row)
-      setEditingItemIndex(index >= 0 ? index : null)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
       setPanelMode('edit')
       setIsPanelOpen(true)
     },
@@ -278,9 +284,36 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshGeneralLedgerAccounts])
 
-  const handleUploadError = useCallback(() => {
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
     // Error is handled by UploadDialog component
   }, [])
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: GeneralLedgerAccountData, _index: number) => {
+      confirmApprove({
+        itemName: `general ledger account: ${row.ledgerAccountNumber}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'GENERAL_LEDGER_ACCOUNT',
+              moduleName: 'GENERAL_LEDGER_ACCOUNT',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshGeneralLedgerAccounts()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshGeneralLedgerAccounts]
+  )
 
   const handleGeneralLedgerAccountAdded = useCallback(() => {
     refreshGeneralLedgerAccounts()
@@ -378,7 +411,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<GeneralLedgerAccountData>
+              <PermissionAwareDataTable<GeneralLedgerAccountData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -399,8 +432,16 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
                 onRowExpansionChange={handleRowExpansionChange}
                 renderExpandedContent={renderExpandedContent}
                 statusOptions={statusOptions}
+                onRowApprove={handleRowApprove}
                 onRowDelete={handleRowDelete}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['general_ledger_account_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['general_ledger_account_update']}
+                editPermissions={['*']}
+                // approvePermissions={['general_ledger_account_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['general_ledger_account_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -409,36 +450,13 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete General Ledger Account"
-        message={`Are you sure you want to delete this general ledger account: ${deleteItem?.ledgerAccountNumber || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
       {isPanelOpen && (
         <RightSlideGeneralLedgerAccountPanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onGeneralLedgerAccountAdded={handleGeneralLedgerAccountAdded}
           onGeneralLedgerAccountUpdated={handleGeneralLedgerAccountUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem as GeneralLedgerAccount | null}
           {...(editingItemIndex !== null && {
             generalLedgerAccountIndex: editingItemIndex,

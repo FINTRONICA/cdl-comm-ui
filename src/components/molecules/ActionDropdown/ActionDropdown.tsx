@@ -1,20 +1,22 @@
-'use client'
+"use client";
 
-import React from 'react'
-import { Trash2, Eye, GalleryThumbnails, Pencil } from 'lucide-react'
+import React from "react";
+import { Trash2, Eye, GalleryThumbnails, Pencil, Forward } from "lucide-react";
 
 export interface ActionDropdownProps {
-  onDelete?: () => void
-  onView?: () => void
-  onEdit?: () => void
-  onGallery?: () => void
-  onTransaction?: () => void
-  showDelete?: boolean
-  showView?: boolean
-  showEdit?: boolean
-  showGallery?: boolean
-  showTransaction?: boolean
-  className?: string
+  onDelete?: () => void;
+  onView?: () => void;
+  onEdit?: () => void;
+  onGallery?: () => void;
+  onTransaction?: () => void;
+  onApprove?: () => void;
+  showApprove?: boolean;
+  showDelete?: boolean;
+  showView?: boolean;
+  showEdit?: boolean;
+  showGallery?: boolean;
+  showTransaction?: boolean;
+  className?: string;
 }
 
 export const ActionDropdown: React.FC<ActionDropdownProps> = ({
@@ -23,17 +25,19 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
   onEdit,
   onGallery,
   onTransaction,
+  onApprove,
+  showApprove = true,
   showDelete = true,
   showView = true,
   showEdit = true,
   showTransaction = true,
   showGallery = true,
-  className = '',
+  className = "",
 }) => {
   const stop = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
@@ -42,8 +46,8 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
         <button
           data-row-action="view"
           onClick={(e) => {
-            stop(e)
-            onView()
+            stop(e);
+            onView();
           }}
           className="p-1 transition-colors rounded cursor-pointer hover:bg-gray-100"
           aria-label="View"
@@ -58,8 +62,8 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
         <button
           data-row-action="edit"
           onClick={(e) => {
-            stop(e)
-            onEdit()
+            stop(e);
+            onEdit();
           }}
           className="p-1 transition-colors rounded cursor-pointer hover:bg-blue-50"
           aria-label="Edit"
@@ -74,8 +78,8 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
         <button
           data-row-action="gallery"
           onClick={(e) => {
-            stop(e)
-            onGallery()
+            stop(e);
+            onGallery();
           }}
           className="p-1 transition-colors rounded cursor-pointer hover:bg-gray-100"
           aria-label="Open gallery thumbnails"
@@ -97,29 +101,41 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
         </button>
       )} */}
 
-        {showDelete && onDelete && (
-          <button
-            data-row-action="delete"
-            onClick={(e) => {
-              stop(e)
-              onDelete()
-            }}
-            className="p-1 transition-colors rounded cursor-pointer hover:bg-red-50"
-            aria-label="Delete"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4 text-red-600 hover:text-red-800" />
-          </button>
-        )}
-      
+      {showDelete && onDelete && (
+        <button
+          data-row-action="delete"
+          onClick={(e) => {
+            stop(e);
+            onDelete();
+          }}
+          className="p-1 transition-colors rounded cursor-pointer hover:bg-red-50"
+          aria-label="Delete"
+          title="Delete"
+        >
+          <Trash2 className="w-4 h-4 text-red-600 hover:text-red-800" />
+        </button>
+      )}
+      {showApprove && onApprove && (
+        <button
+          data-row-action="approve"
+          className="p-1 transition-colors rounded cursor-pointer hover:bg-blue-50"
+          aria-label="Approve"
+          onClick={(e) => {
+            stop(e);
+            onApprove();
+          }}
+        >
+          <Forward className="w-5 h-5 text-blue-600 hover:text-blue-800" />
+        </button>
+      )}
 
       {/* Transaction */}
       {showTransaction && onTransaction && (
         <button
           data-row-action="transaction"
           onClick={(e) => {
-            stop(e)
-            onTransaction()
+            stop(e);
+            onTransaction();
           }}
           className="p-1 transition-colors rounded cursor-pointer hover:bg-gray-100"
           aria-label="View transaction"
@@ -129,5 +145,5 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
         </button>
       )}
     </div>
-  )
-}
+  );
+};

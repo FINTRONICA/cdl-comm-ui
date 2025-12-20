@@ -110,8 +110,8 @@ export interface CreateWorkflowRequest {
   referenceType: string
   moduleName: string
   actionKey: string
-  amount: number
-  currency: string
+  amount?: number
+  currency?: string
   payloadJson: Record<string, unknown>
 }
 export interface WorkflowAwaitingAction {

@@ -61,6 +61,7 @@ interface PermissionAwareDataTableProps<T = Record<string, unknown>> {
   onRowDelete?: (row: T, index: number) => void
   onRowView?: (row: T, index: number) => void
   onRowEdit?: (row: T, index: number) => void
+  onRowApprove?: (row: T, index: number) => void
   onRowClick?: (row: T, index: number) => void
 
   // Permission-based props - can accept single permission or array of permissions
@@ -68,6 +69,7 @@ interface PermissionAwareDataTableProps<T = Record<string, unknown>> {
   deletePermissions?: string | string[]
   viewPermissions?: string | string[]
   editPermissions?: string | string[]
+  approvePermissions?: string | string[]
   updatePermissions?: string | string[] // Controls row click and update actions
 
   // Permission logic - 'any' means user needs ANY of the permissions, 'all' means user needs ALL permissions
@@ -77,6 +79,7 @@ interface PermissionAwareDataTableProps<T = Record<string, unknown>> {
   showDeleteAction?: boolean
   showViewAction?: boolean
   showEditAction?: boolean
+  showApproveAction?: boolean
 
   // Sorting props
   sortConfig?: {
@@ -90,11 +93,13 @@ const PermissionAwareDataTableComponent = <T extends Record<string, unknown>>({
   deletePermissions,
   viewPermissions,
   editPermissions,
+  approvePermissions,
   updatePermissions,
   permissionLogic = 'any',
   showDeleteAction = true,
   showViewAction = true,
   showEditAction = true,
+  showApproveAction = true,
   onRowClick,
   sortConfig,
   onSort,
@@ -143,6 +148,10 @@ const PermissionAwareDataTableComponent = <T extends Record<string, unknown>>({
     editPermissions !== undefined
       ? checkPermissions(editPermissions)
       : showEditAction
+  const canApprove =
+    approvePermissions !== undefined
+      ? checkPermissions(approvePermissions)
+      : showApproveAction
   const canUpdate =
     updatePermissions !== undefined ? checkPermissions(updatePermissions) : true
 
@@ -153,12 +162,14 @@ const PermissionAwareDataTableComponent = <T extends Record<string, unknown>>({
     showDeleteAction: canDelete,
     showViewAction: canView,
     showEditAction: canEdit,
+    showApproveAction: canApprove,
     // Always include handlers - permissions control visibility via show flags
     // This ensures ActionDropdown always receives handlers and can render buttons based on show flags
     ...(onRowClick ? { onRowClick } : {}),
     ...(props.onRowDelete ? { onRowDelete: props.onRowDelete } : {}),
     ...(props.onRowView ? { onRowView: props.onRowView } : {}),
     ...(props.onRowEdit ? { onRowEdit: props.onRowEdit } : {}),
+    ...(props.onRowApprove ? { onRowApprove: props.onRowApprove } : {}),
     // Pass through sorting props
     sortConfig,
     onSort,

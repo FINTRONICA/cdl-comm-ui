@@ -3,12 +3,11 @@
 import dynamic from 'next/dynamic'
 import React from 'react'
 import { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideBusinessSubSegmentPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideBusinessSubSegmentPanel'
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
@@ -17,6 +16,11 @@ import {
   useDeleteBusinessSubSegment,
   useRefreshBusinessSegments,
 } from '@/hooks/master/CustomerHook/useBusinessSubSegment'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 interface BusinessSubSegmentData extends Record<string, unknown> {
   id: number
@@ -49,11 +53,9 @@ const BusinessSubSegmentPageClient = dynamic(
 
 const BusinessSubSegmentPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<BusinessSubSegmentData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<BusinessSubSegmentData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -76,7 +78,10 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
   )
 
   const deleteBusinessSubSegmentMutation = useDeleteBusinessSubSegment()
-    const refreshBusinessSubSegments = useRefreshBusinessSegments()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
+  const refreshBusinessSubSegments = useRefreshBusinessSegments()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
   // Transform API data to table format
@@ -204,37 +209,43 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = async () => {
-    if (isDeleting || !deleteItem) return
-    setIsDeleting(true)
-    try {
-      await deleteBusinessSubSegmentMutation.mutateAsync(String(deleteItem.id))
-      refreshBusinessSubSegments()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error(`Failed to delete business sub segment: ${errorMessage}`)
-    } finally {
-      setIsDeleting(false)
-    }
-  }
+  const handleRowDelete = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: BusinessSubSegmentData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
 
-  const handleRowDelete = (row: BusinessSubSegmentData) => {
-    if (isDeleting) return
-    setDeleteItem(row)
-    setIsDeleteModalOpen(true)
-  }
+      confirmDelete({
+        itemName: `business sub segment: ${row.businessSubSegmentName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteBusinessSubSegmentMutation.mutateAsync(String(row.id))
+            refreshBusinessSubSegments()
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
+    },
+    [deleteBusinessSubSegmentMutation, confirmDelete, isDeleting, refreshBusinessSubSegments]
+  )
 
-    const handleRowEdit = (row: BusinessSubSegmentData) => {
-    // Find index in the full data array (not just paginated)
-    const index = businessSubSegmentData.findIndex((item) => item.id === row.id)
-    setEditingItem(row)
-    setEditingItemIndex(index >= 0 ? index : null)
-    setPanelMode('edit')
-    setIsPanelOpen(true)
-  }
+  const handleRowEdit = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: BusinessSubSegmentData, _index: number) => {
+      const dataIndex = businessSubSegmentData.findIndex((item) => item.id === row.id)
+      setEditingItem(row)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
+      setPanelMode('edit')
+      setIsPanelOpen(true)
+    },
+    [businessSubSegmentData]
+  )
 
   const handleAddNew = useCallback(() => {
     setEditingItem(null)
@@ -251,10 +262,9 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      // Use a generic template name for investment, or create one if needed
       await downloadTemplate('BusinessSubSegmentTemplate.xlsx')
-    } catch (error) {
-      console.error('Failed to download template:', error)
+    } catch {
+      // Error handling is done by the hook
     }
   }, [downloadTemplate])
 
@@ -263,9 +273,36 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshBusinessSubSegments])
 
-  const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error)
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
+    // Error is handled by UploadDialog component
   }, [])
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: BusinessSubSegmentData, _index: number) => {
+      confirmApprove({
+        itemName: `business sub segment: ${row.businessSubSegmentName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'BUSINESS_SUB_SEGMENT',
+              moduleName: 'BUSINESS_SUB_SEGMENT',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshBusinessSubSegments()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshBusinessSubSegments]
+  )
 
   const handleBusinessSubSegmentAdded = useCallback(() => {
       refreshBusinessSubSegments()
@@ -350,7 +387,7 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<BusinessSubSegmentData>
+              <PermissionAwareDataTable<BusinessSubSegmentData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -372,8 +409,15 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
                 renderExpandedContent={renderExpandedContent}
                 statusOptions={statusOptions}
                 onRowDelete={handleRowDelete}
-                // onRowView={handleRowView}
+                onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['business_sub_segment_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['business_sub_segment_update']}
+                editPermissions={['*']}
+                // approvePermissions={['business_sub_segment_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['business_sub_segment_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -382,36 +426,13 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Business Segment"
-        message={`Are you sure you want to delete this business sub segment: ${deleteItem?.businessSubSegmentName || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
       {isPanelOpen && (
         <RightSlideBusinessSubSegmentPanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onBusinessSubSegmentAdded={handleBusinessSubSegmentAdded}
           onBusinessSubSegmentUpdated={handleBusinessSubSegmentUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem as unknown as import('@/services/api/masterApi/Customer/businessSubSegmentService').BusinessSubSegment | null}
           {...(editingItemIndex !== null && {
             businessSubSegmentIndex: editingItemIndex,

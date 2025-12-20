@@ -1,13 +1,12 @@
 'use client'
 
-import React, { useCallback, useState, useMemo, useEffect } from 'react'
+import React, { useCallback, useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideAgreementTypePanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideAgreementTypePanel'
 import {
   useAgreementTypes,
@@ -17,6 +16,11 @@ import {
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
 import { AgreementType } from '@/services/api/masterApi/Customer/agreementTypeService'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 interface AgreementTypeData extends Record<string, unknown> {
   id: number
@@ -36,18 +40,16 @@ const STATUS_OPTIONS = [
   'IN_PROGRESS',
   'DRAFT',
   'INITIATED',
-] as const
+]
 
 const DEFAULT_PAGE_SIZE = 20
 const INITIAL_PAGE = 1
 
 const AgreementTypePageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<AgreementTypeData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<AgreementTypeData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -70,6 +72,9 @@ const AgreementTypePageImpl: React.FC = () => {
   )
 
   const deleteAgreementTypeMutation = useDeleteAgreementType()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
   const refreshAgreementTypes = useRefreshAgreementTypes()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
@@ -210,37 +215,38 @@ const AgreementTypePageImpl: React.FC = () => {
     [localHandleRowsPerPageChange, updatePagination]
   )
 
-  const confirmDelete = useCallback(async () => {
-    if (isDeleting || !deleteItem) return
-
-    setIsDeleting(true)
-    try {
-      await deleteAgreementTypeMutation.mutateAsync(String(deleteItem.id))
-      refreshAgreementTypes()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch (error) {
-      // Error is handled by the mutation and displayed via toast
-      console.error('Failed to delete agreement type:', error)
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [isDeleting, deleteItem, deleteAgreementTypeMutation, refreshAgreementTypes])
-
   const handleRowDelete = useCallback(
-    (row: AgreementTypeData) => {
-      if (isDeleting) return
-      setDeleteItem(row)
-      setIsDeleteModalOpen(true)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementTypeData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
+
+      confirmDelete({
+        itemName: `agreement type: ${row.agreementTypeName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteAgreementTypeMutation.mutateAsync(String(row.id))
+            refreshAgreementTypes()
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
     },
-    [isDeleting]
+    [deleteAgreementTypeMutation, confirmDelete, isDeleting, refreshAgreementTypes]
   )
 
   const handleRowEdit = useCallback(
-    (row: AgreementTypeData) => {
-      const index = agreementTypeData.findIndex((item) => item.id === row.id)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementTypeData, _index: number) => {
+      const dataIndex = agreementTypeData.findIndex((item) => item.id === row.id)
       setEditingItem(row)
-      setEditingItemIndex(index >= 0 ? index : null)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
       setPanelMode('edit')
       setIsPanelOpen(true)
     },
@@ -263,8 +269,8 @@ const AgreementTypePageImpl: React.FC = () => {
   const handleDownloadTemplate = useCallback(async () => {
     try {
       await downloadTemplate('AgreementTypeTemplate.xlsx')
-    } catch (error) {
-      console.error('Failed to download template:', error)
+    } catch {
+      // Error handling is done by the hook
     }
   }, [downloadTemplate])
 
@@ -273,9 +279,36 @@ const AgreementTypePageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshAgreementTypes])
 
-  const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error)
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
+    // Error is handled by UploadDialog component
   }, [])
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementTypeData, _index: number) => {
+      confirmApprove({
+        itemName: `agreement type: ${row.agreementTypeName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'AGREEMENT_TYPE',
+              moduleName: 'AGREEMENT_TYPE',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshAgreementTypes()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshAgreementTypes]
+  )
 
   const handleAgreementTypeAdded = useCallback(() => {
     refreshAgreementTypes()
@@ -376,7 +409,7 @@ const AgreementTypePageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<AgreementTypeData>
+              <PermissionAwareDataTable<AgreementTypeData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -398,7 +431,15 @@ const AgreementTypePageImpl: React.FC = () => {
                 renderExpandedContent={renderExpandedContent}
                 statusOptions={STATUS_OPTIONS}
                 onRowDelete={handleRowDelete}
+                onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['agreement_type_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['agreement_type_update']}
+                editPermissions={['*']}
+                // approvePermissions={['agreement_type_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['agreement_type_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -407,29 +448,6 @@ const AgreementTypePageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Agreement Type"
-        message={`Are you sure you want to delete this agreement type: ${deleteItem?.agreementTypeName || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
 
       {isPanelOpen && (
         <RightSlideAgreementTypePanel
@@ -437,7 +455,7 @@ const AgreementTypePageImpl: React.FC = () => {
           onClose={handleClosePanel}
           onAgreementTypeAdded={handleAgreementTypeAdded}
           onAgreementTypeUpdated={handleAgreementTypeUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem as AgreementType | null}
           {...(editingItemIndex !== null && {
             agreementTypeIndex: editingItemIndex,

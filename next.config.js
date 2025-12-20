@@ -1,14 +1,20 @@
 const nextConfig = {
-  basePath: '/commercial',  // UNCOMMENT THIS
   reactStrictMode: true,
   serverExternalPackages: ['bcryptjs'],
-  
+
+  // Serve the whole app under `/commercial/*`
+  // Example: `/escrow-account` → `/commercial/escrow-account`
+  basePath: '/commercial',
+  // IMPORTANT: do NOT set assetPrefix to `/commercial` when basePath is already `/commercial`
+  // otherwise Next will generate `/commercial/commercial/_next/...` and assets will 404.
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Updated images configuration for Next.js 15
   images: {
     remotePatterns: [
       {
@@ -18,11 +24,13 @@ const nextConfig = {
       },
     ],
   },
+
   transpilePackages: [
     '@mui/material',
     '@mui/icons-material',
     '@mui/x-date-pickers',
   ],
+
   experimental: {
     optimizePackageImports: [
       '@mui/material',
@@ -30,6 +38,26 @@ const nextConfig = {
       '@mui/x-date-pickers',
     ],
   },
+
+  async redirects() {
+    return [
+      // Redirect root + non-basePath routes to the app mounted under `/commercial/*`
+      // (basePath is disabled for these rules so they apply to incoming raw paths)
+      {
+        source: '/',
+        destination: '/commercial',
+        permanent: false,
+        basePath: false,
+      },
+      {
+        source: '/:path((?!commercial|_next|next|api|favicon\\.ico).+)',
+        destination: '/commercial/:path',
+        permanent: false,
+        basePath: false,
+      },
+    ]
+  },
+
   async headers() {
     return [
       {
