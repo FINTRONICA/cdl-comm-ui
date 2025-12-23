@@ -202,7 +202,7 @@ export default function PaymentBeneficiaryStepperWrapper({
         methods.reset(processedData)
         setShouldResetForm(false)
       } catch (error) {
-        console.error('[PaymentBeneficiaryStepper] Error processing step data:', error)
+        // Don't throw - allow component to continue rendering
       }
     }
   }, [activeStep, stepStatus, paymentBeneficiaryId, setShouldResetForm, dataProcessing, formState.shouldResetForm, methods])
@@ -281,9 +281,7 @@ export default function PaymentBeneficiaryStepperWrapper({
             referenceId: finalPaymentBeneficiaryId,
             referenceType: 'PAYMENT_BENEFICIARY',
             moduleName: 'PAYMENT_BENEFICIARY',
-            actionKey: 'CREATE',
-            amount: 0,
-            currency: 'USD',
+            actionKey: 'APPROVE',
             payloadJson: step1Data as unknown as Record<string, unknown>,
           })
 
@@ -296,7 +294,6 @@ export default function PaymentBeneficiaryStepperWrapper({
           }, 500)
           return
         } catch (error) {
-          console.error('[PaymentBeneficiaryStepper] Error submitting workflow:', error)
           const errorData = error as {
             response?: { data?: { message?: string } }
             message?: string
@@ -375,13 +372,6 @@ export default function PaymentBeneficiaryStepperWrapper({
         return
       }
 
-      console.log('[PaymentBeneficiaryStepper] Saving step:', {
-        step: activeStep + 1,
-        data: stepSpecificData,
-        isEditing: isEditingMode,
-        paymentBeneficiaryId,
-      })
-      
       const saveResponse = await stepManager.saveStep(
         activeStep + 1,
         stepSpecificData,
@@ -437,7 +427,6 @@ export default function PaymentBeneficiaryStepperWrapper({
       
       setIsSaving(false)
     } catch (error: unknown) {
-      console.error('[PaymentBeneficiaryStepper] Error saving step:', error)
       const errorData = error as {
         response?: { data?: { message?: string } }
         message?: string

@@ -7,7 +7,6 @@ import { ExpandableDataTable } from '../../../components/organisms/ExpandableDat
 import { useTableState } from '../../../hooks/useTableState'
 import { GlobalLoading, GlobalError } from '@/components/atoms'
 import { CommentModal } from '@/components/molecules'
-import { Tab } from '../../../types/activities'
 import { RightSlideWorkflowTransactionStatePanel } from '@/components/organisms/RightSlidePanel'
 import { type AwaitingActionsUIData } from '@/services/api/workflowApi/workflowRequestService'
 import { displayValue } from '@/utils/nullHandling'
@@ -17,6 +16,8 @@ import { useAppStore } from '@/store'
 import { useAwaitingActionsUIData } from '@/hooks/workflow/useWorkflowRequest'
 import type { WorkflowRequestFilters } from '@/services/api/workflowApi/workflowRequestService'
 import { useWorkflowRequestLabelsWithCache } from '@/hooks/workflow'
+import { ACTIVITIES_TABS, TAB_TO_MODULE_MAP } from '@/constants/activitiesTabs'
+
 interface WorkflowRequestData
   extends AwaitingActionsUIData,
     Record<string, unknown> {
@@ -32,13 +33,6 @@ interface WorkflowRequestData
   taskStatusName?: string
 }
 
-const tabs: Tab[] = [
-  { id: 'buildPartner', label: 'Build Partner' },
-  { id: 'buildPartnerAsset', label: 'Build Partner Asset' },
-  { id: 'capitalPartner', label: 'Capital Partner' },
-  { id: 'payments', label: 'Payments' },
-  { id: 'suretyBond', label: 'Surety Bond' },
-]
 const statusOptions = [
   'PENDING',
   'APPROVED',
@@ -47,14 +41,6 @@ const statusOptions = [
   'DRAFT',
   'INITIATED',
 ]
-
-const TAB_TO_MODULE_MAP: Record<string, string> = {
-  buildPartner: 'BUILD_PARTNER',
-  buildPartnerAsset: 'BUILD_PARTNER_ASSET',
-  capitalPartner: 'CAPITAL_PARTNER',
-  payments: 'PAYMENTS',
-  suretyBond: 'SURETY_BOND',
-}
 
 const PendingActivitiesPage: React.FC = () => {
   const router = useRouter()
@@ -126,6 +112,7 @@ const PendingActivitiesPage: React.FC = () => {
 
         // Map active tab to the appropriate navigation path
         switch (activeTab) {
+          // Entity tabs
           case 'buildPartner':
             navigationPath = `/build-partner/${id}/step/1?mode=view`
             break
@@ -141,14 +128,73 @@ const PendingActivitiesPage: React.FC = () => {
           case 'payments':
             navigationPath = `/transactions/manual/new/${id}?step=0&mode=view`
             break
+          // Master data tabs - navigate to master list pages
+          case 'accountPurpose':
+            navigationPath = `/master/account-purpose`
+            break
+          case 'agreementSegment':
+            navigationPath = `/master/agreement-segment`
+            break
+          case 'agreementType':
+            navigationPath = `/master/agreement-Type`
+            break
+          case 'agreementSubType':
+            navigationPath = `/master/agreement-Sub-Type`
+            break
+          case 'businessSegment':
+            navigationPath = `/master/business-segment`
+            break
+          case 'businessSubSegment':
+            navigationPath = `/master/business-sub-segment`
+            break
+          case 'currency':
+            navigationPath = `/master/currency`
+            break
+          case 'country':
+            navigationPath = `/master/country`
+            break
+          case 'investment':
+            navigationPath = `/master/investment`
+            break
+          case 'productProgram':
+            navigationPath = `/master/product`
+            break
+          case 'generalLedgerAccount':
+            navigationPath = `/master/general-ledger-account`
+            break
+          // Stepper-based tabs - navigate to stepper list pages
+          case 'account':
+            navigationPath = `/escrow-account`
+            break
+          case 'party':
+            navigationPath = `/master/party`
+            break
+          case 'agreement':
+            navigationPath = `/agreement`
+            break
+          case 'agreementSignatory':
+            navigationPath = `/agreement-signatory`
+            break
+          case 'agreementParameter':
+            navigationPath = `/agreement-parameter`
+            break
+          case 'agreementFeeSchedule':
+            navigationPath = `/agreement-fee-schedule`
+            break
+          case 'paymentBeneficiary':
+            navigationPath = `/payment-beneficiary`
+            break
+          case 'standingInstruction':
+            navigationPath = `/payment-instruction`
+            break
           default:
             return
         }
 
         // Navigate to the appropriate path
         router.push(navigationPath)
-      } catch (error) {
-        console.error(error)
+      } catch {
+        // Error handling is done by router
       }
     },
     [activeTab, router]
@@ -171,7 +217,7 @@ const PendingActivitiesPage: React.FC = () => {
       // Just set the ID and open the panel - the panel will fetch data using the new queue APIs
       setSelectedTxnId(id)
       setIsTxnPanelOpen(true)
-    } catch (error) {
+    } catch {
       const id = row?.id ?? `temp-${index}`
       setSelectedTxnId(id)
       setIsTxnPanelOpen(true)
@@ -182,7 +228,7 @@ const PendingActivitiesPage: React.FC = () => {
     activeTab: string,
     pageType: 'pending' | 'involved'
   ): string => {
-    const tab = tabs.find((t) => t.id === activeTab)
+    const tab = ACTIVITIES_TABS.find((t) => t.id === activeTab)
     const moduleName = tab?.label || 'Unknown Module'
 
     if (pageType === 'pending') {
@@ -327,11 +373,11 @@ const PendingActivitiesPage: React.FC = () => {
     return (
       <TablePageLayout
         title={getDynamicPageTitle(activeTab, 'pending')}
-        tabs={tabs}
+        tabs={ACTIVITIES_TABS}
         activeTab={activeTab}
         onTabChange={handleTabChange}
       >
-        <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
           <GlobalLoading fullHeight />
         </div>
       </TablePageLayout>
@@ -342,11 +388,11 @@ const PendingActivitiesPage: React.FC = () => {
     return (
       <TablePageLayout
         title={getDynamicPageTitle(activeTab, 'pending')}
-        tabs={tabs}
+        tabs={ACTIVITIES_TABS}
         activeTab={activeTab}
         onTabChange={handleTabChange}
       >
-        <div className="bg-white/75 dark:bg-gray-800/80 rounded-2xl flex flex-col h-full">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
           <GlobalError
             error={workflowError}
             onRetry={refetchWorkflow}
@@ -369,7 +415,7 @@ const PendingActivitiesPage: React.FC = () => {
 
       <TablePageLayout
         title={getDynamicPageTitle(activeTab, 'pending')}
-        tabs={tabs}
+        tabs={ACTIVITIES_TABS}
         activeTab={activeTab}
         onTabChange={handleTabChange}
       >
@@ -396,7 +442,7 @@ const PendingActivitiesPage: React.FC = () => {
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
                 There are no workflow requests for the selected tab &ldquo;
-                {tabs.find((tab) => tab.id === activeTab)?.label}&rdquo;.
+                {ACTIVITIES_TABS.find((tab) => tab.id === activeTab)?.label}&rdquo;.
               </p>
             </div>
           </div>

@@ -224,7 +224,7 @@ export default function PaymentInstructionStepperWrapper({
         methods.reset(processedData)
         setShouldResetForm(false)
       } catch (error) {
-        console.error('[PaymentInstructionStepper] Error processing step data:', error)
+        // Don't throw - allow component to continue rendering
       }
     }
   }, [activeStep, stepStatus, paymentInstructionId, setShouldResetForm, dataProcessing, formState.shouldResetForm, methods])
@@ -303,9 +303,7 @@ export default function PaymentInstructionStepperWrapper({
             referenceId: finalPaymentInstructionId,
             referenceType: 'STANDING_INSTRUCTION',
             moduleName: 'STANDING_INSTRUCTION',
-            actionKey: 'CREATE',
-            amount: 0,
-            currency: 'USD',
+            actionKey: 'APPROVE',
             payloadJson: step1Data as unknown as Record<string, unknown>,
           })
 
@@ -318,7 +316,6 @@ export default function PaymentInstructionStepperWrapper({
           }, 500)
           return
         } catch (error) {
-          console.error('[PaymentInstructionStepper] Error submitting workflow:', error)
           const errorData = error as {
             response?: { data?: { message?: string } }
             message?: string
@@ -438,13 +435,6 @@ export default function PaymentInstructionStepperWrapper({
         return
       }
 
-      console.log('[PaymentInstructionStepper] Saving step:', {
-        step: activeStep + 1,
-        data: stepSpecificData,
-        isEditing: isEditingMode,
-        paymentInstructionId,
-      })
-      
       const saveResponse = await stepManager.saveStep(
         activeStep + 1,
         stepSpecificData,
@@ -500,7 +490,6 @@ export default function PaymentInstructionStepperWrapper({
       
       setIsSaving(false)
     } catch (error: unknown) {
-      console.error('[PaymentInstructionStepper] Error saving step:', error)
       const errorData = error as {
         response?: { data?: { message?: string } }
         message?: string

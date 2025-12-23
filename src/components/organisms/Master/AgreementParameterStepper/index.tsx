@@ -226,7 +226,6 @@ export default function AgreementParameterStepperWrapper({
         methods.reset(processedData)
         setShouldResetForm(false)
       } catch (error) {
-        console.error('[AgreementParameterStepper] Error processing step data:', error)
         // Don't throw - allow component to continue rendering
       }
     }
@@ -270,7 +269,6 @@ export default function AgreementParameterStepperWrapper({
           }
           
           const nextUrl = `/agreement-parameter/${agreementParameterId}/step/${nextUrlStep}${modeParam}`
-          console.log('[AgreementParameterStepper] Navigating from Documents to Review:', nextUrl)
           router.push(nextUrl)
           // Update local state to match navigation
           setActiveStep(nextStep)
@@ -316,16 +314,12 @@ export default function AgreementParameterStepperWrapper({
             return
           }
 
-          console.log('[AgreementParameterStepper] Submitting workflow request for agreement parameter:', finalAgreementParameterId)
-
           // Submit workflow request with only step1 data
           await createWorkflowRequest.mutateAsync({
             referenceId: finalAgreementParameterId,
             referenceType: 'AGREEMENT_PARAMETER',
             moduleName: 'AGREEMENT_PARAMETER',
-            actionKey: 'CREATE',
-            amount: 0,
-            currency: 'USD',
+            actionKey: 'APPROVE',
             payloadJson: step1Data as unknown as Record<string, unknown>,
           })
 
@@ -339,7 +333,6 @@ export default function AgreementParameterStepperWrapper({
           }, 500)
           return
         } catch (error) {
-          console.error('[AgreementParameterStepper] Error submitting workflow:', error)
           const errorData = error as {
             response?: { data?: { message?: string } }
             message?: string
@@ -438,8 +431,6 @@ export default function AgreementParameterStepperWrapper({
           escrowAgreementDTO: null,
         }
         
-        console.log('[AgreementParameterStepper] Prepared step1Data for API:', step1Data)
-        
         // Always include enabled and deleted fields
         // For new agreement parameters: enabled=true, deleted=false
         // For editing: enabled=true, deleted=false (maintain existing state)
@@ -454,18 +445,11 @@ export default function AgreementParameterStepperWrapper({
       // Note: activeStep is 0-based (0, 1, 2), but validation expects step numbers (1, 2, 3)
       // For step 0 (Step 1), we validate with step number 1
       const validationStepNumber = activeStep + 1
-      console.log('[AgreementParameterStepper] Validating step:', {
-        activeStep,
-        validationStepNumber,
-        data: stepSpecificData
-      })
       
       const validationResult = await validation.validateStepData(
         validationStepNumber,
         stepSpecificData
       )
-      
-      console.log('[AgreementParameterStepper] Validation result:', validationResult)
 
       if (!validationResult.isValid) {
         const errorPrefix =
@@ -478,13 +462,6 @@ export default function AgreementParameterStepperWrapper({
           ? validationResult.errors
           : ['Please check the form for errors.']
         
-        // Log detailed errors for debugging
-        console.error('[AgreementParameterStepper] Validation errors:', {
-          step: validationStepNumber,
-          errors: errorMessages,
-          data: stepSpecificData
-        })
-        
         const errorMessage = errorMessages.length > 0
           ? `${errorPrefix}: ${errorMessages.join(', ')}`
           : `${errorPrefix}. Please check the form for errors.`
@@ -495,13 +472,6 @@ export default function AgreementParameterStepperWrapper({
       }
 
       // Call the API to save the current step
-      console.log('[AgreementParameterStepper] Saving step:', {
-        step: activeStep + 1,
-        data: stepSpecificData,
-        isEditing: isEditingMode,
-        agreementParameterId,
-      })
-      
       let saveResponse
       try {
         saveResponse = await stepManager.saveStep(
@@ -510,19 +480,15 @@ export default function AgreementParameterStepperWrapper({
           isEditingMode,
           agreementParameterId
         )
-        console.log('[AgreementParameterStepper] Save response received:', saveResponse)
       } catch (apiError: unknown) {
-        console.error('[AgreementParameterStepper] API save error:', apiError)
         const errorMessage = apiError instanceof Error 
           ? apiError.message 
-          : 'Failed to save step. Please check the console for details.'
+          : 'Failed to save step. Please try again.'
         notifications.showError(`Save failed: ${errorMessage}`)
         setIsSaving(false)
         return
       }
 
-      console.log('[AgreementParameterStepper] Save response:', saveResponse)
-      console.log('[AgreementParameterStepper] Save response type:', typeof saveResponse, 'Keys:', saveResponse ? Object.keys(saveResponse) : 'null')
       notifications.showSuccess('Step saved successfully!')
 
       // Navigate to next step
@@ -550,26 +516,20 @@ export default function AgreementParameterStepperWrapper({
             }
           }
 
-          console.log('[AgreementParameterStepper] Extracted agreement parameter ID:', savedAgreementParameterId, 'Full response:', saveResponse)
-
           if (savedAgreementParameterId) {
             // Navigate to Step 2 using the dynamic route with the Agreement Parameter ID from backend
             const nextUrl = `/agreement-parameter/${savedAgreementParameterId}/step/2${getModeParam()}`
-            console.log('[AgreementParameterStepper] Navigating to:', nextUrl)
             router.push(nextUrl)
             // Also update local state to ensure UI is in sync
             setActiveStep(1)
           } else {
-            console.warn('[AgreementParameterStepper] No agreement parameter ID in response, using fallback. Response:', saveResponse)
             // Fallback: try to use existing agreementParameterId if available
             if (agreementParameterId) {
               const nextUrl = `/agreement-parameter/${agreementParameterId}/step/2${getModeParam()}`
-              console.log('[AgreementParameterStepper] Using existing agreementParameterId for navigation:', nextUrl)
               router.push(nextUrl)
               setActiveStep(1)
             } else {
               // Last resort: update local state only
-              console.warn('[AgreementParameterStepper] No agreement parameter ID available, updating local state only')
               setActiveStep((prev: number) => prev + 1)
             }
           }
@@ -577,18 +537,15 @@ export default function AgreementParameterStepperWrapper({
             // For other steps, use the existing Agreement Parameter ID
           const nextStep = activeStep + 1
           const nextUrl = `/agreement-parameter/${agreementParameterId}/step/${nextStep + 1}${getModeParam()}`
-          console.log('[AgreementParameterStepper] Navigating to next step:', nextUrl)
           router.push(nextUrl)
           // Also update local state
           setActiveStep(nextStep)
         } else {
-          console.warn('[AgreementParameterStepper] No agreement parameter ID available, using local state')
           // Fallback to local state if no Agreement Parameter ID
           setActiveStep((prev) => prev + 1)
         }
       } else {
         // If this is the last step, redirect to agreement parameter list
-        console.log('[AgreementParameterStepper] Last step completed, redirecting to list')
         router.push('/agreement-parameter')
         notifications.showSuccess('All steps completed successfully!')
       }
@@ -596,7 +553,6 @@ export default function AgreementParameterStepperWrapper({
       // Ensure setIsSaving is called after navigation
       setIsSaving(false)
     } catch (error: unknown) {
-      console.error('[AgreementParameterStepper] Error saving step:', error)
       const errorData = error as {
         response?: { data?: { message?: string } }
         message?: string

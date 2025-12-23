@@ -225,7 +225,6 @@ export default function AgreementFeeScheduleStepperWrapper({
         methods.reset(processedData)
         setShouldResetForm(false)
       } catch (error) {
-        console.error('[AgreementFeeScheduleStepper] Error processing step data:', error)
         // Don't throw - allow component to continue rendering
       }
     }
@@ -272,7 +271,6 @@ export default function AgreementFeeScheduleStepperWrapper({
           }
           
           const nextUrl = `/agreement-fee-schedule/${finalAgreementFeeScheduleId}/step/${nextUrlStep}${modeParam}`
-          console.log('[AgreementFeeScheduleStepper] Navigating from Documents to Review:', nextUrl)
           router.push(nextUrl)
           // Update local state to match navigation
           setActiveStep(nextStep)
@@ -318,16 +316,12 @@ export default function AgreementFeeScheduleStepperWrapper({
             return
           }
 
-          console.log('[AgreementFeeScheduleStepper] Submitting workflow request for agreement fee schedule:', finalAgreementFeeScheduleId)
-
           // Submit workflow request with only step1 data
           await createWorkflowRequest.mutateAsync({
             referenceId: finalAgreementFeeScheduleId,
             referenceType: 'AGREEMENT_FEE_SCHEDULE',
             moduleName: 'AGREEMENT_FEE_SCHEDULE',
-            actionKey: 'CREATE',
-            amount: 0,
-            currency: 'USD',
+            actionKey: 'APPROVE',
             payloadJson: step1Data as unknown as Record<string, unknown>,
           })
 
@@ -341,7 +335,6 @@ export default function AgreementFeeScheduleStepperWrapper({
           }, 500)
           return
         } catch (error) {
-          console.error('[AgreementFeeScheduleStepper] Error submitting workflow:', error)
           const errorData = error as {
             response?: { data?: { message?: string } }
             message?: string
@@ -461,13 +454,6 @@ export default function AgreementFeeScheduleStepperWrapper({
       }
 
       // Call the API to save the current step
-      console.log('[AgreementFeeScheduleStepper] Saving step:', {
-        step: activeStep + 1,
-        data: stepSpecificData,
-        isEditing: isEditingMode,
-        agreementFeeScheduleId,
-      })
-      
       const saveResponse = await stepManager.saveStep(
         activeStep + 1,
         stepSpecificData,
@@ -475,8 +461,6 @@ export default function AgreementFeeScheduleStepperWrapper({
         agreementFeeScheduleId
       )
 
-      console.log('[AgreementFeeScheduleStepper] Save response:', saveResponse)
-      console.log('[AgreementFeeScheduleStepper] Save response type:', typeof saveResponse, 'Keys:', saveResponse ? Object.keys(saveResponse) : 'null')
       notifications.showSuccess('Step saved successfully!')
 
       // Navigate to next step
@@ -504,26 +488,20 @@ export default function AgreementFeeScheduleStepperWrapper({
             }
           }
 
-          console.log('[AgreementFeeScheduleStepper] Extracted agreement fee schedule ID:', savedAgreementFeeScheduleId, 'Full response:', saveResponse)
-
           if (savedAgreementFeeScheduleId) {
             // Navigate to Step 2 using the dynamic route with the Agreement Fee Schedule ID from backend
             const nextUrl = `/agreement-fee-schedule/${savedAgreementFeeScheduleId}/step/2${getModeParam()}`
-            console.log('[AgreementFeeScheduleStepper] Navigating to:', nextUrl)
             router.push(nextUrl)
             // Also update local state to ensure UI is in sync
             setActiveStep(1)
           } else {
-            console.warn('[AgreementFeeScheduleStepper] No agreement fee schedule ID in response, using fallback. Response:', saveResponse)
             // Fallback: try to use existing agreementFeeScheduleId if available
             if (agreementFeeScheduleId) {
               const nextUrl = `/agreement-fee-schedule/${agreementFeeScheduleId}/step/2${getModeParam()}`
-              console.log('[AgreementFeeScheduleStepper] Using existing agreementFeeScheduleId for navigation:', nextUrl)
               router.push(nextUrl)
               setActiveStep(1)
             } else {
               // Last resort: update local state only
-              console.warn('[AgreementFeeScheduleStepper] No agreement fee schedule ID available, updating local state only')
               setActiveStep((prev: number) => prev + 1)
             }
           }
@@ -531,18 +509,15 @@ export default function AgreementFeeScheduleStepperWrapper({
             // For other steps, use the existing Agreement Fee Schedule ID
           const nextStep = activeStep + 1
           const nextUrl = `/agreement-fee-schedule/${agreementFeeScheduleId}/step/${nextStep + 1}${getModeParam()}`
-          console.log('[AgreementFeeScheduleStepper] Navigating to next step:', nextUrl)
           router.push(nextUrl)
           // Also update local state
           setActiveStep(nextStep)
         } else {
-          console.warn('[AgreementFeeScheduleStepper] No agreement fee schedule ID available, using local state')
           // Fallback to local state if no Agreement Fee Schedule ID
           setActiveStep((prev) => prev + 1)
         }
       } else {
         // If this is the last step, redirect to agreement fee schedule list
-        console.log('[AgreementFeeScheduleStepper] Last step completed, redirecting to list')
         router.push('/agreement-fee-schedule')
         notifications.showSuccess('All steps completed successfully!')
       }
@@ -550,7 +525,6 @@ export default function AgreementFeeScheduleStepperWrapper({
       // Ensure setIsSaving is called after navigation
       setIsSaving(false)
     } catch (error: unknown) {
-      console.error('[AgreementFeeScheduleStepper] Error saving step:', error)
       const errorData = error as {
         response?: { data?: { message?: string } }
         message?: string
