@@ -102,21 +102,21 @@ const InvolvedActivitiesPage: React.FC = () => {
 
         switch (activeTab) {
           // Entity tabs
-          case 'buildPartner':
-            navigationPath = `/build-partner/${id}/step/1?mode=view`
-            break
-          case 'buildPartnerAsset':
-            navigationPath = `/build-partner-assets/${id}?view=true`
-            break
-          case 'capitalPartner':
-            navigationPath = `/capital-partner/${id}?mode=view`
-            break
-          case 'suretyBond':
-            navigationPath = `/surety_bond/new/${id}?step=0&mode=view`
-            break
-          case 'payments':
-            navigationPath = `/transactions/manual/new/${id}?step=0&mode=view`
-            break
+          // case 'buildPartner':
+          //   navigationPath = `/build-partner/${id}/step/1?mode=view`
+          //   break
+          // case 'buildPartnerAsset':
+          //   navigationPath = `/build-partner-assets/${id}?view=true`
+          //   break
+          // case 'capitalPartner':
+          //   navigationPath = `/capital-partner/${id}?mode=view`
+          //   break
+          // case 'suretyBond':
+          //   navigationPath = `/surety_bond/new/${id}?step=0&mode=view`
+          //   break
+          // case 'payments':
+          //   navigationPath = `/transactions/manual/new/${id}?step=0&mode=view`
+          //   break
           // Master data tabs - navigate to master list pages
           case 'accountPurpose':
             navigationPath = `/master/account-purpose`

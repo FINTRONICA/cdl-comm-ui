@@ -1,166 +1,100 @@
-export const WORKFLOW_ACTION_LABELS = {
+export const WORKFLOW_LABELS = {
+  // WORKFLOW ACTION LABELS
+  'CDL_WA_ID': 'ID',
   'CDL_WA_ACTION_KEY': 'Action Key',
   'CDL_WA_ACTION_NAME': 'Action Name',
   'CDL_WA_MODULE_CODE': 'Module Code',
   'CDL_WA_DESCRIPTION': 'Description',
   'CDL_WA_NAME': 'Display Name',
   'CDL_WA_ACTIONS': 'Actions',
-}
-
-export const WORKFLOW_DEFINITION_LABELS = {
+  'CDL_WA_WORKFLOW_ACTION': 'Workflow Action',
+  
+  // WORKFLOW DEFINITION LABELS
   'CDL_WD_ID': 'ID',
   'CDL_WD_NAME': 'Name',
   'CDL_WD_VERSION': 'Version',
-  'CDL_WD_MODULE': 'Module',
-  'CDL_WD_ACTION': 'Action',
-  'CDL_WD_MODULE_DESCRIPTION': 'Module Description',
-  'CDL_WD_ACTION_DESCRIPTION': 'Action Description',
-  'CDL_WD_MODULE_CODE': 'Module Code',
-  'CDL_WD_ACTION_CODE': 'Action Code',
-  'CDL_WD_AMOUNT_BASED': 'Amount Based',
-  'CDL_WD_ACTIVE': 'Active',
-  'CDL_WD_STATUS': 'Status',
   'CDL_WD_CREATED_BY': 'Created By',
   'CDL_WD_CREATED_AT': 'Created At',
-  'CDL_WD_APPLICATION_MODULE_ID': 'Application Module',
-  'CDL_WD_WORKFLOW_ACTION_ID': 'Workflow Action',
+  'CDL_WD_UPDATED_BY': 'Updated By',
+  'CDL_WD_UPDATED_AT': 'Updated At',
+  'CDL_WD_MODULE_CODE': 'Module Code',
+  'CDL_WD_AMOUNT_BASED': 'Amount Based',
+  'CDL_WD_MODULE_CODE': 'Module Name',
+  'CDL_WD_ACTION_CODE': 'Action Name',
+  'CDL_WD_APPLICATION_MODULE_DTO': 'Application Module ',
+  'CDL_WD_WORKFLOW_ACTION_DTO': 'Workflow Action ',
   'CDL_WD_STAGE_TEMPLATES': 'Stage Templates',
   'CDL_WD_AMOUNT_RULES': 'Amount Rules',
-  'CDL_WD_STAGE_TEMPLATE_IDS': 'Stage Template IDs',
-  'CDL_WD_AMOUNT_RULE_IDS': 'Amount Rule IDs',
-  'CDL_WD_DETAILS': 'Details',
-  'CDL_WD_ACTIONS': 'Actions',
-}
+  'CDL_WD_STAGE_TEMPLATE_IDS': 'Stage Template ',
+  'CDL_WD_AMOUNT_RULE_IDS': 'Amount Rule ',
+  'CDL_WD_WORKFLOW_DEFINITION': 'Workflow Definition',
 
-export const APPLICATION_MODULE_LABELS = {
-  'CDL_AM_ID': 'ID',
-  'CDL_AM_MODULE_NAME': 'Module Name',
-  'CDL_AM_MODULE_CODE': 'Module Code',
-  'CDL_AM_MODULE_DESCRIPTION': 'Module Description',
-  'CDL_AM_ACTIVE': 'Active',
-}
-
-export const STAGE_TEMPLATE_LABELS = {
-  'CDL_ST_ID': 'ID',
-  'CDL_ST_ORDER': 'Stage Order',
-  'CDL_ST_KEY': 'Stage Key',
-  'CDL_ST_GROUP': 'Keycloak Group',
-  'CDL_ST_REQUIRED_APPROVALS': 'Required Approvals',
-  'CDL_ST_NAME': 'Stage Name',
-  'CDL_ST_DESCRIPTION': 'Description',
-  'CDL_ST_SLA_HOURS': 'SLA Hours',
-  'CDL_ST_WORKFLOW_DEFINITION': 'Workflow Definition',
-  'CDL_ST_WORKFLOW_DEFINITION_DTO': 'Workflow Definition DTO',
-  'CDL_ST_WORKFLOW_DEFINITION_ID': 'Workflow Definition ID',
-  'CDL_ST_WORKFLOW_DEFINITION_NAME': 'Workflow Definition Name',
-  'CDL_ST_WORKFLOW_DEFINITION_VERSION': 'Workflow Definition Version',
-  'CDL_ST_WORKFLOW_DEFINITION_CREATED_BY': 'Workflow Definition Created By',
-  'CDL_ST_WORKFLOW_DEFINITION_CREATED_AT': 'Workflow Definition Created At',
-  'CDL_ST_WORKFLOW_DEFINITION_AMOUNT_BASED': 'Workflow Definition Amount Based',
-  'CDL_ST_WORKFLOW_DEFINITION_MODULE_CODE': 'Workflow Definition Module Code',
-  'CDL_ST_WORKFLOW_DEFINITION_ACTION_CODE': 'Workflow Definition Action Code',
-  'CDL_ST_WORKFLOW_DEFINITION_APPLICATION_MODULE_DTO':
-    'Workflow Definition Application Module DTO',
-  'CDL_ST_WORKFLOW_DEFINITION_WORKFLOW_ACTION_DTO':
-    'Workflow Definition Workflow Action DTO',
-  'CDL_ST_WORKFLOW_DEFINITION_STAGE_TEMPLATES':
-    'Workflow Definition Stage Templates',
-  'CDL_ST_WORKFLOW_DEFINITION_AMOUNT_RULES': 'Workflow Definition Amount Rules',
-  'CDL_ST_WORKFLOW_DEFINITION_ACTIVE': 'Workflow Definition Active',
-  'CDL_ST_STATUS': 'Status',
-  'CDL_ST_CREATED_BY': 'Created By',
-  'CDL_ST_CREATED_AT': 'Created At',
-  'CDL_ST_ACTIONS': 'Actions',
-  'CDL_ST_DETAILS': 'Details',
-}
-
-export const WORKFLOW_AMOUNT_RULE_LABELS = {
+  //  Workflow Stage Template Labels
+  'CDL_WST_ID': 'ID',
+  'CDL_WST_ORDER': 'Stage Order',
+  'CDL_WST_KEY': 'Stage Key',
+  'CDL_WST_GROUP': 'Keycloak Group',
+  'CDL_WST_REQUIRED_APPROVALS': 'Required Approvals',
+  'CDL_WST_NAME': 'Stage Name',
+  'CDL_WST_DESCRIPTION': 'Description',
+  'CDL_WST_SLA_HOURS': 'SLA Hours',
+  'CDL_WST_WORKFLOW_DEFINITION_DTO': 'Workflow Definition',
+  'CDL_WST_CREATED_BY': 'Created By',
+  'CDL_WST_CREATED_AT': 'Created At',
+  'CDL_WST_UPDATED_BY': 'Updated By',
+  'CDL_WST_UPDATED_AT': 'Updated At',
+  'CDL_WST_WORKFLOW_STAGE_TEMPLATE': 'Workflow Stage Template',
+  
+  // Workflow Amount Rule
   'CDL_WAR_ID': 'ID',
   'CDL_WAR_CURRENCY': 'Currency',
   'CDL_WAR_MIN_AMOUNT': 'Min Amount',
   'CDL_WAR_MAX_AMOUNT': 'Max Amount',
   'CDL_WAR_PRIORITY': 'Priority',
-  'CDL_WAR_REQUIRED_MAKERS': 'Required Makers',
-  'CDL_WAR_REQUIRED_CHECKERS': 'Required Checkers',
-  'CDL_WAR_WORKFLOW_DEFINITION': 'Workflow Definition',
-  'CDL_WAR_STAGE_OVERRIDES': 'Stage Overrides',
+  'CDL_WAR_REQUIRED_MAKERS': ' Makers',
+  'CDL_WAR_REQUIRED_CHECKERS': ' Checkers',
+  'CDL_WAR_WORKFLOW_DEFINITION_DTO': 'Workflow Definition',
   'CDL_WAR_WORKFLOW_ID': 'Workflow ID',
-  'CDL_WAR_ACTIONS': 'Actions',
-  'CDL_WAR_ACTIVE': 'Active',
-}
-
-export const WORKFLOW_AMOUNT_STAGE_OVERRIDE_LABELS = {
+  'CDL_WAR_AMOUNT_RULE_NAME': 'Amount Rule Name', 
+  'CDL_WAR_WORKFLOW_AMOUNT_STAGE_OVERRIDE_DTO': 'Workflow Amount Stage Override ',
+  'CDL_WAR_WORKFLOW_AMOUNT_RULE': 'Workflow Amount Rule',
+  
+  // Workflow Amount Stage Override
   'CDL_WASO_ID': 'ID',
   'CDL_WASO_STAGE_ORDER': 'Stage Order',
   'CDL_WASO_REQUIRED_APPROVALS': 'Required Approvals',
   'CDL_WASO_KEYCLOAK_GROUP': 'Keycloak Group',
   'CDL_WASO_STAGE_KEY': 'Stage Key',
-  'CDL_WASO_ACTIVE': 'Active',
-  'CDL_WAR_WORKFLOW_AMOUNT_RULE': 'Workflow Amount Rule',
-  'CDL_WAR_WORKFLOW_ACTIONS': 'Actions',
+  'CDL_WASO_WORKFLOW_AMOUNT_RULE_DTO': 'Workflow Amount Rule',
+  'CDL_WASO_WORKFLOW_AMOUNT_STAGE_OVERRIDE_DTOS': 'Workflow Amount Stage Override ',
+  'CDL_WASO_WORKFLOW_AMOUNT_STAGE_OVERRIDE': 'Workflow Amount Stage Override',
+
+  // Common UI labels
+  'CDL_COMMON_ACTION': 'Action',
+  'CDL_COMMON_ACTIONS': 'Actions',
+  'CDL_COMMON_RETRY': 'Retry',
+  'CDL_COMMON_ACTIVE': 'Active',
+  'CDL_COMMON_CANCEL': 'Cancel',
+  'CDL_COMMON_STATUS': 'Status',
+  'CDL_COMMON_ADD': 'Add',
+  'CDL_COMMON_UPDATE': 'Update',
+  'CDL_COMMON_ADDING': 'Adding...',
+  'CDL_COMMON_UPDATING': 'Updating...',
+  'CDL_COMMON_LOADING': 'Loading...',
+  'CDL_COMMON_VALIDATE_ACCOUNT': 'Validate Account',
+  'CDL_COMMON_VALIDATE_BIC': 'Validate BIC',
+  'CDL_COMMON_REQUIRED_FIELDS_PREFIX': 'Please fill in the required fields:',
+  'CDL_COMMON_DROPDOWNS_LOAD_FAILED': 'Failed to load dropdown options. Please refresh the page.',
+  'CDL_COMMON_SUBMIT_WAIT': 'Please wait for dropdown options to load before submitting.',
+  'CDL_COMMON_DETAILS': 'Details',
+  
 }
 
-export const WORKFLOW_REQUEST_LABELS = {
-  'ID': 'ID',
-  'REQUEST_ID': 'Request ID',
-  'STAGE_ID': 'Stage ID',
-  'REFERENCE_ID': 'Reference ID',
-  'REFERENCE_TYPE': 'Reference Type',
-  'MODULE_NAME': 'Module Name',
-  'ACTION_KEY': 'Action Key',
-  'AMOUNT': 'Amount',
-  'CURRENCY': 'Currency',
-  'PAYLOAD_JSON': 'Payload',
-  'STAGE_ORDER': 'Stage Order',
-  'STAGE_KEY': 'Stage Key',
-  'STAGE_NAME': 'Stage Name',
-  'STAGE_STATUS': 'Stage Status',
-  'MY_DECISION': 'My Decision',
-  'MY_REMARKS': 'My Remarks',
-  'MY_ACTION_DATE': 'My Action Date',
-  'REQUEST_STATUS': 'Request Status',
-  'CURRENT_STAGE_ORDER': 'Current Stage Order',
-  'CREATED_BY': 'Created By',
-  'CREATED_AT': 'Created At',
-  'LAST_UPDATED_AT': 'Last Updated At',
-  'VERSION': 'Version',
-  'TASK_STATUS_DTO': ' Status',
-  'STATUS': 'Status',
-  'ACTIONS': 'Actions',
-  'STAGE_STATUS': ' Status',
-  'MY_REMARKS': 'My Remarks',
-  'STAGE_NAME': 'Stage Name',
-  'MY_DECISION': 'My Decision',
-  'MY_ACTION_DATE': 'My Action Date',
-  'REQUEST_STATUS': 'Request Status',
-  'CURRENT_STAGE_ORDER': 'Current Stage Order',
-  'CREATED_BY': 'Created By',
-  'CREATED_AT': 'Created At',
-  'LAST_UPDATED_AT': 'Last Updated At',
-  'VERSION': 'Version',
-  'TASK_STATUS_DTO': ' Status',
-  'STATUS': 'Status',
-  'ACTIONS': 'Actions',
-  'STAGE_STATUS': ' Status',
-  'MY_REMARKS': 'My Remarks',
-  'STAGE_NAME': 'Stage Name',
-  'MY_DECISION': 'My Decision',
-  'BP_NAME': 'Build Partner Name',
-  'BP_CIFRERA': 'CIFRERA No',
-
-}
-
+// Utility function to get label by configId
 export const getLabelByConfigId = (configId) => {
-  return (
-    WORKFLOW_ACTION_LABELS[configId] ||
-    WORKFLOW_DEFINITION_LABELS[configId] ||
-    STAGE_TEMPLATE_LABELS[configId] ||
-    WORKFLOW_AMOUNT_RULE_LABELS[configId] ||
-    WORKFLOW_AMOUNT_STAGE_OVERRIDE_LABELS[configId] ||
-    APPLICATION_MODULE_LABELS[configId] ||
-    WORKFLOW_REQUEST_LABELS[configId] ||
-    configId
-  )
+  return WORKFLOW_LABELS[configId] || configId
 }
 
-export const getWorkflowLabels = (configId) => getLabelByConfigId(configId)
+export const getWorkflowLabelsByCategory = (category) => {
+  return WORKFLOW_LABELS[category] || category
+}

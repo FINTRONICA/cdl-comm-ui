@@ -15,7 +15,6 @@ import {
   WorkflowStageTemplateLabelsService,
   type ProcessedWorkflowStageTemplateLabels,
 } from '@/services/api/workflowApi/workflowStageTemplateLabelsService'
-import { toast } from 'react-hot-toast'
 
 export const WORKFLOW_STAGE_TEMPLATES_QUERY_KEY = 'workflowStageTemplates'
 
@@ -25,7 +24,6 @@ export function useWorkflowStageTemplates(
   filters?: WorkflowStageTemplateFilters
 ) {
   const filtersKey = JSON.stringify(filters ?? {})
-
   return useQuery({
     queryKey: [
       WORKFLOW_STAGE_TEMPLATES_QUERY_KEY,
@@ -54,7 +52,6 @@ export function useFindAllWorkflowStageTemplates(
   filters?: WorkflowStageTemplateFilters
 ) {
   const filtersKey = JSON.stringify(filters ?? {})
-
   return useQuery({
     queryKey: [
       WORKFLOW_STAGE_TEMPLATES_QUERY_KEY,
@@ -118,7 +115,6 @@ export function useWorkflowStageTemplate(id: string) {
 
 export function useCreateWorkflowStageTemplate() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (data: CreateWorkflowStageTemplateRequest) => {
       const result =
@@ -130,16 +126,12 @@ export function useCreateWorkflowStageTemplate() {
         queryKey: [WORKFLOW_STAGE_TEMPLATES_QUERY_KEY],
       })
     },
-    onError: (error) => {
-      toast.error(`${error}`)
-    },
     retry: 2,
   })
 }
 
 export function useUpdateWorkflowStageTemplate() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async ({
       id,
@@ -163,16 +155,13 @@ export function useUpdateWorkflowStageTemplate() {
         queryKey: [WORKFLOW_STAGE_TEMPLATES_QUERY_KEY, 'detail', variables.id],
       })
     },
-    onError: (error) => {
-      toast.error(`${error}`)
-    },
+
     retry: 2,
   })
 }
 
 export function useDeleteWorkflowStageTemplate() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (id: string) => {
       const result =
@@ -180,26 +169,20 @@ export function useDeleteWorkflowStageTemplate() {
       return result
     },
     onSuccess: (_, deletedId) => {
-     
-
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_STAGE_TEMPLATES_QUERY_KEY],
       })
-
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_STAGE_TEMPLATES_QUERY_KEY, 'list'],
       })
     },
-    onError: (error) => {
-      toast.error(`${error}`)
-    },
+
     retry: false,
   })
 }
 
 export function useWorkflowStageTemplateLabels() {
   const { isAuthenticated } = useIsAuthenticated()
-
   return useQuery({
     queryKey: ['workflowStageTemplateLabels'],
     queryFn: async (): Promise<ProcessedWorkflowStageTemplateLabels> => {
@@ -215,7 +198,6 @@ export function useWorkflowStageTemplateLabels() {
 
 export function useWorkflowStageTemplateLabelsWithUtils() {
   const query = useWorkflowStageTemplateLabels()
-
   return {
     ...query,
     hasLabels: () =>
@@ -238,7 +220,6 @@ export function useWorkflowStageTemplateLabelsWithUtils() {
 
 export function useRefreshWorkflowStageTemplates() {
   const queryClient = useQueryClient()
-
   return () => {
     queryClient.invalidateQueries({
       queryKey: [WORKFLOW_STAGE_TEMPLATES_QUERY_KEY],
@@ -290,7 +271,6 @@ export function useWorkflowStageTemplateForm() {
   const workflowDefinitions = useWorkflowDefinitions()
   const create = useCreateWorkflowStageTemplate()
   const update = useUpdateWorkflowStageTemplate()
-
   // Transform data for dropdowns
   const workflowDefinitionOptions =
     workflowDefinitions.data?.content?.map((def) => ({
@@ -302,7 +282,6 @@ export function useWorkflowStageTemplateForm() {
       moduleCode: def.moduleCode,
       actionCode: def.actionCode,
     })) || []
-
   const createStageTemplate = useCallback(
     (formData: {
       stageOrder: number
@@ -330,7 +309,6 @@ export function useWorkflowStageTemplateForm() {
     },
     [create]
   )
-
   const updateStageTemplate = useCallback(
     (
       id: string,
@@ -367,28 +345,20 @@ export function useWorkflowStageTemplateForm() {
     },
     [update]
   )
-
   return {
     workflowDefinitions,
-
     workflowDefinitionOptions,
-
     createStageTemplate,
     updateStageTemplate,
-
     isLoading: workflowDefinitions.isLoading,
     isSubmitting: create.isPending || update.isPending,
-
     errors: {
       workflowDefinitions: workflowDefinitions.error,
       create: create.error,
       update: update.error,
     },
-
     getWorkflowDefinitionById: (id: number | string) =>
-      workflowDefinitions.data?.content?.find(
-        (def) => def.id === id
-      ),
+      workflowDefinitions.data?.content?.find((def) => def.id === id),
   }
 }
 

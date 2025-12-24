@@ -5,8 +5,6 @@ import {
   API_ENDPOINTS,
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
-import { toast } from 'react-hot-toast'
-
 export interface WorkflowStageTemplate {
   id: number
   stageOrder: number
@@ -25,7 +23,6 @@ export interface WorkflowStageTemplate {
   updatedBy?: string
   updatedAt?: string
 }
-
 export interface CreateWorkflowStageTemplateRequest {
   stageOrder: number
   stageKey: string
@@ -37,7 +34,6 @@ export interface CreateWorkflowStageTemplateRequest {
   workflowDefinitionDTO: string
   createdBy?: string
 }
-
 export interface UpdateWorkflowStageTemplateRequest {
   id?: string
   stageOrder?: number
@@ -49,21 +45,18 @@ export interface UpdateWorkflowStageTemplateRequest {
   slaHours?: number
   workflowDefinitionDTO?: string
   workflowDefinitionId?: string
-
   workflowDefinitionName?: string
   workflowDefinitionVersion?: number
   status?: string
   createdBy?: string
   updatedBy?: string
 }
-
 export interface WorkflowStageTemplateFilters {
   name?: string
   stageKey?: string
   keycloakGroup?: string
   description?: string
 }
-
 export interface WorkflowDefinitionDTO {
   id: number
   name: string
@@ -75,30 +68,45 @@ export interface WorkflowDefinitionDTO {
   actionCode: string
   applicationModuleDTO: {
     id: number
-    name: string
-    code: string
+    moduleName?: string
+    name?: string
+    moduleCode?: string
+    code?: string
+    moduleDescription?: string
+    description?: string
+    deleted?: boolean
+    enabled?: boolean
+    active?: boolean
     [key: string]: unknown
   }
   workflowActionDTO: {
     id: number
-    name: string
-    code: string
+    actionKey?: string
+    actionName?: string
+    name?: string
+    moduleCode?: string
+    code?: string
+    description?: string
+    enabled?: boolean
+    deleted?: boolean
     [key: string]: unknown
   }
-  stageTemplates: Array<{
+  stageTemplates?: Array<{
     id: number
     name: string
     stageKey: string
     [key: string]: unknown
-  }>
-  amountRules: Array<{
+  }> | string[]
+  amountRules?: Array<{
     id: number
-    ruleName: string
+    ruleName?: string
+    amountRuleName?: string
     [key: string]: unknown
-  }>
-  active: boolean
+  }> | string[]
+  enabled?: boolean
+  deleted?: boolean
+  active?: boolean
 }
-
 export interface WorkflowStageTemplateResponse {
   id: number
   stageOrder: number
@@ -115,55 +123,82 @@ export interface WorkflowStageTemplateResponse {
 export const mapWorkflowStageTemplateData = (
   apiData: WorkflowStageTemplateResponse
 ): WorkflowStageTemplate => {
-  const formatValue = (
-    value: string | number | null | undefined
-  ): string | number => {
-    if (value === null || value === undefined) {
-      return '-'
+  const getWorkflowDefinitionDTO = (
+    workflowDefinitionDTO: string | WorkflowDefinitionDTO | null | undefined
+  ): string => {
+    if (!workflowDefinitionDTO) {
+      return ''
     }
-    if (
-      typeof value === 'string' &&
-      (value === 'N/A' ||
-        value === 'null' ||
-        value === 'undefined' ||
-        value.trim() === '')
+    if (typeof workflowDefinitionDTO === 'string') {
+      const trimmed = workflowDefinitionDTO.trim()
+      return trimmed === '' || trimmed === '-' || trimmed === 'null' || trimmed === 'undefined' ? '' : trimmed
+    } else if (
+      typeof workflowDefinitionDTO === 'object' &&
+      workflowDefinitionDTO.id !== undefined &&
+      workflowDefinitionDTO.id !== null
     ) {
-      return '-'
+      return String(workflowDefinitionDTO.id)
     }
-    return value
+    return ''
   }
 
-  const getWorkflowDefinitionDTO = (
-    workflowDefinitionDTO: string | WorkflowDefinitionDTO
-  ): string => {
-    if (typeof workflowDefinitionDTO === 'string') {
-      return formatValue(workflowDefinitionDTO) as string
-    } else if (
-      workflowDefinitionDTO &&
-      typeof workflowDefinitionDTO === 'object' &&
-      workflowDefinitionDTO.id
-    ) {
-      return workflowDefinitionDTO.id.toString()
-    }
-    return '-'
-  }
+  const deleted = (apiData as any).deleted === true
+  const activeDefined = (apiData as any).active !== undefined
+  const enabledDefined = (apiData as any).enabled !== undefined
+  const active = activeDefined ? (apiData as any).active : undefined
+  const enabled = enabledDefined
+    ? (apiData as any).enabled
+    : (activeDefined ? active : !deleted)
+  const createdBy = (apiData as any).createdBy ?? ''
+  const createdAt = (apiData as any).createdAt ?? ''
+  const updatedBy = (apiData as any).updatedBy ?? ''
+  const updatedAt = (apiData as any).updatedAt ?? ''
 
   return {
-    id: apiData.id,
-    stageOrder: apiData.stageOrder,
-    stageKey: formatValue(apiData.stageKey) as string,
-    keycloakGroup: formatValue(apiData.keycloakGroup) as string,
-    requiredApprovals: apiData.requiredApprovals,
-    name: formatValue(apiData.name) as string,
-    description: formatValue(apiData.description) as string,
-    slaHours: apiData.slaHours,
+    id: apiData.id ?? 0,
+    stageOrder: apiData.stageOrder ?? 0,
+    stageKey: apiData.stageKey && apiData.stageKey.trim() !== '' ? apiData.stageKey : '',
+    keycloakGroup: apiData.keycloakGroup && apiData.keycloakGroup.trim() !== '' ? apiData.keycloakGroup : '',
+    requiredApprovals: apiData.requiredApprovals ?? 0,
+    name: apiData.name && apiData.name.trim() !== '' ? apiData.name.trim() : '',
+    description: apiData.description && apiData.description.trim() !== '' ? apiData.description.trim() : '',
+    slaHours: apiData.slaHours ?? 0,
     workflowDefinitionDTO: getWorkflowDefinitionDTO(
       apiData.workflowDefinitionDTO
     ),
+    workflowDefinitionName: (() => {
+      if (apiData.workflowDefinitionDTO && typeof apiData.workflowDefinitionDTO === 'object') {
+        const wfDef = apiData.workflowDefinitionDTO as WorkflowDefinitionDTO
+        const name = wfDef.name || (wfDef as any).workflowDefinitionName
+        if (name && typeof name === 'string' && name.trim() !== '') {
+          return name.trim()
+        }
+      }
+      return ''
+    })(),
+    workflowDefinitionVersion: (() => {
+      if (apiData.workflowDefinitionDTO && typeof apiData.workflowDefinitionDTO === 'object') {
+        const wfDef = apiData.workflowDefinitionDTO as WorkflowDefinitionDTO
+        const version = wfDef.version ?? (wfDef as any).workflowDefinitionVersion ?? 0
+        return typeof version === 'number' ? version : 0
+      }
+      return 0
+    })(),
+    status: (() => {
+      if (deleted) return 'Deleted'
+      if (enabled === false) return 'Inactive'
+      if (enabled === true) return 'Active'
+      if (active === false) return 'Inactive'
+      return 'Active'
+    })(),
+    createdBy: createdBy && createdBy.trim() !== '' ? createdBy.trim() : '',
+    createdAt: createdAt && createdAt.trim() !== '' ? createdAt.trim() : '',
+    updatedBy: updatedBy && updatedBy.trim() !== '' ? updatedBy.trim() : '',
+    updatedAt: updatedAt && updatedAt.trim() !== '' ? updatedAt.trim() : '',
   }
 }
-
 export class WorkflowStageTemplateService {
+
   async getWorkflowStageTemplates(
     page = 0,
     size = 20,
@@ -181,13 +216,23 @@ export class WorkflowStageTemplateService {
     const queryString = new URLSearchParams(params).toString()
     const url = `${buildApiUrl(API_ENDPOINTS.WORKFLOW_STAGE_TEMPLATE.FIND_ALL)}?${queryString}`
     try {
-      const result =
-        await apiClient.get<PaginatedResponse<WorkflowStageTemplateResponse>>(
-          url
-        )
-      return result
+      const result = await apiClient.get<
+        PaginatedResponse<WorkflowStageTemplateResponse> | WorkflowStageTemplateResponse[]
+      >(url)
+      // Handle both array response and paginated response
+      if (Array.isArray(result)) {
+        return {
+          content: result,
+          page: {
+            size: result.length,
+            number: page,
+            totalElements: result.length,
+            totalPages: 1,
+          },
+        }
+      }
+      return result as PaginatedResponse<WorkflowStageTemplateResponse>
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -201,7 +246,6 @@ export class WorkflowStageTemplateService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -215,7 +259,6 @@ export class WorkflowStageTemplateService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -232,7 +275,6 @@ export class WorkflowStageTemplateService {
               .workflowDefinitionDTO === 'string'
             ? (data as { workflowDefinitionDTO?: string }).workflowDefinitionDTO
             : undefined
-
       const payload = {
         stageOrder: data.stageOrder,
         stageKey: data.stageKey,
@@ -246,14 +288,12 @@ export class WorkflowStageTemplateService {
           ? { workflowDefinitionDTO: { id: workflowDefinitionId } }
           : {}),
       }
-
       const result = await apiClient.post<WorkflowStageTemplateResponse>(
         buildApiUrl(API_ENDPOINTS.WORKFLOW_STAGE_TEMPLATE.SAVE),
         payload
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -298,7 +338,6 @@ export class WorkflowStageTemplateService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -308,7 +347,6 @@ export class WorkflowStageTemplateService {
     try {
       await apiClient.delete<void>(url)
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }

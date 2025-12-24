@@ -155,4 +155,38 @@ export const getWorkflowActionValidationRules = () => {
   };
 };
 
+// Data sanitization functions
+export const sanitizeWorkflowActionData = (data: {
+  actionKey?: string | number | null | undefined
+  actionName?: string | number | null | undefined
+  moduleCode?: string | number | null | undefined
+  name?: string | number | null | undefined
+  description?: string | number | null | undefined
+}): {
+  actionKey: string
+  actionName: string
+  moduleCode: string
+  name: string
+  description: string
+} => {
+  return {
+    actionKey: data.actionKey?.toString().trim() || '',
+    actionName: data.actionName?.toString().trim().replace(/\s+/g, ' ') || '', // Normalize whitespace
+    moduleCode: data.moduleCode?.toString().trim() || '',
+    name: data.name?.toString().trim().replace(/\s+/g, ' ') || '', // Normalize whitespace
+    description: data.description?.toString().trim() || '',
+  };
+};
+
+// Validation with sanitization
+export const validateAndSanitizeWorkflowActionData = (data: {
+  actionKey?: string | number | null | undefined
+  actionName?: string | number | null | undefined
+  moduleCode?: string | number | null | undefined
+  name?: string | number | null | undefined
+  description?: string | number | null | undefined
+}): z.infer<typeof WorkflowActionSchemas.workflowActionForm> => {
+  const sanitizedData = sanitizeWorkflowActionData(data);
+  return WorkflowActionSchemas.workflowActionForm.parse(sanitizedData);
+};
 

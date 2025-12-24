@@ -35,12 +35,12 @@ export const WorkflowAmountRuleSchemas = {
     
     requiredMakers: z.number()
       .int('Required makers must be a whole number')
-      .min(1, 'Required makers must be greater than 1')
+      .min(1, 'Required makers must be at least 1')
       .max(10, 'Required makers must be 10 or less'),
     
     requiredCheckers: z.number()
       .int('Required checkers must be a whole number')
-      .min(1, 'Required checkers must be greater than 1')
+      .min(1, 'Required checkers must be at least 1')
       .max(10, 'Required checkers must be 10 or less'),
     
     workflowDefinitionId: z.number()
@@ -100,12 +100,12 @@ export const WorkflowAmountRuleSchemas = {
     
     requiredMakers: z.number()
       .int('Required makers must be a whole number')
-      .min(1, 'Required makers must be greater than 1')
+      .min(1, 'Required makers must be at least 1')
       .max(10, 'Required makers must be 10 or less'),
     
     requiredCheckers: z.number()
       .int('Required checkers must be a whole number')
-      .min(1, 'Required checkers must be greater than 1')
+      .min(1, 'Required checkers must be at least 1')
       .max(10, 'Required checkers must be 10 or less'),
     
     workflowDefinitionId: z.number()
@@ -153,12 +153,12 @@ export const WorkflowAmountRuleSchemas = {
     
     requiredMakers: z.number()
       .int('Required makers must be a whole number')
-      .min(1, 'Required makers must be greater than 1')
+      .min(1, 'Required makers must be at least 1')
       .max(10, 'Required makers must be 10 or less'),
     
     requiredCheckers: z.number()
       .int('Required checkers must be a whole number')
-      .min(1, 'Required checkers must be greater than 1')
+      .min(1, 'Required checkers must be at least 1')
       .max(10, 'Required checkers must be 10 or less'),
     
     workflowDefinitionName: z.string()
@@ -215,13 +215,18 @@ export const getWorkflowAmountRuleValidationRules = () => {
         message: 'Currency can only contain letters (no numbers or special characters)'
       },
       validate: (value: any) => {
-        if (!value || value.trim() === '') {
+        // Check for empty/null/undefined
+        if (!value || value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
           return 'Currency is required';
         }
-        if (!/^[A-Za-z]+$/.test(value)) {
+        const strValue = String(value).trim();
+        if (strValue.length === 0) {
+          return 'Currency is required';
+        }
+        if (!/^[A-Za-z]+$/.test(strValue)) {
           return 'Currency can only contain letters (no numbers or special characters)';
         }
-        if (value.length > 10) {
+        if (strValue.length > 10) {
           return 'Currency cannot exceed 10 characters';
         }
         return true;
@@ -231,20 +236,26 @@ export const getWorkflowAmountRuleValidationRules = () => {
       required: 'Minimum amount is required',
       valueAsNumber: true,
       validate: (value: any, formValues: any) => {
+        // Check for empty string first (before valueAsNumber conversion)
         if (value === '' || value === null || value === undefined) {
           return 'Minimum amount is required';
         }
-        if (isNaN(value) || !isFinite(value)) {
+        // Convert to number if it's a string
+        const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
+        if (isNaN(numValue) || !isFinite(numValue)) {
           return 'Minimum amount must be a valid number';
         }
-        if (value < 100) {
+        if (numValue < 100) {
           return 'Minimum amount must be at least 100';
         }
-        if (value > 99999999999999999999999999999999999999999) {
+        if (numValue > 99999999999999999999999999999999999999999) {
           return 'Maximum amount exceeded';
         }
-        if (formValues?.maxAmount !== undefined && value > formValues.maxAmount) {
-          return 'Minimum amount must be less than or equal to maximum amount';
+        if (formValues?.maxAmount !== undefined) {
+          const maxValue = typeof formValues.maxAmount === 'string' ? parseFloat(formValues.maxAmount) : Number(formValues.maxAmount);
+          if (!isNaN(maxValue) && isFinite(maxValue) && numValue > maxValue) {
+            return 'Minimum amount must be less than or equal to maximum amount';
+          }
         }
         return true;
       }
@@ -253,20 +264,26 @@ export const getWorkflowAmountRuleValidationRules = () => {
       required: 'Maximum amount is required',
       valueAsNumber: true,
       validate: (value: any, formValues: any) => {
+        // Check for empty string first (before valueAsNumber conversion)
         if (value === '' || value === null || value === undefined) {
           return 'Maximum amount is required';
         }
-        if (isNaN(value) || !isFinite(value)) {
+        // Convert to number if it's a string
+        const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
+        if (isNaN(numValue) || !isFinite(numValue)) {
           return 'Maximum amount must be a valid number';
         }
-        if (value < 100) {
+        if (numValue < 100) {
           return 'Maximum amount must be at least 100';
         }
-        if (value > 99999999999999999999999999999999999999999) {
+        if (numValue > 99999999999999999999999999999999999999999) {
           return 'Maximum amount exceeded';
         }
-        if (formValues?.minAmount !== undefined && value < formValues.minAmount) {
-          return 'Maximum amount must be greater than or equal to minimum amount';
+        if (formValues?.minAmount !== undefined) {
+          const minValue = typeof formValues.minAmount === 'string' ? parseFloat(formValues.minAmount) : Number(formValues.minAmount);
+          if (!isNaN(minValue) && isFinite(minValue) && numValue < minValue) {
+            return 'Maximum amount must be greater than or equal to minimum amount';
+          }
         }
         return true;
       }
@@ -277,13 +294,19 @@ export const getWorkflowAmountRuleValidationRules = () => {
       max: { value: 10, message: 'Priority must be between 1 and 10' },
       valueAsNumber: true,
       validate: (value: any) => {
-        if (isNaN(value) || !Number.isInteger(Number(value))) {
+        // Check for empty string first (before valueAsNumber conversion)
+        if (value === '' || value === null || value === undefined) {
+          return 'Priority is required';
+        }
+        // Convert to number if it's a string
+        const numValue = typeof value === 'string' ? parseInt(value, 10) : Number(value);
+        if (isNaN(numValue) || !Number.isInteger(numValue)) {
           return 'Priority must be a whole number';
         }
-        if (value < 1) {
+        if (numValue < 1) {
           return 'Priority must be at least 1';
         }
-        if (value > 10) {
+        if (numValue > 10) {
           return 'Priority must be between 1 and 10';
         }
         return true;
@@ -291,17 +314,23 @@ export const getWorkflowAmountRuleValidationRules = () => {
     },
     requiredMakers: {
       required: 'Required makers is required',
-      min: { value: 1, message: 'Required makers must be greater than 1' },
+      min: { value: 1, message: 'Required makers must be at least 1' },
       max: { value: 10, message: 'Required makers must be 10 or less' },
       valueAsNumber: true,
       validate: (value: any) => {
-        if (isNaN(value) || !Number.isInteger(Number(value))) {
+        // Check for empty string first (before valueAsNumber conversion)
+        if (value === '' || value === null || value === undefined) {
+          return 'Required makers is required';
+        }
+        // Convert to number if it's a string
+        const numValue = typeof value === 'string' ? parseInt(value, 10) : Number(value);
+        if (isNaN(numValue) || !Number.isInteger(numValue)) {
           return 'Required makers must be a whole number';
         }
-        if (value < 1) {
-          return 'Required makers must be greater than 1';
+        if (numValue < 1) {
+          return 'Required makers must be at least 1';
         }
-        if (value > 10) {
+        if (numValue > 10) {
           return 'Required makers must be 10 or less';
         }
         return true;
@@ -309,17 +338,23 @@ export const getWorkflowAmountRuleValidationRules = () => {
     },
     requiredCheckers: {
       required: 'Required checkers is required',
-      min: { value: 1, message: 'Required checkers must be greater than 1' },
+      min: { value: 1, message: 'Required checkers must be at least 1' },
       max: { value: 10, message: 'Required checkers must be 10 or less' },
       valueAsNumber: true,
       validate: (value: any) => {
-        if (isNaN(value) || !Number.isInteger(Number(value))) {
+        // Check for empty string first (before valueAsNumber conversion)
+        if (value === '' || value === null || value === undefined) {
+          return 'Required checkers is required';
+        }
+        // Convert to number if it's a string
+        const numValue = typeof value === 'string' ? parseInt(value, 10) : Number(value);
+        if (isNaN(numValue) || !Number.isInteger(numValue)) {
           return 'Required checkers must be a whole number';
         }
-        if (value < 1) {
-          return 'Required checkers must be greater than 1';
+        if (numValue < 1) {
+          return 'Required checkers must be at least 1';
         }
-        if (value > 10) {
+        if (numValue > 10) {
           return 'Required checkers must be 10 or less';
         }
         return true;
@@ -328,7 +363,12 @@ export const getWorkflowAmountRuleValidationRules = () => {
     workflowDefinitionName: {
       required: 'Workflow Definition is required',
       validate: (value: any) => {
-        if (!value || value === '' || value === null) {
+        // Check for empty/null/undefined
+        if (!value || value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+          return 'Workflow Definition is required';
+        }
+        const strValue = String(value).trim();
+        if (strValue.length === 0) {
           return 'Workflow Definition is required';
         }
         return true;

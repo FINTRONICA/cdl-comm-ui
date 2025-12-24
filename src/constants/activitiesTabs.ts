@@ -7,11 +7,11 @@ import { Tab } from '@/types/activities'
  */
 export const ACTIVITIES_TABS: Tab[] = [
   // Entity tabs
-  { id: 'buildPartner', label: 'Build Partner' },
-  { id: 'buildPartnerAsset', label: 'Build Partner Asset' },
-  { id: 'capitalPartner', label: 'Capital Partner' },
-  { id: 'payments', label: 'Payments' },
-  { id: 'suretyBond', label: 'Surety Bond' },
+  // { id: 'buildPartner', label: 'Build Partner' },
+  // { id: 'buildPartnerAsset', label: 'Build Partner Asset' },
+  // { id: 'capitalPartner', label: 'Capital Partner' },
+  // { id: 'payments', label: 'Payments' },
+  // { id: 'suretyBond', label: 'Surety Bond' },
   // Master data tabs (from master pages)
   { id: 'accountPurpose', label: 'Account Purpose' },
   { id: 'agreementSegment', label: 'Agreement Segment' },
@@ -41,11 +41,11 @@ export const ACTIVITIES_TABS: Tab[] = [
  */
 export const TAB_TO_MODULE_MAP: Record<string, string> = {
   // Entity mappings
-  buildPartner: 'BUILD_PARTNER',
-  buildPartnerAsset: 'BUILD_PARTNER_ASSET',
-  capitalPartner: 'CAPITAL_PARTNER',
-  payments: 'PAYMENTS',
-  suretyBond: 'SURETY_BOND',
+  // buildPartner: 'BUILD_PARTNER',
+  // buildPartnerAsset: 'BUILD_PARTNER_ASSET',
+  // capitalPartner: 'CAPITAL_PARTNER',
+  // payments: 'PAYMENTS',
+  // suretyBond: 'SURETY_BOND',
   // Master data mappings (from master pages)
   accountPurpose: 'ACCOUNT_PURPOSE',
   agreementSegment: 'AGREEMENT_SEGMENT',

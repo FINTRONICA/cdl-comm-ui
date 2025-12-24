@@ -186,10 +186,19 @@ export const WorkflowStageTemplateSchemas = {
       .min(1, 'SLA Hours must be at least 1')
       .max(9999, 'SLA Hours must be less than 10000 (4 digits maximum)'),
     
-    workflowDefinitionId: z.string()
-      .min(1, 'Workflow Definition is required')
-      .refine((val) => val && val.trim() !== '', {
-        message: 'Workflow Definition is required'
+    workflowDefinitionId: z
+      .union([z.number(), z.string(), z.null()])
+      .refine(
+        (val) => {
+          if (val === null || val === undefined || val === '') return false
+          const num = typeof val === 'string' ? parseInt(val, 10) : val
+          return !isNaN(num) && num > 0
+        },
+        { message: 'Workflow Definition is required' }
+      )
+      .transform((val) => {
+        if (val === null || val === undefined || val === '') return null
+        return typeof val === 'string' ? parseInt(val, 10) : val
       }),
   }),
 };
@@ -306,7 +315,7 @@ export const getWorkflowStageTemplateValidationRules = () => {
     workflowDefinitionId: {
       required: 'Workflow Definition is required',
       validate: (value: any) => {
-        if (!value || value === '' || value === null) {
+        if (!value || value === '' || value === null || value === 0) {
           return 'Workflow Definition is required'
         }
         return true

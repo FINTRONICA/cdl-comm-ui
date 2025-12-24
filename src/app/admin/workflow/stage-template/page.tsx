@@ -1,41 +1,75 @@
 'use client'
+
+import { useCallback, useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import React, { useCallback, useState, useMemo } from 'react'
-import { getLabelByConfigId as getWorkflowStageTemplateLabel } from '@/constants/mappings/workflowMapping'
-import { displayValue } from '@/utils/nullHandling'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
+import { getWorkflowLabelsByCategory as getWorkflowStageTemplateLabel } from '@/constants/mappings/workflowMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { useAppStore } from '@/store'
-import { toast } from 'react-hot-toast'
 import {
-  mapWorkflowStageTemplateData,
-  WorkflowStageTemplateResponse,
-  type WorkflowStageTemplate,
-} from '@/services/api/workflowApi'
-import {
-  useBuildWorkflowStageTemplateLabelsWithCache,
   useDeleteWorkflowStageTemplate,
   useWorkflowStageTemplates,
+  useBuildWorkflowStageTemplateLabelsWithCache,
 } from '@/hooks/workflow'
+import {
+  mapWorkflowStageTemplateData,
+  type WorkflowStageTemplate,
+} from '@/services/api/workflowApi'
+import type { WorkflowStageTemplateFilters } from '@/services/api/workflowApi/workflowStageTemplateService'
+import { useAppStore } from '@/store'
 import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
-import { RightSlideWorkflowStageTemplatePanel } from '@/components/organisms/RightSlidePanel/RightSlideWorkflowStageTemplatePanel'
 
-const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
-  error,
-  onRetry,
-}) => (
-  <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
+// Dynamic import for heavy panel component with proper code splitting
+const RightSlideWorkflowStageTemplatePanel = dynamic(
+  () =>
+    import(
+      '@/components/organisms/RightSlidePanel/RightSlideWorkflowStageTemplatePanel'
+    ).then((mod) => ({ default: mod.RightSlideWorkflowStageTemplatePanel })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <GlobalLoading />
+      </div>
+    ),
+  }
+)
+
+interface WorkflowStageTemplateData
+  extends WorkflowStageTemplate,
+    Record<string, unknown> {}
+
+const STATUS_OPTIONS: string[] = [
+  'PENDING',
+  'APPROVED',
+  'REJECTED',
+  'IN_PROGRESS',
+  'DRAFT',
+  'INITIATED',
+  'Active',
+  'Inactive',
+  'Expired',
+  'Cancelled',
+]
+
+interface ErrorMessageProps {
+  error: Error
+  onRetry?: () => void
+}
+
+const ErrorMessage: React.FC<ErrorMessageProps> = ({ error, onRetry }) => (
+  <div className="flex items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900 rounded-2xl px-4">
     <div className="w-full max-w-md text-center">
       <div className="mb-8">
-        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-red-100 dark:bg-red-500/20 rounded-full">
+        <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-red-100 rounded-full dark:bg-red-900/20">
           <svg
             className="w-12 h-12 text-red-600 dark:text-red-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -45,19 +79,19 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
             />
           </svg>
         </div>
-        <h1 className="mb-4 text-2xl font-semibold text-gray-900 dark:text-white">
-          Failed to load developers
+        <h1 className="mb-4 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+          Failed to load workflow stage templates
         </h1>
-        <p className="mb-4 text-gray-600 dark:text-gray-200">
+        <p className="mb-4 text-gray-600 dark:text-gray-400">
           {error.message ||
             'An error occurred while loading the data. Please try again.'}
         </p>
         {process.env.NODE_ENV === 'development' && (
           <details className="text-left">
-            <summary className="text-sm font-medium text-gray-600 dark:text-gray-200 cursor-pointer">
+            <summary className="text-sm font-medium text-gray-600 cursor-pointer dark:text-gray-400">
               Error Details (Development)
             </summary>
-            <pre className="p-4 mt-2 overflow-auto text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 rounded">
+            <pre className="p-4 mt-2 overflow-auto text-xs text-gray-500 bg-gray-100 rounded dark:text-gray-500 dark:bg-gray-800">
               {error.stack}
             </pre>
           </details>
@@ -66,7 +100,8 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="w-full px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
+          className="w-full px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          type="button"
         >
           Try Again
         </button>
@@ -75,264 +110,149 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   </div>
 )
 
-const LoadingSpinner: React.FC = () => (
-  <DashboardLayout title="Stage Template">
-    <div className="bg-white/75 dark:bg-[#1E293B] rounded-2xl flex flex-col h-full">
-      <GlobalLoading fullHeight />
-    </div>
-  </DashboardLayout>
-)
-
-const statusOptions = ['Active', 'Inactive']
-
-type WorkflowStageTemplateRow = {
-  id: string
-  stageOrder: number
-  stageKey: string
-  keycloakGroup: string
-  requiredApprovals: number
-  name: string
-  description: string
-  slaHours: number
-  workflowDefinitionDTO: string
-  workflowDefinitionName?: string | undefined
-  workflowDefinitionVersion?: number | undefined
-  status?: string | undefined
-  createdBy?: string | undefined
-  createdAt?: string | undefined
-  updatedBy?: string | undefined
-  updatedAt?: string | undefined
-}
-type ViewRow = {
-  _raw: WorkflowStageTemplateRow
-} & {
-  id?: string | undefined
-  name: React.ReactNode
-  stageOrder: React.ReactNode
-  stageKey: React.ReactNode
-  keycloakGroup: React.ReactNode
-  requiredApprovals: React.ReactNode
-  description: React.ReactNode
-  slaHours: React.ReactNode
-  workflowDefinition: React.ReactNode
-  status: React.ReactNode
-  createdAt: React.ReactNode
-  actions: React.ReactNode
-}
+const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />
 
 const WorkflowStageTemplatesPageImpl: React.FC = () => {
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [editingItem, setEditingItem] =
+    useState<WorkflowStageTemplateData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [currentPage, setCurrentPage] = useState(0)
-  const [pageSize, setPageSize] = useState(20)
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [selectedTemplateForEdit, setSelectedTemplateForEdit] =
-    useState<WorkflowStageTemplate | null>(null)
-  const currentLanguage = useAppStore((s) => s.language)
-
-  const { data: workflowStageTemplateLabels, getLabel } =
-    useBuildWorkflowStageTemplateLabelsWithCache()
+  const [currentApiPage, setCurrentApiPage] = useState(1)
+  const [currentApiSize, setCurrentApiSize] = useState(20)
+  const [filters] = useState<WorkflowStageTemplateFilters>({})
+  const currentLanguage = useAppStore((state) => state.language)
 
   const {
     data: apiResponse,
-    isLoading,
-    error,
-    refetch,
-  } = useWorkflowStageTemplates(currentPage, pageSize)
+    isLoading: workflowStageTemplatesLoading,
+    error: workflowStageTemplatesError,
+    refetch: refetchWorkflowStageTemplates,
+  } = useWorkflowStageTemplates(
+    Math.max(0, currentApiPage - 1),
+    currentApiSize,
+    filters
+  )
 
   const deleteMutation = useDeleteWorkflowStageTemplate()
   const confirmDelete = useDeleteConfirmation()
 
-  const workflowStageTemplatesData: WorkflowStageTemplateRow[] = useMemo(() => {
-    if (!apiResponse?.content) {
-      return []
+  const { data: workflowStageTemplateLabels, getLabel } =
+    useBuildWorkflowStageTemplateLabelsWithCache()
+
+  const workflowStageTemplateData = useMemo(() => {
+    if (apiResponse?.content) {
+      return apiResponse.content.map((item) =>
+        mapWorkflowStageTemplateData(item)
+      ) as WorkflowStageTemplateData[]
     }
-
-    const mappedData = apiResponse.content.map(
-      (item: WorkflowStageTemplateResponse) => {
-        const uiData = mapWorkflowStageTemplateData(item)
-
-        let status = 'Draft'
-        if (uiData.slaHours > 0) {
-          status = Math.random() > 0.5 ? 'Active' : 'Pending'
-        } else {
-          status = Math.random() > 0.5 ? 'Inactive' : 'Draft'
-        }
-
-        let workflowDefinitionName = `Workflow ${uiData.id}`
-        let workflowDefinitionVersion = 1
-
-        if (
-          item.workflowDefinitionDTO &&
-          typeof item.workflowDefinitionDTO === 'object'
-        ) {
-          workflowDefinitionName =
-            item.workflowDefinitionDTO.name || `Workflow ${uiData.id}`
-          workflowDefinitionVersion = item.workflowDefinitionDTO.version || 1
-        }
-
-        const rowData = {
-          id: uiData.id.toString(),
-          stageOrder: uiData.stageOrder,
-          stageKey: uiData.stageKey,
-          keycloakGroup: uiData.keycloakGroup,
-          requiredApprovals: uiData.requiredApprovals,
-          name: uiData.name,
-          description: uiData.description,
-          slaHours: uiData.slaHours,
-          workflowDefinitionDTO: uiData.workflowDefinitionDTO,
-          workflowDefinitionName: workflowDefinitionName,
-          workflowDefinitionVersion: workflowDefinitionVersion,
-          status: status,
-          createdBy: uiData.createdBy || 'system',
-          createdAt: uiData.createdAt || new Date().toISOString(),
-          updatedBy: uiData.updatedBy || undefined,
-          updatedAt: uiData.updatedAt || undefined,
-        }
-
-        return rowData
-      }
-    )
-
-    const sortedData = mappedData.sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0).getTime()
-      const dateB = new Date(b.createdAt || 0).getTime()
-
-      if (dateA !== dateB) {
-        return dateB - dateA
-      }
-
-      return parseInt(b.id) - parseInt(a.id)
-    })
-
-    return sortedData
+    return []
   }, [apiResponse])
 
   const getWorkflowStageTemplateLabelDynamic = useCallback(
     (configId: string): string => {
-      if (workflowStageTemplateLabels && typeof getLabel === 'function') {
-        return getLabel(
-          configId,
-          currentLanguage,
-          getWorkflowStageTemplateLabel(configId)
-        )
+      const fallback = getWorkflowStageTemplateLabel(configId)
+
+      if (workflowStageTemplateLabels) {
+        return getLabel(configId, currentLanguage || 'EN', fallback)
       }
-      return getWorkflowStageTemplateLabel(configId)
+      return fallback
     },
     [workflowStageTemplateLabels, currentLanguage, getLabel]
   )
 
-  const tableColumns = [
-    {
-      key: 'name',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_NAME'),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-    {
-      key: 'stageOrder',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_ORDER'),
-      type: 'text' as const,
-      width: 'w-20',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-    {
-      key: 'stageKey',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_KEY'),
-      type: 'text' as const,
-      width: 'w-32',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-    {
-      key: 'keycloakGroup',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_GROUP'),
-      type: 'text' as const,
-      width: 'w-32',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-    {
-      key: 'requiredApprovals',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_REQUIRED_APPROVALS'),
-      type: 'text' as const,
-      width: 'w-32',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-    {
-      key: 'slaHours',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_SLA_HOURS'),
-      type: 'text' as const,
-      width: 'w-24',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-    {
-      key: 'description',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_DESCRIPTION'),
-      type: 'text' as const,
-      width: 'w-65',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-    {
-      key: 'workflowDefinition',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_WORKFLOW_DEFINITION'),
-      type: 'text' as const,
-      width: 'w-65',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-
-    // {
-    //   key: 'createdBy',
-    //   label: getWorkflowStageTemplateLabelDynamic('CDL_ST_CREATED_BY'),
-    //   type: 'text' as const,
-    //   width: 'w-32',
-    //   sortable: true,
-    //   render: (value: string | number | null | undefined) =>
-    //     displayValue(value),
-    // },
-    {
-      key: 'createdAt',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_CREATED_AT'),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-      render: (value: string | number | null | undefined) =>
-        displayValue(value),
-    },
-    {
-      key: 'actions',
-      label: getWorkflowStageTemplateLabelDynamic('CDL_ST_ACTIONS'),
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  // Memoize table columns to prevent unnecessary re-renders
+  const tableColumns = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: getWorkflowStageTemplateLabelDynamic('CDL_WST_NAME'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'stageOrder',
+        label: getWorkflowStageTemplateLabelDynamic('CDL_WST_ORDER'),
+        type: 'text' as const,
+        width: 'w-32',
+        sortable: true,
+      },
+      {
+        key: 'stageKey',
+        label: getWorkflowStageTemplateLabelDynamic('CDL_WST_KEY'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'keycloakGroup',
+        label: getWorkflowStageTemplateLabelDynamic('CDL_WST_GROUP'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'requiredApprovals',
+        label: getWorkflowStageTemplateLabelDynamic('CDL_WST_REQUIRED_APPROVALS'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'slaHours',
+        label: getWorkflowStageTemplateLabelDynamic('CDL_WST_SLA_HOURS'),
+        type: 'text' as const,
+        width: 'w-32',
+        sortable: true,
+      },
+      {
+        key: 'workflowDefinitionName',
+        label: getWorkflowStageTemplateLabelDynamic(
+          'CDL_WST_WORKFLOW_DEFINITION_DTO'
+        ),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'status',
+        label: getWorkflowStageTemplateLabelDynamic('CDL_COMMON_STATUS'),
+        type: 'status' as const,
+        width: 'w-32',
+        sortable: true,
+      },
+      {
+        key: 'actions',
+        label: getWorkflowStageTemplateLabelDynamic('CDL_COMMON_ACTIONS'),
+        type: 'actions' as const,
+        width: 'w-20',
+      },
+    ],
+    [getWorkflowStageTemplateLabelDynamic]
+  )
 
   const {
     search,
-    paginated: paginatedData,
+    paginated,
+    totalRows: localTotalRows,
+    totalPages: localTotalPages,
+    startItem,
+    endItem,
+    page: localPage,
+    rowsPerPage,
     selectedRows,
     expandedRows,
+    sortConfig,
     handleSearchChange,
+    handlePageChange: localHandlePageChange,
+    handleRowsPerPageChange: localHandleRowsPerPageChange,
     handleRowSelectionChange,
     handleRowExpansionChange,
+    handleSort,
   } = useTableState({
-    data: workflowStageTemplatesData,
+    data: workflowStageTemplateData,
     searchFields: [
-      'id',
       'name',
       'stageOrder',
       'stageKey',
@@ -340,299 +260,201 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
       'requiredApprovals',
       'description',
       'slaHours',
-      'workflowDefinitionDTO',
       'workflowDefinitionName',
-      'createdAt',
       'status',
     ],
-    initialRowsPerPage: pageSize,
+    initialRowsPerPage: currentApiSize,
   })
 
-  const totalRows = paginatedData.length
-  const totalPages = Math.ceil(totalRows / pageSize)
-
-  const onPageChange = (nextPage: number) => setCurrentPage(nextPage)
-  const onRowsPerPageChange = (nextSize: number) => {
-    setPageSize(nextSize)
-    setCurrentPage(0)
-  }
-
-  const handleRowDelete = (
-    arg?: React.MouseEvent | (ViewRow | WorkflowStageTemplateRow)
-  ) => {
-    if (arg && 'stopPropagation' in arg) arg.stopPropagation()
-
-    if (isDeleting || (deleteMutation as { isPending?: boolean })?.isPending) {
-      return
-    }
-
-    let row: WorkflowStageTemplateRow | undefined
-
-    if (arg && typeof arg === 'object' && !('stopPropagation' in arg)) {
-      if ('_raw' in arg) {
-        row = (arg as ViewRow)._raw
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const hasSearch = Object.values(search).some((value) => value.trim())
+      if (hasSearch) {
+        localHandlePageChange(newPage)
       } else {
-        row = arg as WorkflowStageTemplateRow
+        setCurrentApiPage(newPage)
       }
-    }
+    },
+    [search, localHandlePageChange]
+  )
 
-    if (!row || !row.id) return
+  const handleRowsPerPageChange = useCallback(
+    (newRowsPerPage: number) => {
+      setCurrentApiSize(newRowsPerPage)
+      setCurrentApiPage(1)
+      localHandleRowsPerPageChange(newRowsPerPage)
+    },
+    [localHandleRowsPerPageChange]
+  )
 
-    confirmDelete({
-      itemName: `workflow stage template: ${row.name}`,
-      itemId: row.id.toString(),
-      onConfirm: async () => {
-        try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(row.id.toString())
-          refetch()
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(
-            `Failed to delete workflow stage template: ${errorMessage}`
-          )
-          toast.error(`Failed to delete: ${errorMessage}`)
-          throw error
-        } finally {
-          setIsDeleting(false)
-        }
-      },
-    })
-  }
+  const apiTotal = apiResponse?.page?.totalElements || 0
+  const apiTotalPages = apiResponse?.page?.totalPages || 1
 
-  const handleRowClick = (row: WorkflowStageTemplateRow) => {
-    if (!row.id || row.id === '0') {
-      return
-    }
+  const hasActiveSearch = useMemo(
+    () => Object.values(search).some((value) => value.trim()),
+    [search]
+  )
 
-    const uiData: WorkflowStageTemplate = {
-      id: parseInt(row.id),
-      stageOrder: row.stageOrder,
-      stageKey: row.stageKey,
-      keycloakGroup: row.keycloakGroup,
-      requiredApprovals: row.requiredApprovals,
-      name: row.name,
-      description: row.description,
-      slaHours: row.slaHours,
-      workflowDefinitionDTO: row.workflowDefinitionDTO,
-      workflowDefinitionName: row.workflowDefinitionName || '',
-      workflowDefinitionVersion: row.workflowDefinitionVersion || 1,
-      status: row.status || 'Draft',
-      createdBy: row.createdBy ? row.createdBy : '-',
-      createdAt: row.createdAt || new Date().toISOString(),
-      updatedBy: row.updatedBy || '',
-      updatedAt: row.updatedAt || '',
-    }
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage
 
-    setSelectedTemplateForEdit(uiData)
-    setIsSidePanelOpen(true)
-  }
+  const effectiveStartItem = hasActiveSearch
+    ? startItem
+    : (currentApiPage - 1) * currentApiSize + 1
+  const effectiveEndItem = hasActiveSearch
+    ? endItem
+    : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  if (isLoading) return <LoadingSpinner />
+  const handleRowDelete = useCallback(
+    (row: WorkflowStageTemplateData) => {
+      if (isDeleting) return
 
-  if (error) {
-    return <ErrorMessage error={error} onRetry={refetch} />
-  }
+      confirmDelete({
+        itemName: `workflow stage template: ${row.name}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteMutation.mutateAsync(String(row.id))
+          } catch (error) {
+            // Error is handled by the mutation's onError
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
+    },
+    [isDeleting, confirmDelete, deleteMutation]
+  )
 
-  const viewRows: ViewRow[] = paginatedData.map((row) => {
+  const handleRowEdit = useCallback((row: WorkflowStageTemplateData) => {
+    setEditingItem(row)
+    setPanelMode('edit')
+    setIsPanelOpen(true)
+  }, [])
+
+  const handleAddNew = useCallback(() => {
+    setEditingItem(null)
+    setPanelMode('add')
+    setIsPanelOpen(true)
+  }, [])
+
+  const handleClosePanel = useCallback(() => {
+    setIsPanelOpen(false)
+    setEditingItem(null)
+    refetchWorkflowStageTemplates()
+  }, [refetchWorkflowStageTemplates])
+
+  const renderExpandedContent = useCallback(
+    () => <div className="grid grid-cols-2 gap-8"></div>,
+    []
+  )
+
+  // Memoize the template data for the panel
+  const panelTemplateData = useMemo<WorkflowStageTemplate | null>(() => {
+    if (!editingItem) return null
     return {
-      _raw: row,
-      id: row.id?.toString(),
-      name: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          {displayValue(row.name)}
-        </div>
-      ),
-      stageOrder: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          {displayValue(row.stageOrder)}
-        </div>
-      ),
-      stageKey: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          {displayValue(row.stageKey)}
-        </div>
-      ),
-      keycloakGroup: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          {displayValue(row.keycloakGroup)}
-        </div>
-      ),
-      requiredApprovals: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          {displayValue(row.requiredApprovals)}
-        </div>
-      ),
-      description: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          <div className="max-w-xs truncate" title={row.description}>
-            {displayValue(row.description)}
-          </div>
-        </div>
-      ),
-      slaHours: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            {displayValue(row.slaHours)}h
-          </span>
-        </div>
-      ),
-      workflowDefinition: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          <div
-            className="max-w-xs truncate"
-            title={row.workflowDefinitionName || row.workflowDefinitionDTO}
-          >
-            {displayValue(
-              row.workflowDefinitionName || row.workflowDefinitionDTO
-            )}
-          </div>
-        </div>
-      ),
-      status: (
-        <span className="inline-flex items-center">
-          {displayValue(row.status)}
-        </span>
-      ),
-      createdBy: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          {displayValue(row.createdBy)}
-        </div>
-      ),
-      createdAt: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          {row.createdAt
-            ? (() => {
-                const date = new Date(row.createdAt)
-                const day = date.getDate()
-                const month = date.toLocaleString('en-US', { month: 'long' })
-                const year = date.getFullYear()
-                const hours = date.getHours()
-                const minutes = date.getMinutes().toString().padStart(2, '0')
-                const ampm = hours >= 12 ? 'PM' : 'AM'
-                const displayHours = hours % 12 || 12
-                return (
-                  <>
-                    <div>
-                      {day} {month} {year}
-                    </div>
-                    <div>
-                      {displayHours}:{minutes} {ampm}
-                    </div>
-                  </>
-                )
-              })()
-            : displayValue(row.createdAt)}
-        </div>
-      ),
-      actions: (
-        <div className="w-auto px-4 py-3.5 text-sm text-[#1E2939]">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleRowClick(row)
-              }}
-              className="text-sm font-medium text-blue-600 hover:text-blue-800"
-            >
-              Edit
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleRowDelete(row)
-              }}
-              className="text-sm font-medium text-red-600 hover:text-red-800"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ),
-    }
-  })
+      id: editingItem.id,
+      stageOrder: editingItem.stageOrder ?? 1,
+      stageKey: editingItem.stageKey ?? '',
+      keycloakGroup: editingItem.keycloakGroup ?? '',
+      requiredApprovals: editingItem.requiredApprovals ?? 1,
+      name: editingItem.name ?? '',
+      description: editingItem.description ?? '',
+      slaHours: editingItem.slaHours ?? 24,
+      workflowDefinitionDTO: editingItem.workflowDefinitionDTO || '',
+      workflowDefinitionName: editingItem.workflowDefinitionName || '',
+      workflowDefinitionVersion: editingItem.workflowDefinitionVersion || 0,
+      status: editingItem.status || 'Inactive',
+      createdBy: editingItem.createdBy || '',
+      createdAt: editingItem.createdAt || '',
+      updatedBy: editingItem.updatedBy || '',
+      updatedAt: editingItem.updatedAt || '',
+    } as WorkflowStageTemplate
+  }, [editingItem])
 
   return (
     <>
-      <RightSlideWorkflowStageTemplatePanel
-        isOpen={isSidePanelOpen}
-        onClose={() => {
-          setIsSidePanelOpen(false)
-          setSelectedTemplateForEdit(null)
-        }}
-        mode={selectedTemplateForEdit ? 'edit' : 'add'}
-        templateData={selectedTemplateForEdit}
-      />
-
-      <DashboardLayout
-        title={getWorkflowStageTemplateLabelDynamic('Workflow Stage Templates')}
-      >
-        <div className="bg-white/75 dark:bg-[#1E293B] rounded-2xl flex flex-col h-full">
-          <div className="sticky top-0 z-10 bg-white/75 dark:bg-[#1E293B] border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
-            <PageActionButtons
-              entityType="workflowStageTemplate"
-              customActionButtons={[]}
-              showButtons={{ addNew: true }}
-              onAddNew={() => {
-                setSelectedTemplateForEdit(null)
-                setIsSidePanelOpen(true)
-              }}
-            />
-          </div>
-
-          <div className="flex flex-col flex-1 min-h-0">
-            <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<ViewRow>
-                data={viewRows}
-                columns={tableColumns}
-                searchState={search}
-                onSearchChange={handleSearchChange}
-                paginationState={{
-                  page: currentPage + 1,
-                  rowsPerPage: pageSize,
-                  totalRows,
-                  totalPages,
-                  startItem: currentPage * pageSize + 1,
-                  endItem: Math.min((currentPage + 1) * pageSize, totalRows),
-                }}
-                onPageChange={onPageChange}
-                onRowsPerPageChange={onRowsPerPageChange}
-                selectedRows={selectedRows}
-                onRowSelectionChange={handleRowSelectionChange}
-                expandedRows={expandedRows}
-                onRowExpansionChange={handleRowExpansionChange}
-                statusOptions={statusOptions}
-                onRowClick={() => {}}
-                onRowDelete={handleRowDelete}
-                onRowView={(row: ViewRow) => handleRowClick(row._raw)}
-                showDeleteAction={true}
-                showViewAction={true}
+      <DashboardLayout title="Workflow Stage Templates">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          {workflowStageTemplatesLoading ? (
+            <LoadingSpinner />
+          ) : workflowStageTemplatesError ? (
+            <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+              <ErrorMessage
+                error={workflowStageTemplatesError}
+                onRetry={refetchWorkflowStageTemplates}
               />
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
+                <PageActionButtons
+                  entityType="workflowStageTemplate"
+                  customActionButtons={[]}
+                  onAddNew={handleAddNew}
+                  showButtons={{
+                    addNew: true,
+                  }}
+                />
+              </div>
+
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-auto">
+                  <PermissionAwareDataTable<WorkflowStageTemplateData>
+                    data={paginated}
+                    columns={tableColumns}
+                    searchState={search}
+                    onSearchChange={handleSearchChange}
+                    paginationState={{
+                      page: effectivePage,
+                      rowsPerPage: rowsPerPage,
+                      totalRows: effectiveTotalRows,
+                      totalPages: effectiveTotalPages,
+                      startItem: effectiveStartItem,
+                      endItem: effectiveEndItem,
+                    }}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
+                    selectedRows={selectedRows}
+                    onRowSelectionChange={handleRowSelectionChange}
+                    expandedRows={expandedRows}
+                    onRowExpansionChange={handleRowExpansionChange}
+                    renderExpandedContent={renderExpandedContent}
+                    statusOptions={STATUS_OPTIONS}
+                    onRowDelete={handleRowDelete}
+                    // onRowView={handleRowView}
+                    onRowEdit={handleRowEdit}
+                    deletePermissions={['*']}
+                    // viewPermissions={['*']}
+                    editPermissions={['*']}
+                    updatePermissions={['*']}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </DashboardLayout>
+
+      {isPanelOpen && (
+        <RightSlideWorkflowStageTemplatePanel
+          isOpen={isPanelOpen}
+          onClose={handleClosePanel}
+          mode={panelMode}
+          templateData={panelTemplateData}
+        />
+      )}
     </>
   )
 }
 
-const WorkflowStageTemplatesPageClient = dynamic(
-  () => Promise.resolve(WorkflowStageTemplatesPageImpl),
-  {
-    ssr: false,
-    loading: () => (
-      <DashboardLayout title="Stage Template">
-        <div className="bg-white/75 dark:bg-[#1E293B] rounded-2xl flex flex-col h-full">
-          <GlobalLoading fullHeight />
-        </div>
-      </DashboardLayout>
-    ),
-  }
-)
-
 const WorkflowStageTemplatesPage: React.FC = () => {
-  return <WorkflowStageTemplatesPageClient />
+  return <WorkflowStageTemplatesPageImpl />
 }
 
 export default WorkflowStageTemplatesPage

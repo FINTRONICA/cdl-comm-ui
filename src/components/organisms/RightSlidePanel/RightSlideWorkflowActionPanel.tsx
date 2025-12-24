@@ -1,405 +1,495 @@
-'use client'
-
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import {
   DialogTitle,
   DialogContent,
   IconButton,
+  Grid,
   TextField,
   Button,
   Drawer,
   Box,
   Alert,
+  Snackbar,
+  Typography,
   CircularProgress,
-  Grid,
 } from '@mui/material'
-import { Controller, useForm, FieldErrors } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
+import { FormError } from '../../atoms/FormError'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
-
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { useWorkflowAction } from '@/hooks/workflow'
+import { useSaveWorkflowAction } from '@/hooks/workflow/useWorkflowActions'
 import {
-  useCreateWorkflowAction,
-  useUpdateWorkflowAction,
-} from '@/hooks/workflow'
-import type {
-  WorkflowActionUIData,
-  CreateWorkflowActionRequest,
-  UpdateWorkflowActionRequest,
-} from '@/services/api/workflowApi'
-import { getLabelByConfigId as getWorkflowActionLabel } from '@/constants/mappings/workflowMapping'
-import { getWorkflowActionValidationRules } from '@/lib/validation/workflowActionSchemas'
+  WorkflowActionSchemas,
+  validateAndSanitizeWorkflowActionData,
+} from '@/lib/validation/workflowActionSchemas'
+import { useWorkflowActionLabelsWithCache } from '@/hooks/workflow/useWorkflowActionLabelsWithCache'
+import { getWorkflowLabelsByCategory } from '@/constants/mappings/workflowMapping'
+import { useAppStore } from '@/store'
 import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from './panelTheme'
 
-interface RightSlideWorkflowActionPanelProps {
-  isOpen: boolean
-  onClose: () => void
-  mode?: 'add' | 'edit' | 'view'
-  actionData?: WorkflowActionUIData | null
-}
-
-type ActionFormData = {
+interface WorkflowActionFormData {
   actionKey: string
   actionName: string
   moduleCode: string
-  description: string
   name: string
+  description: string
 }
 
-const DEFAULT_VALUES: ActionFormData = {
-  actionKey: '',
-  actionName: '',
-  moduleCode: '',
-  description: '',
-  name: '',
+interface RightSlidePanelProps {
+  isOpen: boolean
+  onClose: () => void
+  onWorkflowActionAdded?: (workflowAction: WorkflowActionFormData) => void
+  onWorkflowActionUpdated?: (
+    workflowAction: WorkflowActionFormData,
+    index: number
+  ) => void
+  title?: string
+  mode?: 'add' | 'edit'
+  workflowActionData?: WorkflowActionFormData | null
+  actionData?: WorkflowActionFormData | null
+  workflowActionIndex?: number
+  editingWorkflowAction?: WorkflowActionFormData | null
+  workflowActionLabels?: unknown[]
+  workflowActionTypes?: unknown[]
+  workflowActionId?: string
+  dropdownsLoading?: boolean
+  dropdownsError?: unknown
 }
 
-export const RightSlideWorkflowActionPanel: React.FC<
-  RightSlideWorkflowActionPanelProps
-> = ({ isOpen, onClose, mode = 'add', actionData }) => {
+export const RightSlideWorkflowActionPanel: React.FC<RightSlidePanelProps> = ({
+  isOpen,
+  onClose,
+  onWorkflowActionAdded,
+  onWorkflowActionUpdated,
+  mode = 'add',
+  workflowActionData,
+  actionData,
+  workflowActionIndex,
+  editingWorkflowAction,
+  workflowActionLabels: _propWorkflowActionLabels, // eslint-disable-line @typescript-eslint/no-unused-vars
+  workflowActionTypes: _propWorkflowActionTypes, // eslint-disable-line @typescript-eslint/no-unused-vars
+  workflowActionId,
+  dropdownsLoading: propDropdownsLoading,
+  dropdownsError: propDropdownsError,
+}) => {
   const theme = useTheme()
   const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  // Use actionData or workflowActionData if provided (new prop), otherwise fall back to editingWorkflowAction (legacy)
+  const dataToEdit = actionData || workflowActionData || editingWorkflowAction
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  const createAction = useCreateWorkflowAction()
-  const updateAction = useUpdateWorkflowAction()
+  const addWorkflowActionMutation = useSaveWorkflowAction()
+
+  // Determine the ID to fetch - use workflowActionId prop, or id from dataToEdit
+  const editId =
+    mode === 'edit'
+      ? workflowActionId ||
+        (dataToEdit as { id?: string | number })?.id?.toString() ||
+        null
+      : null
+
+  // Fetch full workflow action data when in edit mode
+  const {
+    data: apiWorkflowActionData,
+    isLoading: isLoadingWorkflowAction,
+    error: workflowActionError,
+  } = useWorkflowAction(editId)
+
+  const dropdownsLoading = propDropdownsLoading || false
+  const dropdownsError = propDropdownsError || null
+
+  // Dynamic labels: same pattern used in Step4 & Contact Details
+  const { data: workflowActionLabels, getLabel } =
+    useWorkflowActionLabelsWithCache()
+  const currentLanguage = useAppStore((state) => state.language) || 'EN'
+  const getWorkflowActionLabelDynamic = useCallback(
+    (configId: string): string => {
+      const fallback = getWorkflowLabelsByCategory(configId)
+      if (workflowActionLabels)
+        return getLabel(configId, currentLanguage, fallback)
+      return fallback
+    },
+    [workflowActionLabels, currentLanguage, getLabel]
+  )
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting: isFormSubmitting, isDirty },
-    clearErrors,
-  } = useForm<ActionFormData>({
-    defaultValues: DEFAULT_VALUES,
-    mode: 'onBlur',
-    reValidateMode: 'onChange',
+    trigger,
+    formState: { errors },
+  } = useForm<WorkflowActionFormData>({
+    defaultValues: {
+      actionKey: dataToEdit?.actionKey || '',
+      actionName: dataToEdit?.actionName || '',
+      moduleCode: dataToEdit?.moduleCode || '',
+      name: dataToEdit?.name || '',
+      description: dataToEdit?.description || '',
+    },
+    mode: 'onChange', // Enable real-time validation
   })
 
-  const isSubmitting =
-    createAction.isPending || updateAction.isPending || isFormSubmitting
-
+  // Reset form when editing workflow action changes
   useEffect(() => {
-    if (!isOpen) return
+    if (isOpen && mode === 'edit' && (apiWorkflowActionData || dataToEdit)) {
+      // Use API data if available, otherwise use table data
+      const dataToUse = (apiWorkflowActionData ||
+        dataToEdit) as WorkflowActionFormData & { id?: string | number }
 
-    const values: ActionFormData =
-      mode === 'edit' && actionData
-        ? {
-            actionKey: actionData.actionKey ?? '',
-            actionName: actionData.actionName ?? '',
-            moduleCode: actionData.moduleCode ?? '',
-            description: actionData.description ?? '',
-            name: actionData.name ?? '',
-          }
-        : DEFAULT_VALUES
+      // Wait for dropdowns to load
+      if (dropdownsLoading || isLoadingWorkflowAction) {
+        return
+      }
 
-    reset(values, { keepDirty: false })
-    clearErrors()
-    setErrorMessage(null)
-  }, [isOpen, mode, actionData, reset, clearErrors])
+      // Map display values back to IDs for editing
+      reset({
+        actionKey: dataToUse.actionKey || '',
+        actionName: dataToUse.actionName || '',
+        moduleCode: dataToUse.moduleCode || '',
+        name: dataToUse.name || '',
+        description: dataToUse.description || '',
+      })
+    } else if (isOpen && mode === 'add') {
+      reset({
+        actionKey: '',
+        actionName: '',
+        moduleCode: '',
+        name: '',
+        description: '',
+      })
+    } else if (!isOpen) {
+      // Reset everything when closing
+      reset({
+        actionKey: '',
+        actionName: '',
+        moduleCode: '',
+        name: '',
+        description: '',
+      })
+    }
+  }, [
+    isOpen,
+    mode,
+    apiWorkflowActionData,
+    dataToEdit,
+    dropdownsLoading,
+    isLoadingWorkflowAction,
+    reset,
+  ])
 
-  const onSubmit = (data: ActionFormData) => {
+  // Validation function using WorkflowActionSchemas
+  const validateWorkflowActionField = (
+    fieldName: string,
+    value: string | undefined,
+    allValues: WorkflowActionFormData
+  ) => {
     try {
-      if (isSubmitting) {
-        return
+      // Simple required checks first so empty required fields show errors immediately
+      const requiredFields: Record<string, string> = {
+        actionKey: 'Action Key is required',
+        actionName: 'Action Name is required',
+        moduleCode: 'Module Code is required',
+        name: 'Name is required',
+        // Description is optional, not required
       }
 
-      if (!isDirty) {
-        setErrorMessage('No changes to save.')
-        return
+      if (requiredFields[fieldName]) {
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return requiredFields[fieldName]
+        }
       }
 
-      setErrorMessage(null)
+      // Transform form data to match WorkflowActionSchemas format
+      const workflowActionForValidation = {
+        actionKey: allValues.actionKey,
+        actionName: allValues.actionName,
+        moduleCode: allValues.moduleCode,
+        name: allValues.name,
+        description: allValues.description || '',
+      }
 
-      if (mode === 'edit') {
-        if (typeof actionData?.id !== 'number') {
-          setErrorMessage('Invalid or missing action ID for update')
-          return
-        }
-        const updatePayload: UpdateWorkflowActionRequest = {
-          id: actionData.id,
-          actionKey: data.actionKey.trim(),
-          actionName: data.actionName.trim(),
-          moduleCode: data.moduleCode.trim(),
-          name: data.name.trim(),
-          ...(data.description?.trim() && {
-            description: data.description.trim(),
-          }),
-        }
+      // Validate using WorkflowActionSchemas.workflowActionForm
+      const result = WorkflowActionSchemas.workflowActionForm.safeParse(
+        workflowActionForValidation
+      )
 
-        try {
-          const jsonString = JSON.stringify(updatePayload)
-          JSON.parse(jsonString)
-        } catch (errors) {
-          setErrorMessage(
-            `${errors}Invalid data format - cannot serialize to JSON`
-          )
-          return
-        }
-
-        if (!updatePayload.id || updatePayload.id <= 0) {
-          setErrorMessage(
-            'Invalid or missing record ID - cannot update this record'
-          )
-          return
-        }
-
-        updateAction.mutate(
-          { id: actionData.id.toString(), updates: updatePayload },
-          {
-            onSuccess: () => {
-              setTimeout(() => {
-                onClose()
-              }, 1000)
-            },
-            onError: (err: Error | unknown) => {
-              setErrorMessage(`${err}Update workflow action error`)
-            },
-          }
-        )
+      if (result.success) {
+        return true
       } else {
-        const createPayload: CreateWorkflowActionRequest = {
-          actionKey: data.actionKey.trim(),
-          actionName: data.actionName.trim(),
-          moduleCode: data.moduleCode.trim(),
-          name: data.name.trim(),
-          description: data.description?.trim() || '',
-        }
+        // Find the specific field error
+        const fieldError = result.error.issues.find((issue) =>
+          issue.path.includes(fieldName)
+        )
 
-        createAction.mutate(createPayload, {
-          onSuccess: () => {
-            setTimeout(() => {
-              onClose()
-            }, 1000)
-          },
-        })
+        return fieldError ? fieldError.message : true
       }
-    } catch (error) {
-      setErrorMessage(`${error}An unexpected error occurred. Please try again`)
+    } catch {
+      return true // Return true on error to avoid blocking the form
     }
   }
 
-  const labelSx = tokens.label
-  const valueSx = tokens.value
+  const onSubmit = useCallback(
+    async (data: WorkflowActionFormData) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
 
-  const isViewMode = mode === 'view'
-  const validationRules = getWorkflowActionValidationRules()
+        // Check if dropdown data is still loading
+        if (dropdownsLoading) {
+          setErrorMessage(
+            'Please wait for dropdown options to load before submitting.'
+          )
+          return
+        }
+
+        // Validate form fields individually to provide better error messages
+        const isValid = await trigger()
+
+        if (!isValid) {
+          // Get specific validation errors for text fields only
+          const errors: string[] = []
+          if (!data.actionKey?.trim()) errors.push('Action Key is required')
+          if (!data.actionName?.trim()) errors.push('Action Name is required')
+          if (!data.moduleCode?.trim()) errors.push('Module Code is required')
+          if (!data.name?.trim()) errors.push('Name is required')
+          // Description is optional, not required
+
+          if (errors.length > 0) {
+            setErrorMessage(
+              `Please fill in the required fields: ${errors.join(', ')}`
+            )
+          }
+          return
+        }
+
+        // Validate and sanitize form data
+        const validatedData = validateAndSanitizeWorkflowActionData(data)
+
+        const hasId =
+          !!(dataToEdit && (dataToEdit as { id?: string | number }).id) ||
+          !!(
+            apiWorkflowActionData &&
+            (apiWorkflowActionData as { id?: string | number }).id
+          ) ||
+          !!workflowActionId
+        const isEditing = mode === 'edit' && hasId
+        const idToUse = isEditing
+          ? (apiWorkflowActionData as { id?: string | number })?.id ||
+            (dataToEdit as { id?: string | number })?.id ||
+            workflowActionId
+          : undefined
+
+        // Build payload according to API structure
+        const workflowActionPayload: {
+          actionKey: string
+          actionName: string
+          moduleCode: string
+          name: string
+          description: string
+          id?: number
+        } = {
+          actionKey: validatedData.actionKey,
+          actionName: validatedData.actionName,
+          moduleCode: validatedData.moduleCode,
+          name: validatedData.name,
+          description: validatedData.description || '',
+        }
+
+        // For updates, include the id
+        if (isEditing && idToUse) {
+          workflowActionPayload.id =
+            typeof idToUse === 'string' ? parseInt(idToUse, 10) : idToUse
+        }
+
+        const mutationParams: {
+          data: typeof workflowActionPayload
+          isEditing: boolean
+          workflowActionId?: string
+        } = {
+          data: workflowActionPayload,
+          isEditing: isEditing,
+        }
+
+        if (idToUse) {
+          mutationParams.workflowActionId = idToUse.toString()
+        }
+
+        await addWorkflowActionMutation.mutateAsync(mutationParams)
+
+        setSuccessMessage(
+          isEditing
+            ? 'Workflow Action updated successfully!'
+            : 'Workflow Action added successfully!'
+        )
+
+        // Prepare data for callback
+        const workflowActionForForm = {
+          actionKey: validatedData.actionKey,
+          actionName: validatedData.actionName,
+          moduleCode: validatedData.moduleCode,
+          name: validatedData.name,
+          description: validatedData.description || '',
+        }
+
+        // Call appropriate callback based on mode
+        if (
+          mode === 'edit' &&
+          onWorkflowActionUpdated &&
+          workflowActionIndex !== null &&
+          workflowActionIndex !== undefined
+        ) {
+          onWorkflowActionUpdated(workflowActionForForm, workflowActionIndex)
+        } else if (onWorkflowActionAdded) {
+          onWorkflowActionAdded(workflowActionForForm)
+        }
+
+        setTimeout(() => {
+          reset()
+          onClose()
+        }, 1500)
+      } catch (error: unknown) {
+        let errorMessage = 'Failed to save workflow action. Please try again.'
+
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMessage = 'Please check your input and try again.'
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Network error. Please check your connection and try again.'
+          } else {
+            errorMessage = error.message || errorMessage
+          }
+        }
+
+        setErrorMessage(errorMessage)
+        console.error('Workflow action save error:', error)
+      }
+    },
+    [
+      dropdownsLoading,
+      trigger,
+      dataToEdit,
+      apiWorkflowActionData,
+      workflowActionId,
+      mode,
+      addWorkflowActionMutation,
+      onWorkflowActionUpdated,
+      workflowActionIndex,
+      onWorkflowActionAdded,
+      reset,
+      onClose,
+    ]
+  )
+
+  const handleClose = () => {
+    reset()
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    onClose()
+  }
+
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
+  const labelSx = useMemo(() => tokens.label, [tokens])
+  const valueSx = useMemo(() => tokens.value, [tokens])
 
   const renderTextField = (
-    name: keyof ActionFormData,
+    name: keyof WorkflowActionFormData,
     label: string,
-    type: 'text' | 'number' = 'text',
-    gridSize: number = 12,
-    required: boolean = true
-  ) => {
-    const fieldRules = validationRules[name] || {}
-
-    return (
-      <Grid key={name} size={{ xs: 12, md: gridSize }}>
-        <Controller
-          name={name}
-          control={control}
-          rules={fieldRules}
-          render={({ field, fieldState }) => {
-            const hasError = !!fieldState.error
-
-            // Field styles with error state - red border when error
-            const fieldStyles = hasError
-              ? {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-              : {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[600], 0.7)
-                          : '#CAD5E2',
-                      borderWidth: '1px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[300], 0.8)
-                          : '#94A3B8',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-
-            // Label styles with red asterisk for required fields
-            const labelStyles = {
-              ...labelSx,
-              color: hasError ? theme.palette.error.main : tokens.label.color,
-              '& .MuiFormLabel-asterisk': {
-                color: required ? theme.palette.error.main : 'inherit',
-              },
-              '&.Mui-focused': {
-                color: hasError
-                  ? theme.palette.error.main
-                  : theme.palette.primary.main,
-              },
-            }
-
-            return (
-              <Box>
-                <TextField
-                  {...field}
-                  type={type}
-                  label={label}
-                  fullWidth
-                  disabled={isSubmitting || isViewMode}
-                  required={required}
-                  error={hasError}
-                  helperText={hasError ? fieldState.error?.message : ''}
-                  InputLabelProps={{ sx: labelStyles }}
-                  InputProps={{ sx: valueSx }}
-                  sx={fieldStyles}
-                  onChange={(e) => {
-                    let value = e.target.value
-                    if (
-                      type === 'text' &&
-                      (name === 'moduleCode' ||
-                        name === 'actionName' ||
-                        name === 'actionKey' ||
-                        name === 'name')
-                    ) {
-                      value = value.replace(/[0-9]/g, '')
-                    }
-                    const finalValue = type === 'number' ? Number(value) : value
-                    field.onChange(finalValue)
-                  }}
-                  onBlur={field.onBlur}
-                />
-              </Box>
-            )
-          }}
-        />
-      </Grid>
-    )
-  }
-
-  const handleResetToLoaded = useCallback(() => {
-    const loaded: ActionFormData =
-      mode === 'edit' && actionData
-        ? {
-            actionKey: actionData.actionKey ?? '',
-            actionName: actionData.actionName ?? '',
-            moduleCode: actionData.moduleCode ?? '',
-            description: actionData.description ?? '',
-            name: actionData.name ?? '',
-          }
-        : DEFAULT_VALUES
-    reset(loaded, { keepDirty: false })
-    clearErrors()
-  }, [mode, actionData, reset, clearErrors])
-
-  const onError = (errors: FieldErrors<ActionFormData>) => {
-    console.log(errors)
-  }
-
-  const handleDrawerClose = (
-    _event: React.KeyboardEvent | React.MouseEvent,
-    reason?: string
-  ) => {
-    if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-      onClose()
-    }
-  }
-
-  const isFormDirty = isDirty
-  const canSave = isFormDirty && !isSubmitting && !isViewMode
-  const canReset = isFormDirty && !isSubmitting && !isViewMode
+    defaultValue = '',
+    gridSize: number = 6,
+    required = false
+  ) => (
+    <Grid key={name} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        defaultValue={defaultValue}
+        rules={{
+          validate: (value, formValues) =>
+            validateWorkflowActionField(name, value, formValues),
+        }}
+        render={({ field }) => (
+          <>
+            <TextField
+              {...field}
+              label={label}
+              fullWidth
+              required={required}
+              error={!!errors[name]}
+              InputLabelProps={{ sx: labelSx }}
+              InputProps={{ sx: valueSx }}
+              sx={errors[name] ? errorFieldStyles : commonFieldStyles}
+            />
+            <FormError
+              error={(errors[name]?.message as string) || ''}
+              touched={true}
+            />
+          </>
+        )}
+      />
+    </Grid>
+  )
 
   return (
-    <>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Drawer
         anchor="right"
         open={isOpen}
-        onClose={handleDrawerClose}
+        onClose={onClose}
         PaperProps={{
           sx: {
             ...tokens.paper,
-            width: '460px',
-            height: '100%',
+            width: 460,
             display: 'flex',
             flexDirection: 'column',
+            overflow: 'hidden',
           },
         }}
       >
-        <Box
+        <DialogTitle
           sx={{
-            p: 3,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontFamily: 'Outfit, sans-serif',
+            fontWeight: 500,
+            fontStyle: 'normal',
+            fontSize: '20px',
+            lineHeight: '28px',
+            letterSpacing: '0.15px',
+            verticalAlign: 'middle',
             borderBottom: `1px solid ${tokens.dividerColor}`,
-            backgroundColor: tokens.paper.backgroundColor,
+            backgroundColor:
+              typeof tokens.paper.backgroundColor === 'string'
+                ? tokens.paper.backgroundColor
+                : undefined,
+            color: theme.palette.text.primary,
+            pr: 3,
+            pl: 3,
           }}
         >
-          <Box
+          {mode === 'edit'
+            ? `${getWorkflowActionLabelDynamic('CDL_COMMON_UPDATE')} ${getWorkflowActionLabelDynamic('CDL_WA_WORKFLOW_ACTION')}`
+            : `${getWorkflowActionLabelDynamic('CDL_COMMON_ADD')} ${getWorkflowActionLabelDynamic('CDL_WA_WORKFLOW_ACTION')}`}
+          <IconButton
+            onClick={onClose}
             sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
             }}
           >
-            <DialogTitle
-              sx={{
-                p: 0,
-                fontSize: '20px',
-                fontWeight: 500,
-                fontStyle: 'normal',
-                color: theme.palette.text.primary,
-              }}
-            >
-              {mode === 'edit' ? 'Edit Workflow Action' : 'Add Workflow Action'}
-            </DialogTitle>
-            <IconButton
-              onClick={onClose}
-              size="small"
-              sx={{
-                color: theme.palette.text.secondary,
-                '&:hover': {
-                  backgroundColor: theme.palette.action.hover,
-                },
-              }}
-            >
-              <CancelOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        </Box>
+            <CancelOutlinedIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
 
-        <form onSubmit={handleSubmit(onSubmit, onError)}>
+
+        <form noValidate onSubmit={handleSubmit(onSubmit)}>
           <DialogContent
             dividers
             sx={{
@@ -407,162 +497,233 @@ export const RightSlideWorkflowActionPanel: React.FC<
               backgroundColor: tokens.paper.backgroundColor as string,
             }}
           >
-            {errorMessage && (
-              <Box sx={{ mb: 2 }}>
-                <Alert
-                  severity="error"
-                  variant="outlined"
-                  onClose={() => setErrorMessage(null)}
-                  sx={{
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(239, 68, 68, 0.08)'
-                        : 'rgba(254, 226, 226, 0.4)',
-                    borderColor: alpha(theme.palette.error.main, 0.4),
-                    color: theme.palette.error.main,
-                  }}
-                >
-                  {errorMessage}
-                </Alert>
+            {/* Show error if dropdowns fail to load */}
+            {dropdownsError && (
+              <Alert
+                severity="error"
+                variant="outlined"
+                sx={{
+                  mb: 2,
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(239, 68, 68, 0.08)'
+                      : 'rgba(254, 226, 226, 0.4)',
+                  borderColor: alpha(theme.palette.error.main, 0.4),
+                  color: theme.palette.error.main,
+                }}
+              >
+                Failed to load dropdown options. Please refresh the page.
+              </Alert>
+            )}
+
+            {/* Show error if workflow action fails to load in edit mode */}
+            {mode === 'edit' && workflowActionError && (
+              <Alert
+                severity="error"
+                variant="outlined"
+                sx={{
+                  mb: 2,
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(239, 68, 68, 0.08)'
+                      : 'rgba(254, 226, 226, 0.4)',
+                  borderColor: alpha(theme.palette.error.main, 0.4),
+                  color: theme.palette.error.main,
+                }}
+              >
+                Failed to load workflow action data. Please try again.
+              </Alert>
+            )}
+
+            {/* Show loading state when fetching workflow action */}
+            {mode === 'edit' && isLoadingWorkflowAction && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  py: 4,
+                }}
+              >
+                <CircularProgress size={40} />
               </Box>
             )}
 
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
               {renderTextField(
                 'actionKey',
-                getWorkflowActionLabel('CDL_WA_ACTION_KEY'),
-                'text',
+                getWorkflowActionLabelDynamic('CDL_WA_ACTION_KEY'),
+                '',
                 12,
                 true
               )}
               {renderTextField(
                 'actionName',
-                getWorkflowActionLabel('CDL_WA_ACTION_NAME'),
-                'text',
+                getWorkflowActionLabelDynamic('CDL_WA_ACTION_NAME'),
+                '',
                 12,
                 true
               )}
               {renderTextField(
                 'moduleCode',
-                getWorkflowActionLabel('CDL_WA_MODULE_CODE'),
-                'text',
+                getWorkflowActionLabelDynamic('CDL_WA_MODULE_CODE'),
+                '',
                 12,
                 true
               )}
               {renderTextField(
                 'name',
-                getWorkflowActionLabel('CDL_WA_NAME'),
-                'text',
+                getWorkflowActionLabelDynamic('CDL_WA_NAME'),
+                '',
                 12,
                 true
               )}
               {renderTextField(
                 'description',
-                getWorkflowActionLabel('CDL_WA_DESCRIPTION'),
-                'text',
+                getWorkflowActionLabelDynamic('CDL_WA_DESCRIPTION'),
+                '',
                 12,
                 false
               )}
             </Grid>
           </DialogContent>
 
-          {!isViewMode && (
-            <Box
-              sx={{
-                position: 'relative',
-                top: 20,
-                left: 0,
-                right: 0,
-                padding: 2,
-                borderTop: `1px solid ${tokens.dividerColor}`,
-                backgroundColor: alpha(
-                  theme.palette.background.paper,
-                  theme.palette.mode === 'dark' ? 0.92 : 0.9
-                ),
-                backdropFilter: 'blur(10px)',
-              }}
-            >
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 6 }}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={handleResetToLoaded}
-                    disabled={!canReset}
-                    sx={{
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      letterSpacing: 0,
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 1,
-                      opacity: canReset ? 1 : 0.5,
-                      borderWidth: '1px',
-                      borderStyle: 'solid',
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? theme.palette.primary.main
-                          : 'transparent',
-                    }}
-                  >
-                    Reset
-                  </Button>
-                </Grid>
-                <Grid size={{ xs: 6 }}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    color="primary"
-                    type="submit"
-                    disabled={!canSave}
-                    sx={{
-                      fontFamily: 'Outfit, sans-serif',
-                      fontWeight: 500,
-                      fontStyle: 'normal',
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      letterSpacing: 0,
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 1,
-                      opacity: canSave ? 1 : 0.5,
-                      borderWidth: '1px',
-                      borderStyle: 'solid',
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? theme.palette.primary.main
-                          : 'transparent',
-                    }}
-                  >
-                    {isSubmitting && (
-                      <CircularProgress
-                        size={20}
-                        sx={{
-                          color: theme.palette.primary.contrastText,
-                        }}
-                      />
-                    )}
-                    {isSubmitting
-                      ? mode === 'edit'
-                        ? 'Updating...'
-                        : 'Creating...'
-                      : mode === 'edit'
-                        ? 'Update'
-                        : 'Save'}
-                  </Button>
-                </Grid>
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: 2,
+              display: 'flex',
+              gap: 2,
+              borderTop: `1px solid ${tokens.dividerColor}`,
+              backgroundColor: alpha(
+                theme.palette.background.paper,
+                theme.palette.mode === 'dark' ? 0.92 : 0.9
+              ),
+              backdropFilter: 'blur(10px)',
+              zIndex: 10,
+            }}
+          >
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleClose}
+                  disabled={
+                    addWorkflowActionMutation.isPending ||
+                    dropdownsLoading ||
+                    (mode === 'edit' && isLoadingWorkflowAction)
+                  }
+                  sx={{
+                    fontFamily: 'Outfit, sans-serif',
+                    fontWeight: 500,
+                    fontStyle: 'normal',
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    letterSpacing: 0,
+                    borderWidth: '1px',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : undefined,
+                  }}
+                >
+                  {getWorkflowActionLabelDynamic('CDL_COMMON_CANCEL')}
+                </Button>
               </Grid>
-            </Box>
-          )}
+              <Grid size={{ xs: 6 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="primary"
+                  type="submit"
+                  disabled={
+                    addWorkflowActionMutation.isPending ||
+                    dropdownsLoading ||
+                    (mode === 'edit' && isLoadingWorkflowAction)
+                  }
+                  sx={{
+                    fontFamily: 'Outfit, sans-serif',
+                    fontWeight: 500,
+                    fontStyle: 'normal',
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    letterSpacing: 0,
+                    backgroundColor: theme.palette.primary.main,
+                    color: theme.palette.primary.contrastText,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.main
+                        : 'transparent',
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? theme.palette.primary.main
+                          : 'transparent',
+                    },
+                    '&:disabled': {
+                      backgroundColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.5)
+                          : theme.palette.grey[300],
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.primary.main, 0.5)
+                          : 'transparent',
+                      color: theme.palette.text.disabled,
+                    },
+                  }}
+                >
+                  {addWorkflowActionMutation.isPending
+                    ? mode === 'edit'
+                      ? getWorkflowActionLabelDynamic('CDL_COMMON_UPDATING')
+                      : getWorkflowActionLabelDynamic('CDL_COMMON_ADDING')
+                    : mode === 'edit'
+                      ? getWorkflowActionLabelDynamic('CDL_COMMON_UPDATE')
+                      : getWorkflowActionLabelDynamic('CDL_COMMON_ADD')}
+                </Button>
+              </Grid>
+            </Grid>
+          </Box>
         </form>
+
+        {/* Error and Success Notifications */}
+        <Snackbar
+          open={!!errorMessage}
+          autoHideDuration={6000}
+          onClose={() => setErrorMessage(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setErrorMessage(null)}
+            severity="error"
+            sx={{ width: '100%' }}
+          >
+            {errorMessage}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={3000}
+          onClose={() => setSuccessMessage(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setSuccessMessage(null)}
+            severity="success"
+            sx={{ width: '100%' }}
+          >
+            {successMessage}
+          </Alert>
+        </Snackbar>
       </Drawer>
-    </>
+    </LocalizationProvider>
   )
 }

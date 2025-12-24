@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { toast } from 'react-hot-toast'
 import {
   workflowDefinitionService,
   type CreateWorkflowDefinitionRequest,
@@ -23,7 +22,6 @@ export function useWorkflowDefinitions(
   filters?: WorkflowDefinitionFilters
 ) {
   const filtersKey = JSON.stringify(filters ?? {})
-
   return useQuery({
     queryKey: [WORKFLOW_DEFINITIONS_QUERY_KEY, 'list', page, size, filtersKey],
     queryFn: async () => {
@@ -45,7 +43,6 @@ export function useFindAllWorkflowDefinitions(
   filters?: WorkflowDefinitionFilters
 ) {
   const filtersKey = JSON.stringify(filters ?? {})
-
   return useQuery({
     queryKey: [
       WORKFLOW_DEFINITIONS_QUERY_KEY,
@@ -108,7 +105,6 @@ export function useWorkflowDefinition(id: string) {
 
 export function useCreateWorkflowDefinition() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (data: CreateWorkflowDefinitionRequest) => {
       const result =
@@ -119,11 +115,6 @@ export function useCreateWorkflowDefinition() {
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_DEFINITIONS_QUERY_KEY],
       })
-      toast.success('Workflow definition created successfully!')
-    },
-    onError: (error) => {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      toast.error(`Failed to create workflow definition: ${errorMessage}`)
     },
     retry: 2,
   })
@@ -131,7 +122,6 @@ export function useCreateWorkflowDefinition() {
 
 export function useUpdateWorkflowDefinition() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async ({
       id,
@@ -153,11 +143,9 @@ export function useUpdateWorkflowDefinition() {
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_DEFINITIONS_QUERY_KEY, 'detail', variables.id],
       })
-      toast.success('Workflow definition updated successfully!')
     },
     onError: (error) => {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      toast.error(`Failed to update workflow definition: ${errorMessage}`)
+      throw (error)
     },
     retry: 2,
   })
@@ -165,7 +153,6 @@ export function useUpdateWorkflowDefinition() {
 
 export function useDeleteWorkflowDefinition() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (id: string) => {
       const result =
@@ -176,11 +163,9 @@ export function useDeleteWorkflowDefinition() {
       queryClient.invalidateQueries({
         queryKey: [WORKFLOW_DEFINITIONS_QUERY_KEY],
       })
-      toast.success('Workflow definition deleted successfully')
     },
     onError: (error) => {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      toast.error(`Failed to delete workflow definition: ${errorMessage}`)
+      throw (error)
     },
     retry: false,
   })
@@ -188,7 +173,6 @@ export function useDeleteWorkflowDefinition() {
 
 export function useWorkflowDefinitionLabels() {
   const { isAuthenticated } = useIsAuthenticated()
-
   return useQuery({
     queryKey: ['workflowDefinitionLabels'],
     queryFn: async (): Promise<ProcessedWorkflowDefinitionLabels> => {
@@ -204,7 +188,6 @@ export function useWorkflowDefinitionLabels() {
 
 export function useWorkflowDefinitionLabelsWithUtils() {
   const query = useWorkflowDefinitionLabels()
-
   return {
     ...query,
     hasLabels: () =>
@@ -227,7 +210,6 @@ export function useWorkflowDefinitionLabelsWithUtils() {
 
 export function useRefreshWorkflowDefinitions() {
   const queryClient = useQueryClient()
-
   return () => {
     queryClient.invalidateQueries({
       queryKey: [WORKFLOW_DEFINITIONS_QUERY_KEY],
@@ -397,23 +379,18 @@ export function useWorkflowDefinitionForm() {
   return {
     applicationModules,
     workflowActions,
-
     moduleOptions,
     actionOptions,
-
     createDefinition,
     updateDefinition,
-
     isLoading: applicationModules.isLoading || workflowActions.isLoading,
     isSubmitting: create.isPending || update.isPending,
-
     errors: {
       modules: applicationModules.error,
       actions: workflowActions.error,
       create: create.error,
       update: update.error,
     },
-
     getModuleById: (id: number) =>
       applicationModules.data?.find((m) => m.id === id),
     getActionById: (id: number) =>
@@ -426,7 +403,6 @@ export function useWorkflowDefinitionManager() {
   const update = useUpdateWorkflowDefinition()
   const remove = useDeleteWorkflowDefinition()
   const refresh = useRefreshWorkflowDefinitions()
-
   const createDefinition = useCallback(
     (data: CreateWorkflowDefinitionRequest) => create.mutateAsync(data),
     [create]
@@ -445,7 +421,6 @@ export function useWorkflowDefinitionManager() {
     (id: string) => remove.mutateAsync(id),
     [remove]
   )
-
   return {
     createDefinition,
     updateDefinition,
@@ -489,7 +464,6 @@ export function formatApplicationModuleDTO(
   if (foundModule) {
     return `${foundModule.moduleName || 'Unnamed'} (ID: ${id})`
   }
-
   return `ID: ${id}`
 }
 
@@ -504,6 +478,5 @@ export function formatWorkflowActionDTO(
   if (action) {
     return `${action.name || 'Unnamed'} (ID: ${id})`
   }
-
   return `ID: ${id}`
 }

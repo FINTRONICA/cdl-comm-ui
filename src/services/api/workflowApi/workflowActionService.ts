@@ -5,9 +5,6 @@ import {
   API_ENDPOINTS,
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
-import { toast } from 'react-hot-toast'
-
-
 export interface WorkflowAction {
   id: number
   actionKey: string
@@ -15,32 +12,37 @@ export interface WorkflowAction {
   moduleCode: string
   description: string
   name: string
+  enabled: boolean
+  deleted: boolean
+  createdAt: string
+  updatedAt: string
 }
-
 export interface CreateWorkflowActionRequest {
   actionKey: string
   actionName: string
   moduleCode: string
   description?: string
   name: string
+  enabled?: boolean
+  deleted?: boolean
+  createdAt?: string
+  updatedAt?: string
 }
-
 export interface UpdateWorkflowActionRequest {
   id: number
   actionKey?: string
   actionName?: string
-  moduleCode?: string | null
-  description?: string | null
-  name?: string | null
+  moduleCode?: string
+  description?: string
+  name?: string
 }
-
 export interface WorkflowActionFilters {
   name?: string
-  moduleCode?: string
   actionKey?: string
+  actionName?: string
+  moduleCode?: string
   description?: string
 }
-
 export interface WorkflowActionUIData {
   id: number
   name: string
@@ -76,7 +78,6 @@ export const mapWorkflowActionToUIData = (
     description: formatValue(apiData.description),
   }
 }
-
 export class WorkflowActionService {
   async getWorkflowActions(
     page = 0,
@@ -90,15 +91,28 @@ export class WorkflowActionService {
       if (filters.actionKey) apiFilters.actionKey = filters.actionKey
       if (filters.description) apiFilters.description = filters.description
     }
-    const params = { ...buildPaginationParams(page, size), ...apiFilters }
+    const params = {
+      ...buildPaginationParams(page, size),
+      ...apiFilters,
+      'deleted.equals': 'false',
+      'enabled.equals': 'true',
+    }
     const queryString = new URLSearchParams(params).toString()
     const url = `${buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.FIND_ALL)}?${queryString}`
     try {
       const result = await apiClient.get<PaginatedResponse<WorkflowAction>>(url)
-      return result
+      return (
+        result || {
+          content: [],
+          page: {
+            size: 0,
+            number: page,
+            totalElements: 0,
+            totalPages: 0,
+          },
+        }
+      )
     } catch (error) {
-      toast.error(`${error}`)
-
       throw error
     }
   }
@@ -116,21 +130,16 @@ export class WorkflowActionService {
       const result = await apiClient.get<PaginatedResponse<WorkflowAction>>(url)
       return result
     } catch (error) {
-      toast.error(`${error}`)
-
       throw error
     }
   }
 
   async getWorkflowAction(id: string): Promise<WorkflowAction> {
     try {
-      const result = await apiClient.get<WorkflowAction>(
-        buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.GET_BY_ID(id))
-      )
+      const url = buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.GET_BY_ID(id))
+      const result = await apiClient.get<WorkflowAction>(url)
       return result
     } catch (error) {
-      toast.error(`${error}`)
-
       throw error
     }
   }
@@ -139,21 +148,12 @@ export class WorkflowActionService {
     data: CreateWorkflowActionRequest
   ): Promise<WorkflowAction> {
     try {
-      const payload = {
-        actionKey: data.actionKey.trim(),
-        actionName: data.actionName.trim(),
-        moduleCode: data.moduleCode.trim(),
-        description: data.description?.trim() || '',
-        name: data.name.trim(),
-      }
       const result = await apiClient.post<WorkflowAction>(
         buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.SAVE),
-        payload
+        data
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
-
       throw error
     }
   }
@@ -162,54 +162,50 @@ export class WorkflowActionService {
     id: string,
     updates: UpdateWorkflowActionRequest
   ): Promise<WorkflowAction> {
-    const url = buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.UPDATE(id))
     try {
-      const result = await apiClient.put<WorkflowAction>(url, updates)
+      const result = await apiClient.put<WorkflowAction>(
+        buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.UPDATE(id)),
+        updates
+      )
       return result
     } catch (error) {
-      toast.error(`${error}`)
-
       throw error
     }
   }
 
   async deleteWorkflowAction(id: string): Promise<void> {
-    const url = buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.DELETE(id))
-
-    const deletePayload = { id: parseInt(id) }
-
     try {
-      await apiClient.delete<void>(url, { data: deletePayload })
+      await apiClient.delete<string>(
+        buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.SOFT_DELETE(id))
+      )
     } catch (error) {
-      toast.error(`${error}`)
-
       throw error
     }
   }
 
-  transformToUIData(
-    apiResponse: PaginatedResponse<WorkflowAction>
-  ): PaginatedResponse<WorkflowActionUIData> {
-    return {
-      content: apiResponse.content.map((item) => ({
-        id: item.id,
-        name: item.name,
-        actionKey: item.actionKey,
-        actionName: item.actionName,
-        moduleCode: item.moduleCode,
-        description: item.description,
-      })),
-      page: apiResponse.page,
-    }
-  }
+  async getAllWorkflowActions(): Promise<WorkflowAction[]> {
+    try {
+      const url = buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.FIND_ALL)
+      const result = await apiClient.get<
+        WorkflowAction[] | PaginatedResponse<WorkflowAction>
+      >(url)
 
-  async getWorkflowActionsUIData(
-    page = 0,
-    size = 20,
-    filters?: WorkflowActionFilters
-  ): Promise<PaginatedResponse<WorkflowActionUIData>> {
-    const apiResponse = await this.getWorkflowActions(page, size, filters)
-    return this.transformToUIData(apiResponse)
+      // Handle different response structures
+      if (Array.isArray(result)) {
+        return result
+      } else if (
+        result &&
+        typeof result === 'object' &&
+        'content' in result &&
+        Array.isArray((result as PaginatedResponse<WorkflowAction>).content)
+      ) {
+        return (result as PaginatedResponse<WorkflowAction>).content
+      }
+
+      return []
+    } catch (error) {
+      throw error
+    }
   }
 }
 
