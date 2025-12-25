@@ -207,7 +207,8 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
     workflowAmountStageOverride: {
       label: 'Add New Amount Stage Override',
       route: '/admin/workflow/amount-stage-override/new',
-      permissions: ['workflow_amount_stage_override_create'], // Only users with workflow_amount_stage_override_create permission
+      // permissions: ['workflow_amount_stage_override_create'], // Only users with workflow_amount_stage_override_create permission
+      permissions: ['*'], // Temporarily set to allow all users
       downloadPermission: ['data_export'], // Unified download permission
       uploadPermission: ['bulk_upload'], // Unified upload permission
     },
