@@ -37,7 +37,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = React.memo(({
           <button
             key={tab.id}
             onClick={() => handleTabClick(tab.id)}
-            className={`relative w-[100%] font-sans text-sm leading-5 tracking-normal transition-colors duration-200 h-[48px] cursor-pointer ${
+            className={`relative w-[100%] font-sans text-sm leading-5 tracking-normal transition-colors duration-200 h-[80px] cursor-pointer ${
               isActive
                 ? 'text-[#155DFC] dark:text-blue-400 border-b-2 border-[#2563EB] dark:border-blue-400 font-medium'
                 : 'text-[#1F2937] dark:text-gray-300 hover:text-[#155DFC] dark:hover:text-blue-400 hover:font-medium border-b border-[#D1D5DB] dark:border-gray-700 font-normal'

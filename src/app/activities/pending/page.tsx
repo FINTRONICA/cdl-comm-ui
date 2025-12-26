@@ -229,7 +229,7 @@ const PendingActivitiesPage: React.FC = () => {
     pageType: 'pending' | 'involved'
   ): string => {
     const tab = ACTIVITIES_TABS.find((t) => t.id === activeTab)
-    const moduleName = tab?.label || 'Unknown Module'
+    const moduleName = tab?.label?.trim() || ''
 
     if (pageType === 'pending') {
       return `Pending Activities: ${moduleName}`

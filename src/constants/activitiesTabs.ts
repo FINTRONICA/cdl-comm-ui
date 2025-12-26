@@ -13,24 +13,33 @@ export const ACTIVITIES_TABS: Tab[] = [
   // { id: 'payments', label: 'Payments' },
   // { id: 'suretyBond', label: 'Surety Bond' },
   // Master data tabs (from master pages)
+  { id: 'account', label: 'Account' },
+  { id: 'party', label: 'Party' },
+  { id: 'agreement', label: 'Agreement' },
+  { id: 'currency', label: 'Currency' },
+  { id: 'country', label: 'Country' },
+  { id: 'investment', label: 'Investment' },
+  
   { id: 'accountPurpose', label: 'Account Purpose' },
   { id: 'agreementSegment', label: 'Agreement Segment' },
   { id: 'agreementType', label: 'Agreement Type' },
   { id: 'agreementSubType', label: 'Agreement Sub Type' },
   { id: 'businessSegment', label: 'Business Segment' },
-  { id: 'businessSubSegment', label: 'Business Sub Segment' },
-  { id: 'currency', label: 'Currency' },
-  { id: 'country', label: 'Country' },
-  { id: 'investment', label: 'Investment' },
+  // { id: 'businessSubSegment', label: 'Business Sub Segment' },
+    { id: 'businessSubSegment', label: ' Sub Business ' },
+
+  // { id: 'currency', label: 'Currency' },
+  // { id: 'country', label: 'Country' },
+  // { id: 'investment', label: 'Investment' },
   { id: 'productProgram', label: 'Product Program' },
-  { id: 'generalLedgerAccount', label: 'General Ledger Account' },
+  { id: 'generalLedgerAccount', label: 'General  Account' },
   // Stepper-based tabs (from stepper components)
-  { id: 'account', label: 'Account' },
-  { id: 'party', label: 'Party' },
-  { id: 'agreement', label: 'Agreement' },
+  // { id: 'account', label: 'Account' },
+  // { id: 'party', label: 'Party' },
+  // { id: 'agreement', label: 'Agreement' },
   { id: 'agreementSignatory', label: 'Agreement Signatory' },
   { id: 'agreementParameter', label: 'Agreement Parameter' },
-  { id: 'agreementFeeSchedule', label: 'Agreement Fee Schedule' },
+  { id: 'agreementFeeSchedule', label: 'Agreement Fee ' },
   { id: 'paymentBeneficiary', label: 'Payment Beneficiary' },
   { id: 'standingInstruction', label: 'Standing Instruction' },
 ]
@@ -41,11 +50,7 @@ export const ACTIVITIES_TABS: Tab[] = [
  */
 export const TAB_TO_MODULE_MAP: Record<string, string> = {
   // Entity mappings
-  // buildPartner: 'BUILD_PARTNER',
-  // buildPartnerAsset: 'BUILD_PARTNER_ASSET',
-  // capitalPartner: 'CAPITAL_PARTNER',
-  // payments: 'PAYMENTS',
-  // suretyBond: 'SURETY_BOND',
+
   // Master data mappings (from master pages)
   accountPurpose: 'ACCOUNT_PURPOSE',
   agreementSegment: 'AGREEMENT_SEGMENT',
