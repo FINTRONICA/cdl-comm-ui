@@ -106,16 +106,17 @@ function PartyStepPageContent() {
   }
 
   return (
-    <DashboardLayout
-      title="Party Details"
-      subtitle={
-        isViewMode
-          ? 'View party details and configuration (Read-only)'
-          : isEditingMode
-            ? 'Edit party details and configuration'
-            : 'Register your party step by step, non-mandatory fields and steps are easy to skip.'
-      }
-    >
+    // <DashboardLayout
+    //   title="Party Details"
+    //   subtitle={
+    //     isViewMode
+    //       ? 'View party details and configuration (Read-only)'
+    //       : isEditingMode
+    //         ? 'Edit party details and configuration'
+    //         : 'Register your party step by step, non-mandatory fields and steps are easy to skip.'
+    //   }
+    // >
+     <>
       <div className="flex items-start py-2 gap-7 px-7">
         <div className="flex flex-col min-w-[200px] gap-1">
           <label className="font-sans font-normal text-[12px] leading-[1] tracking-normal text-gray-600 dark:text-gray-400">
@@ -148,7 +149,8 @@ function PartyStepPageContent() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+     </>
+    // </DashboardLayout>
   )
 }
 
@@ -156,11 +158,11 @@ export default function PartyStepPage() {
   return (
     <Suspense
       fallback={
-        <DashboardLayout title="Party Details" subtitle="">
+        // <DashboardLayout title="Party Details" subtitle="">
           <div className="bg-white/75 dark:bg-[#101828] rounded-2xl flex flex-col h-full">
             <GlobalLoading fullHeight />
           </div>
-        </DashboardLayout>
+        // </DashboardLayout>
       }
     >
       <PartyStepPageContent />

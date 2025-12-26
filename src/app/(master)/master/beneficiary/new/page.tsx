@@ -18,14 +18,14 @@ function BeneficiaryStepperWithSuspense() {
 
 export default function NewBeneficiaryPage() {
   return (
-    <DashboardLayout
-      title="Master : Beneficiary"
-      subtitle="Register your beneficiary step by step, non-mandatory fields and steps are easy to skip."
-    >
+    // <DashboardLayout
+    //   title="Master : Beneficiary"
+    //   subtitle="Register your beneficiary step by step, non-mandatory fields and steps are easy to skip."
+    // >
       <div className="px-3 mt-[10px] bg-white/75 dark:bg-[#101828] p-2 border-radius-md">
         <BeneficiaryStepperWithSuspense />
       </div>
-    </DashboardLayout>
+    // </DashboardLayout>
   )
 }
 

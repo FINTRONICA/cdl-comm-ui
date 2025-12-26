@@ -18,14 +18,14 @@ function PartyStepperWithSuspense() {
 
 export default function NewPartyPage() {
   return (
-    <DashboardLayout
-      title="Party Details"
-      subtitle="Register your party step by step, non-mandatory fields and steps are easy to skip."
-    >
+    // <DashboardLayout
+    //   title="Party Details"
+    //   subtitle="Register your party step by step, non-mandatory fields and steps are easy to skip."
+    // >
       <div className="px-3">
         <PartyStepperWithSuspense />
       </div>
-    </DashboardLayout>
+    // </DashboardLayout>
   )
 }
 
