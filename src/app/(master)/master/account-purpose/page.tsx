@@ -2,12 +2,11 @@
 
 import dynamic from 'next/dynamic'
 import React, { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideAccountPurposePanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideAccountPurposePanel'
 import {
   useAccountPurposes,
@@ -21,6 +20,11 @@ import {
   CriticalityDTO,
   TaskStatusDTO,
 } from '@/services/api/masterApi/Customer/accountPurposeService'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 interface AccountPurposeData extends Record<string, unknown> {
   id: number
@@ -43,7 +47,7 @@ const STATUS_OPTIONS = [
   'IN_PROGRESS',
   'DRAFT',
   'INITIATED',
-] as const
+]
 
 // Memoized dynamic component to prevent unnecessary re-renders
 export const AccountPurposePageClient = dynamic(
@@ -56,13 +60,10 @@ export const AccountPurposePageClient = dynamic(
 const AccountPurposePageImpl: React.FC = () => {
   // Panel state
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<AccountPurposeData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
 
-  // Delete modal state
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<AccountPurposeData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Upload dialog state
@@ -87,6 +88,9 @@ const AccountPurposePageImpl: React.FC = () => {
   )
 
   const deleteAccountPurposeMutation = useDeleteAccountPurpose()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
   const refreshAccountPurposes = useRefreshAccountPurposes()
 
@@ -224,37 +228,38 @@ const AccountPurposePageImpl: React.FC = () => {
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
   // Delete handlers
-  const confirmDelete = useCallback(async () => {
-    if (isDeleting || !deleteItem) return
-    setIsDeleting(true)
-    try {
-      await deleteAccountPurposeMutation.mutateAsync(String(deleteItem.id))
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error(`Failed to delete account purpose: ${errorMessage}`)
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [isDeleting, deleteItem, deleteAccountPurposeMutation])
-
   const handleRowDelete = useCallback(
-    (row: AccountPurposeData) => {
-      if (isDeleting) return
-      setDeleteItem(row)
-      setIsDeleteModalOpen(true)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AccountPurposeData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
+
+      confirmDelete({
+        itemName: `account purpose: ${row.accountPurposeName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteAccountPurposeMutation.mutateAsync(String(row.id))
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
     },
-    [isDeleting]
+    [deleteAccountPurposeMutation, confirmDelete, isDeleting]
   )
 
   // Edit handler
   const handleRowEdit = useCallback(
-    (row: AccountPurposeData) => {
-      const index = accountPurposeData.findIndex((item) => item.id === row.id)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AccountPurposeData, _index: number) => {
+      const dataIndex = accountPurposeData.findIndex((item) => item.id === row.id)
       setEditingItem(row)
-      setEditingItemIndex(index >= 0 ? index : null)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
       setPanelMode('edit')
       setIsPanelOpen(true)
     },
@@ -280,10 +285,8 @@ const AccountPurposePageImpl: React.FC = () => {
   const handleDownloadTemplate = useCallback(async () => {
     try {
       await downloadTemplate('AccountPurposeTemplate.xlsx')
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to download template:', error)
-      }
+    } catch {
+      // Error handling is done by the hook
     }
   }, [downloadTemplate])
 
@@ -293,10 +296,10 @@ const AccountPurposePageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshAccountPurposes])
 
-  const handleUploadError = useCallback((error: string) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Upload error:', error)
-    }
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
+    // Error is handled by UploadDialog component
   }, [])
 
   // Account purpose added/updated handlers
@@ -372,6 +375,31 @@ const AccountPurposePageImpl: React.FC = () => {
     [getAccountPurposeLabel]
   )
 
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AccountPurposeData, _index: number) => {
+      confirmApprove({
+        itemName: `account purpose: ${row.accountPurposeName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'ACCOUNT_PURPOSE',
+              moduleName: 'ACCOUNT_PURPOSE',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshAccountPurposes()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshAccountPurposes]
+  )
+
   return (
     <>
       <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
@@ -403,7 +431,7 @@ const AccountPurposePageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<AccountPurposeData>
+              <PermissionAwareDataTable<AccountPurposeData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -424,8 +452,16 @@ const AccountPurposePageImpl: React.FC = () => {
                 onRowExpansionChange={handleRowExpansionChange}
                 renderExpandedContent={renderExpandedContent}
                 statusOptions={STATUS_OPTIONS}
+                onRowApprove={handleRowApprove}
                 onRowDelete={handleRowDelete}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['account_purpose_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['account_purpose_update']}
+                editPermissions={['*']}
+                // approvePermissions={['account_purpose_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['account_purpose_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -434,29 +470,6 @@ const AccountPurposePageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Account Purpose"
-        message={`Are you sure you want to delete this account purpose: ${deleteItem?.accountPurposeName || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
 
       {isPanelOpen && (
         <RightSlideAccountPurposePanel
@@ -464,7 +477,7 @@ const AccountPurposePageImpl: React.FC = () => {
           onClose={handleClosePanel}
           onAccountPurposeAdded={handleAccountPurposeAdded}
           onAccountPurposeUpdated={handleAccountPurposeUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem as AccountPurpose | null}
           {...(editingItemIndex !== null && {
             accountPurposeIndex: editingItemIndex,

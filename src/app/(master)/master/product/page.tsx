@@ -2,12 +2,11 @@
 
 import dynamic from 'next/dynamic'
 import React, { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideProductProgramPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideProductProgramPanel'
 import {
   useProductPrograms,
@@ -17,6 +16,11 @@ import {
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
 import { ProductProgram } from '@/services/api/masterApi/Customer/productProgramService'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 // Constants
 const STATUS_OPTIONS: string[] = [
@@ -57,13 +61,10 @@ export const ProductProgramPageClient = dynamic(
 const ProductProgramPageImpl: React.FC = () => {
   // Panel state
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<ProductProgramData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
 
-  // Delete modal state
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<ProductProgramData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Upload dialog state
@@ -88,6 +89,9 @@ const ProductProgramPageImpl: React.FC = () => {
   )
 
   const deleteProductProgramMutation = useDeleteProductProgram()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
   const refreshProductPrograms = useRefreshProductPrograms()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
@@ -238,10 +242,11 @@ const ProductProgramPageImpl: React.FC = () => {
   }, [])
 
   const handleRowEdit = useCallback(
-    (row: ProductProgramData) => {
-      const index = productProgramData.findIndex((item) => item.id === row.id)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: ProductProgramData, _index: number) => {
+      const dataIndex = productProgramData.findIndex((item) => item.id === row.id)
       setEditingItem(row)
-      setEditingItemIndex(index >= 0 ? index : null)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
       setPanelMode('edit')
       setIsPanelOpen(true)
     },
@@ -249,30 +254,30 @@ const ProductProgramPageImpl: React.FC = () => {
   )
 
   const handleRowDelete = useCallback(
-    (row: ProductProgramData) => {
-      if (isDeleting) return
-      setDeleteItem(row)
-      setIsDeleteModalOpen(true)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: ProductProgramData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
+
+      confirmDelete({
+        itemName: `product program: ${row.productProgramName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteProductProgramMutation.mutateAsync(String(row.id))
+            refreshProductPrograms()
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
     },
-    [isDeleting]
+    [deleteProductProgramMutation, confirmDelete, isDeleting, refreshProductPrograms]
   )
-
-  const confirmDelete = useCallback(async () => {
-    if (isDeleting || !deleteItem) return
-
-    setIsDeleting(true)
-    try {
-      await deleteProductProgramMutation.mutateAsync(String(deleteItem.id))
-      refreshProductPrograms()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch {
-      // Error is handled by the mutation's error state
-      // User feedback is provided through the UI
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [isDeleting, deleteItem, deleteProductProgramMutation, refreshProductPrograms])
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
@@ -295,6 +300,31 @@ const ProductProgramPageImpl: React.FC = () => {
       // Could add additional error handling here if needed
     },
     []
+  )
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: ProductProgramData, _index: number) => {
+      confirmApprove({
+        itemName: `product program: ${row.productProgramName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'PRODUCT_PROGRAM',
+              moduleName: 'PRODUCT_PROGRAM',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshProductPrograms()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshProductPrograms]
   )
 
   const handleProductProgramAdded = useCallback(() => {
@@ -378,7 +408,7 @@ const ProductProgramPageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<ProductProgramData>
+              <PermissionAwareDataTable<ProductProgramData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -400,7 +430,15 @@ const ProductProgramPageImpl: React.FC = () => {
                 renderExpandedContent={renderExpandedContent}
                 statusOptions={STATUS_OPTIONS}
                 onRowDelete={handleRowDelete}
+                onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['product_program_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['product_program_update']}
+                editPermissions={['*']}
+                // approvePermissions={['product_program_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['product_program_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -409,29 +447,6 @@ const ProductProgramPageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Product Program"
-        message={`Are you sure you want to delete this product program: ${deleteItem?.productProgramName || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
 
       {isPanelOpen && (
         <RightSlideProductProgramPanel
@@ -439,7 +454,7 @@ const ProductProgramPageImpl: React.FC = () => {
           onClose={handleClosePanel}
           onProductProgramAdded={handleProductProgramAdded}
           onProductProgramUpdated={handleProductProgramUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem as ProductProgram | null}
           {...(editingItemIndex !== null && {
             productProgramIndex: editingItemIndex,

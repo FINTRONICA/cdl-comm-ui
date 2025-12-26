@@ -16,12 +16,20 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormHelperText,
+  Snackbar,
+  OutlinedInput,
 } from '@mui/material'
 import { Controller, useForm, FieldErrors } from 'react-hook-form'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
-import { getLabelByConfigId as getWorkflowAmountStageOverrideLabel } from '@/constants/mappings/workflowMapping'
+import { getWorkflowLabelsByCategory as getWorkflowAmountStageOverrideLabel } from '@/constants/mappings/workflowMapping'
+import {
+  WorkflowAmountStageOverrideSchemas,
+  getWorkflowAmountStageOverrideValidationRules,
+} from '@/lib/validation/workflowAmountStageOverrideSchemas'
+import { FormError } from '../../atoms/FormError'
+import { useBuildWorkflowAmountStageOverrideLabelsWithCache } from '@/hooks/workflow'
+import { useAppStore } from '@/store'
 
 import {
   useCreateWorkflowAmountStageOverride,
@@ -33,10 +41,7 @@ import type {
   CreateWorkflowAmountStageOverrideRequest,
   UpdateWorkflowAmountStageOverrideRequest,
 } from '@/services/api/workflowApi'
-import {
-  getWorkflowAmountStageOverrideValidationRules,
-  validateStageOrderAndRequiredApprovals,
-} from '@/lib/validation'
+import { validateStageOrderAndRequiredApprovals } from '@/lib/validation'
 import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from './panelTheme'
 
@@ -71,12 +76,35 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
   const theme = useTheme()
   const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
   const [selectedWorkflowAmountRuleId, setSelectedWorkflowAmountRuleId] =
     useState<number | null>(null)
 
+  // Dynamic labels: same pattern used in Build Partner Beneficiary Panel
+  const { data: workflowAmountStageOverrideLabels, getLabel } =
+    useBuildWorkflowAmountStageOverrideLabelsWithCache()
+  const currentLanguage = useAppStore((state) => state.language) || 'EN'
+  const getWorkflowAmountStageOverrideLabelDynamic = useCallback(
+    (configId: string): string => {
+      const fallback = getWorkflowAmountStageOverrideLabel(configId)
+      if (workflowAmountStageOverrideLabels) {
+        return getLabel(configId, currentLanguage, fallback)
+      }
+      return fallback
+    },
+    [workflowAmountStageOverrideLabels, currentLanguage, getLabel]
+  )
+
+  // Get validation rules from schema
+  const validationRules = useMemo(
+    () => getWorkflowAmountStageOverrideValidationRules(),
+    []
+  )
+
   const { data: workflowAmountRulesData, isLoading: isLoadingRules } =
     useWorkflowAmountRules(0, 100)
-  const validationRules = getWorkflowAmountStageOverrideValidationRules()
   const createStageOverride = useCreateWorkflowAmountStageOverride()
   const updateStageOverride = useUpdateWorkflowAmountStageOverride()
 
@@ -108,7 +136,8 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
     setValue,
   } = useForm<StageOverrideFormData>({
     defaultValues: DEFAULT_VALUES,
-    mode: 'onChange',
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   })
 
   const isSubmitting =
@@ -118,15 +147,74 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
     isLoadingRules
   const isViewMode = mode === 'view'
 
-  const isFormDirty = isDirty
-  const canSave = isFormDirty && !isSubmitting && !isViewMode
-  const canReset = isFormDirty && !isSubmitting && !isViewMode
-
   const labelSx = tokens.label
   const valueSx = tokens.value
 
+  // Validation function using WorkflowAmountStageOverrideSchemas - same pattern as reference
+  const validateWorkflowAmountStageOverrideField = useCallback(
+    (
+      fieldName: string,
+      value: unknown,
+      allValues: StageOverrideFormData
+    ): string | true => {
+      try {
+        // Simple required checks first so empty required fields show errors immediately
+        const requiredFields: Record<string, string> = {
+          keycloakGroup: 'Keycloak Group is required',
+          stageKey: 'Stage Key is required',
+          amountRuleName: 'Amount Rule Name is required',
+        }
+
+        if (requiredFields[fieldName]) {
+          if (!value || (typeof value === 'string' && value.trim() === '')) {
+            return requiredFields[fieldName]
+          }
+        }
+
+        // Validate using schema if available
+        const workflowAmountStageOverrideForValidation = {
+          stageOrder:
+            allValues.stageOrder === '' ? 0 : Number(allValues.stageOrder),
+          requiredApprovals:
+            allValues.requiredApprovals === ''
+              ? 0
+              : Number(allValues.requiredApprovals),
+          keycloakGroup: allValues.keycloakGroup || '',
+          stageKey: allValues.stageKey || '',
+          amountRuleName: allValues.amountRuleName || '',
+          workflowAmountRuleId: selectedWorkflowAmountRuleId || 0,
+        }
+
+        if (
+          WorkflowAmountStageOverrideSchemas?.workflowAmountStageOverrideForm
+        ) {
+          const result =
+            WorkflowAmountStageOverrideSchemas.workflowAmountStageOverrideForm.safeParse(
+              workflowAmountStageOverrideForValidation
+            )
+
+          if (!result.success) {
+            const fieldError = result.error.issues.find((issue) =>
+              issue.path.includes(fieldName)
+            )
+            return fieldError ? fieldError.message : true
+          }
+        }
+
+        return true
+      } catch {
+        return true
+      }
+    },
+    [selectedWorkflowAmountRuleId]
+  )
+
   const handleAmountRuleNameChange = useCallback(
     (amountRuleName: string) => {
+      if (!amountRuleName || amountRuleName.trim() === '') {
+        setSelectedWorkflowAmountRuleId(null)
+        return
+      }
       const selectedRule = availableAmountRuleNames.find(
         (rule) => rule.amountRuleName === amountRuleName
       )
@@ -143,14 +231,19 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
     if (
       workflowAmountRulesData?.content &&
       workflowAmountRulesData.content.length > 0 &&
-      !selectedWorkflowAmountRuleId
+      !selectedWorkflowAmountRuleId &&
+      mode === 'add'
     ) {
       const firstRule = workflowAmountRulesData.content[0]
       if (firstRule && typeof firstRule.id === 'number') {
         setSelectedWorkflowAmountRuleId(firstRule.id)
+        // Set the default amountRuleName value in the form
+        setValue('amountRuleName', `RULE_${firstRule.id}`, {
+          shouldValidate: false,
+        })
       }
     }
-  }, [workflowAmountRulesData, selectedWorkflowAmountRuleId])
+  }, [workflowAmountRulesData, selectedWorkflowAmountRuleId, mode, setValue])
 
   const watchedStageOrder = watch('stageOrder')
   const watchedRequiredApprovals = watch('requiredApprovals')
@@ -220,9 +313,7 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
             requiredApprovals: stageOverrideData.requiredApprovals ?? '',
             keycloakGroup: stageOverrideData.keycloakGroup ?? '',
             stageKey: stageOverrideData.stageKey ?? '',
-            amountRuleName:
-              stageOverrideData.workflowAmountRuleName ||
-              `RULE_${stageOverrideData.workflowAmountRuleId}`,
+            amountRuleName: '',
           }
         : DEFAULT_VALUES
 
@@ -236,361 +327,319 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
     setErrorMessage(null)
   }, [isOpen, mode, stageOverrideData, reset, clearErrors])
 
-  const onSubmit = (data: StageOverrideFormData) => {
-    setErrorMessage(null)
-
-    if (!selectedWorkflowAmountRuleId) {
-      setErrorMessage('Please select a workflow amount rule')
+  // Set amountRuleName in edit mode after rules data is loaded
+  useEffect(() => {
+    if (
+      !isOpen ||
+      mode !== 'edit' ||
+      !stageOverrideData?.workflowAmountRuleId ||
+      !workflowAmountRulesData?.content ||
+      availableAmountRuleNames.length === 0
+    ) {
       return
     }
 
-    if (!data.keycloakGroup?.trim()) {
-      setErrorMessage('Keycloak Group is required')
-      return
-    }
+    const ruleId = stageOverrideData.workflowAmountRuleId
 
-    if (!data.stageKey?.trim()) {
-      setErrorMessage('Stage Key is required')
-      return
-    }
-
-    const validationResult = validateStageOrderAndRequiredApprovals(
-      data.stageOrder,
-      data.requiredApprovals
+    // Find the rule in the loaded data
+    const rule = workflowAmountRulesData.content.find(
+      (r) => r.id === ruleId
     )
 
-    if (validationResult !== true) {
-      setErrorMessage(validationResult)
-      return
+    // Find the matching option in availableAmountRuleNames
+    const matchingOption = availableAmountRuleNames.find(
+      (opt) => opt.id === ruleId
+    )
+
+    if (matchingOption && typeof matchingOption.id === 'number') {
+      // Use the exact format from availableAmountRuleNames to ensure it matches
+      const amountRuleName = matchingOption.amountRuleName
+      // Set the form value to match the dropdown format exactly
+      setValue('amountRuleName', amountRuleName, { shouldValidate: false })
+      setSelectedWorkflowAmountRuleId(matchingOption.id)
+    } else if (rule && typeof rule.id === 'number') {
+      // Fallback: construct the name if not in availableAmountRuleNames
+      const amountRuleName = `RULE_${rule.id}`
+      setValue('amountRuleName', amountRuleName, { shouldValidate: false })
+      setSelectedWorkflowAmountRuleId(rule.id)
+    } else if (ruleId && typeof ruleId === 'number') {
+      // Last fallback: use the workflowAmountRuleName from stageOverrideData or construct it
+      const amountRuleName =
+        stageOverrideData.workflowAmountRuleName ||
+        `RULE_${ruleId}`
+      // Normalize to uppercase RULE_ format to match dropdown
+      const normalizedName = amountRuleName.toUpperCase().startsWith('RULE_')
+        ? amountRuleName.toUpperCase()
+        : `RULE_${ruleId}`
+      setValue('amountRuleName', normalizedName, { shouldValidate: false })
+      setSelectedWorkflowAmountRuleId(ruleId)
     }
+  }, [
+    isOpen,
+    mode,
+    stageOverrideData,
+    workflowAmountRulesData,
+    availableAmountRuleNames,
+    setValue,
+    setSelectedWorkflowAmountRuleId,
+  ])
 
-    const stageOrderValue =
-      data.stageOrder === '' || data.stageOrder === null
-        ? 0
-        : Number(data.stageOrder)
-    const requiredApprovalsValue =
-      data.requiredApprovals === '' || data.requiredApprovals === null
-        ? 0
-        : Number(data.requiredApprovals)
+  const onSubmit = useCallback(
+    async (data: StageOverrideFormData) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
 
-    if (stageOrderValue === 0 && requiredApprovalsValue === 0) {
-      setErrorMessage(
-        'At least one of Stage Order or Required Approvals must be greater than 0'
-      )
-      return
-    }
+        if (isSubmitting) {
+          return
+        }
 
-    if (mode === 'edit') {
-      if (typeof stageOverrideData?.id !== 'number') {
-        setErrorMessage('Invalid or missing stage override ID for update')
+        // Only check isDirty for edit mode, not for add mode
+        if (mode === 'edit' && !isDirty) {
+          setErrorMessage('No changes to save.')
+          return
+        }
+
+        if (!selectedWorkflowAmountRuleId || selectedWorkflowAmountRuleId <= 0) {
+          setErrorMessage('Please select a valid workflow amount rule')
+          return
+        }
+
+        const validationResult = validateStageOrderAndRequiredApprovals(
+          data.stageOrder,
+          data.requiredApprovals
+        )
+
+        if (validationResult !== true) {
+          setErrorMessage(validationResult)
+          return
+        }
+
+        const stageOrderValue =
+          data.stageOrder === '' || data.stageOrder === null
+            ? 0
+            : Number(data.stageOrder)
+        const requiredApprovalsValue =
+          data.requiredApprovals === '' || data.requiredApprovals === null
+            ? 0
+            : Number(data.requiredApprovals)
+
+        // Validate numeric values
+        if (isNaN(stageOrderValue) || isNaN(requiredApprovalsValue)) {
+          setErrorMessage('Invalid numeric values for stage order or required approvals')
+          return
+        }
+
+        // Validate range
+        if (stageOrderValue < 0 || stageOrderValue > 10) {
+          setErrorMessage('Stage Order must be between 0 and 10')
+          return
+        }
+
+        if (requiredApprovalsValue < 0 || requiredApprovalsValue > 10) {
+          setErrorMessage('Required Approvals must be between 0 and 10')
+          return
+        }
+
+        if (stageOrderValue === 0 && requiredApprovalsValue === 0) {
+          setErrorMessage(
+            'At least one of Stage Order or Required Approvals must be greater than 0'
+          )
+          return
+        }
+
+        // Sanitize string inputs
+        const keycloakGroup = (data.keycloakGroup || '').trim()
+        const stageKey = (data.stageKey || '').trim()
+
+        if (!keycloakGroup || keycloakGroup.length === 0) {
+          setErrorMessage('Keycloak Group is required')
+          return
+        }
+
+        if (!stageKey || stageKey.length === 0) {
+          setErrorMessage('Stage Key is required')
+          return
+        }
+
+        // Validate string lengths
+        if (keycloakGroup.length > 100) {
+          setErrorMessage('Keycloak Group must be 100 characters or less')
+          return
+        }
+
+        if (stageKey.length > 50) {
+          setErrorMessage('Stage Key must be 50 characters or less')
+          return
+        }
+
+        if (mode === 'edit') {
+          if (!stageOverrideData?.id || typeof stageOverrideData.id !== 'number') {
+            setErrorMessage('Invalid or missing stage override ID for update')
+            return
+          }
+
+          const updatePayload: UpdateWorkflowAmountStageOverrideRequest = {
+            id: stageOverrideData.id,
+            stageOrder: stageOrderValue,
+            requiredApprovals: requiredApprovalsValue,
+            keycloakGroup,
+            stageKey,
+            workflowAmountRuleId: selectedWorkflowAmountRuleId,
+          }
+
+          await updateStageOverride.mutateAsync({
+            id: stageOverrideData.id.toString(),
+            updates: updatePayload,
+          })
+
+          setSuccessMessage(
+            'Workflow amount stage override updated successfully!'
+          )
+          setTimeout(() => {
+            reset()
+            onClose()
+          }, 1500)
+        } else {
+          const createPayload: CreateWorkflowAmountStageOverrideRequest = {
+            stageOrder: stageOrderValue,
+            requiredApprovals: requiredApprovalsValue,
+            keycloakGroup,
+            stageKey,
+            workflowAmountRuleId: selectedWorkflowAmountRuleId,
+          }
+
+          await createStageOverride.mutateAsync(createPayload)
+
+          setSuccessMessage(
+            'Workflow amount stage override created successfully!'
+          )
+          setTimeout(() => {
+            reset()
+            onClose()
+          }, 1500)
+        }
+      } catch (error: unknown) {
+        let errorMsg =
+          'Failed to save workflow amount stage override. Please try again.'
+
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMsg = 'Please check your input and try again.'
+          } else {
+            errorMsg = error.message
+          }
+        } else if (typeof error === 'object' && error !== null && 'message' in error) {
+          errorMsg = String(error.message) || errorMsg
+        }
+
+        setErrorMessage(errorMsg)
+      }
+    },
+    [
+      isSubmitting,
+      mode,
+      isDirty,
+      selectedWorkflowAmountRuleId,
+      stageOverrideData,
+      updateStageOverride,
+      createStageOverride,
+      reset,
+      onClose,
+    ]
+  )
+
+  const handleClose = () => {
+    reset()
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    onClose()
+  }
+
+  const onError = (_errors: FieldErrors<StageOverrideFormData>) => {
+    // No error handling needed since validation is removed
+  }
+
+  // Handle number field input restrictions
+  const handleNumberFieldChange = useCallback(
+    (name: string, value: string, field: any) => {
+      const numericValue = value.replace(/[^0-9]/g, '').slice(0, 2)
+      if (numericValue === '') {
+        field.onChange('')
         return
       }
 
-      const updatePayload: UpdateWorkflowAmountStageOverrideRequest = {
-        id: stageOverrideData.id,
-        stageOrder:
-          data.stageOrder === '' || data.stageOrder === null
-            ? 0
-            : Number(data.stageOrder),
-        requiredApprovals:
-          data.requiredApprovals === '' || data.requiredApprovals === null
-            ? 0
-            : Number(data.requiredApprovals),
-        keycloakGroup: data.keycloakGroup.trim(),
-        stageKey: data.stageKey.trim(),
-        workflowAmountRuleId: selectedWorkflowAmountRuleId!,
-      }
+      const numValue = Number(numericValue)
 
-      updateStageOverride.mutate(
-        { id: stageOverrideData.id.toString(), updates: updatePayload },
-        {
-          onSuccess: () => {
-            setTimeout(() => {
-              onClose()
-            }, 1000)
-          },
+      // Cross-field validation: If stageOrder is 0, requiredApprovals must be 0
+      if (name === 'requiredApprovals') {
+        const currentStageOrder =
+          watchedStageOrder === '' || watchedStageOrder === null
+            ? 0
+            : Number(watchedStageOrder)
+        if (currentStageOrder === 0 && numValue > 0) {
+          field.onChange(0)
+          return
         }
-      )
-    } else {
-      const createPayload: CreateWorkflowAmountStageOverrideRequest = {
-        stageOrder:
-          data.stageOrder === '' || data.stageOrder === null
-            ? 0
-            : Number(data.stageOrder),
-        requiredApprovals:
-          data.requiredApprovals === '' || data.requiredApprovals === null
-            ? 0
-            : Number(data.requiredApprovals),
-        keycloakGroup: data.keycloakGroup.trim(),
-        stageKey: data.stageKey.trim(),
-        workflowAmountRuleId: selectedWorkflowAmountRuleId!,
       }
 
-      createStageOverride.mutate(createPayload, {
-        onSuccess: () => {
-          setTimeout(() => {
-            onClose()
-          }, 1000)
-        },
-      })
-    }
-  }
-
-  const handleResetToLoaded = useCallback(() => {
-    const loaded: StageOverrideFormData =
-      mode === 'edit' && stageOverrideData
-        ? {
-            stageOrder: stageOverrideData.stageOrder ?? '',
-            requiredApprovals: stageOverrideData.requiredApprovals ?? '',
-            keycloakGroup: stageOverrideData.keycloakGroup ?? '',
-            stageKey: stageOverrideData.stageKey ?? '',
-            amountRuleName:
-              stageOverrideData.workflowAmountRuleName ||
-              `RULE_${stageOverrideData.workflowAmountRuleId}`, // Set the amount rule name
-          }
-        : DEFAULT_VALUES
-    reset(loaded, { keepDirty: false })
-    clearErrors()
-
-    // Reset workflow amount rule ID
-    if (mode === 'edit' && stageOverrideData?.workflowAmountRuleId) {
-      setSelectedWorkflowAmountRuleId(stageOverrideData.workflowAmountRuleId)
-    } else if (
-      workflowAmountRulesData?.content &&
-      workflowAmountRulesData.content.length > 0
-    ) {
-      const firstRule = workflowAmountRulesData.content[0]
-      if (firstRule && typeof firstRule.id === 'number') {
-        setSelectedWorkflowAmountRuleId(firstRule.id)
+      // Cross-field validation: If requiredApprovals is 0, stageOrder can be 0
+      if (name === 'stageOrder') {
+        const currentRequiredApprovals =
+          watchedRequiredApprovals === '' || watchedRequiredApprovals === null
+            ? 0
+            : Number(watchedRequiredApprovals)
+        if (currentRequiredApprovals === 0 && numValue === 0) {
+          field.onChange(numValue)
+          return
+        }
       }
-    }
-  }, [mode, stageOverrideData, reset, clearErrors, workflowAmountRulesData])
 
-  const onError = (errors: FieldErrors<StageOverrideFormData>) => {
-    console.log(errors)
-    // No error handling needed since validation is removed
-  }
+      // Limit to max 10
+      if (numValue > 10) {
+        field.onChange(10)
+      } else {
+        field.onChange(isNaN(numValue) ? '' : numValue)
+      }
+    },
+    [watchedStageOrder, watchedRequiredApprovals]
+  )
+
+  // Handle text field input restrictions (remove numbers for keycloakGroup and stageKey)
+  const handleTextFieldChange = useCallback(
+    (name: string, value: string, field: any) => {
+      if (name === 'keycloakGroup' || name === 'stageKey') {
+        const textValue = value.replace(/[0-9]/g, '')
+        field.onChange(textValue)
+      } else {
+        field.onChange(value)
+      }
+    },
+    []
+  )
 
   const renderTextField = (
     name: keyof StageOverrideFormData,
     label: string,
     type: 'text' | 'number' = 'text',
     gridSize: number = 12,
-    required: boolean = true,
-    showRedAsterisk: boolean = false
-  ) => {
-    const fieldRules =
-      validationRules[name as keyof typeof validationRules] || {}
+    required: boolean = true
+  ) => (
+    <Grid key={name} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        rules={
+          validationRules[name] || {
+            validate: (value, formValues) =>
+              validateWorkflowAmountStageOverrideField(name, value, formValues),
+          }
+        }
+        render={({ field, fieldState }) => {
+          const hasError = !!fieldState.error
 
-    if (name === 'amountRuleName') {
-      return (
-        <Grid key={name} size={{ xs: 12, md: gridSize }}>
-          <Controller
-            name={name}
-            control={control}
-            rules={{
-              required: 'Amount Rule Name is required',
-              validate: (value: string | number | null | undefined) => {
-                if (!value || value === '' || value === null) {
-                  return 'Amount Rule Name is required'
-                }
-                return true
-              },
-            }}
-            render={({ field, fieldState }) => {
-              const hasError = !!fieldState.error
-
-              const fieldStyles = hasError
-                ? {
-                    '& .MuiOutlinedInput-root': {
-                      height: '46px',
-                      borderRadius: '8px',
-                      backgroundColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.background.default, 0.9)
-                          : theme.palette.background.paper,
-                      '& fieldset': {
-                        borderColor: theme.palette.error.main,
-                        borderWidth: '2px',
-                      },
-                      '&:hover fieldset': {
-                        borderColor: theme.palette.error.main,
-                        borderWidth: '2px',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: theme.palette.error.main,
-                        borderWidth: '2px',
-                      },
-                    },
-                    '& .MuiInputBase-input': {
-                      color: theme.palette.text.primary,
-                    },
-                  }
-                : {
-                    '& .MuiOutlinedInput-root': {
-                      height: '46px',
-                      borderRadius: '8px',
-                      backgroundColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.background.default, 0.9)
-                          : theme.palette.background.paper,
-                      '& fieldset': {
-                        borderColor:
-                          theme.palette.mode === 'dark'
-                            ? alpha(theme.palette.grey[600], 0.7)
-                            : '#CAD5E2',
-                        borderWidth: '1px',
-                      },
-                      '&:hover fieldset': {
-                        borderColor:
-                          theme.palette.mode === 'dark'
-                            ? alpha(theme.palette.grey[300], 0.8)
-                            : '#94A3B8',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: theme.palette.primary.main,
-                      },
-                    },
-                    '& .MuiInputBase-input': {
-                      color: theme.palette.text.primary,
-                    },
-                  }
-
-              const dynamicLabelSx = {
-                ...labelSx,
-                ...(hasError && {
-                  color: theme.palette.error.main,
-                  '& .MuiFormLabel-asterisk': {
-                    color: theme.palette.error.main,
-                  },
-                }),
-                ...(showRedAsterisk && {
-                  '& .MuiFormLabel-asterisk': {
-                    color: theme.palette.error.main,
-                  },
-                }),
-                '&.Mui-focused': {
-                  color: hasError
-                    ? theme.palette.error.main
-                    : theme.palette.primary.main,
-                },
-              }
-
-              return (
-                <TextField
-                  {...field}
-                  type={type}
-                  label={label}
-                  fullWidth
-                  disabled={isSubmitting || isViewMode}
-                  required={required}
-                  error={hasError}
-                  helperText={
-                    hasError
-                      ? fieldState.error?.message || 'Supporting text'
-                      : ''
-                  }
-                  InputLabelProps={{ sx: dynamicLabelSx }}
-                  InputProps={{ sx: valueSx }}
-                  sx={fieldStyles}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    field.onChange(value)
-                  }}
-                />
-              )
-            }}
-          />
-        </Grid>
-      )
-    }
-
-    return (
-      <Grid key={name} size={{ xs: 12, md: gridSize }}>
-        <Controller
-          name={name}
-          control={control}
-          rules={fieldRules}
-          render={({ field, fieldState }) => {
-            const hasError = !!fieldState.error
-
-            const fieldStyles = hasError
-              ? {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-              : {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[600], 0.7)
-                          : '#CAD5E2',
-                      borderWidth: '1px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[300], 0.8)
-                          : '#94A3B8',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-
-            const dynamicLabelSx = {
-              ...labelSx,
-              ...(hasError && {
-                color: theme.palette.error.main,
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              ...(showRedAsterisk && {
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              '&.Mui-focused': {
-                color: hasError
-                  ? theme.palette.error.main
-                  : theme.palette.primary.main,
-              },
-            }
-
-            return (
+          return (
+            <>
               <TextField
                 {...field}
                 type={type}
@@ -599,81 +648,41 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
                 disabled={isSubmitting || isViewMode}
                 required={required}
                 error={hasError}
-                helperText={
-                  hasError ? fieldState.error?.message || 'Supporting text' : ''
-                }
-                InputLabelProps={{ sx: dynamicLabelSx }}
+                InputLabelProps={{ sx: labelSx }}
                 InputProps={{
                   sx: valueSx,
                   inputProps: {
-                    maxLength: type === 'number' ? 2 : undefined,
-                    pattern:
+                    maxLength:
                       type === 'number'
-                        ? '([0-9]|10)'
-                        : name === 'keycloakGroup' || name === 'stageKey'
-                          ? '[a-zA-Z\\s\\-_]*'
-                          : undefined,
+                        ? 2
+                        : name === 'keycloakGroup'
+                          ? 100
+                          : name === 'stageKey'
+                            ? 50
+                            : undefined,
                   },
                 }}
-                sx={fieldStyles}
+                sx={hasError ? errorFieldStyles : commonFieldStyles}
                 onChange={(e) => {
                   const value = e.target.value
                   if (type === 'number') {
-                    const numericValue = value
-                      .replace(/[^0-9]/g, '')
-                      .slice(0, 2)
-
-                    if (numericValue === '') {
-                      field.onChange('')
-                    } else {
-                      const numValue = Number(numericValue)
-
-                      if (name === 'requiredApprovals') {
-                        const currentStageOrder =
-                          watchedStageOrder === '' || watchedStageOrder === null
-                            ? 0
-                            : Number(watchedStageOrder)
-                        if (currentStageOrder === 0 && numValue > 0) {
-                          field.onChange(0)
-                          return
-                        }
-                      }
-
-                      if (name === 'stageOrder') {
-                        const currentRequiredApprovals =
-                          watchedRequiredApprovals === '' ||
-                          watchedRequiredApprovals === null
-                            ? 0
-                            : Number(watchedRequiredApprovals)
-                        if (currentRequiredApprovals === 0 && numValue === 0) {
-                          field.onChange(numValue)
-                          return
-                        }
-                      }
-
-                      if (numValue > 10) {
-                        field.onChange(10)
-                      } else {
-                        field.onChange(isNaN(numValue) ? '' : numValue)
-                      }
-                    }
-                  } else if (
-                    type === 'text' &&
-                    (name === 'keycloakGroup' || name === 'stageKey')
-                  ) {
-                    const textValue = value.replace(/[0-9]/g, '')
-                    field.onChange(textValue)
+                    handleNumberFieldChange(name, value, field)
                   } else {
-                    field.onChange(value)
+                    handleTextFieldChange(name, value, field)
                   }
                 }}
+                onBlur={field.onBlur}
               />
-            )
-          }}
-        />
-      </Grid>
-    )
-  }
+              <FormError
+                error={hasError ? (fieldState.error?.message as string) : ''}
+                touched={true}
+              />
+            </>
+          )
+        }}
+      />
+    </Grid>
+  )
 
   type OptionItem = {
     label: string
@@ -681,13 +690,54 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
     id?: string | number
   }
 
+  const selectStyles = useMemo(
+    () => ({
+      height: '46px',
+      borderRadius: '8px',
+      '& .MuiOutlinedInput-root': {
+        height: '46px',
+        borderRadius: '8px',
+        backgroundColor:
+          theme.palette.mode === 'dark'
+            ? alpha('#1E293B', 0.5) // Darker background for inputs in dark mode
+            : '#FFFFFF', // White background for inputs in light mode
+        '& fieldset': {
+          borderColor:
+            theme.palette.mode === 'dark'
+              ? alpha('#FFFFFF', 0.3) // White border with opacity for dark mode
+              : '#CAD5E2', // Light border for light mode
+          borderWidth: '1px',
+        },
+        '&:hover fieldset': {
+          borderColor:
+            theme.palette.mode === 'dark'
+              ? alpha('#FFFFFF', 0.5) // Brighter on hover for dark mode
+              : '#94A3B8', // Darker on hover for light mode
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: theme.palette.primary.main,
+          borderWidth: '1px',
+        },
+      },
+      '& .MuiSelect-icon': {
+        color: theme.palette.mode === 'dark' ? '#FFFFFF' : '#666', // White icon in dark mode, gray in light mode
+        fontSize: '20px',
+      },
+      '& .MuiInputBase-input': {
+        color: theme.palette.mode === 'dark' ? '#FFFFFF' : '#111827', // White text in dark mode, dark text in light mode
+      },
+    }),
+    [theme]
+  )
+
   const renderSelectField = (
     name: keyof StageOverrideFormData,
     label: string,
     options?: OptionItem[] | string[],
     gridSize: number = 6,
     required: boolean = true,
-    showRedAsterisk: boolean = false,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _showRedAsterisk: boolean = false,
     extraProps: {
       isLoading?: boolean
       disabled?: boolean
@@ -698,132 +748,77 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
     const resolvedOptions: OptionItem[] | string[] =
       options && options.length > 0 ? options : []
 
-    const fieldRules =
-      validationRules[name as keyof typeof validationRules] || {}
-
     return (
       <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
         <Controller
           name={name}
           control={control}
           defaultValue={''}
-          rules={fieldRules}
+          rules={{
+            validate: (value, formValues) =>
+              validateWorkflowAmountStageOverrideField(name, value, formValues),
+          }}
           render={({ field, fieldState }) => {
             const hasError = !!fieldState.error
-
-            const fieldStyles = hasError
-              ? {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-              : {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[600], 0.7)
-                          : '#CAD5E2',
-                      borderWidth: '1px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[300], 0.8)
-                          : '#94A3B8',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-
-            const dynamicLabelSx = {
-              ...labelSx,
-              ...(hasError && {
-                color: theme.palette.error.main,
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              ...(showRedAsterisk && {
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              '&.Mui-focused': {
-                color: hasError
-                  ? theme.palette.error.main
-                  : theme.palette.primary.main,
-              },
-            }
+            // Ensure value is always a string, never undefined
+            const selectValue = field.value ?? ''
 
             return (
               <FormControl
                 fullWidth
                 error={hasError}
+                required={required}
                 disabled={!!extraProps.disabled || !!extraProps.isLoading}
               >
-                <InputLabel
-                  sx={dynamicLabelSx}
-                  id={`${String(name)}-label`}
-                  required={required}
-                >
-                  {extraProps.placeholder ?? label}
+                <InputLabel sx={labelSx}>
+                  {extraProps.isLoading
+                    ? getWorkflowAmountStageOverrideLabelDynamic(
+                        'CDL_COMMON_LOADING'
+                      )
+                    : label}
                 </InputLabel>
-
                 <Select
-                  labelId={`${String(name)}-label`}
-                  id={`${String(name)}-select`}
-                  name={field.name}
-                  value={field.value ?? ''}
+                  {...field}
+                  value={selectValue}
+                  input={
+                    <OutlinedInput
+                      label={
+                        extraProps.isLoading
+                          ? getWorkflowAmountStageOverrideLabelDynamic(
+                              'CDL_COMMON_LOADING'
+                            )
+                          : label
+                      }
+                    />
+                  }
+                  label={
+                    extraProps.isLoading
+                      ? getWorkflowAmountStageOverrideLabelDynamic(
+                          'CDL_COMMON_LOADING'
+                        )
+                      : label
+                  }
+                  sx={{ ...selectStyles, ...valueSx }}
+                  IconComponent={KeyboardArrowDownIcon}
+                  disabled={
+                    !!extraProps.disabled ||
+                    !!extraProps.isLoading ||
+                    isSubmitting ||
+                    isViewMode
+                  }
                   onChange={(e) => {
-                    const val = (e.target as HTMLInputElement).value
+                    const val = (e.target as HTMLInputElement).value || ''
                     field.onChange(val)
                     if (extraProps.onChange) extraProps.onChange(val)
                   }}
                   onBlur={field.onBlur}
-                  disabled={!!extraProps.disabled || !!extraProps.isLoading}
-                  label={extraProps.placeholder ?? label}
-                  sx={{
-                    ...valueSx,
-                    ...fieldStyles,
-                  }}
-                  IconComponent={KeyboardArrowDownIcon}
                 >
                   {extraProps.isLoading ? (
                     <MenuItem disabled>
                       <CircularProgress size={16} sx={{ mr: 1 }} />
-                      Loading {label.toLowerCase()}...
+                      {getWorkflowAmountStageOverrideLabelDynamic(
+                        'CDL_COMMON_LOADING'
+                      )}
                     </MenuItem>
                   ) : Array.isArray(resolvedOptions) &&
                     resolvedOptions.length > 0 ? (
@@ -844,12 +839,10 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
                     </MenuItem>
                   )}
                 </Select>
-
-                {hasError && (
-                  <FormHelperText>
-                    {fieldState.error?.message ?? 'Supporting text'}
-                  </FormHelperText>
-                )}
+                <FormError
+                  error={hasError ? (fieldState.error?.message as string) : ''}
+                  touched={true}
+                />
               </FormControl>
             )
           }}
@@ -875,56 +868,49 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
       PaperProps={{
         sx: {
           ...tokens.paper,
-          width: '460px',
-          height: '100%',
+          width: 460,
           display: 'flex',
           flexDirection: 'column',
+          overflow: 'hidden',
         },
       }}
     >
-      <Box
+      <DialogTitle
         sx={{
-          p: 3,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontFamily: 'Outfit, sans-serif',
+          fontWeight: 500,
+          fontStyle: 'normal',
+          fontSize: '20px',
+          lineHeight: '28px',
+          letterSpacing: '0.15px',
+          verticalAlign: 'middle',
           borderBottom: `1px solid ${tokens.dividerColor}`,
           backgroundColor: tokens.paper.backgroundColor as string,
+          color: theme.palette.text.primary,
+          pr: 3,
+          pl: 3,
         }}
       >
-        <Box
+        {mode === 'edit'
+          ? `${getWorkflowAmountStageOverrideLabelDynamic('CDL_COMMON_UPDATE')} ${getWorkflowAmountStageOverrideLabelDynamic('CDL_WASO_WORKFLOW_AMOUNT_STAGE_OVERRIDE')}`
+          : `${getWorkflowAmountStageOverrideLabelDynamic('CDL_COMMON_ADD')} ${getWorkflowAmountStageOverrideLabelDynamic('CDL_WASO_WORKFLOW_AMOUNT_STAGE_OVERRIDE')}`}
+        <IconButton
+          onClick={handleClose}
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            color: theme.palette.text.secondary,
+            '&:hover': {
+              backgroundColor: theme.palette.action.hover,
+            },
           }}
         >
-          <DialogTitle
-            sx={{
-              p: 0,
-              fontSize: '20px',
-              fontWeight: 500,
-              fontStyle: 'normal',
-              color: theme.palette.text.primary,
-            }}
-          >
-            {mode === 'edit'
-              ? 'Edit Workflow Amount Stage Override'
-              : 'Add New Workflow Amount Stage Override'}
-          </DialogTitle>
-          <IconButton
-            onClick={onClose}
-            size="small"
-            sx={{
-              color: theme.palette.text.secondary,
-              '&:hover': {
-                backgroundColor: theme.palette.action.hover,
-              },
-            }}
-          >
-            <CancelOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      </Box>
+          <CancelOutlinedIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
 
-      <form onSubmit={handleSubmit(onSubmit, onError)}>
+      <form noValidate onSubmit={handleSubmit(onSubmit, onError)}>
         <DialogContent
           dividers
           sx={{
@@ -933,64 +919,80 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
           }}
         >
           {errorMessage && (
-            <Box sx={{ mb: 2 }}>
-              <Alert
-                severity="error"
-                variant="outlined"
-                onClose={() => setErrorMessage(null)}
-                sx={{
-                  backgroundColor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(239, 68, 68, 0.08)'
-                      : 'rgba(254, 226, 226, 0.4)',
-                  borderColor: alpha(theme.palette.error.main, 0.4),
-                  color: theme.palette.error.main,
-                }}
-              >
-                {errorMessage}
-              </Alert>
-            </Box>
+            <Alert
+              severity="error"
+              variant="outlined"
+              sx={{
+                mb: 2,
+                backgroundColor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(239, 68, 68, 0.08)'
+                    : 'rgba(254, 226, 226, 0.4)',
+                borderColor: alpha(theme.palette.error.main, 0.4),
+                color: theme.palette.error.main,
+              }}
+            >
+              {errorMessage}
+            </Alert>
+          )}
+
+          {isLoadingRules && (
+            <Alert
+              severity="info"
+              variant="outlined"
+              sx={{
+                mb: 2,
+                backgroundColor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(59, 130, 246, 0.08)'
+                    : 'rgba(219, 234, 254, 0.4)',
+                borderColor: alpha(theme.palette.info.main, 0.4),
+                color: theme.palette.info.main,
+              }}
+            >
+              {getWorkflowAmountStageOverrideLabelDynamic('CDL_COMMON_LOADING')}
+            </Alert>
           )}
 
           <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
             {renderTextField(
               'stageOrder',
-              getWorkflowAmountStageOverrideLabel('CDL_WASO_STAGE_ORDER'),
+              getWorkflowAmountStageOverrideLabelDynamic(
+                'CDL_WASO_STAGE_ORDER'
+              ),
               'number',
               12,
-              true,
               true
             )}
             {renderTextField(
               'requiredApprovals',
-              getWorkflowAmountStageOverrideLabel(
+              getWorkflowAmountStageOverrideLabelDynamic(
                 'CDL_WASO_REQUIRED_APPROVALS'
               ),
               'number',
               12,
-              true,
               true
             )}
             {renderTextField(
               'keycloakGroup',
-              getWorkflowAmountStageOverrideLabel('CDL_WASO_KEYCLOAK_GROUP'),
+              getWorkflowAmountStageOverrideLabelDynamic(
+                'CDL_WASO_KEYCLOAK_GROUP'
+              ),
               'text',
               12,
-              true,
               true
             )}
             {renderTextField(
               'stageKey',
-              getWorkflowAmountStageOverrideLabel('CDL_WASO_STAGE_KEY'),
+              getWorkflowAmountStageOverrideLabelDynamic('CDL_WASO_STAGE_KEY'),
               'text',
               12,
-              true,
               true
             )}
 
             {renderSelectField(
               'amountRuleName',
-              getWorkflowAmountStageOverrideLabel(
+              getWorkflowAmountStageOverrideLabelDynamic(
                 'CDL_WAR_WORKFLOW_AMOUNT_RULE'
               ),
               availableAmountRuleNames.map((rule) => ({
@@ -1000,12 +1002,18 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
               })),
               12,
               true,
-              true,
+              false,
               {
                 isLoading: isLoadingRules,
                 disabled: isSubmitting || isViewMode,
-                onChange: (value: string | number) =>
-                  handleAmountRuleNameChange(value as string),
+                onChange: (value: string | number) => {
+                  const stringValue = String(value || '')
+                  handleAmountRuleNameChange(stringValue)
+                  // Ensure the form value is set
+                  setValue('amountRuleName', stringValue, {
+                    shouldValidate: true,
+                  })
+                },
               }
             )}
           </Grid>
@@ -1014,26 +1022,29 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
         {!isViewMode && (
           <Box
             sx={{
-              position: 'relative',
-              top: 20,
+              position: 'absolute',
+              bottom: 0,
               left: 0,
               right: 0,
               padding: 2,
+              display: 'flex',
+              gap: 2,
               borderTop: `1px solid ${tokens.dividerColor}`,
               backgroundColor: alpha(
                 theme.palette.background.paper,
                 theme.palette.mode === 'dark' ? 0.92 : 0.9
               ),
               backdropFilter: 'blur(10px)',
+              zIndex: 10,
             }}
           >
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
                 <Button
                   fullWidth
-                  variant="contained"
-                  onClick={handleResetToLoaded}
-                  disabled={!canReset}
+                  variant="outlined"
+                  onClick={handleClose}
+                  disabled={isSubmitting}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -1041,30 +1052,25 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 1,
-                    opacity: canReset ? 1 : 0.5,
                     borderWidth: '1px',
-                    borderStyle: 'solid',
                     borderColor:
                       theme.palette.mode === 'dark'
                         ? theme.palette.primary.main
-                        : 'transparent',
+                        : undefined,
                   }}
                 >
-                  Reset
+                  {getWorkflowAmountStageOverrideLabelDynamic(
+                    'CDL_COMMON_CANCEL'
+                  )}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Button
                   fullWidth
-                  variant="contained"
+                  variant="outlined"
                   color="primary"
                   type="submit"
-                  disabled={!canSave}
+                  disabled={isSubmitting}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -1072,18 +1078,32 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 1,
-                    opacity: canSave ? 1 : 0.5,
+                    backgroundColor: theme.palette.primary.main,
+                    color: theme.palette.primary.contrastText,
                     borderWidth: '1px',
                     borderStyle: 'solid',
                     borderColor:
                       theme.palette.mode === 'dark'
                         ? theme.palette.primary.main
                         : 'transparent',
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? theme.palette.primary.main
+                          : 'transparent',
+                    },
+                    '&:disabled': {
+                      backgroundColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.5)
+                          : theme.palette.grey[300],
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.primary.main, 0.5)
+                          : 'transparent',
+                      color: theme.palette.text.disabled,
+                    },
                   }}
                 >
                   {isSubmitting && (
@@ -1095,20 +1115,57 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
                     />
                   )}
                   {isSubmitting
-                    ? isLoadingRules
-                      ? 'Loading rules...'
-                      : mode === 'edit'
-                        ? 'Updating...'
-                        : 'Creating...'
+                    ? mode === 'edit'
+                      ? getWorkflowAmountStageOverrideLabelDynamic(
+                          'CDL_COMMON_UPDATING'
+                        )
+                      : getWorkflowAmountStageOverrideLabelDynamic(
+                          'CDL_COMMON_ADDING'
+                        )
                     : mode === 'edit'
-                      ? 'Update'
-                      : 'Save'}
+                      ? getWorkflowAmountStageOverrideLabelDynamic(
+                          'CDL_COMMON_UPDATE'
+                        )
+                      : getWorkflowAmountStageOverrideLabelDynamic(
+                          'CDL_COMMON_ADD'
+                        )}
                 </Button>
               </Grid>
             </Grid>
           </Box>
         )}
       </form>
+
+      {/* Error and Success Notifications */}
+      <Snackbar
+        open={!!errorMessage}
+        autoHideDuration={6000}
+        onClose={() => setErrorMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setErrorMessage(null)}
+          severity="error"
+          sx={{ width: '100%' }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSuccessMessage(null)}
+          severity="success"
+          sx={{ width: '100%' }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Drawer>
   )
 }

@@ -171,6 +171,63 @@ export const useDeleteConfirmation = () => {
   }
 }
 
+// Convenience function for approve/review confirmations
+export const useApproveConfirmation = () => {
+  const openDialog = useConfirmationDialogStore((state) => state.openDialog)
+
+  return (config: {
+    itemName?: string
+    itemId?: string
+    onConfirm: () => void | Promise<void>
+    onCancel?: () => void
+    // All dialog properties are overridable
+    title?: string
+    message?: string
+    confirmText?: string
+    cancelText?: string
+    variant?: 'warning' | 'error' | 'info' | 'success'
+    // Success notification options
+    successTitle?: string
+    successMessage?: string
+    showSuccessNotification?: boolean
+  }) => {
+    // Default approve/review message, but fully overridable
+    const defaultMessage = config.itemName
+      ? `Are you sure you want to send for maker/checker review for ${config.itemName}${config.itemId ? ` (ID: ${config.itemId})` : ''}?\n\nThis action cannot be undone.`
+      : 'Are you sure you want to send for maker/checker review?\n\nThis action cannot be undone.'
+
+    // Default success message
+    const defaultSuccessTitle = config.itemName
+      ? `${config.itemName.charAt(0).toUpperCase() + config.itemName.slice(1)} sent for review successfully`
+      : 'Item sent for review successfully'
+
+    openDialog({
+      title: config.title || 'Review Confirmation',
+      message: config.message || defaultMessage,
+      confirmText: config.confirmText || 'Send',
+      cancelText: config.cancelText || 'Cancel',
+      variant: config.variant || 'info',
+      onConfirm: async () => {
+        await config.onConfirm()
+
+        // Show success notification if enabled (default: true)
+        if (config.showSuccessNotification !== false) {
+          // Dynamically import to avoid circular dependencies
+          const { useNotificationStore } = await import('./notificationStore')
+          const { addNotification } = useNotificationStore.getState()
+
+          addNotification({
+            type: 'success',
+            title: config.successTitle || defaultSuccessTitle,
+            ...(config.successMessage && { message: config.successMessage }),
+          })
+        }
+      },
+      ...(config.onCancel && { onCancel: config.onCancel }),
+    })
+  }
+}
+
 // Convenience function for general confirmations
 export const useGeneralConfirmation = () => {
   const openDialog = useConfirmationDialogStore((state) => state.openDialog)

@@ -1,9 +1,6 @@
 import { useCallback } from 'react'
 import { useLabels, useLabelsLoadingState } from '@/store'
-import {
-  WorkflowActionLabelsService,
-  type ProcessedWorkflowActionLabels,
-} from '@/services/api/workflowApi/workflowActionLabelsService'
+import { WorkflowActionLabelsService } from '@/services/api/workflowApi/workflowActionLabelsService'
 
 export function useWorkflowActionLabelsWithCache() {
   const { workflowActionLabels } = useLabels()
@@ -11,15 +8,9 @@ export function useWorkflowActionLabelsWithCache() {
 
   const getLabel = useCallback(
     (configId: string, language: string, fallback: string) => {
+      // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
       if (workflowActionLabels) {
-        const processedLabels =
-          workflowActionLabels as ProcessedWorkflowActionLabels
-        return WorkflowActionLabelsService.getLabel(
-          processedLabels,
-          configId,
-          language,
-          fallback
-        )
+        return WorkflowActionLabelsService.getLabel(workflowActionLabels, configId, language, fallback)
       }
       return fallback
     },
@@ -27,63 +18,36 @@ export function useWorkflowActionLabelsWithCache() {
   )
 
   const hasLabels = useCallback(() => {
-    if (workflowActionLabels) {
-      const processedLabels =
-        workflowActionLabels as ProcessedWorkflowActionLabels
-      return WorkflowActionLabelsService.hasLabels(processedLabels)
-    }
-    return false
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return WorkflowActionLabelsService.hasLabels(workflowActionLabels || {})
   }, [workflowActionLabels])
 
   const getAvailableLanguages = useCallback(() => {
-    if (workflowActionLabels) {
-      const processedLabels =
-        workflowActionLabels as ProcessedWorkflowActionLabels
-      return WorkflowActionLabelsService.getAvailableLanguages(processedLabels)
-    }
-    return []
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return WorkflowActionLabelsService.getAvailableLanguages(workflowActionLabels || {})
   }, [workflowActionLabels])
 
+  // 🏦 COMPLIANCE: Return identical API structure for backward compatibility
   return {
+    // Simulated React Query-like structure for compatibility
     data: workflowActionLabels,
     isLoading: workflowActionLabelsLoading,
-    error: null,
+    error: null, // Error handling is managed by the compliance loader
     isError: false,
     isFetching: workflowActionLabelsLoading,
     isSuccess: !!workflowActionLabels,
-    refetch: useCallback(() => {
-      return Promise.resolve({ data: workflowActionLabels })
-    }, [workflowActionLabels]),
+    refetch: () => {
 
+      return Promise.resolve({ data: workflowActionLabels })
+    },
+
+    // Original hook API functions (unchanged signatures)
     getLabel,
     hasLabels,
     getAvailableLanguages,
 
+    // Compatibility properties (maintained for existing UI components)
     hasCache: !!workflowActionLabels,
-    cacheStatus: workflowActionLabels
-      ? 'cached'
-      : workflowActionLabelsLoading
-        ? 'Loading...'
-        : 'fresh',
-
-    getLabelsForConfig: useCallback(
-      (configId: string) => {
-        if (workflowActionLabels) {
-          const processedLabels =
-            workflowActionLabels as ProcessedWorkflowActionLabels
-          return processedLabels[configId] || {}
-        }
-        return {}
-      },
-      [workflowActionLabels]
-    ),
-
-    debug: {
-      hasLabels: !!workflowActionLabels,
-      isLoading: workflowActionLabelsLoading,
-      labelCount: workflowActionLabels
-        ? Object.keys(workflowActionLabels).length
-        : 0,
-    },
+    cacheStatus: workflowActionLabels ? 'cached' : workflowActionLabelsLoading ? 'Loading...' : 'fresh',
   }
 }

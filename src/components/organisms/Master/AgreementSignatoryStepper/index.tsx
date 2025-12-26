@@ -237,10 +237,7 @@ export default function AgreementSignatoryStepperWrapper({
         methods.reset(processedData)
         setShouldResetForm(false)
       } catch (error) {
-        console.error(
-          '[AgreementSignatoryStepper] Error processing step data:',
-          error
-        )
+        // Don't throw - allow component to continue rendering
       }
     }
   }, [
@@ -333,9 +330,7 @@ export default function AgreementSignatoryStepperWrapper({
             referenceId: finalAgreementSignatoryId,
             referenceType: 'AGREEMENT_SIGNATORY',
             moduleName: 'AGREEMENT_SIGNATORY',
-            actionKey: 'CREATE',
-            amount: 0,
-            currency: 'USD',
+            actionKey: 'APPROVE',
             payloadJson: step1Data as unknown as Record<string, unknown>,
           })
 
@@ -348,10 +343,6 @@ export default function AgreementSignatoryStepperWrapper({
           }, 500)
           return
         } catch (error) {
-          console.error(
-            '[AgreementSignatoryStepper] Error submitting workflow:',
-            error
-          )
           const errorData = error as {
             response?: { data?: { message?: string } }
             message?: string
@@ -476,13 +467,6 @@ export default function AgreementSignatoryStepperWrapper({
       }
 
       // Call the API to save the current step
-      console.log('[AgreementSignatoryStepper] Saving step:', {
-        step: activeStep + 1,
-        data: stepSpecificData,
-        isEditing: isEditingMode,
-        agreementSignatoryId,
-      })
-
       const saveResponse = await stepManager.saveStep(
         activeStep + 1,
         stepSpecificData,
@@ -542,7 +526,6 @@ export default function AgreementSignatoryStepperWrapper({
 
       setIsSaving(false)
     } catch (error: unknown) {
-      console.error('[AgreementSignatoryStepper] Error saving step:', error)
       const errorData = error as {
         response?: { data?: { message?: string } }
         message?: string

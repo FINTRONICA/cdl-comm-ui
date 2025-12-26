@@ -1,6 +1,5 @@
 'use client'
-
-import React, { useEffect, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   DialogTitle,
   DialogContent,
@@ -17,21 +16,24 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
-  FormHelperText,
+  Alert,
+  Snackbar,
+  OutlinedInput,
 } from '@mui/material'
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Controller, useForm, FieldErrors } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
-import { getLabelByConfigId as getWorkflowDefinitionLabel } from '@/constants/mappings/workflowMapping'
-import { toast } from 'react-hot-toast'
-
+import { getWorkflowLabelsByCategory as getWorkflowDefinitionLabel } from '@/constants/mappings/workflowMapping'
+import { getWorkflowDefinitionValidationRules } from '@/lib/validation/workflowDefinitionSchemas'
+import { FormError } from '../../atoms/FormError'
+import { useWorkflowDefinitionLabelsWithCache } from '@/hooks/workflow/useWorkflowDefinitionLabelsWithCache'
+import { useAppStore } from '@/store'
 import {
   useCreateWorkflowDefinition,
   useUpdateWorkflowDefinition,
   useWorkflowDefinitionForm,
 } from '@/hooks/workflow'
 import type { WorkflowDefinitionUIData } from '@/services/api/workflowApi'
-import { getWorkflowDefinitionValidationRules } from '@/lib/validation/workflowDefinitionSchemas'
 import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from './panelTheme'
 
@@ -64,15 +66,32 @@ const DEFAULT_VALUES: DefinitionFormData = {
   active: true,
 }
 
-// Styles will be defined inside component to access theme
-export const RightSlideWorkflowDefinitionPanel: React.FC<
+const RightSlideWorkflowDefinitionPanelComponent: React.FC<
   RightSlideWorkflowDefinitionPanelProps
 > = ({ isOpen, onClose, mode = 'add', definitionData }) => {
   const theme = useTheme()
   const tokens = React.useMemo(() => buildPanelSurfaceTokens(theme), [theme])
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const commonFieldStyles = React.useMemo(() => tokens.input, [tokens])
+  const errorFieldStyles = React.useMemo(() => tokens.inputError, [tokens])
   const createDefinition = useCreateWorkflowDefinition()
   const updateDefinition = useUpdateWorkflowDefinition()
-  const validationRules = getWorkflowDefinitionValidationRules()
+
+  // Dynamic labels: same pattern used in Build Partner Beneficiary Panel
+  const { data: workflowDefinitionLabels, getLabel } =
+    useWorkflowDefinitionLabelsWithCache()
+  const currentLanguage = useAppStore((state) => state.language) || 'EN'
+  const getWorkflowDefinitionLabelDynamic = useCallback(
+    (configId: string): string => {
+      const fallback = getWorkflowDefinitionLabel(configId)
+      if (workflowDefinitionLabels) {
+        return getLabel(configId, currentLanguage, fallback)
+      }
+      return fallback
+    },
+    [workflowDefinitionLabels, currentLanguage, getLabel]
+  )
 
   const {
     moduleOptions,
@@ -88,7 +107,8 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
     clearErrors,
   } = useForm<DefinitionFormData>({
     defaultValues: DEFAULT_VALUES,
-    mode: 'onChange',
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   })
 
   const isSubmitting =
@@ -97,11 +117,6 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
     isFormSubmitting ||
     formLoading
   const isViewMode = mode === 'view'
-
-  const isFormDirty = isDirty
-  const canSave = isFormDirty && !isSubmitting && !isViewMode
-  const canReset = isFormDirty && !isSubmitting && !isViewMode
-
   const labelSx = tokens.label
   const valueSx = tokens.value
 
@@ -118,13 +133,21 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
             actionCode: definitionData.actionCode ?? '',
             applicationModuleId:
               definitionData.applicationModuleId &&
-              definitionData.applicationModuleId !== '-'
-                ? parseInt(definitionData.applicationModuleId)
+              definitionData.applicationModuleId !== '-' &&
+              String(definitionData.applicationModuleId).trim() !== ''
+                ? (() => {
+                    const parsed = parseInt(String(definitionData.applicationModuleId), 10)
+                    return isNaN(parsed) ? null : parsed
+                  })()
                 : null,
             workflowActionId:
               definitionData.workflowActionId &&
-              definitionData.workflowActionId !== '-'
-                ? parseInt(definitionData.workflowActionId)
+              definitionData.workflowActionId !== '-' &&
+              String(definitionData.workflowActionId).trim() !== ''
+                ? (() => {
+                    const parsed = parseInt(String(definitionData.workflowActionId), 10)
+                    return isNaN(parsed) ? null : parsed
+                  })()
                 : null,
             active: definitionData.enabled ?? true,
           }
@@ -132,91 +155,108 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
 
     reset(values, { keepDirty: false })
     clearErrors()
+    setErrorMessage(null)
   }, [isOpen, mode, definitionData, reset, clearErrors])
 
-  const onSubmit = (data: DefinitionFormData) => {
-    const createPayload = {
-      name: data.name.trim(),
-      version: data.version,
-      amountBased: Boolean(data.amountBased),
-      moduleCode: data.moduleCode.trim(),
-      actionCode: data.actionCode.trim(),
-      enabled: Boolean(data.active),
-      applicationModuleId: data.applicationModuleId || null,
-      workflowActionId: data.workflowActionId || null,
-    }
+  // Get validation rules from schema
+  const validationRules = useMemo(() => getWorkflowDefinitionValidationRules(), [])
 
-    if (mode === 'edit') {
-      if (definitionData?.id) {
-        const updatePayload = {
+  const onSubmit = useCallback(
+    async (data: DefinitionFormData) => {
+      try {
+        setErrorMessage(null)
+        setSuccessMessage(null)
+        if (isSubmitting) {
+          return
+        }
+        if (mode === 'edit' && !isDirty) {
+          setErrorMessage('No changes to save.')
+          return
+        }
+
+        const payload = {
           name: data.name.trim(),
-          version: data.version,
+          version:
+            typeof data.version === 'string'
+              ? parseFloat(data.version)
+              : Number(data.version),
           amountBased: Boolean(data.amountBased),
           moduleCode: data.moduleCode.trim(),
           actionCode: data.actionCode.trim(),
           enabled: Boolean(data.active),
-          applicationModuleId: data.applicationModuleId || null,
-          workflowActionId: data.workflowActionId || null,
+          applicationModuleId:
+            data.applicationModuleId && data.applicationModuleId !== null
+              ? Number(data.applicationModuleId)
+              : null,
+          workflowActionId:
+            data.workflowActionId && data.workflowActionId !== null
+              ? Number(data.workflowActionId)
+              : null,
         }
 
-        updateDefinition.mutate(
-          { id: definitionData.id.toString(), updates: updatePayload },
-          {
-            onSuccess: () => {
-              onClose()
-            },
-            onError: (err: Error | unknown) => {
-              const errorMessage =
-                err instanceof Error ? err.message : 'Unknown error occurred'
-              toast.error(
-                `Failed to update workflow definition: ${errorMessage}`
-              )
-            },
+        if (mode === 'edit') {
+          if (!definitionData?.id) {
+            setErrorMessage('Invalid or missing definition ID for update')
+            return
           }
-        )
+
+          await updateDefinition.mutateAsync({
+            id: definitionData.id.toString(),
+            updates: payload,
+          })
+
+          setSuccessMessage('Workflow definition updated successfully!')
+          setTimeout(() => {
+            reset()
+            onClose()
+          }, 1500)
+        } else {
+          await createDefinition.mutateAsync(payload)
+
+          setSuccessMessage('Workflow definition created successfully!')
+          setTimeout(() => {
+            reset()
+            onClose()
+          }, 1500)
+        }
+      } catch (error: unknown) {
+        let errorMsg = 'Failed to save workflow definition. Please try again.'
+
+        if (error instanceof Error) {
+          if (error.message.includes('validation')) {
+            errorMsg = 'Please check your input and try again.'
+          } else {
+            errorMsg = error.message
+          }
+        }
+
+        setErrorMessage(errorMsg)
       }
-    } else {
-      createDefinition.mutate(createPayload, {
-        onSuccess: () => {
-          onClose()
-        },
-        onError: (err: Error | unknown) => {
-          const errorMessage =
-            err instanceof Error ? err.message : 'Unknown error occurred'
-          toast.error(`Failed to create workflow definition: ${errorMessage}`)
-        },
-      })
-    }
+    },
+    [
+      isSubmitting,
+      mode,
+      isDirty,
+      definitionData?.id,
+      updateDefinition,
+      createDefinition,
+      reset,
+      onClose,
+    ]
+  )
+
+  const handleClose = () => {
+    reset()
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    onClose()
   }
 
-  const handleResetToLoaded = useCallback(() => {
-    const loaded: DefinitionFormData =
-      mode === 'edit' && definitionData
-        ? {
-            name: definitionData.name ?? '',
-            version: definitionData.version ?? 1,
-            amountBased: definitionData.amountBased ?? false,
-            moduleCode: definitionData.moduleCode ?? '',
-            actionCode: definitionData.actionCode ?? '',
-            applicationModuleId:
-              definitionData.applicationModuleId &&
-              definitionData.applicationModuleId !== '-'
-                ? parseInt(definitionData.applicationModuleId)
-                : null,
-            workflowActionId:
-              definitionData.workflowActionId &&
-              definitionData.workflowActionId !== '-'
-                ? parseInt(definitionData.workflowActionId)
-                : null,
-            active: definitionData.enabled ?? true,
-          }
-        : DEFAULT_VALUES
-    reset(loaded, { keepDirty: false })
-    clearErrors()
-  }, [mode, definitionData, reset, clearErrors])
-
   const onError = (errors: FieldErrors<DefinitionFormData>) => {
-    console.log(errors)
+    const firstError = Object.values(errors)[0]
+    if (firstError?.message) {
+      setErrorMessage(firstError.message as string)
+    }
   }
 
   const renderTextField = (
@@ -224,98 +264,18 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
     label: string,
     type: 'text' | 'number' = 'text',
     gridSize: number = 12,
-    required: boolean = true,
-    showRedAsterisk: boolean = false
-  ) => {
-    const fieldRules =
-      validationRules[name as keyof typeof validationRules] || {}
+    required: boolean = true
+  ) => (
+    <Grid key={name} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        rules={validationRules[name] || {}}
+        render={({ field, fieldState }) => {
+          const hasError = !!fieldState.error
 
-    return (
-      <Grid key={name} size={{ xs: 12, md: gridSize }}>
-        <Controller
-          name={name}
-          control={control}
-          rules={fieldRules}
-          render={({ field, fieldState }) => {
-            const hasError = !!fieldState.error
-
-            const fieldStyles = hasError
-              ? {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-              : {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[600], 0.7)
-                          : '#CAD5E2',
-                      borderWidth: '1px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[300], 0.8)
-                          : '#94A3B8',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-
-            const dynamicLabelSx = {
-              ...labelSx,
-              ...(hasError && {
-                color: theme.palette.error.main,
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              ...(showRedAsterisk && {
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              '&.Mui-focused': {
-                color: hasError
-                  ? theme.palette.error.main
-                  : theme.palette.primary.main,
-              },
-            }
-
-            return (
+          return (
+            <>
               <TextField
                 {...field}
                 type={type}
@@ -324,10 +284,7 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                 disabled={isSubmitting || isViewMode}
                 required={required}
                 error={hasError}
-                helperText={
-                  hasError ? fieldState.error?.message || 'Invalid input' : ''
-                }
-                InputLabelProps={{ sx: dynamicLabelSx }}
+                InputLabelProps={{ sx: labelSx }}
                 InputProps={{
                   sx: valueSx,
                   inputProps: {
@@ -337,66 +294,20 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                       name === 'actionCode'
                         ? 100
                         : undefined,
-                    pattern:
-                      name === 'name'
-                        ? '[a-zA-Z\\s\\-_]*'
-                        : name === 'moduleCode' || name === 'actionCode'
-                          ? '[a-zA-Z\\-_]*'
-                          : undefined,
                   },
                 }}
-                sx={fieldStyles}
-                onChange={(e) => {
-                  let value = e.target.value
-
-                  if (type === 'number') {
-                    // Allow decimal numbers for version
-                    const numericValue = value.replace(/[^0-9.]/g, '')
-
-                    // Ensure only one decimal point
-                    const parts = numericValue.split('.')
-                    if (parts.length > 2) {
-                      value = parts[0] + '.' + parts.slice(1).join('')
-                    } else {
-                      value = numericValue
-                    }
-
-                    // Limit to 10
-                    const numValue = Number(value)
-                    if (!isNaN(numValue) && numValue > 10) {
-                      value = '10'
-                    }
-
-                    field.onChange(value)
-                  } else if (name === 'name') {
-                    // Allow letters, spaces, hyphens, underscores - remove numbers
-                    const textValue = value.replace(/[0-9]/g, '').slice(0, 100)
-                    field.onChange(textValue)
-                  } else if (name === 'moduleCode' || name === 'actionCode') {
-                    // Allow only letters, hyphens, underscores - remove numbers and spaces
-                    const textValue = value
-                      .replace(/[0-9\\s]/g, '')
-                      .slice(0, 100)
-                    field.onChange(textValue)
-                  } else {
-                    field.onChange(value)
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // Prevent number keys for text fields that shouldn't have numbers
-                  if (name === 'moduleCode' || name === 'actionCode') {
-                    if (e.key >= '0' && e.key <= '9') {
-                      e.preventDefault()
-                    }
-                  }
-                }}
+                sx={hasError ? errorFieldStyles : commonFieldStyles}
               />
-            )
-          }}
-        />
-      </Grid>
-    )
-  }
+              <FormError
+                error={hasError ? (fieldState.error?.message as string) : ''}
+                touched={true}
+              />
+            </>
+          )
+        }}
+      />
+    </Grid>
+  )
 
   type OptionItem = {
     label: string
@@ -404,13 +315,49 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
     id?: string | number
   }
 
+  const selectStyles = useMemo(
+    () => ({
+      height: '46px',
+      borderRadius: '8px',
+      '& .MuiOutlinedInput-root': {
+        height: '46px',
+        borderRadius: '8px',
+        backgroundColor: theme.palette.mode === 'dark'
+          ? alpha('#1E293B', 0.5) // Darker background for inputs in dark mode
+          : '#FFFFFF', // White background for inputs in light mode
+        '& fieldset': {
+          borderColor: theme.palette.mode === 'dark'
+            ? alpha('#FFFFFF', 0.3) // White border with opacity for dark mode
+            : '#CAD5E2', // Light border for light mode
+          borderWidth: '1px',
+        },
+        '&:hover fieldset': {
+          borderColor: theme.palette.mode === 'dark'
+            ? alpha('#FFFFFF', 0.5) // Brighter on hover for dark mode
+            : '#94A3B8', // Darker on hover for light mode
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: theme.palette.primary.main,
+          borderWidth: '1px',
+        },
+      },
+      '& .MuiSelect-icon': {
+        color: theme.palette.mode === 'dark' ? '#FFFFFF' : '#666', // White icon in dark mode, gray in light mode
+        fontSize: '20px',
+      },
+      '& .MuiInputBase-input': {
+        color: theme.palette.mode === 'dark' ? '#FFFFFF' : '#111827', // White text in dark mode, dark text in light mode
+      },
+    }),
+    [theme]
+  )
+
   const renderSelectField = (
     name: keyof DefinitionFormData,
     label: string,
     options?: OptionItem[] | string[],
     gridSize: number = 6,
     required: boolean = true,
-    showRedAsterisk: boolean = false,
     extraProps: {
       isLoading?: boolean
       disabled?: boolean
@@ -421,132 +368,66 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
     const resolvedOptions: OptionItem[] | string[] =
       options && options.length > 0 ? options : []
 
-    const fieldRules =
-      validationRules[name as keyof typeof validationRules] || {}
-
     return (
       <Grid key={String(name)} size={{ xs: 12, md: gridSize }}>
         <Controller
           name={name}
           control={control}
-          defaultValue={''}
-          rules={fieldRules}
+          rules={validationRules[name] || {}}
           render={({ field, fieldState }) => {
             const hasError = !!fieldState.error
-
-            const fieldStyles = hasError
-              ? {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.error.main,
-                      borderWidth: '2px',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-              : {
-                  '& .MuiOutlinedInput-root': {
-                    height: '46px',
-                    borderRadius: '8px',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.default, 0.9)
-                        : theme.palette.background.paper,
-                    '& fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[600], 0.7)
-                          : '#CAD5E2',
-                      borderWidth: '1px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.grey[300], 0.8)
-                          : '#94A3B8',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: theme.palette.text.primary,
-                  },
-                }
-
-            const dynamicLabelSx = {
-              ...labelSx,
-              ...(hasError && {
-                color: theme.palette.error.main,
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              ...(showRedAsterisk && {
-                '& .MuiFormLabel-asterisk': {
-                  color: theme.palette.error.main,
-                },
-              }),
-              '&.Mui-focused': {
-                color: hasError
-                  ? theme.palette.error.main
-                  : theme.palette.primary.main,
-              },
-            }
 
             return (
               <FormControl
                 fullWidth
                 error={hasError}
+                required={required}
                 disabled={!!extraProps.disabled || !!extraProps.isLoading}
               >
-                <InputLabel
-                  sx={dynamicLabelSx}
-                  id={`${String(name)}-label`}
-                  required={required}
-                >
-                  {extraProps.placeholder ?? label}
+                <InputLabel sx={labelSx}>
+                  {extraProps.isLoading
+                    ? getWorkflowDefinitionLabelDynamic('CDL_COMMON_LOADING')
+                    : label}
                 </InputLabel>
-
                 <Select
-                  labelId={`${String(name)}-label`}
-                  id={`${String(name)}-select`}
-                  name={field.name}
+                  {...field}
                   value={field.value ?? ''}
+                  input={
+                    <OutlinedInput
+                      label={
+                        extraProps.isLoading
+                          ? getWorkflowDefinitionLabelDynamic('CDL_COMMON_LOADING')
+                          : label
+                      }
+                    />
+                  }
+                  label={
+                    extraProps.isLoading
+                      ? getWorkflowDefinitionLabelDynamic('CDL_COMMON_LOADING')
+                      : label
+                  }
+                  sx={{ ...selectStyles, ...valueSx }}
+                  IconComponent={KeyboardArrowDownIcon}
+                  disabled={
+                    !!extraProps.disabled ||
+                    !!extraProps.isLoading ||
+                    isSubmitting ||
+                    isViewMode
+                  }
                   onChange={(e) => {
                     const val = (e.target as HTMLInputElement).value
-                    field.onChange(val)
-                    if (extraProps.onChange) extraProps.onChange(val)
+                    const numVal = val === '' ? null : (isNaN(Number(val)) ? val : Number(val))
+                    field.onChange(numVal)
+                    if (extraProps.onChange && numVal !== null) {
+                      extraProps.onChange(numVal)
+                    }
                   }}
                   onBlur={field.onBlur}
-                  disabled={!!extraProps.disabled || !!extraProps.isLoading}
-                  label={extraProps.placeholder ?? label}
-                  sx={{
-                    ...valueSx,
-                    ...fieldStyles,
-                  }}
-                  IconComponent={KeyboardArrowDownIcon}
                 >
                   {extraProps.isLoading ? (
                     <MenuItem disabled>
                       <CircularProgress size={16} sx={{ mr: 1 }} />
-                      Loading {label.toLowerCase()}...
+                      {getWorkflowDefinitionLabelDynamic('CDL_COMMON_LOADING')}
                     </MenuItem>
                   ) : Array.isArray(resolvedOptions) &&
                     resolvedOptions.length > 0 ? (
@@ -567,12 +448,10 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                     </MenuItem>
                   )}
                 </Select>
-
-                {hasError && (
-                  <FormHelperText>
-                    {fieldState.error?.message ?? 'Supporting text'}
-                  </FormHelperText>
-                )}
+                <FormError
+                  error={hasError ? (fieldState.error?.message as string) : ''}
+                  touched={true}
+                />
               </FormControl>
             )
           }}
@@ -645,7 +524,6 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
       onClose()
     }
   }
-
   return (
     <Drawer
       anchor="right"
@@ -654,55 +532,49 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
       PaperProps={{
         sx: {
           ...tokens.paper,
-          width: '460px',
-          height: '100%',
+          width: 460,
           display: 'flex',
           flexDirection: 'column',
+          overflow: 'hidden',
         },
       }}
     >
-      <Box
+      <DialogTitle
         sx={{
-          p: 3,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontFamily: 'Outfit, sans-serif',
+          fontWeight: 500,
+          fontStyle: 'normal',
+          fontSize: '20px',
+          lineHeight: '28px',
+          letterSpacing: '0.15px',
+          verticalAlign: 'middle',
           borderBottom: `1px solid ${tokens.dividerColor}`,
           backgroundColor: tokens.paper.backgroundColor as string,
+          color: theme.palette.text.primary,
+          pr: 3,
+          pl: 3,
         }}
       >
-        <Box
+        {mode === 'edit'
+          ? `${getWorkflowDefinitionLabelDynamic('CDL_COMMON_UPDATE')} ${getWorkflowDefinitionLabelDynamic('CDL_WD_WORKFLOW_DEFINITION')}`
+          : `${getWorkflowDefinitionLabelDynamic('CDL_COMMON_ADD')} ${getWorkflowDefinitionLabelDynamic('CDL_WD_WORKFLOW_DEFINITION')}`}
+        <IconButton
+          onClick={handleClose}
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            color: theme.palette.text.secondary,
+            '&:hover': {
+              backgroundColor: theme.palette.action.hover,
+            },
           }}
         >
-          <DialogTitle
-            sx={{
-              p: 0,
-              fontSize: '20px',
-              fontWeight: 500,
-              fontStyle: 'normal',
-              color: theme.palette.text.primary,
-            }}
-          >
-            {mode === 'edit'
-              ? 'Edit Workflow Definition'
-              : 'Add Workflow Definition'}
-          </DialogTitle>
-          <IconButton
-            onClick={onClose}
-            size="small"
-            sx={{
-              color: theme.palette.text.secondary,
-              '&:hover': {
-                backgroundColor: theme.palette.action.hover,
-              },
-            }}
-          >
-            <CancelOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      </Box>
-      <form onSubmit={handleSubmit(onSubmit, onError)}>
+          <CancelOutlinedIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+
+      <form noValidate onSubmit={handleSubmit(onSubmit, onError)}>
         <DialogContent
           dividers
           sx={{
@@ -710,55 +582,88 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
             backgroundColor: tokens.paper.backgroundColor as string,
           }}
         >
+          {errorMessage && (
+            <Alert
+              severity="error"
+              variant="outlined"
+              sx={{
+                mb: 2,
+                backgroundColor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(239, 68, 68, 0.08)'
+                    : 'rgba(254, 226, 226, 0.4)',
+                borderColor: alpha(theme.palette.error.main, 0.4),
+                color: theme.palette.error.main,
+              }}
+            >
+              {errorMessage}
+            </Alert>
+          )}
+
+          {formLoading && (
+            <Alert
+              severity="info"
+              variant="outlined"
+              sx={{
+                mb: 2,
+                backgroundColor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(59, 130, 246, 0.08)'
+                    : 'rgba(219, 234, 254, 0.4)',
+                borderColor: alpha(theme.palette.info.main, 0.4),
+                color: theme.palette.info.main,
+              }}
+            >
+              {getWorkflowDefinitionLabelDynamic('CDL_COMMON_LOADING')}
+            </Alert>
+          )}
           <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
             {renderTextField(
               'name',
-              getWorkflowDefinitionLabel('CDL_WD_NAME'),
+              getWorkflowDefinitionLabelDynamic('CDL_WD_NAME'),
               'text',
               12,
-              true,
               true
             )}
             {renderTextField(
               'version',
-              getWorkflowDefinitionLabel('CDL_WD_VERSION'),
+              getWorkflowDefinitionLabelDynamic('CDL_WD_VERSION'),
               'number',
               12,
-              true,
               true
             )}
             {renderTextField(
               'moduleCode',
-              getWorkflowDefinitionLabel('CDL_WD_MODULE_CODE'),
+              getWorkflowDefinitionLabelDynamic('CDL_WD_MODULE_CODE'),
               'text',
               12,
-              true,
               true
             )}
             {renderTextField(
               'actionCode',
-              getWorkflowDefinitionLabel('CDL_WD_ACTION_CODE'),
+              getWorkflowDefinitionLabelDynamic('CDL_WD_ACTION_CODE'),
               'text',
               12,
-              true,
               true
             )}
-
-            {renderSelectField(
+            {/* {renderSelectField(
               'applicationModuleId',
-              `${getWorkflowDefinitionLabel('CDL_WD_APPLICATION_MODULE_ID')}`,
-              moduleOptions as OptionItem[],
+              getWorkflowDefinitionLabelDynamic('CDL_WD_APPLICATION_MODULE_DTO'),
+              moduleOptions.map((option) => ({
+                label: option.label,
+                value: option.value,
+                id: option.id,
+              })),
               12,
-              true,
               true,
               {
                 isLoading: formLoading,
                 disabled: isSubmitting || isViewMode,
               }
-            )}
+            )} */}
             {renderSelectField(
               'workflowActionId',
-              `${getWorkflowDefinitionLabel('CDL_WD_WORKFLOW_ACTION_ID')}`,
+              getWorkflowDefinitionLabelDynamic('CDL_WD_WORKFLOW_ACTION_DTO'),
               actionOptions.map((option) => ({
                 label: option.label,
                 value: option.value,
@@ -766,55 +671,52 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
               })),
               12,
               true,
-              true,
               {
                 isLoading: formLoading,
                 disabled: isSubmitting || isViewMode,
               }
             )}
-            <Grid size={{ xs: 12 }}>
+            {/* <Grid size={{ xs: 12 }}>
               <Box sx={{ display: 'flex', gap: 3, mb: 5 }}>
                 {renderCheckboxField(
                   'amountBased',
-                  getWorkflowDefinitionLabel('CDL_WD_AMOUNT_BASED'),
+                  getWorkflowDefinitionLabelDynamic('CDL_WD_AMOUNT_BASED'),
                   6,
                   { disabled: isSubmitting, defaultValue: false }
                 )}
 
-                {renderCheckboxField(
-                  'active',
-                  getWorkflowDefinitionLabel('CDL_WD_ACTIVE'),
-                  6,
-                  { disabled: isSubmitting, defaultValue: true }
-                )}
+               
               </Box>
-            </Grid>
+            </Grid> */}
           </Grid>
         </DialogContent>
 
         {!isViewMode && (
           <Box
             sx={{
-              position: 'relative',
-              top: 20,
+              position: 'absolute',
+              bottom: 0,
               left: 0,
               right: 0,
               padding: 2,
+              display: 'flex',
+              gap: 2,
               borderTop: `1px solid ${tokens.dividerColor}`,
               backgroundColor: alpha(
                 theme.palette.background.paper,
                 theme.palette.mode === 'dark' ? 0.92 : 0.9
               ),
               backdropFilter: 'blur(10px)',
+              zIndex: 10,
             }}
           >
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
                 <Button
                   fullWidth
-                  variant="contained"
-                  onClick={handleResetToLoaded}
-                  disabled={!canReset}
+                  variant="outlined"
+                  onClick={handleClose}
+                  disabled={isSubmitting}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -822,30 +724,23 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 1,
-                    opacity: canReset ? 1 : 0.5,
                     borderWidth: '1px',
-                    borderStyle: 'solid',
                     borderColor:
                       theme.palette.mode === 'dark'
                         ? theme.palette.primary.main
-                        : 'transparent',
+                        : undefined,
                   }}
                 >
-                  Reset
+                  {getWorkflowDefinitionLabelDynamic('CDL_COMMON_CANCEL')}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Button
                   fullWidth
-                  variant="contained"
+                  variant="outlined"
                   color="primary"
                   type="submit"
-                  disabled={!canSave}
+                  disabled={isSubmitting}
                   sx={{
                     fontFamily: 'Outfit, sans-serif',
                     fontWeight: 500,
@@ -853,18 +748,32 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                     fontSize: '14px',
                     lineHeight: '20px',
                     letterSpacing: 0,
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 1,
-                    opacity: canSave ? 1 : 0.5,
+                    backgroundColor: theme.palette.primary.main,
+                    color: theme.palette.primary.contrastText,
                     borderWidth: '1px',
                     borderStyle: 'solid',
                     borderColor:
                       theme.palette.mode === 'dark'
                         ? theme.palette.primary.main
                         : 'transparent',
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? theme.palette.primary.main
+                          : 'transparent',
+                    },
+                    '&:disabled': {
+                      backgroundColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.grey[600], 0.5)
+                          : theme.palette.grey[300],
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.primary.main, 0.5)
+                          : 'transparent',
+                      color: theme.palette.text.disabled,
+                    },
                   }}
                 >
                   {isSubmitting && (
@@ -876,20 +785,53 @@ export const RightSlideWorkflowDefinitionPanel: React.FC<
                     />
                   )}
                   {isSubmitting
-                    ? formLoading
-                      ? 'Loading...'
-                      : mode === 'edit'
-                        ? 'Updating...'
-                        : 'Creating...'
+                    ? mode === 'edit'
+                      ? getWorkflowDefinitionLabelDynamic('CDL_COMMON_UPDATING')
+                      : getWorkflowDefinitionLabelDynamic('CDL_COMMON_ADDING')
                     : mode === 'edit'
-                      ? 'Update'
-                      : 'Save'}
+                      ? getWorkflowDefinitionLabelDynamic('CDL_COMMON_UPDATE')
+                      : getWorkflowDefinitionLabelDynamic('CDL_COMMON_ADD')}
                 </Button>
               </Grid>
             </Grid>
           </Box>
         )}
       </form>
+
+      {/* Error and Success Notifications */}
+      <Snackbar
+        open={!!errorMessage}
+        autoHideDuration={6000}
+        onClose={() => setErrorMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setErrorMessage(null)}
+          severity="error"
+          sx={{ width: '100%' }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSuccessMessage(null)}
+          severity="success"
+          sx={{ width: '100%' }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Drawer>
   )
 }
+
+export const RightSlideWorkflowDefinitionPanel = React.memo(
+  RightSlideWorkflowDefinitionPanelComponent
+)

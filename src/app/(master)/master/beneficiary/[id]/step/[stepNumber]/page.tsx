@@ -104,16 +104,17 @@ function BeneficiaryStepPageContent() {
   }
 
   return (
-    <DashboardLayout
-      title="Master : Beneficiary"
-      subtitle={
-        isViewMode
-          ? 'View beneficiary details and configuration (Read-only)'
-          : isEditingMode
-            ? 'Edit beneficiary details and configuration'
-            : 'Register your beneficiary step by step, non-mandatory fields and steps are easy to skip.'
-      }
-    >
+    // <DashboardLayout
+    //   title="Master : Beneficiary"
+    //   subtitle={
+    //     isViewMode
+    //       ? 'View beneficiary details and configuration (Read-only)'
+    //       : isEditingMode
+    //         ? 'Edit beneficiary details and configuration'
+    //         : 'Register your beneficiary step by step, non-mandatory fields and steps are easy to skip.'
+    //   }
+    // >
+    <>
       <div className="flex items-start py-2 gap-7 px-7">
         <div className="flex flex-col min-w-[200px] gap-1">
           <label className="font-sans font-normal text-[12px] leading-[1] tracking-normal text-gray-600 dark:text-gray-400">
@@ -147,7 +148,8 @@ function BeneficiaryStepPageContent() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+      </>
+    // </DashboardLayout>
   )
 }
 

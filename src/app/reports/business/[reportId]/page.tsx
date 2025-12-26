@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { ArrowLeft, Download, RefreshCw } from 'lucide-react'
@@ -31,6 +31,7 @@ const ReportDetailPage = () => {
   >([])
 
   const { getLabelResolver } = useSidebarConfig()
+  const initialLoadReportId = useRef<string | null>(null)
 
   // Fetch real project data
   const { data: projectsData } = useProjects(0, 1000)
@@ -226,13 +227,13 @@ const ReportDetailPage = () => {
 
         // Add only the fields specified in the configuration
         reportConfig.api.payloadFields.forEach((fieldName) => {
-          if (fieldName === 'projectId' && formData.projectId) {
+          if ((fieldName === 'projectId' || fieldName === 'project') && formData[fieldName]) {
             downloadPayload[fieldName] = getOriginalProjectId(
-              getFormValue(formData.projectId) || ''
+              getFormValue(formData[fieldName]!) || ''
             )
-          } else if (fieldName === 'developerId' && formData.developerId) {
+          } else if ((fieldName === 'developerId' || fieldName === 'developer') && formData[fieldName]) {
             downloadPayload[fieldName] = getOriginalProjectId(
-              getFormValue(formData.developerId) || ''
+              getFormValue(formData[fieldName]!) || ''
             )
           } else if (formData[fieldName]) {
             downloadPayload[fieldName] =
@@ -307,14 +308,13 @@ const ReportDetailPage = () => {
         window.URL.revokeObjectURL(url)
       }
     } catch (error) {
-      console.error('Error downloading file:', error)
       // Handle error - show toast notification
     } finally {
       setIsDownloading(false)
     }
   }
 
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = useCallback(async () => {
     try {
       setIsGenerating(true)
 
@@ -338,13 +338,13 @@ const ReportDetailPage = () => {
 
       // Add only the fields specified in the configuration
       reportConfig.api.payloadFields.forEach((fieldName) => {
-        if (fieldName === 'projectId' && formData.projectId) {
+        if ((fieldName === 'projectId' || fieldName === 'project') && formData[fieldName]) {
           configPayload[fieldName] = getOriginalProjectId(
-            getFormValue(formData.projectId) || ''
+            getFormValue(formData[fieldName]!) || ''
           )
-        } else if (fieldName === 'developerId' && formData.developerId) {
+        } else if ((fieldName === 'developerId' || fieldName === 'developer') && formData[fieldName]) {
           configPayload[fieldName] = getOriginalProjectId(
-            getFormValue(formData.developerId) || ''
+            getFormValue(formData[fieldName]!) || ''
           )
         } else if (formData[fieldName]) {
           configPayload[fieldName] = getFormValue(formData[fieldName]!) || null
@@ -378,12 +378,11 @@ const ReportDetailPage = () => {
           })) || []
       setReportResults(transformedResults)
     } catch (error) {
-      console.error('Error generating report:', error)
       // Handle error - show toast notification
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [formData, reportConfig])
 
   const handleDownloadResults = async (format: 'pdf' | 'excel') => {
     try {
@@ -402,7 +401,6 @@ const ReportDetailPage = () => {
       const downloadEndpoint = reportConfig.api.downloadEndpoint
 
       if (!downloadEndpoint) {
-        console.warn('No download endpoint configured for this report')
         return
       }
 
@@ -415,13 +413,13 @@ const ReportDetailPage = () => {
 
       // Add only the fields specified in the configuration
       reportConfig.api.payloadFields.forEach((fieldName) => {
-        if (fieldName === 'projectId' && formData.projectId) {
+        if ((fieldName === 'projectId' || fieldName === 'project') && formData[fieldName]) {
           downloadPayload[fieldName] = getOriginalProjectId(
-            getFormValue(formData.projectId) || ''
+            getFormValue(formData[fieldName]!) || ''
           )
-        } else if (fieldName === 'developerId' && formData.developerId) {
+        } else if ((fieldName === 'developerId' || fieldName === 'developer') && formData[fieldName]) {
           downloadPayload[fieldName] = getOriginalProjectId(
-            getFormValue(formData.developerId) || ''
+            getFormValue(formData[fieldName]!) || ''
           )
         } else if (formData[fieldName]) {
           downloadPayload[fieldName] =
@@ -434,7 +432,7 @@ const ReportDetailPage = () => {
       // Use apiClient to make the download request
       await apiClient.post(downloadEndpoint, downloadPayload)
     } catch (error) {
-      console.error('Error downloading results:', error)
+      // Handle error
     } finally {
       setIsDownloading(false)
     }
@@ -442,13 +440,16 @@ const ReportDetailPage = () => {
 
   // Auto-load report data on page mount with null values (only for non-download-only reports)
   useEffect(() => {
-    if (reportId && !reportConfig.api.downloadOnly) {
-      handleGenerateReport()
-    } else if (reportConfig.api.downloadOnly) {
-      // For download-only reports, just set loading to false
-      setIsGenerating(false)
+    if (initialLoadReportId.current !== reportId) {
+      initialLoadReportId.current = reportId
+      if (reportId && !reportConfig.api.downloadOnly) {
+        handleGenerateReport()
+      } else if (reportConfig.api.downloadOnly) {
+        // For download-only reports, just set loading to false
+        setIsGenerating(false)
+      }
     }
-  }, [reportId, reportConfig.api.downloadOnly])
+  }, [reportId, reportConfig.api.downloadOnly, handleGenerateReport])
 
   return (
     <DashboardLayout title={businessReportTitle}>

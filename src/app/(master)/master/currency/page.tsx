@@ -2,12 +2,11 @@
 
 import dynamic from 'next/dynamic'
 import React, { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideCurrencyPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideCurrency'
 import {
   useCurrencies,
@@ -17,6 +16,11 @@ import {
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
 import { Currency } from '@/services/api/masterApi/Customer/currencyService'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 interface CurrencyTableData extends Currency, Record<string, unknown> {
   currencyId?: string
@@ -32,11 +36,9 @@ export const CurrencyPageClient = dynamic(
 
 const CurrencyPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<CurrencyTableData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<CurrencyTableData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -59,6 +61,9 @@ const CurrencyPageImpl: React.FC = () => {
   )
 
   const deleteCurrencyMutation = useDeleteCurrency()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
   const refreshCurrencies = useRefreshCurrencies()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
@@ -175,37 +180,38 @@ const CurrencyPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = useCallback(async () => {
-    if (isDeleting || !deleteItem) return
-
-    setIsDeleting(true)
-    try {
-      await deleteCurrencyMutation.mutateAsync(String(deleteItem.id))
-      refreshCurrencies()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch (error) {
-      // Error is handled by the mutation's error state
-      // User feedback is provided through the UI
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [isDeleting, deleteItem, deleteCurrencyMutation, refreshCurrencies])
-
   const handleRowDelete = useCallback(
-    (row: CurrencyTableData) => {
-      if (isDeleting) return
-      setDeleteItem(row)
-      setIsDeleteModalOpen(true)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: CurrencyTableData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
+
+      confirmDelete({
+        itemName: `currency: ${row.description}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteCurrencyMutation.mutateAsync(String(row.id))
+            refreshCurrencies()
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
     },
-    [isDeleting]
+    [deleteCurrencyMutation, confirmDelete, isDeleting, refreshCurrencies]
   )
 
   const handleRowEdit = useCallback(
-    (row: CurrencyTableData) => {
-      const index = currencyData.findIndex((item) => item.id === row.id)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: CurrencyTableData, _index: number) => {
+      const dataIndex = currencyData.findIndex((item) => item.id === row.id)
       setEditingItem(row)
-      setEditingItemIndex(index >= 0 ? index : null)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
       setPanelMode('edit')
       setIsPanelOpen(true)
     },
@@ -228,7 +234,7 @@ const CurrencyPageImpl: React.FC = () => {
   const handleDownloadTemplate = useCallback(async () => {
     try {
       await downloadTemplate('CurrencyTemplate.xlsx')
-    } catch (error) {
+    } catch {
       // Error handling is done by the hook
     }
   }, [downloadTemplate])
@@ -238,13 +244,36 @@ const CurrencyPageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshCurrencies])
 
-  const handleUploadError = useCallback((error: string) => {
-    // Error is displayed by the UploadDialog component
-    if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
-      console.error('Currency upload error:', error)
-    }
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
+    // Error is handled by UploadDialog component
   }, [])
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: CurrencyTableData, _index: number) => {
+      confirmApprove({
+        itemName: `currency: ${row.description}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'CURRENCY',
+              moduleName: 'CURRENCY',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshCurrencies()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshCurrencies]
+  )
 
   const handleCurrencyAdded = useCallback(() => {
     refreshCurrencies()
@@ -318,7 +347,7 @@ const CurrencyPageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<CurrencyTableData>
+              <PermissionAwareDataTable<CurrencyTableData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -339,7 +368,15 @@ const CurrencyPageImpl: React.FC = () => {
                 onRowExpansionChange={handleRowExpansionChange}
                 renderExpandedContent={renderExpandedContent}
                 onRowDelete={handleRowDelete}
+                onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['currency_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['currency_update']}
+                editPermissions={['*']}
+                // approvePermissions={['currency_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['currency_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -348,29 +385,6 @@ const CurrencyPageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Currency"
-        message={`Are you sure you want to delete this currency: ${deleteItem?.description || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
 
       {isPanelOpen && (
         <RightSlideCurrencyPanel
@@ -378,7 +392,7 @@ const CurrencyPageImpl: React.FC = () => {
           onClose={handleClosePanel}
           onCurrencyAdded={handleCurrencyAdded}
           onCurrencyUpdated={handleCurrencyUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem as Currency | null}
           {...(editingItemIndex !== null && {
             currencyIndex: editingItemIndex,

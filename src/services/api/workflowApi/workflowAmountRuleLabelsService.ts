@@ -1,8 +1,6 @@
 import { apiClient } from '@/lib/apiClient'
-import { buildApiUrl, API_ENDPOINTS } from '@/constants/apiEndpoints'
+import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 import { getAuthCookies } from '@/utils/cookieUtils'
-import { toast } from 'react-hot-toast'
-
 export interface WorkflowAmountRuleLabelResponse {
   id: number
   configId: string
@@ -16,25 +14,24 @@ export interface WorkflowAmountRuleLabelResponse {
     enabled: boolean
     rtl: boolean
   }
-  applicationModuleDTO?: {
+  applicationModuleDTO: {
     id: number
     moduleName: string
-    moduleDescription?: string
-    active?: boolean
+    moduleDescription: string
+    active: boolean
   }
-  status?: string | null
-  enabled?: boolean
+  status: string | null
+  enabled: boolean
 }
 
 export type ProcessedWorkflowAmountRuleLabels = Record<
   string,
   Record<string, string>
->
+> // configId -> language -> label
 
 const DEFAULT_LANGUAGE = 'EN'
-const ERROR_MESSAGE_FETCH = 'Failed to fetch workflow amount rule labels'
-
-export class WorkflowAmountLabelsService {
+const ERROR_MESSAGE = 'Failed to fetch workflow amount rule labels'
+export class WorkflowAmountRuleLabelsService {
   static async fetchLabels(): Promise<WorkflowAmountRuleLabelResponse[]> {
     try {
       const { token } = getAuthCookies()
@@ -42,34 +39,33 @@ export class WorkflowAmountLabelsService {
       if (!token) {
         throw new Error('Authentication token not found')
       }
-
       const labels = await apiClient.get<WorkflowAmountRuleLabelResponse[]>(
-        buildApiUrl(
-          API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.WORKFLOW_AMOUNT_RULE
-        ),
+        API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.WORKFLOW_AMOUNT_RULE,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       )
-
       return labels
     } catch (error) {
-      toast.error(`${error}`)
-      throw new Error(ERROR_MESSAGE_FETCH)
+      throw new Error(ERROR_MESSAGE)
     }
   }
 
   static processLabels(
     labels: WorkflowAmountRuleLabelResponse[]
   ): ProcessedWorkflowAmountRuleLabels {
-    return labels.reduce((acc, { configId, configValue, appLanguageCode }) => {
-      if (!configId) return acc
-      if (!acc[configId]) acc[configId] = {}
-      acc[configId][appLanguageCode.languageCode] = configValue
-      return acc
-    }, {} as ProcessedWorkflowAmountRuleLabels)
+    return labels.reduce(
+      (processedLabels, { configId, configValue, appLanguageCode }) => {
+        if (!processedLabels[configId]) {
+          processedLabels[configId] = {}
+        }
+        processedLabels[configId][appLanguageCode.languageCode] = configValue
+        return processedLabels
+      },
+      {} as Record<string, Record<string, string>>
+    )
   }
 
   static getLabel(
@@ -78,16 +74,16 @@ export class WorkflowAmountLabelsService {
     language: string,
     fallback: string
   ): string {
-    if (!labels || !configId) return fallback
     const languageLabels = labels[configId]
-    if (!languageLabels) return fallback
     return (
-      languageLabels[language] || languageLabels[DEFAULT_LANGUAGE] || fallback
+      languageLabels?.[language] ||
+      languageLabels?.[DEFAULT_LANGUAGE] ||
+      fallback
     )
   }
 
   static hasLabels(labels: ProcessedWorkflowAmountRuleLabels): boolean {
-    return !!labels && Object.keys(labels).length > 0
+    return labels && Object.keys(labels).length > 0
   }
 
   static getAvailableLanguages(
@@ -95,18 +91,18 @@ export class WorkflowAmountLabelsService {
   ): string[] {
     try {
       const languages = new Set<string>()
-      if (!labels) return [DEFAULT_LANGUAGE]
 
-      Object.values(labels).forEach((languageMap) => {
-        Object.keys(languageMap).forEach((lang) => languages.add(lang))
+      Object.values(labels).forEach((languageLabels) => {
+        Object.keys(languageLabels).forEach((language) => {
+          languages.add(language)
+        })
       })
 
       return Array.from(languages)
     } catch (error) {
-      toast.error(`${error}`)
       return [DEFAULT_LANGUAGE]
     }
   }
 }
 
-export default WorkflowAmountLabelsService
+export default WorkflowAmountRuleLabelsService

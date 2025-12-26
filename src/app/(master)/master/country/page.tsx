@@ -2,11 +2,10 @@
 
 import dynamic from 'next/dynamic'
 import React, { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideCountryPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideCountry'
 import {
   useCountries,
@@ -17,6 +16,11 @@ import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
 import { Country } from '@/services/api/masterApi/Customer/countryService'
 import { useCountryLabelsWithCache } from '@/hooks/master/CustomerHook/useCountryLabelsWithCache'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 interface CountryTableData extends Country, Record<string, unknown> {
   countryId?: string
@@ -32,11 +36,9 @@ export const CountryPageClient = dynamic(
 
 const CountryPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<Country | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<Country | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -59,6 +61,9 @@ const CountryPageImpl: React.FC = () => {
   )
 
   const deleteCountryMutation = useDeleteCountry()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
   const refreshCountries = useRefreshCountries()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
   const { getCountryLabelDynamic } = useCountryLabelsWithCache()
@@ -160,40 +165,38 @@ const CountryPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = useCallback(async () => {
-    if (isDeleting || !deleteItem) return
-
-    setIsDeleting(true)
-    try {
-      await deleteCountryMutation.mutateAsync(String(deleteItem.id))
-      refreshCountries()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch (error) {
-      // Error is handled by the mutation's onError
-      // User feedback is provided through error state
-      if (error instanceof Error) {
-        // Could add toast notification here if needed
-      }
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [isDeleting, deleteItem, deleteCountryMutation, refreshCountries])
-
   const handleRowDelete = useCallback(
-    (row: CountryTableData) => {
-      if (isDeleting) return
-      setDeleteItem(row)
-      setIsDeleteModalOpen(true)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: CountryTableData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
+
+      confirmDelete({
+        itemName: `country: ${row.description || row.countryId || 'this country'}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteCountryMutation.mutateAsync(String(row.id))
+            refreshCountries()
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
     },
-    [isDeleting]
+    [deleteCountryMutation, confirmDelete, isDeleting, refreshCountries]
   )
 
   const handleRowEdit = useCallback(
-    (row: CountryTableData) => {
-      const index = countryData.findIndex((item) => item.id === row.id)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: CountryTableData, _index: number) => {
+      const dataIndex = countryData.findIndex((item) => item.id === row.id)
       setEditingItem(row)
-      setEditingItemIndex(index >= 0 ? index : null)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
       setPanelMode('edit')
       setIsPanelOpen(true)
     },
@@ -227,14 +230,36 @@ const CountryPageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshCountries])
 
-  const handleUploadError = useCallback((error: string) => {
-    // Error is logged by UploadDialog component
-    // Could add toast notification here if needed
-    if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
-      console.error('Upload error:', error)
-    }
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
+    // Error is handled by UploadDialog component
   }, [])
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: CountryTableData, _index: number) => {
+      confirmApprove({
+        itemName: `country: ${row.description}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'COUNTRY',
+              moduleName: 'COUNTRY',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshCountries()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshCountries]
+  )
 
   const handleCountryAdded = useCallback(() => {
     refreshCountries()
@@ -293,15 +318,6 @@ const CountryPageImpl: React.FC = () => {
     [getCountryLabelDynamic]
   )
 
-  const getDeleteMessage = useCallback(() => {
-    if (!deleteItem) return ''
-    const identifier =
-      deleteItem.description ||
-      deleteItem.uuid ||
-      `CNT-${deleteItem.id}` ||
-      'this country'
-    return `Are you sure you want to delete ${identifier}?`
-  }, [deleteItem])
 
   return (
     <>
@@ -334,7 +350,7 @@ const CountryPageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<CountryTableData>
+              <PermissionAwareDataTable<CountryTableData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -355,7 +371,15 @@ const CountryPageImpl: React.FC = () => {
                 onRowExpansionChange={handleRowExpansionChange}
                 renderExpandedContent={renderExpandedContent}
                 onRowDelete={handleRowDelete}
+                onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['country_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['country_update']}
+                editPermissions={['*']}
+                // approvePermissions={['country_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['country_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -364,36 +388,13 @@ const CountryPageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title={getCountryLabelDynamic('CDL_COMMON_ACTION')}
-        message={getDeleteMessage()}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
       {isPanelOpen && (
         <RightSlideCountryPanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onCountryAdded={handleCountryAdded}
           onCountryUpdated={handleCountryUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem}
           {...(editingItemIndex !== null && {
             countryIndex: editingItemIndex,

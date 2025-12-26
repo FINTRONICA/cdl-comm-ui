@@ -1,9 +1,9 @@
 // API Base URL and Version
 // API Base URL and Version
 export const API_CONFIG = {
-  BASE_URL: process.env.NODE_ENV === 'production' ? '/commercial/api' : (process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:8083'),
+  BASE_URL: process.env.NODE_ENV === 'production' ? '/commercial' : (process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:2023'),
   VERSION: 'v1',
-  API_PREFIX: '/v1',  // Changed from '/api/v1' since BASE_URL now includes /commercial/api
+  API_PREFIX: '/api/v1',  // Changed from '/api/v1' since BASE_URL now includes /commercial/api
 } as const
 
 // API Endpoints organized by controller

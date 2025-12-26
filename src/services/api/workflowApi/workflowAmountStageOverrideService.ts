@@ -5,7 +5,6 @@ import {
   API_ENDPOINTS,
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
-import { toast } from 'react-hot-toast'
 export interface WorkflowAmountRuleDTO {
   id: number
   currency: string
@@ -85,7 +84,18 @@ export interface WorkflowAmountStageOverride {
   requiredApprovals: number
   keycloakGroup: string
   stageKey: string
-  workflowAmountRuleDTO: WorkflowAmountRuleDTO
+  workflowAmountRuleDTO:
+    | WorkflowAmountRuleDTO
+    | { id: number; active?: boolean }
+    | string
+    | number
+  enabled?: boolean
+  active?: boolean
+  createdBy?: string
+  createdAt?: string
+  updatedBy?: string
+  updatedAt?: string
+  [key: string]: unknown
 }
 
 export interface CreateWorkflowAmountStageOverrideRequest {
@@ -137,20 +147,60 @@ export interface WorkflowAmountStageOverrideUIData {
   workflowAmountRuleId: number
   workflowAmountRuleName?: string
   active?: boolean
+  status?: string
 }
 
 export const mapWorkflowAmountStageOverrideToUI = (
   apiData: WorkflowAmountStageOverride
 ): WorkflowAmountStageOverrideUIData => {
+  // Safely extract workflowAmountRuleDTO - handle various structures
+  const ruleDTO = apiData.workflowAmountRuleDTO
+  let ruleId = 0
+  let ruleActive = false
+  let ruleName: string | undefined = undefined
+
+  if (ruleDTO) {
+    if (typeof ruleDTO === 'object') {
+      ruleId = (ruleDTO as any).id || (ruleDTO as any).workflowAmountRuleId || 0
+      ruleActive = (ruleDTO as any).active ?? (ruleDTO as any).enabled ?? false
+      // Extract amountRuleName if available
+      ruleName = (ruleDTO as any).amountRuleName || (ruleDTO as any).name
+    } else if (typeof ruleDTO === 'string') {
+      const parsed = parseInt(ruleDTO, 10)
+      ruleId = isNaN(parsed) ? 0 : parsed
+    } else if (typeof ruleDTO === 'number') {
+      ruleId = ruleDTO
+    }
+  }
+
+  // Extract enabled/active status from main object
+  const enabled =
+    (apiData as any).enabled ?? (apiData as any).active ?? ruleActive
+
+  // Use amountRuleName from API if available, otherwise generate RULE_{id}
+  const workflowAmountRuleName =
+    ruleName && ruleName.trim() !== ''
+      ? ruleName.trim()
+      : ruleId > 0
+        ? `RULE_${ruleId}`
+        : '-'
+
   return {
-    id: apiData.id,
-    stageOrder: apiData.stageOrder,
-    requiredApprovals: apiData.requiredApprovals,
-    keycloakGroup: apiData.keycloakGroup,
-    stageKey: apiData.stageKey,
-    workflowAmountRuleId: apiData.workflowAmountRuleDTO.id,
-    workflowAmountRuleName: `RULE_${apiData.workflowAmountRuleDTO.id}`,
-    active: apiData.workflowAmountRuleDTO.active,
+    id: apiData.id ?? 0,
+    stageOrder: apiData.stageOrder ?? 0,
+    requiredApprovals: apiData.requiredApprovals ?? 0,
+    keycloakGroup:
+      apiData.keycloakGroup && apiData.keycloakGroup.trim() !== ''
+        ? apiData.keycloakGroup
+        : '-',
+    stageKey:
+      apiData.stageKey && apiData.stageKey.trim() !== ''
+        ? apiData.stageKey
+        : '-',
+    workflowAmountRuleId: ruleId,
+    workflowAmountRuleName: workflowAmountRuleName,
+    active: enabled,
+    status: enabled ? 'Active' : 'Inactive',
   }
 }
 
@@ -204,11 +254,46 @@ export class WorkflowAmountStageOverrideService {
     const url = `${buildApiUrl(API_ENDPOINTS.WORKFLOW_AMOUNT_STAGE_OVERRIDE.FIND_ALL)}?${queryString}`
 
     try {
-      const result =
-        await apiClient.get<PaginatedResponse<WorkflowAmountStageOverride>>(url)
-      return result
+      const result = await apiClient.get<
+        | PaginatedResponse<WorkflowAmountStageOverride>
+        | WorkflowAmountStageOverride[]
+      >(url)
+
+      // Handle different response formats
+      if (Array.isArray(result)) {
+        // API returned array directly (fallback)
+        return {
+          content: result,
+          page: {
+            size: result.length,
+            number: page,
+            totalElements: result.length,
+            totalPages: Math.ceil(result.length / size),
+          },
+        }
+      }
+
+      // Standard paginated response
+      if (
+        result &&
+        typeof result === 'object' &&
+        'content' in result &&
+        Array.isArray(result.content)
+      ) {
+        return result as PaginatedResponse<WorkflowAmountStageOverride>
+      }
+
+      // Empty response fallback
+      return {
+        content: [],
+        page: {
+          size: size,
+          number: page,
+          totalElements: 0,
+          totalPages: 0,
+        },
+      }
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -222,7 +307,6 @@ export class WorkflowAmountStageOverrideService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -246,7 +330,6 @@ export class WorkflowAmountStageOverrideService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -272,7 +355,6 @@ export class WorkflowAmountStageOverrideService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -283,7 +365,6 @@ export class WorkflowAmountStageOverrideService {
         buildApiUrl(API_ENDPOINTS.WORKFLOW_AMOUNT_STAGE_OVERRIDE.DELETE(id))
       )
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -295,7 +376,6 @@ export class WorkflowAmountStageOverrideService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }

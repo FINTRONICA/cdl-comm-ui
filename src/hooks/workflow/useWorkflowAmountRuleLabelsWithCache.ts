@@ -1,9 +1,6 @@
 import { useCallback } from 'react'
 import { useLabels, useLabelsLoadingState } from '@/store'
-import {
-  ProcessedWorkflowAmountRuleLabels,
-  WorkflowAmountLabelsService,
-} from '@/services/api/workflowApi'
+import { WorkflowAmountRuleLabelsService } from '@/services/api/workflowApi/workflowAmountRuleLabelsService'
 
 export function useWorkflowAmountRuleLabelsWithCache() {
   const { workflowAmountRuleLabels } = useLabels()
@@ -11,13 +8,9 @@ export function useWorkflowAmountRuleLabelsWithCache() {
 
   const getLabel = useCallback(
     (configId: string, language: string, fallback: string) => {
+      // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
       if (workflowAmountRuleLabels) {
-        return WorkflowAmountLabelsService.getLabel(
-          workflowAmountRuleLabels as ProcessedWorkflowAmountRuleLabels,
-          configId,
-          language,
-          fallback
-        )
+        return WorkflowAmountRuleLabelsService.getLabel(workflowAmountRuleLabels, configId, language, fallback)
       }
       return fallback
     },
@@ -25,21 +18,21 @@ export function useWorkflowAmountRuleLabelsWithCache() {
   )
 
   const hasLabels = useCallback(() => {
-    return WorkflowAmountLabelsService.hasLabels(
-      (workflowAmountRuleLabels || {}) as ProcessedWorkflowAmountRuleLabels
-    )
-  }, [workflowAmountRuleLabels])
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return WorkflowAmountRuleLabelsService.hasLabels(workflowAmountRuleLabels || {})
+    }, [workflowAmountRuleLabels])
 
   const getAvailableLanguages = useCallback(() => {
-    return WorkflowAmountLabelsService.getAvailableLanguages(
-      (workflowAmountRuleLabels || {}) as ProcessedWorkflowAmountRuleLabels
-    )
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return WorkflowAmountRuleLabelsService.getAvailableLanguages(workflowAmountRuleLabels || {})
   }, [workflowAmountRuleLabels])
 
+  // 🏦 COMPLIANCE: Return identical API structure for backward compatibility
   return {
+    // Simulated React Query-like structure for compatibility
     data: workflowAmountRuleLabels,
     isLoading: workflowAmountRuleLabelsLoading,
-    error: null,
+    error: null, // Error handling is managed by the compliance loader
     isError: false,
     isFetching: workflowAmountRuleLabelsLoading,
     isSuccess: !!workflowAmountRuleLabels,
@@ -47,15 +40,13 @@ export function useWorkflowAmountRuleLabelsWithCache() {
       return Promise.resolve({ data: workflowAmountRuleLabels })
     },
 
+    // Original hook API functions (unchanged signatures)
     getLabel,
     hasLabels,
     getAvailableLanguages,
 
+    // Compatibility properties (maintained for existing UI components)
     hasCache: !!workflowAmountRuleLabels,
-    cacheStatus: workflowAmountRuleLabels
-      ? 'cached'
-      : workflowAmountRuleLabelsLoading
-        ? 'Loading...'
-        : 'fresh',
+    cacheStatus: workflowAmountRuleLabels ? 'cached' : workflowAmountRuleLabelsLoading ? 'Loading...' : 'fresh',
   }
 }

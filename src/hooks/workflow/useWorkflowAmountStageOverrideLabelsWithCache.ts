@@ -1,8 +1,6 @@
 import { useCallback } from 'react'
 import { useLabels, useLabelsLoadingState } from '@/store'
-import WorkflowAmountStageOverrideLabelsService, {
-  type ProcessedWorkflowAmountStageOverrideLabels,
-} from '@/services/api/workflowApi/workflowAmountStageOverrideLabelsService'
+import { WorkflowAmountStageOverrideLabelsService } from '@/services/api/workflowApi/workflowAmountStageOverrideLabelsService'
 
 export function useBuildWorkflowAmountStageOverrideLabelsWithCache() {
   const { workflowAmountStageOverrideLabels } = useLabels()
@@ -10,13 +8,9 @@ export function useBuildWorkflowAmountStageOverrideLabelsWithCache() {
 
   const getLabel = useCallback(
     (configId: string, language: string, fallback: string) => {
+      // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
       if (workflowAmountStageOverrideLabels) {
-        return WorkflowAmountStageOverrideLabelsService.getLabel(
-          workflowAmountStageOverrideLabels as ProcessedWorkflowAmountStageOverrideLabels,
-          configId,
-          language,
-          fallback
-        )
+        return WorkflowAmountStageOverrideLabelsService.getLabel(workflowAmountStageOverrideLabels, configId, language, fallback)
       }
       return fallback
     },
@@ -24,23 +18,21 @@ export function useBuildWorkflowAmountStageOverrideLabelsWithCache() {
   )
 
   const hasLabels = useCallback(() => {
-    return WorkflowAmountStageOverrideLabelsService.hasLabels(
-      (workflowAmountStageOverrideLabels ||
-        {}) as ProcessedWorkflowAmountStageOverrideLabels
-    )
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return WorkflowAmountStageOverrideLabelsService.hasLabels(workflowAmountStageOverrideLabels || {})
   }, [workflowAmountStageOverrideLabels])
 
   const getAvailableLanguages = useCallback(() => {
-    return WorkflowAmountStageOverrideLabelsService.getAvailableLanguages(
-      (workflowAmountStageOverrideLabels ||
-        {}) as ProcessedWorkflowAmountStageOverrideLabels
-    )
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return WorkflowAmountStageOverrideLabelsService.getAvailableLanguages(workflowAmountStageOverrideLabels || {})
   }, [workflowAmountStageOverrideLabels])
 
+  // 🏦 COMPLIANCE: Return identical API structure for backward compatibility
   return {
+    // Simulated React Query-like structure for compatibility
     data: workflowAmountStageOverrideLabels,
     isLoading: workflowAmountStageOverrideLabelsLoading,
-    error: null,
+    error: null, // Error handling is managed by the compliance loader
     isError: false,
     isFetching: workflowAmountStageOverrideLabelsLoading,
     isSuccess: !!workflowAmountStageOverrideLabels,
@@ -48,15 +40,13 @@ export function useBuildWorkflowAmountStageOverrideLabelsWithCache() {
       return Promise.resolve({ data: workflowAmountStageOverrideLabels })
     },
 
+    // Original hook API functions (unchanged signatures)
     getLabel,
     hasLabels,
     getAvailableLanguages,
 
+    // Compatibility properties (maintained for existing UI components)
     hasCache: !!workflowAmountStageOverrideLabels,
-    cacheStatus: workflowAmountStageOverrideLabels
-      ? 'cached'
-      : workflowAmountStageOverrideLabelsLoading
-        ? 'Loading...'
-        : 'fresh',
+    cacheStatus: workflowAmountStageOverrideLabels ? 'cached' : workflowAmountStageOverrideLabelsLoading ? 'Loading...' : 'fresh',
   }
 }

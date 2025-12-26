@@ -3,16 +3,20 @@
 import dynamic from 'next/dynamic'
 import React from 'react'
 import { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideAgreementSubTypePanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideAgreementSubType'
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
 import { useAgreementSubTypes, useDeleteAgreementSubType, useRefreshAgreementSubTypes } from '@/hooks/master/CustomerHook/useAgreementSubType'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 interface AgreementSubTypeData extends Record<string, unknown> {
   id: number
@@ -45,11 +49,9 @@ const AgreementSubTypePageClient = dynamic(
 
 const AgreementSubTypePageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<AgreementSubTypeData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<AgreementSubTypeData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -72,7 +74,10 @@ const AgreementSubTypePageImpl: React.FC = () => {
   )
 
   const deleteAgreementSubTypeMutation = useDeleteAgreementSubType()
-    const refreshAgreementSubTypes = useRefreshAgreementSubTypes()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
+  const refreshAgreementSubTypes = useRefreshAgreementSubTypes()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
   // Transform API data to table format
@@ -200,39 +205,43 @@ const AgreementSubTypePageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = async () => {
-    if (isDeleting || !deleteItem) return
-    setIsDeleting(true)
-    try {
-      await deleteAgreementSubTypeMutation.mutateAsync(String(deleteItem.id))
-      refreshAgreementSubTypes()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      if (process.env.NODE_ENV === 'development') {
-        console.error(`Failed to delete agreement sub type: ${errorMessage}`)
+  const handleRowDelete = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementSubTypeData, _index: number) => {
+      if (isDeleting) {
+        return
       }
+
+      confirmDelete({
+        itemName: `agreement sub type: ${row.agreementSubTypeName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteAgreementSubTypeMutation.mutateAsync(String(row.id))
+            refreshAgreementSubTypes()
+          } catch (error) {
+            throw error
     } finally {
       setIsDeleting(false)
     }
-  }
+        },
+      })
+    },
+    [deleteAgreementSubTypeMutation, confirmDelete, isDeleting, refreshAgreementSubTypes]
+  )
 
-  const handleRowDelete = (row: AgreementSubTypeData) => {
-    if (isDeleting) return
-    setDeleteItem(row)
-    setIsDeleteModalOpen(true)
-  }
-
-    const handleRowEdit = (row: AgreementSubTypeData) => {
-    // Find index in the full data array (not just paginated)
-    const index = agreementSubTypeData.findIndex((item) => item.id === row.id)
+  const handleRowEdit = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementSubTypeData, _index: number) => {
+      const dataIndex = agreementSubTypeData.findIndex((item) => item.id === row.id)
     setEditingItem(row)
-    setEditingItemIndex(index >= 0 ? index : null)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
     setPanelMode('edit')
     setIsPanelOpen(true)
-  }
+    },
+    [agreementSubTypeData]
+  )
 
   const handleAddNew = useCallback(() => {
     setEditingItem(null)
@@ -249,12 +258,9 @@ const AgreementSubTypePageImpl: React.FC = () => {
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      // Use a generic template name for investment, or create one if needed
       await downloadTemplate('BusinessSubSegmentTemplate.xlsx')
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to download template:', error)
-      }
+    } catch {
+      // Error handling is done by the hook
     }
   }, [downloadTemplate])
 
@@ -263,11 +269,36 @@ const AgreementSubTypePageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshAgreementSubTypes])
 
-  const handleUploadError = useCallback((error: string) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Upload error:', error)
-    }
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
+    // Error is handled by UploadDialog component
   }, [])
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: AgreementSubTypeData, _index: number) => {
+      confirmApprove({
+        itemName: `agreement sub type: ${row.agreementSubTypeName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'AGREEMENT_SUB_TYPE',
+              moduleName: 'AGREEMENT_SUB_TYPE',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshAgreementSubTypes()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshAgreementSubTypes]
+  )
 
   const handleAgreementSubTypeAdded = useCallback(() => {
             refreshAgreementSubTypes()
@@ -352,7 +383,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<AgreementSubTypeData>
+              <PermissionAwareDataTable<AgreementSubTypeData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -374,8 +405,15 @@ const AgreementSubTypePageImpl: React.FC = () => {
                 renderExpandedContent={renderExpandedContent}
                 statusOptions={statusOptions}
                 onRowDelete={handleRowDelete}
-                // onRowView={handleRowView}
+                onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['agreement_sub_type_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['agreement_sub_type_update']}
+                editPermissions={['*']}
+                // approvePermissions={['agreement_sub_type_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['agreement_sub_type_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -384,36 +422,13 @@ const AgreementSubTypePageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-          title="Delete Agreement Sub Type"
-        message={`Are you sure you want to delete this agreement sub type: ${deleteItem?.agreementSubTypeName || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
       {isPanelOpen && (
         <RightSlideAgreementSubTypePanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onAgreementSubTypeAdded={handleAgreementSubTypeAdded}
           onAgreementSubTypeUpdated={handleAgreementSubTypeUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
               actionData={editingItem as unknown as import('@/services/api/masterApi/Customer/agreementSubTypeService').AgreementSubType | null}
           {...(editingItemIndex !== null && {
             agreementSubTypeIndex: editingItemIndex,

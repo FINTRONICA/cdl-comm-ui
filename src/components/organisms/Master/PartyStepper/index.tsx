@@ -278,10 +278,8 @@ export default function PartyStepperWrapper({
             referenceId: finalPartyId,
             referenceType: 'PARTY',
             moduleName: 'PARTY',
-            actionKey: 'CREATE',
-            amount: 0,
-            currency: 'USD',
-            payloadJson: step1Data as unknown as Record<string, unknown>, // Developer step1 data structure
+            actionKey: 'APPROVE',
+            payloadJson: step1Data as unknown as Record<string, unknown>,
           })
 
           notifications.showSuccess(

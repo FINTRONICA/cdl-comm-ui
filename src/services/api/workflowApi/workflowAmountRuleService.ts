@@ -5,7 +5,6 @@ import {
   API_ENDPOINTS,
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
-import { toast } from 'react-hot-toast'
 
 export interface WorkflowAmountStageOverride {
   id: number
@@ -24,7 +23,10 @@ export interface WorkflowAmountRuleDTO {
   priority: number
   requiredMakers: number | null
   requiredCheckers: number | null
-  workflowDefinitionDTO: {
+  workflowDefinitionDTO:
+  | string
+  | number
+  | {
     id: number | string
     name?: string
     version?: number
@@ -37,10 +39,16 @@ export interface WorkflowAmountRuleDTO {
     workflowActionDTO?: Record<string, unknown>
     stageTemplates?: Record<string, unknown>[]
     active?: boolean
-    workflowId: number | string | null
-    amountRuleName: string
-    workflowAmountStageOverrideDTOS: WorkflowAmountStageOverride[] | null
+    workflowId?: number | string | null
+    amountRuleName?: string
+    workflowAmountStageOverrideDTOS?: WorkflowAmountStageOverride[] | null
   }
+  workflowId?: number | string
+  amountRuleName?: string
+  workflowAmountStageOverrideDTOS?: WorkflowAmountStageOverride[]
+  enabled?: boolean
+  active?: boolean
+  deleted?: boolean
 }
 
 export interface WorkflowAmountRule {
@@ -156,11 +164,11 @@ export interface StageTemplateDTO {
 export interface WorkflowAmountRuleUIData {
   id: number | string
   currency: string
-  minAmount: number
-  maxAmount: number
-  priority: number
-  requiredMakers: number
-  requiredCheckers: number
+  minAmount: number | null
+  maxAmount: number | null
+  priority: number | null
+  requiredMakers: number | null
+  requiredCheckers: number | null
   workflowDefinitionDTO: {
     id: number | string
     name?: string
@@ -175,22 +183,72 @@ export interface WorkflowAmountRuleUIData {
 export const mapWorkflowAmountRuleToUI = (
   apiData: WorkflowAmountRuleDTO
 ): WorkflowAmountRuleUIData => {
-  return {
-    id: apiData.id,
-    currency: apiData.currency,
-    minAmount: apiData.minAmount ?? 0,
-    maxAmount: apiData.maxAmount ?? 0,
-    priority: apiData.priority ?? 0,
-    requiredMakers: apiData.requiredMakers ?? 0,
-    requiredCheckers: apiData.requiredCheckers ?? 0,
-    workflowDefinitionDTO: (() => {
-      const name = (apiData.workflowDefinitionDTO as { name?: string })?.name
-      return {
-        id: apiData.workflowDefinitionDTO.id,
-        ...(name ? { name } : {}),
+
+
+  // Safely extract workflowDefinitionDTO - handle various response structures
+  const workflowDefDTO = apiData.workflowDefinitionDTO
+  let workflowDefName = ''
+  let workflowDefId: number | string = 0
+
+  if (workflowDefDTO) {
+    if (typeof workflowDefDTO === 'object' && workflowDefDTO !== null) {
+      // Try to extract name from various possible locations
+      workflowDefName =
+        (workflowDefDTO as any).name ||
+        (workflowDefDTO as any).workflowDefinitionName ||
+        (workflowDefDTO as any).workflowName || ''
+      const extractedId =
+        (workflowDefDTO as any).id ||
+        (workflowDefDTO as any).workflowId ||
+        (workflowDefDTO as any).workflowDefinitionId
+
+      if (extractedId !== undefined && extractedId !== null) {
+        workflowDefId = extractedId
       }
-    })(),
-    workflowId: (apiData as { workflowId?: number | string })?.workflowId ?? 0,
+    } else if (typeof workflowDefDTO === 'string') {
+
+      const parsedId = parseInt(workflowDefDTO, 10)
+      workflowDefId = isNaN(parsedId) ? workflowDefDTO : parsedId
+
+    } else if (typeof workflowDefDTO === 'number') {
+      workflowDefId = workflowDefDTO
+    }
+  }
+
+  // Fallback: use workflowId if workflowDefinitionDTO didn't provide an ID
+  if (workflowDefId === 0 && (apiData as { workflowId?: number | string })?.workflowId) {
+    const fallbackId = (apiData as { workflowId?: number | string }).workflowId
+    if (fallbackId !== undefined && fallbackId !== null) {
+      workflowDefId = fallbackId
+    }
+  }
+
+  // Extract enabled status - check both enabled and active fields
+  const enabled = (apiData as any).enabled ?? (apiData as any).active ?? false
+
+  // Handle currency - filter out placeholder "string" values
+  let currency = apiData.currency
+  if (currency && typeof currency === 'string') {
+    currency = currency.trim()
+    // If currency is a placeholder like "string", treat as empty
+    if (currency.toLowerCase() === 'string' || currency === '') {
+      currency = ''
+    }
+  }
+
+  return {
+    id: apiData.id ?? 0,
+    currency: currency || '',
+    minAmount: apiData.minAmount != null ? apiData.minAmount : null,
+    maxAmount: apiData.maxAmount != null ? apiData.maxAmount : null,
+    priority: apiData.priority != null ? apiData.priority : null,
+    requiredMakers: apiData.requiredMakers != null ? apiData.requiredMakers : null,
+    requiredCheckers: apiData.requiredCheckers != null ? apiData.requiredCheckers : null,
+    workflowDefinitionDTO: {
+      id: workflowDefId,
+      name: workflowDefName,
+    },
+    workflowId: (apiData as { workflowId?: number | string })?.workflowId ?? workflowDefId ?? 0,
     amountRuleName:
       (apiData as { amountRuleName?: string })?.amountRuleName ?? '',
     workflowAmountStageOverrideDTOS:
@@ -199,8 +257,8 @@ export const mapWorkflowAmountRuleToUI = (
           workflowAmountStageOverrideDTOS?: WorkflowAmountStageOverride[]
         }
       )?.workflowAmountStageOverrideDTOS || [],
-    enabled: (apiData as { enabled?: boolean })?.enabled ?? false,
-    status: (apiData as { enabled?: boolean })?.enabled ? 'Active' : 'Inactive',
+    enabled: enabled,
+    status: enabled ? 'Active' : 'Inactive',
   }
 }
 
@@ -276,7 +334,6 @@ export class WorkflowAmountRuleService {
         await apiClient.get<PaginatedResponse<WorkflowAmountRuleDTO>>(url)
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -288,7 +345,6 @@ export class WorkflowAmountRuleService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -317,7 +373,6 @@ export class WorkflowAmountRuleService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -362,7 +417,6 @@ export class WorkflowAmountRuleService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -373,7 +427,6 @@ export class WorkflowAmountRuleService {
         buildApiUrl(API_ENDPOINTS.WORKFLOW_AMOUNT_RULE.DELETE(id))
       )
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }
@@ -385,7 +438,6 @@ export class WorkflowAmountRuleService {
       )
       return result
     } catch (error) {
-      toast.error(`${error}`)
       throw error
     }
   }

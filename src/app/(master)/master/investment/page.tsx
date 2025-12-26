@@ -3,12 +3,11 @@
 import dynamic from 'next/dynamic'
 import React from 'react'
 import { useCallback, useState, useMemo } from 'react'
-import { ExpandableDataTable } from '@/components/organisms/ExpandableDataTable'
+import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
 import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
 import { GlobalLoading } from '@/components/atoms'
-import { CommentModal } from '@/components/molecules'
 import { RightSlideInvestmentTypePanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideInvestmentTypePanel'
 import type { Investment } from '@/services/api/masterApi/Customer/investmentService'
 import {
@@ -18,6 +17,11 @@ import {
 } from '@/hooks/master/CustomerHook/useInvestment'
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
+import {
+  useDeleteConfirmation,
+  useApproveConfirmation,
+} from '@/store/confirmationDialogStore'
+import { useCreateWorkflowRequest } from '@/hooks/workflow'
 
 interface InvestmentData extends Record<string, unknown> {
   id: number
@@ -49,11 +53,9 @@ const InvestmentPageClient = dynamic(
 
 const InvestmentPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add')
+  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<InvestmentData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<InvestmentData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -76,6 +78,9 @@ const InvestmentPageImpl: React.FC = () => {
   )
 
   const deleteInvestmentMutation = useDeleteInvestment()
+  const confirmDelete = useDeleteConfirmation()
+  const confirmApprove = useApproveConfirmation()
+  const createWorkflowRequest = useCreateWorkflowRequest()
   const refreshInvestments = useRefreshInvestments()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
 
@@ -196,37 +201,43 @@ const InvestmentPageImpl: React.FC = () => {
     ? endItem
     : Math.min(currentApiPage * currentApiSize, apiTotal)
 
-  const confirmDelete = async () => {
-    if (isDeleting || !deleteItem) return
-    setIsDeleting(true)
-    try {
-      await deleteInvestmentMutation.mutateAsync(String(deleteItem.id))
-      refreshInvestments()
-      setIsDeleteModalOpen(false)
-      setDeleteItem(null)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error(`Failed to delete investment: ${errorMessage}`)
-    } finally {
-      setIsDeleting(false)
-    }
-  }
+  const handleRowDelete = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: InvestmentData, _index: number) => {
+      if (isDeleting) {
+        return
+      }
 
-  const handleRowDelete = (row: InvestmentData) => {
-    if (isDeleting) return
-    setDeleteItem(row)
-    setIsDeleteModalOpen(true)
-  }
+      confirmDelete({
+        itemName: `investment: ${row.investmentName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
+            await deleteInvestmentMutation.mutateAsync(String(row.id))
+            refreshInvestments()
+          } catch (error) {
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
+    },
+    [deleteInvestmentMutation, confirmDelete, isDeleting, refreshInvestments]
+  )
 
-  const handleRowEdit = (row: InvestmentData) => {
-    // Find index in the full data array (not just paginated)
-    const index = investmentData.findIndex((item) => item.id === row.id)
-    setEditingItem(row)
-    setEditingItemIndex(index >= 0 ? index : null)
-    setPanelMode('edit')
-    setIsPanelOpen(true)
-  }
+  const handleRowEdit = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: InvestmentData, _index: number) => {
+      const dataIndex = investmentData.findIndex((item) => item.id === row.id)
+      setEditingItem(row)
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
+      setPanelMode('edit')
+      setIsPanelOpen(true)
+    },
+    [investmentData]
+  )
 
   const handleAddNew = useCallback(() => {
     setEditingItem(null)
@@ -243,10 +254,9 @@ const InvestmentPageImpl: React.FC = () => {
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      // Use a generic template name for investment, or create one if needed
       await downloadTemplate('InvestmentTemplate.xlsx')
-    } catch (error) {
-      console.error('Failed to download template:', error)
+    } catch {
+      // Error handling is done by the hook
     }
   }, [downloadTemplate])
 
@@ -255,9 +265,36 @@ const InvestmentPageImpl: React.FC = () => {
     setIsUploadDialogOpen(false)
   }, [refreshInvestments])
 
-  const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error)
+  const handleUploadError = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_error: string) => {
+    // Error is handled by UploadDialog component
   }, [])
+
+  const handleRowApprove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (row: InvestmentData, _index: number) => {
+      confirmApprove({
+        itemName: `investment: ${row.investmentName}`,
+        itemId: String(row.id),
+        onConfirm: async () => {
+          try {
+            await createWorkflowRequest.mutateAsync({
+              referenceId: String(row.id),
+              referenceType: 'INVESTMENT',
+              moduleName: 'INVESTMENT',
+              actionKey: 'APPROVE',
+              payloadJson: row as Record<string, unknown>,
+            })
+            refreshInvestments()
+          } catch (error) {
+            throw error
+          }
+        },
+      })
+    },
+    [confirmApprove, createWorkflowRequest, refreshInvestments]
+  )
 
   const handleInvestmentAdded = useCallback(() => {
     refreshInvestments()
@@ -334,7 +371,7 @@ const InvestmentPageImpl: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
-              <ExpandableDataTable<InvestmentData>
+              <PermissionAwareDataTable<InvestmentData>
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -356,8 +393,15 @@ const InvestmentPageImpl: React.FC = () => {
                 renderExpandedContent={renderExpandedContent}
                 statusOptions={statusOptions}
                 onRowDelete={handleRowDelete}
-                // onRowView={handleRowView}
+                onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
+                // deletePermissions={['investment_delete']}
+                deletePermissions={['*']}
+                // editPermissions={['investment_update']}
+                editPermissions={['*']}
+                // approvePermissions={['investment_approve']}
+                approvePermissions={['*']}
+                updatePermissions={['investment_update']}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -366,36 +410,13 @@ const InvestmentPageImpl: React.FC = () => {
         </div>
       </div>
 
-      <CommentModal
-        open={isDeleteModalOpen}
-        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
-        title="Delete Investment"
-        message={`Are you sure you want to delete this investment: ${deleteItem?.investmentName || ''}?`}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: () => {
-              setIsDeleteModalOpen(false)
-              setDeleteItem(null)
-            },
-            color: 'secondary',
-            disabled: isDeleting,
-          },
-          {
-            label: isDeleting ? 'Deleting...' : 'Delete',
-            onClick: confirmDelete,
-            color: 'error',
-            disabled: isDeleting,
-          },
-        ]}
-      />
       {isPanelOpen && (
         <RightSlideInvestmentTypePanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onInvestmentAdded={handleInvestmentAdded}
           onInvestmentUpdated={handleInvestmentUpdated}
-          mode={panelMode}
+          mode={panelMode === 'approve' ? 'edit' : panelMode}
           actionData={editingItem as Investment | null}
           {...(editingItemIndex !== null && {
             investmentIndex: editingItemIndex,

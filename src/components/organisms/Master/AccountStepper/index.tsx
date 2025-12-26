@@ -225,7 +225,6 @@ export default function AccountStepperWrapper({
         methods.reset(processedData)
         setShouldResetForm(false)
       } catch (error) {
-        console.error('[AccountStepper] Error processing step data:', error)
         // Don't throw - allow component to continue rendering
       }
     }
@@ -320,16 +319,12 @@ export default function AccountStepperWrapper({
             return
           }
 
-          console.log('[AccountStepper] Submitting workflow request for account:', finalAccountId)
-
           // Submit workflow request with only step1 data
           await createWorkflowRequest.mutateAsync({
             referenceId: finalAccountId,
             referenceType: 'ACCOUNT',
             moduleName: 'ACCOUNT',
-            actionKey: 'CREATE',
-            amount: 0,
-            currency: 'USD',
+            actionKey: 'APPROVE',
             payloadJson: step1Data as unknown as Record<string, unknown>,
           })
 
@@ -343,7 +338,6 @@ export default function AccountStepperWrapper({
           }, 500)
           return
         } catch (error) {
-          console.error('[AccountStepper] Error submitting workflow:', error)
           const errorData = error as {
             response?: { data?: { message?: string } }
             message?: string
@@ -447,13 +441,6 @@ export default function AccountStepperWrapper({
       }
 
       // Call the API to save the current step
-      console.log('[AccountStepper] Saving step:', {
-        step: activeStep + 1,
-        data: stepSpecificData,
-        isEditing: isEditingMode,
-        accountId,
-      })
-      
       const saveResponse = await stepManager.saveStep(
         activeStep + 1,
         stepSpecificData,
@@ -461,8 +448,6 @@ export default function AccountStepperWrapper({
         accountId
       )
 
-      console.log('[AccountStepper] Save response:', saveResponse)
-      console.log('[AccountStepper] Save response type:', typeof saveResponse, 'Keys:', saveResponse ? Object.keys(saveResponse) : 'null')
       notifications.showSuccess('Step saved successfully!')
 
       // Navigate to next step
@@ -490,26 +475,20 @@ export default function AccountStepperWrapper({
             }
           }
 
-          console.log('[AccountStepper] Extracted account ID:', savedAccountId, 'Full response:', saveResponse)
-
           if (savedAccountId) {
             // Navigate to Step 2 using the dynamic route with the Account ID from backend
             const nextUrl = `/escrow-account/${savedAccountId}/step/2${getModeParam()}`
-            console.log('[AccountStepper] Navigating to:', nextUrl)
             router.push(nextUrl)
             // Also update local state to ensure UI is in sync
             setActiveStep(1)
           } else {
-            console.warn('[AccountStepper] No account ID in response, using fallback. Response:', saveResponse)
             // Fallback: try to use existing accountId if available
             if (accountId) {
               const nextUrl = `/escrow-account/${accountId}/step/2${getModeParam()}`
-              console.log('[AccountStepper] Using existing accountId for navigation:', nextUrl)
               router.push(nextUrl)
               setActiveStep(1)
             } else {
               // Last resort: update local state only
-              console.warn('[AccountStepper] No account ID available, updating local state only')
               setActiveStep((prev: number) => prev + 1)
             }
           }
@@ -517,18 +496,15 @@ export default function AccountStepperWrapper({
             // For other steps, use the existing Account ID
           const nextStep = activeStep + 1
           const nextUrl = `/escrow-account/${accountId}/step/${nextStep + 1}${getModeParam()}`
-          console.log('[AccountStepper] Navigating to next step:', nextUrl)
           router.push(nextUrl)
           // Also update local state
           setActiveStep(nextStep)
         } else {
-          console.warn('[AccountStepper] No account ID available, using local state')
           // Fallback to local state if no Account ID
           setActiveStep((prev) => prev + 1)
         }
       } else {
         // If this is the last step, redirect to account list
-        console.log('[AccountStepper] Last step completed, redirecting to list')
         router.push('/escrow-account')
         notifications.showSuccess('All steps completed successfully!')
       }
@@ -536,7 +512,6 @@ export default function AccountStepperWrapper({
       // Ensure setIsSaving is called after navigation
       setIsSaving(false)
     } catch (error: unknown) {
-      console.error('[AccountStepper] Error saving step:', error)
       const errorData = error as {
         response?: { data?: { message?: string } }
         message?: string
