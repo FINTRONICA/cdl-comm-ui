@@ -119,95 +119,11 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
   
 
   // Handle Fetch Details button click
+  // TODO: This functionality will be handled by API later - disabled for now
   const handleFetchDetails = async () => {
-    const currentCif = watch('customerCifNumber')
-    if (!currentCif || !currentCif.trim()) {
-      return
-    }
-
-    try {
-      const customerDetails =
-        await partyService.getCustomerDetailsByCif(currentCif.trim())
-
-      // Clear any existing errors for fields we're about to populate
-      clearErrors([
-        'signatoryFullName',
-        'addressLine1',
-        'addressLine2',
-        'addressLine3',
-        'emailAddress',
-        'telephoneNumber',
-        'mobileNumber',
-      ] as (keyof typeof errors)[])
-
-      // Populate fields from customer details (matching Step1 pattern)
-      if (customerDetails?.name?.firstName) {
-        setValue('signatoryFullName', customerDetails.name.firstName, {
-          shouldValidate: false, // Don't validate immediately to avoid errors
-          shouldDirty: true,
-        })
-      }
-      
-      // Populate address fields if available
-      if (customerDetails?.contact?.address) {
-        if (customerDetails.contact.address.line1) {
-          setValue('addressLine1', customerDetails.contact.address.line1, {
-            shouldValidate: false,
-            shouldDirty: true,
-          })
-        }
-        if (customerDetails.contact.address.line2) {
-          setValue('addressLine2', customerDetails.contact.address.line2, {
-            shouldValidate: false,
-            shouldDirty: true,
-          })
-        }
-        // Combine city, state, country for addressLine3
-        const addressLine3Parts = [
-          customerDetails.contact.address.city,
-          customerDetails.contact.address.state,
-          customerDetails.contact.address.country,
-        ].filter(Boolean)
-        if (addressLine3Parts.length > 0) {
-          setValue('addressLine3', addressLine3Parts.join(', '), {
-            shouldValidate: false,
-            shouldDirty: true,
-          })
-        }
-      }
-      
-      // Populate contact fields if available
-      if (customerDetails?.contact?.preferredEmail) {
-        setValue('emailAddress', customerDetails.contact.preferredEmail, {
-          shouldValidate: false,
-          shouldDirty: true,
-        })
-      }
-      if (customerDetails?.contact?.preferredPhone) {
-        const phoneNumber = customerDetails.contact.preferredPhone
-        setValue('telephoneNumber', phoneNumber, {
-          shouldValidate: false,
-          shouldDirty: true,
-        })
-        setValue('mobileNumber', phoneNumber, {
-          shouldValidate: false,
-          shouldDirty: true,
-        })
-      }
-      
-      // Trigger validation after a short delay to ensure fields are set
-      setTimeout(() => {
-        // Re-validate the populated fields
-        setValue('signatoryFullName', watch('signatoryFullName'), {
-          shouldValidate: true,
-        })
-      }, 100)
-      
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[PartyStepper Step2] Error fetching customer details:', error)
-      }
-    }
+    // Functionality disabled - will be handled by API later
+    // Do not fetch or populate data
+    return
   }
 
   // Function to generate new authorized signatory ID
