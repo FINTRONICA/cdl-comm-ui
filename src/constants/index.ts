@@ -5,7 +5,7 @@ export const APP_CONFIG = {
   version: '1.0.0',
   description: 'Financial escrow management system',
   // Backend origin (avoid including `/api` here; clients append `/api/v1`)
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:2023',
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143',
   defaultLocale: 'en',
   supportedLocales: ['en', 'es'],
 } as const
