@@ -17,6 +17,7 @@ import type { Theme } from '@mui/material/styles'
 import { FormProvider, useForm } from 'react-hook-form'
 import Step1, { type Step1Ref } from './steps/Step1'
 import Step2 from './steps/Step2'
+import Step3 from './steps/Step3'
 import DocumentUploadFactory from '../../DocumentUpload/DocumentUploadFactory'
 import {
   outerContainerSx,
@@ -265,7 +266,7 @@ export default function BeneficiaryStepperWrapper({
           )
         case 2:
           return (
-            <Step2
+            <Step3
               beneficiaryId={currentBeneficiaryId ?? undefined}
               isReadOnly={isViewMode}
               onEditStep={handleEditStep}
