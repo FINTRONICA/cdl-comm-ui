@@ -21,7 +21,7 @@ import {
 import Step1, { type Step1Ref } from './steps/Step1'
 import Step3 from './steps/Step3'
 import DocumentUploadFactory from '../../DocumentUpload/DocumentUploadFactory'
-import { DocumentItem } from '../../DeveloperStepper/developerTypes'
+import { DocumentItem } from '../PartyStepper/partyTypes'
 import {
   outerContainerSx,
   formSectionSx,

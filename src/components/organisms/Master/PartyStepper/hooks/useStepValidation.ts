@@ -14,8 +14,19 @@ export const useStepValidation = () => {
         return { isValid: true, errors: [], source: 'skipped' }
       }
 
+      // For Step 1, remove id field if it's empty or undefined (new party creation)
+      let dataToValidate = data
+      if (step === 1 && data && typeof data === 'object') {
+        const dataObj = data as Record<string, unknown>
+        // If id is empty string or undefined, remove it for validation (new party)
+        if (!dataObj.id || dataObj.id === '' || dataObj.id === 'undefined') {
+          dataToValidate = { ...dataObj }
+          delete (dataToValidate as Record<string, unknown>).id
+        }
+      }
+
       // Use the helper that validates only step-specific fields
-      const result = validateStepDataHelper(step, data)
+      const result = validateStepDataHelper(step, dataToValidate)
 
       if (result.success) {
         return {
@@ -55,8 +66,19 @@ export const useStepValidation = () => {
         return { isValid: true, errors: [], source: 'skipped' }
       }
 
+      // For Step 1, remove id field if it's empty or undefined (new party creation)
+      let dataToValidate = data
+      if (step === 1 && data && typeof data === 'object') {
+        const dataObj = data as Record<string, unknown>
+        // If id is empty string or undefined, remove it for validation (new party)
+        if (!dataObj.id || dataObj.id === '' || dataObj.id === 'undefined') {
+          dataToValidate = { ...dataObj }
+          delete (dataToValidate as Record<string, unknown>).id
+        }
+      }
+
       // Use synchronous validation
-      const result = validateStepDataHelper(step, data)
+      const result = validateStepDataHelper(step, dataToValidate)
 
       if (result.success) {
         return {

@@ -38,6 +38,7 @@ import {
   useSaveBeneficiary,
   useBeneficiaryById,
 } from '@/hooks/master/CustomerHook/useBeneficiary'
+import type { MasterBeneficiaryData } from '@/services/api/masterApi/Customer/beneficiaryService'
 import {
   commonFieldStyles as sharedCommonFieldStyles,
   selectStyles as sharedSelectStyles,
@@ -96,7 +97,6 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
     // State for beneficiary ID generation
     const [generatedId, setGeneratedId] = useState<string>('')
     const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
-    const [isFetchingBankDetails, setIsFetchingBankDetails] = useState<boolean>(false)
 
     // Ref to prevent double API calls (fixes StrictMode double-call issue)
     const hasLoadedDataRef = useRef(false)
@@ -275,13 +275,12 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
         }
 
         hasLoadedDataRef.current = true
-      } catch (error) {
-        hasLoadedDataRef.current = false // Reset on error to allow retry
-        if (process.env.NODE_ENV === 'development') {
-          // eslint-disable-next-line no-console
-          console.error('[BeneficiaryStepper Step1] Error loading existing beneficiary data:', error)
-        }
-      } finally {
+        } catch (error) {
+          hasLoadedDataRef.current = false // Reset on error to allow retry
+          if (process.env.NODE_ENV === 'development') {
+            console.error('[BeneficiaryStepper Step1] Error loading existing beneficiary data:', error)
+          }
+        } finally {
         isLoadingRef.current = false
       }
     }, [isEditMode, beneficiaryId, beneficiaryDataFromHook, setValue])
@@ -365,8 +364,8 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
             })
           }
           
-          // Prepare payload
-          const payload = {
+          // Prepare payload matching backend structure
+          const payload: Record<string, unknown> = {
             beneficiaryFullName: formData.beneficiaryFullName || '',
             beneficiaryAddressLine1: formData.beneficiaryAddressLine1 || '',
             telephoneNumber: formData.telephoneNumber || '',
@@ -377,23 +376,32 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
             bankRoutingCode: formData.bankRoutingCode || '',
             additionalRemarks: formData.additionalRemarks || '',
             active: formData.active ?? true,
-            enabled: formData.enabled ?? true,
-            deleted: formData.deleted ?? false,
-            // Always store generated ID in uuid field - this is critical for display
-            uuid: String(generatedIdValue),
-            accountTypeDTO: formData.accountTypeDTO?.id
-              ? { id: Number(formData.accountTypeDTO.id) }
-              : null,
-            transferTypeDTO: formData.transferTypeDTO?.id
-              ? { id: Number(formData.transferTypeDTO.id) }
-              : null,
-            roleDTO: formData.roleDTO?.id
-              ? { id: Number(formData.roleDTO.id) }
-              : null,
+          }
+
+          // For updates (PUT), include the beneficiary ID in the payload
+          if (isEditMode && beneficiaryId) {
+            payload.id = Number(beneficiaryId)
+          } else {
+            // For new beneficiaries (POST), include uuid and deleted
+            payload.uuid = String(generatedIdValue)
+            payload.deleted = formData.deleted ?? false
+            payload.enabled = formData.enabled ?? true
+          }
+
+          // Only include DTOs if they have valid IDs, omit if null
+          // DTOs should be just { id: number } - backend will handle the rest
+          if (formData.accountTypeDTO?.id) {
+            payload.accountTypeDTO = { id: Number(formData.accountTypeDTO.id) }
+          }
+          if (formData.transferTypeDTO?.id) {
+            payload.transferTypeDTO = { id: Number(formData.transferTypeDTO.id) }
+          }
+          if (formData.roleDTO?.id) {
+            payload.roleDTO = { id: Number(formData.roleDTO.id) }
           }
 
           const response = await saveBeneficiaryMutation.mutateAsync({
-            data: payload,
+            data: payload as unknown as MasterBeneficiaryData,
             isEditing: isEditMode,
             ...(beneficiaryId && { beneficiaryId }),
           })
@@ -421,7 +429,6 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
           if (onSaveAndNext && savedId) {
             onSaveAndNext({ id: savedId })
           } else if (!savedId) {
-            setSaveError('Failed to save beneficiary: No ID returned from server')
             throw new Error('Failed to save beneficiary: No ID returned from server')
           }
         } catch (error: unknown) {
@@ -433,8 +440,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
             errorData?.response?.data?.message ||
             errorData?.message ||
             'Failed to save beneficiary. Please try again.'
-          setSaveError(errorMessage)
-          throw error
+          throw new Error(errorMessage)
         }
       },
     }), [trigger, watch, isEditMode, beneficiaryId, onSaveAndNext, saveBeneficiaryMutation, generatedId, setValue])
@@ -790,11 +796,14 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                       onClick={(e) => {
                         e.stopPropagation()
                         e.preventDefault()
-                        handleFetchBankDetails(e)
+                        // TODO: Implement bank details fetch when API is available
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log('Bank details fetch not yet implemented for IFSC:', field.value)
+                        }
                       }}
-                      disabled={isReadOnly || isViewMode || isFetchingBankDetails || !field.value?.trim()}
+                      disabled={isReadOnly || isViewMode || !field.value?.trim()}
                     >
-                      {isFetchingBankDetails ? 'Fetching...' : buttonText}
+                      {buttonText}
                     </Button>
                   </InputAdornment>
                 ),

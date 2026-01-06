@@ -48,7 +48,7 @@ export const API_ENDPOINTS = {
     SAVE: '/app-language-translation',
     FIND_ALL: '/app-language-translation/find-all',
     NAV_MENU: '/app-language-translation/nav-menu',
-    BUILD_PARTNER: '/app-language-translation/build-partner',
+    // BUILD_PARTNER: '/app-language-translation/build-partner',
     BUILD_PARTNER_ASSET: '/app-language-translation/build-partner-assests',
     CAPITAL_PARTNER: '/app-language-translation/capital-partner',
     WORKFLOW_ACTIONS: '/app-language-translation/workflow-actions',
@@ -509,16 +509,16 @@ export const API_ENDPOINTS = {
       `/core-bank-get/sbi/apis/validate-swift?swiftCode=${swiftCode}`,
   },
 
-  BUILD_PARTNER: {
-    GET_BY_ID: (id: string) => `/build-partner/${id}`,
-    UPDATE: (id: string) => `/build-partner/${id}`,
-    DELETE: (id: string) => `/build-partner/${id}`,
-    SOFT_DELETE: (id: string) => `/build-partner/soft/${id}`,
-    GET_ALL: '/build-partner?deleted.equals=false&enabled.equals=true',
-    SAVE: '/build-partner',
-    FIND_ALL:
-      '/build-partner/find-all?deleted.equals=false&enabled.equals=true',
-  },
+  // BUILD_PARTNER: {
+  //   GET_BY_ID: (id: string) => `/build-partner/${id}`,
+  //   UPDATE: (id: string) => `/build-partner/${id}`,
+  //   DELETE: (id: string) => `/build-partner/${id}`,
+  //   SOFT_DELETE: (id: string) => `/build-partner/soft/${id}`,
+  //   GET_ALL: '/build-partner?deleted.equals=false&enabled.equals=true',
+  //   SAVE: '/build-partner',
+  //   FIND_ALL:
+  //     '/build-partner/find-all?deleted.equals=false&enabled.equals=true',
+  // },
 
   APPLICATION_TABLE_DESIGN: {
     GET_BY_ID: (id: string) => `/application-table-design/${id}`,
@@ -630,15 +630,15 @@ export const API_ENDPOINTS = {
   //   FIND_ALL: '/build-partner-fees/find-all',
   // },
   // Build Partner Stepper APIs
-  BUILD_PARTNER_CREATE: {
-    DETAILS_SAVE: '/build-partner',
-    CONTACT_SAVE: '/build-partner-contact',
-    FEES_SAVE: '/build-partner-fees',
-    BENEFICIARY_SAVE: '/build-partner-beneficiary',
-    REVIEW_SAVE: '/build-partner-review',
-    GET_STEP_DATA: (step: number) => `/build-partner/create/${step}/data`,
-    VALIDATE_STEP: (step: number) => `/build-partner/create/${step}/validate`,
-  },
+  // BUILD_PARTNER_CREATE: {
+  //   DETAILS_SAVE: '/build-partner',
+  //   CONTACT_SAVE: '/build-partner-contact',
+  //   FEES_SAVE: '/build-partner-fees',
+  //   BENEFICIARY_SAVE: '/build-partner-beneficiary',
+  //   REVIEW_SAVE: '/build-partner-review',
+  //   GET_STEP_DATA: (step: number) => `/build-partner/create/${step}/data`,
+  //   VALIDATE_STEP: (step: number) => `/build-partner/create/${step}/validate`,
+  // },
 
   // Capital Partner
   CAPITAL_PARTNER: {

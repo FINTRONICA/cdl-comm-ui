@@ -214,9 +214,16 @@ const Step2 = ({ beneficiaryId, isReadOnly = false, onEditStep }: Step2Props) =>
         return formValue as string | number | null | undefined
       }
     }
-    // Don't fallback to API data - only show what user entered
+    // Fallback to API data if form data is empty (for edit/view mode or when navigating to review)
+    if (beneficiaryData && beneficiaryId) {
+      const apiData = beneficiaryData as unknown as Record<string, unknown>
+      const apiValue = apiData[fieldName]
+      if (apiValue !== undefined && apiValue !== null && String(apiValue).trim() !== '') {
+        return apiValue as string | number | null | undefined
+      }
+    }
     return null
-  }, [formData])
+  }, [formData, beneficiaryData, beneficiaryId])
   
   // Check if field has a value (for conditional rendering)
   const hasFieldValue = useCallback((fieldName: string): boolean => {

@@ -130,9 +130,24 @@ export default function PartyStepperWrapper({
     [setShouldResetForm, notifications]
   )
 
+  // Get effective partyId from multiple sources for Step3
+  const effectivePartyIdForSteps = useMemo(() => {
+    if (partyId) return partyId
+    // For Step 3, try to get from stepStatus
+    if (activeStep === 3 && stepStatus?.stepData?.step1?.id) {
+      return stepStatus.stepData.step1.id.toString()
+    }
+    // Try to get from form data
+    const formId = methods.getValues('id')
+    if (formId && formId !== '' && formId !== 'undefined') {
+      return formId.toString()
+    }
+    return ''
+  }, [partyId, activeStep, stepStatus, methods])
+
   const stepRenderer = useStepContentRenderer({
     activeStep,
-    partyId: partyId || '',
+    partyId: effectivePartyIdForSteps,
     methods,
     onEditStep: handleEditStep,
     isReadOnly: isViewMode,
@@ -244,10 +259,11 @@ export default function PartyStepperWrapper({
       // Review step (step 3) - complete the process and submit workflow request
       if (activeStep === 3) {
         try {
-          // Get the Party ID from step status or use current partyId
+          // Get the Party ID from step status, current partyId, or form data
           const partyIdFromStatus =
             stepStatus?.stepData?.step1?.id?.toString()
-          const finalPartyId = partyIdFromStatus || partyId
+          const partyIdFromForm = methods.getValues('id')
+          const finalPartyId = partyIdFromStatus || partyId || (partyIdFromForm && partyIdFromForm.toString()) || null
 
           if (!finalPartyId) {
             notifications.showError(
@@ -257,8 +273,8 @@ export default function PartyStepperWrapper({
             return
           }
 
-          // Get step1 form data for workflow request
-          const step1Data = stepStatus?.stepData?.step1
+          // Get step1 form data for workflow request - prefer stepStatus, fallback to form data
+          const step1Data = stepStatus?.stepData?.step1 || methods.getValues()
 
           if (!step1Data) {
             notifications.showError(
@@ -322,10 +338,20 @@ export default function PartyStepperWrapper({
       
       const currentFormData = methods.getValues()
       
-      // For Step 2, ensure we have partyId - try to get it from stepStatus if not available
+      // For Step 1 (create), ensure id is not included in the payload
+      // For Step 2, ensure we have partyId - try to get it from stepStatus, form data, or current partyId
       let effectivePartyId = partyId
-      if (activeStep === 2 && !effectivePartyId) {
-        effectivePartyId = stepStatus?.stepData?.step1?.id?.toString()
+      if (activeStep === 0 && !isEditingMode) {
+        // For new party creation, remove id from form data
+        delete currentFormData.id
+      } else if (activeStep === 0 && isEditingMode) {
+        // For editing, ensure we have partyId
+        effectivePartyId = partyId || currentFormData.id?.toString() || stepStatus?.stepData?.step1?.id?.toString()
+      } else if (activeStep === 2 && !effectivePartyId) {
+        // For Step 2, try multiple sources for partyId
+        effectivePartyId = stepStatus?.stepData?.step1?.id?.toString() || 
+                          currentFormData.id?.toString() || 
+                          methods.getValues('id')?.toString()
       }
       
       // If still no partyId for Step 2, this is an error
@@ -335,9 +361,14 @@ export default function PartyStepperWrapper({
         return
       }
       
+      // Remove id from form data for new party creation (Step 1)
+      const formDataForTransform = activeStep === 0 && !isEditingMode 
+        ? { ...currentFormData, id: undefined } 
+        : currentFormData
+      
       let stepSpecificData = transformStepData(
         apiStepNumber,
-        currentFormData,
+        formDataForTransform,
         transformers,
         effectivePartyId
       )

@@ -207,11 +207,27 @@ export function useSaveBuildPartnerDetails() {
       pa?: string | undefined
     }) =>
       partyService.savePartyDetails(data, isEditing, pa),
-    onSuccess: (_, variables) => {
+    onSuccess: (response, variables) => {
       queryClient.invalidateQueries({ queryKey: [PARTIES_QUERY_KEY] })
+      // Get partyId from response or variables
+      const partyIdFromResponse = (response as { data?: { id?: string | number }; id?: string | number })?.data?.id || (response as { id?: string | number })?.id
+      const effectivePartyId = partyIdFromResponse?.toString() || variables.pa
+      
+      if (effectivePartyId) {
+        queryClient.invalidateQueries({
+          queryKey: [PARTIES_QUERY_KEY, effectivePartyId],
+        })
+        // Invalidate stepStatus query to ensure it refetches with new partyId
+        queryClient.invalidateQueries({
+          queryKey: [PARTIES_QUERY_KEY, 'stepStatus', effectivePartyId],
+        })
+      }
       if (variables.pa) {
         queryClient.invalidateQueries({
           queryKey: [PARTIES_QUERY_KEY, variables.pa],
+        })
+        queryClient.invalidateQueries({
+          queryKey: [PARTIES_QUERY_KEY, 'stepStatus', variables.pa],
         })
       }
     },

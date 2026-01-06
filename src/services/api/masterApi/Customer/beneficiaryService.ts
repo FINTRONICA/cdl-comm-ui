@@ -273,19 +273,74 @@ export class BeneficiaryService {
       const url = buildApiUrl(
         API_ENDPOINTS.MASTER_BENEFICIARY.UPDATE(String(beneficiaryId))
       )
-      const requestData = {
-        ...data,
-        enabled: true,
-        deleted: false,
+      
+      // For updates, clean up the payload to match backend expectations
+      const cleanedData: Record<string, unknown> = { ...data }
+      
+      // Remove uuid from updates (backend manages this)
+      if ('uuid' in cleanedData) {
+        delete cleanedData.uuid
+      }
+      
+      // Remove deleted from updates (backend manages this)
+      if ('deleted' in cleanedData) {
+        delete cleanedData.deleted
+      }
+      
+      // Remove enabled from updates (backend manages this, or it's already set)
+      if ('enabled' in cleanedData) {
+        delete cleanedData.enabled
+      }
+      
+      // Remove null DTOs - only include DTOs with valid IDs
+      if (cleanedData.accountTypeDTO === null || cleanedData.accountTypeDTO === undefined) {
+        delete cleanedData.accountTypeDTO
+      }
+      if (cleanedData.transferTypeDTO === null || cleanedData.transferTypeDTO === undefined) {
+        delete cleanedData.transferTypeDTO
+      }
+      if (cleanedData.roleDTO === null || cleanedData.roleDTO === undefined) {
+        delete cleanedData.roleDTO
+      }
+      if (cleanedData.taskStatusDTO === null || cleanedData.taskStatusDTO === undefined) {
+        delete cleanedData.taskStatusDTO
       }
 
-      const response = await apiClient.put<StepSaveResponse>(url, requestData)
+      // Ensure id is included in the payload (backend expects this for PUT)
+      if (!cleanedData.id) {
+        cleanedData.id = Number(beneficiaryId)
+      }
+
+      const response = await apiClient.put<StepSaveResponse>(url, cleanedData)
       return response
     } else {
       // Use POST for creating new beneficiary
       const url = buildApiUrl(API_ENDPOINTS.MASTER_BENEFICIARY.SAVE)
+      
+      // For creates, clean up null DTOs but keep uuid and deleted
+      const cleanedData: Record<string, unknown> = { ...data }
+      
+      // Remove null DTOs
+      if (cleanedData.accountTypeDTO === null || cleanedData.accountTypeDTO === undefined) {
+        delete cleanedData.accountTypeDTO
+      }
+      if (cleanedData.transferTypeDTO === null || cleanedData.transferTypeDTO === undefined) {
+        delete cleanedData.transferTypeDTO
+      }
+      if (cleanedData.roleDTO === null || cleanedData.roleDTO === undefined) {
+        delete cleanedData.roleDTO
+      }
+      if (cleanedData.taskStatusDTO === null || cleanedData.taskStatusDTO === undefined) {
+        delete cleanedData.taskStatusDTO
+      }
+      
+      // Remove id from creates (backend will generate it)
+      if ('id' in cleanedData) {
+        delete cleanedData.id
+      }
+      
       const requestData = {
-        ...data,
+        ...cleanedData,
         enabled: data.enabled ?? true,
         deleted: data.deleted ?? false,
       }

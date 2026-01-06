@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { validateAgreementParameterStepData } from '@/lib/validation/masterValidation/agreementParameterSchemasSchemas'
-import { ValidationResult } from '../../DeveloperStepper/types'
+import { ValidationResult } from '../../PartyStepper/types'
 
 /**
  * Custom hook for managing step validation logic for Agreement Parameter Stepper
