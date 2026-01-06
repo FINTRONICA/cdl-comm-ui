@@ -94,13 +94,31 @@ export default function BeneficiaryStepperWrapper({
         router.push(`/master/beneficiary/${id}/step/${step + 1}${queryParam}`)
       } else if (step === 0) {
         router.push('/master/beneficiary/new')
+      } else {
+        // If no ID but step > 0, go back to new page
+        router.push('/master/beneficiary/new')
       }
     },
     [isViewMode, router]
   )
 
-  // Sync step from URL params
+  // Sync step from URL params - check both URL path and query params
   useEffect(() => {
+    // First check URL path for step number
+    const stepFromPath = params?.stepNumber as string | undefined
+    if (stepFromPath) {
+      const stepNumber = parseInt(stepFromPath, 10) - 1
+      if (
+        stepNumber !== activeStep &&
+        stepNumber >= 0 &&
+        stepNumber < steps.length
+      ) {
+        setActiveStep(stepNumber)
+        return
+      }
+    }
+    
+    // Fallback to query param
     const stepFromUrl = searchParams.get('step')
     if (stepFromUrl) {
       const stepNumber = parseInt(stepFromUrl, 10) - 1
@@ -112,7 +130,7 @@ export default function BeneficiaryStepperWrapper({
         setActiveStep(stepNumber)
       }
     }
-  }, [searchParams, activeStep, steps.length])
+  }, [params, searchParams, activeStep, steps.length])
 
   // Sync beneficiaryId from URL params
   useEffect(() => {
@@ -173,7 +191,12 @@ export default function BeneficiaryStepperWrapper({
     }
 
     if (activeStep === 0 && step1Ref.current) {
-      await handleAsyncStep(step1Ref.current)
+      const success = await handleAsyncStep(step1Ref.current)
+      if (success) {
+        // Step1 will handle navigation via onSaveAndNext callback
+        return
+      }
+      // If save failed, don't navigate
       return
     }
 
@@ -183,8 +206,14 @@ export default function BeneficiaryStepperWrapper({
       return
     }
 
+    if (activeStep === 2) {
+      // Review step - complete and go back to list
+      router.push('/master/beneficiary')
+      return
+    }
+
     navigateToNextStep()
-  }, [isViewMode, activeStep, handleAsyncStep, navigateToNextStep])
+  }, [isViewMode, activeStep, handleAsyncStep, navigateToNextStep, router])
 
   const handleBack = useCallback(() => {
     const prevStep = activeStep - 1

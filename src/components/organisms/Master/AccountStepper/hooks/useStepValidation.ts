@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { validateAccountStepData } from '@/lib/validation/masterValidation/accountSchemasSchemas'
-import { ValidationResult } from '../../DeveloperStepper/types'
+import { ValidationResult } from '../../PartyStepper/types'
 
 /**
  * Custom hook for managing step validation logic for Account Stepper

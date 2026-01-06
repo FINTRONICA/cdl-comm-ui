@@ -134,7 +134,10 @@ const Step3 = ({ partyId: propPartyId, onEditStep, isReadOnly = false }: Step3Pr
 
   useEffect(() => {
     const fetchAllData = async () => {
-      if (!partyId) {
+      // Try to get partyId from multiple sources
+      const effectivePartyId = propPartyId || (params.id as string) || partyId
+      
+      if (!effectivePartyId || effectivePartyId === 'undefined' || effectivePartyId === 'null') {
         setError('Party ID is required')
         setLoading(false)
         return
@@ -146,9 +149,9 @@ const Step3 = ({ partyId: propPartyId, onEditStep, isReadOnly = false }: Step3Pr
 
         // Fetch all data in parallel
         const [details, authorizedSignatories, documents] = await Promise.allSettled([
-          partyService.getParty(partyId),
-          partyService.getPartyAuthorizedSignatory(partyId),
-          partyService.getPartyDocuments(partyId, 'PARTY', 0, 20),
+          partyService.getParty(effectivePartyId),
+          partyService.getPartyAuthorizedSignatory(effectivePartyId),
+          partyService.getPartyDocuments(effectivePartyId, 'PARTY', 0, 20),
         ])
 
         // Extract values from Promise.allSettled results
@@ -214,7 +217,7 @@ const Step3 = ({ partyId: propPartyId, onEditStep, isReadOnly = false }: Step3Pr
     }
 
     fetchAllData()
-  }, [partyId])
+  }, [propPartyId, params.id, partyId])
 
   // Render authorized signatory fields
   const renderAuthorizedSignatoryFields = useCallback(

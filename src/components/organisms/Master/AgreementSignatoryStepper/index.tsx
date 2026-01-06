@@ -37,11 +37,11 @@ import {
   useStepNotifications,
   useStepDataProcessing,
   useStepForm,
-} from '../../DeveloperStepper/hooks'
+} from '../PartyStepper/hooks'
 import { useStepValidation } from './hooks/useStepValidation'
 import { Step1, Step3 } from './steps'
 import DocumentUploadFactory from '../../DocumentUpload/DocumentUploadFactory'
-import { DocumentItem } from '../../DeveloperStepper/developerTypes'
+import { DocumentItem } from '../PartyStepper/partyTypes'
 
 // Hook to detect dark mode
 const useIsDarkMode = () => {
