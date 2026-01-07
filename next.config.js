@@ -39,24 +39,7 @@ const nextConfig = {
     ],
   },
 
-  async redirects() {
-    return [
-      // Redirect root + non-basePath routes to the app mounted under `/commercial/*`
-      // (basePath is disabled for these rules so they apply to incoming raw paths)
-      {
-        source: '/',
-        destination: '/commercial',
-        permanent: false,
-        basePath: false,
-      },
-      {
-        source: '/:path((?!commercial|_next|next|api|favicon\\.ico).+)',
-        destination: '/commercial/:path',
-        permanent: false,
-        basePath: false,
-      },
-    ]
-  },
+  
 
   async headers() {
     return [
