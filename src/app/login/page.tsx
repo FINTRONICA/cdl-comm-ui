@@ -25,6 +25,7 @@ import { Visibility, VisibilityOff, Language, ExpandMore as ExpandMoreIcon } fro
 import Image from 'next/image'
 import { useLoginWithLoader } from '@/hooks/useAuthQuery'
 import { UserSchemas } from '@/lib/validation/userSchemas'
+import { getPublicAssetPath } from '@/utils/basePath'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -234,7 +235,7 @@ export default function LoginPage() {
               alignItems="center"
               justifyContent="space-between"
             >
-              <Image src="/Logo.png" alt="logo" width={100} height={40} />
+              <Image src={getPublicAssetPath('/Logo.png')} alt="logo" width={100} height={40} />
               <Divider orientation="vertical" flexItem />
               <Typography
                 sx={{
