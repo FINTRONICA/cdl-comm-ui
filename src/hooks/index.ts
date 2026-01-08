@@ -271,6 +271,8 @@ export {
   useValidateAgreementStep,
   useAgreementStepManager,
   useAgreementStepStatus,
+  useCustomerDetailsByCif,
+  useAgreementDocuments,
 } from './master/EntitieHook/useAgreement'
 
 // Agreement Labels hooks
@@ -291,6 +293,8 @@ export {
   useValidateAccountStep,
   useAccountStepManager,
   useAccountStepStatus,
+  useAccountDocuments,
+  useUploadAccountDocument,
 } from './master/EntitieHook/useAccount'
 
 // Account Labels hooks

@@ -1,7 +1,7 @@
 
 export const AGREEMENTLABEL = {
 // Agreement Details // Deal -> Agreement
-'CDL_AGREEMENT_DETAILS': 'Agreement Details', // text field
+  'CDL_AGREEMENT_DETAILS': 'Agreement Details', // text field
   'CDL_ESCROW_AGREEMENT_ID': ' Escrow Agreement ID', // Auto fetch
   'CDL_ESCROW_STATUS': ' Status', // Auto  fetch
   'CDL_ESCROW_CIF_NUMBER': 'Cif Number', // auto fetch
@@ -36,29 +36,6 @@ export const AGREEMENTLABEL = {
   'CDL_ESCROW_TASK_STATUS_DTO': 'Task Status', // dropdown
   'CDL_ESCROW_DOC_ACTION': ' Action', 
 
-
-
-//EscrowAccount DealAccount -> EscrowAccount
-  // 'CDL_ESCROW_ACCOUNT_ID': ' Escrow Account ID', // Auto fetch
-  // 'CDL_ESCROW_ACCOUNT_REF_NO': ' Account Ref No', // Auto
-  // 'CDL_ESCROW_ACCOUNT_TYPE': ' Account Type', // Drop Down
-  // 'CDL_ESCROW_ACCOUNT_NO': ' Account No', // Text Field
-  // 'CDL_ESCROW_PRODUCT_CODE': ' Product Code', // Text Field
-  // 'CDL_ESCROW_ACCOUNT_PURPOSE': ' Account Purpose', // Text Field
-  // 'CDL_ESCROW_ACCOUNT_TAX_PAYMENT': '  Tax Payment', // Drop Down
-  // 'CDL_ESCROW_ACCOUNT_NAME': ' Account Name', // Text Field
-  // 'CDL_ESCROW_ACCOUNT_PRIMARY_ACCOUNT': ' Primary Account', // Drop Down
-  // 'CDL_ESCROW_ACCOUNT_BAN': ' Account BAN', // Text Field? (Not clearly labeled but looks like text)
-  // 'CDL_ESCROW_ACCOUNT_CURRENCY': ' Currency', // Text Field? (Not clearly labeled)
-  // 'CDL_ESCROW_ACCOUNT_TITLE': ' Account Title', // Text Field 
-  // 'CDL_ESCROW_ACCOUNT_VIRTUAL_ACCOUNT': ' Virtual Account', // Text Field
-  // 'CDL_ESCROW_ACCOUNT_TYPE': ' Account Type', // Text Field
-  // 'CDL_ESCROW_ACCOUNT_ASSIGNED': ' Account Assigned', // Text Field? (label unclear)
-  // 'CDL_ESCROW_ACCOUNT_OPENING_DATE': ' Account Opening Date', // Calendar
-  // 'CDL_ESCROW_ACCOUNT_BULK_UPLOAD_PROCESSING': ' Bulk Upload Processing', // Drop Down
-  // 'CDL_ESCROW_ACCOUNT_UNITARY_PAYMENT': ' Unitary Payment', // Drop Down
-  // 'CDL_ESCROW_ACCOUNT_LOOKUP_FIELD_1': ' Lookup Field 1', // Text Field
-  // 'CDL_ESCROW_ACCOUNT_LOOKUP_FIELD_2': ' Lookup Field 2', // Text Field
   'CDL_ESCROW_ACCOUNT_ID': '  Account ID', // Auto fetch
   'CDL_ESCROW_ACCOUNT_REF_NO': ' Account Ref No', // Auto
   'CDL_ESCROW_ACCOUNT_TYPE': ' Account Type', // Drop Down
@@ -73,7 +50,7 @@ export const AGREEMENTLABEL = {
   'CDL_ESCROW_ACCOUNT_TITLE': ' Account Title', // Text Field 
   'CDL_ESCROW_ACCOUNT_VIRTUAL_ACCOUNT': ' Virtual Account', // Text Field
   'CDL_ESCROW_ACCOUNT_OFFICIAL_ACCOUNT_TITLE':'officialAccountTitle',
-    'CDL_ESCROW_ACCOUNT_TYPE': ' accountTypeCode', // Text Field
+  'CDL_ESCROW_ACCOUNT_TYPE': ' accountTypeCode', // Text Field
   'CDL_ESCROW_ACCOUNT_ASSIGNED': '  assignedToReference', // Text Field? (label unclear)
   'CDL_ESCROW_ACCOUNT_OPENING_DATE': ' Account Opening Date', // Calendar
   'CDL_ESCROW_ACCOUNT_BULK_UPLOAD_PROCESSING': ' Bulk Upload Processing', // Drop Down
@@ -159,24 +136,16 @@ export const AGREEMENTLABEL = {
   'CDL_COMMON_DROPDOWNS_LOAD_FAILED': 'Failed to load dropdown options. Please refresh the page.',
   'CDL_COMMON_SUBMIT_WAIT': 'Please wait for dropdown options to load before submitting.',
   'Documents (Optional)': 'CDL_DOCUMENT',  //stepper label
-
-
-  
-  
   }
-    export const getAgreementLabel = (configId) => {
-    return AGREEMENTLABEL[configId] || configId
-    }
-    
+  export const getAgreementLabel = (configId) => {
+  return AGREEMENTLABEL[configId] || configId
+  }
+  
 
-    
-    export const getLabelByConfigId = (configId) => {
-      return AGREEMENTLABEL[configId] || configId
-    }
-    
-    // Export the full mapping object for direct access
-    export default AGREEMENTLABEL
-    
-    
-    
+  
+  export const getLabelByConfigId = (configId) => {
+    return AGREEMENTLABEL[configId] || configId
+  }
+  
+  export default AGREEMENTLABEL
     

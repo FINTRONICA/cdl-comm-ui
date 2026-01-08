@@ -21,12 +21,11 @@ import {
 import EditIcon from '@mui/icons-material/Edit'
 import { useParams } from 'next/navigation'
 import {
-  agreementService,
   type Agreement,
 } from '@/services/api/masterApi/Entitie/agreementService'
 import { formatDate } from '@/utils'
 import { GlobalLoading } from '@/components/atoms'
-import { useAgreementLabelsWithCache } from '@/hooks'
+import { useAgreementLabelsWithCache, useAgreement, useAgreementDocuments } from '@/hooks'
 import { getAgreementLabel } from '@/constants/mappings/master/Entity/agreementMapping'
 import { useAppStore } from '@/store'
 
@@ -132,77 +131,67 @@ const Step3 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
     [isDarkMode]
   )
 
+  // Use React Query hooks instead of direct API calls
+  const { data: agreementDetailsData, isLoading: isLoadingDetails, error: detailsError } = useAgreement(agreementId || '')
+  const { data: documentsResponse, isLoading: isLoadingDocuments, error: documentsError } = useAgreementDocuments(agreementId || '', 'AGREEMENT', 0, 20)
+
+  // Update local state when React Query data changes
   useEffect(() => {
-    const fetchAllData = async () => {
-      if (!agreementId || agreementId.trim() === '') {
-        console.warn('[Step3] Agreement ID is missing or empty:', agreementId)
-        setError('Agreement ID is required to load review data')
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Fetch all data in parallel
-        const [details, documents] = await Promise.allSettled([
-          agreementService.getAgreement(agreementId),
-          agreementService.getAgreementDocuments(agreementId, 'AGREEMENT'),
-        ])
-
-        // Extract values from Promise.allSettled results
-        const detailsResult =
-          details.status === 'fulfilled' ? details.value : null
-
-        const documentsResult =
-          documents.status === 'fulfilled' ? documents.value : null
-
-        setAgreementDetails(detailsResult as Agreement)
-
-        // Handle paginated responses for documents
-        let documentArray: unknown[] = []
-        if (Array.isArray(documentsResult)) {
-          documentArray = documentsResult
-        } else if (
-          documentsResult &&
-          typeof documentsResult === 'object' &&
-          'content' in documentsResult
-        ) {
-          const content = (documentsResult as { content?: unknown[] }).content
-          documentArray = Array.isArray(content) ? content : []
-        }
-
-        setDocumentData(
-          documentArray.map((doc) => {
-            const docObj = doc as {
-              id?: number | string
-              documentName?: string
-              documentTypeDTO?: {
-                languageTranslationId?: { configValue?: string }
-              }
-              uploadDate?: string
-              documentSize?: string
-            }
-            return {
-              id: docObj.id?.toString() || '',
-              fileName: docObj.documentName || '',
-              documentType:
-                docObj.documentTypeDTO?.languageTranslationId?.configValue || '',
-              uploadDate: docObj.uploadDate || '',
-              fileSize: parseInt(docObj.documentSize || '0'),
-            }
-          })
-        )
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch data')
-      } finally {
-        setLoading(false)
-      }
+    if (agreementDetailsData) {
+      setAgreementDetails(agreementDetailsData)
     }
+  }, [agreementDetailsData])
 
-    fetchAllData()
-  }, [agreementId])
+  useEffect(() => {
+    if (documentsResponse) {
+      // Handle paginated responses for documents
+      let documentArray: unknown[] = []
+      if (Array.isArray(documentsResponse)) {
+        documentArray = documentsResponse
+      } else if (
+        documentsResponse &&
+        typeof documentsResponse === 'object' &&
+        'content' in documentsResponse
+      ) {
+        const content = (documentsResponse as { content?: unknown[] }).content
+        documentArray = Array.isArray(content) ? content : []
+      }
+
+      setDocumentData(
+        documentArray.map((doc) => {
+          const docObj = doc as {
+            id?: number | string
+            documentName?: string
+            documentTypeDTO?: {
+              languageTranslationId?: { configValue?: string }
+            }
+            uploadDate?: string
+            documentSize?: string
+          }
+          return {
+            id: docObj.id?.toString() || '',
+            fileName: docObj.documentName || '',
+            documentType:
+              docObj.documentTypeDTO?.languageTranslationId?.configValue || '',
+            uploadDate: docObj.uploadDate || '',
+            fileSize: parseInt(docObj.documentSize || '0'),
+          }
+        })
+      )
+    }
+  }, [documentsResponse])
+
+  // Update loading and error states
+  useEffect(() => {
+    setLoading(isLoadingDetails || isLoadingDocuments)
+    setError(
+      detailsError 
+        ? (detailsError instanceof Error ? detailsError.message : 'Failed to fetch agreement details')
+        : documentsError
+          ? (documentsError instanceof Error ? documentsError.message : 'Failed to fetch documents')
+          : null
+    )
+  }, [isLoadingDetails, isLoadingDocuments, detailsError, documentsError])
 
   // Loading state
   if (loading) {
