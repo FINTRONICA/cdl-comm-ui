@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { Suspense } from 'react'
-import AgreementStepperWrapper from '@/components/organisms/Master/AgreementStepper'
-import { DashboardLayout } from '@/components/templates/DashboardLayout'
+import { Suspense } from "react";
+import AgreementStepperWrapper from "@/components/organisms/Master/AgreementStepper";
+import { DashboardLayout } from "@/components/templates/DashboardLayout";
 
 function AgreementStepperWithSuspense() {
   return (
@@ -13,7 +13,7 @@ function AgreementStepperWithSuspense() {
     >
       <AgreementStepperWrapper />
     </Suspense>
-  )
+  );
 }
 
 export default function NewAgreementPage() {
@@ -26,5 +26,5 @@ export default function NewAgreementPage() {
         <AgreementStepperWithSuspense />
       </div>
     </DashboardLayout>
-  )
+  );
 }

@@ -1,65 +1,59 @@
-'use client'
+"use client";
 
-import { Suspense } from 'react'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import AgreementStepperWrapper from '@/components/organisms/Master/AgreementStepper'
-import { GlobalLoading } from '@/components/atoms'
+import { Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { DashboardLayout } from "@/components/templates/DashboardLayout";
+import AgreementStepperWrapper from "@/components/organisms/Master/AgreementStepper";
+import { GlobalLoading } from "@/components/atoms";
 import {
   agreementService,
   type Agreement,
-} from '@/services/api/masterApi/Entitie/agreementService'
+} from "@/services/api/masterApi/Entitie/agreementService";
 
 function AgreementStepPageContent() {
-  const params = useParams()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [isValidating, setIsValidating] = useState(true)
-  const [agreementData, setAgreementData] = useState<Agreement | null>(
-    null
-  )
-  const [isLoadingData, setIsLoadingData] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isValidating, setIsValidating] = useState(true);
+  const [agreementData, setAgreementData] = useState<Agreement | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const agreementId = params.id as string
-  const stepNumber = parseInt(params.stepNumber as string)
+  const agreementId = params.id as string;
+  const stepNumber = parseInt(params.stepNumber as string);
 
-  // Get mode and editing from URL params (matching capital partner pattern)
-  const mode = searchParams.get('mode')
-  const editing = searchParams.get('editing')
-  const isViewMode = mode === 'view'
-  const isEditingMode = editing === 'true'
-
-  // Validate step number and fetch build partner data
+  const mode = searchParams.get("mode");
+  const editing = searchParams.get("editing");
+  const isViewMode = mode === "view";
+  const isEditingMode = editing === "true";
   useEffect(() => {
     if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 3) {
-      router.push('/agreement')
-      return
+      router.push("/agreement");
+      return;
     }
-    setIsValidating(false)
-  }, [stepNumber, router])
+    setIsValidating(false);
+  }, [stepNumber, router]);
 
-  // Fetch build partner data
   useEffect(() => {
     const fetchAgreementData = async () => {
       try {
-        setIsLoadingData(true)
-        setError(null)
-        const data = await agreementService.getAgreement(agreementId)
-        setAgreementData(data)
+        setIsLoadingData(true);
+        setError(null);
+        const data = await agreementService.getAgreement(agreementId);
+        setAgreementData(data);
       } catch (err: unknown) {
-        const error = err as { message?: string }
-        setError(error.message || 'Failed to fetch agreement data')
+        const error = err as { message?: string };
+        setError(error.message || "Failed to fetch agreement data");
       } finally {
-        setIsLoadingData(false)
+        setIsLoadingData(false);
       }
-    }
+    };
 
     if (agreementId && !isValidating) {
-      fetchAgreementData()
+      fetchAgreementData();
     }
-  }, [agreementId, isValidating])
+  }, [agreementId, isValidating]);
 
   if (isValidating || isLoadingData) {
     return (
@@ -68,7 +62,7 @@ function AgreementStepPageContent() {
           <GlobalLoading fullHeight />
         </div>
       </DashboardLayout>
-    )
+    );
   }
 
   if (error) {
@@ -81,7 +75,7 @@ function AgreementStepPageContent() {
           <p>Error: {error}</p>
         </div>
       </DashboardLayout>
-    )
+    );
   }
 
   return (
@@ -89,10 +83,10 @@ function AgreementStepPageContent() {
       title="Agreement Details"
       subtitle={
         isViewMode
-          ? 'View agreement details and configuration (Read-only)'
+          ? "View agreement details and configuration (Read-only)"
           : isEditingMode
-            ? 'Edit agreement details and configuration'
-            : 'Register your agreement step by step, non-mandatory fields and steps are easy to skip.'
+            ? "Edit agreement details and configuration"
+            : "Register your agreement step by step, non-mandatory fields and steps are easy to skip."
       }
     >
       <div className="flex items-start py-2 gap-7 px-7">
@@ -101,7 +95,7 @@ function AgreementStepPageContent() {
             Agreement Name
           </label>
           <span className="font-outfit font-normal text-[16px] leading-[1] tracking-normal align-middle text-gray-900 dark:text-gray-100">
-            {agreementData?.productManagerName || 'N/A'}
+            {agreementData?.productManagerName || "N/A"}
           </span>
         </div>
         <div className="flex flex-col min-w-[200px] gap-1">
@@ -109,7 +103,7 @@ function AgreementStepPageContent() {
             Agreement CIF
           </label>
           <span className="font-outfit font-normal text-[16px] leading-[1] tracking-normal align-middle text-gray-900 dark:text-gray-100">
-            {agreementData?.primaryEscrowCifNumber || 'N/A'}
+            {agreementData?.primaryEscrowCifNumber || "N/A"}
           </span>
         </div>
       </div>
@@ -121,10 +115,10 @@ function AgreementStepPageContent() {
         />
       </div>
     </DashboardLayout>
-  )
+  );
 }
 
-  export default function AgreementStepPage() {
+export default function AgreementStepPage() {
   return (
     <Suspense
       fallback={
@@ -137,5 +131,5 @@ function AgreementStepPageContent() {
     >
       <AgreementStepPageContent />
     </Suspense>
-  )
+  );
 }

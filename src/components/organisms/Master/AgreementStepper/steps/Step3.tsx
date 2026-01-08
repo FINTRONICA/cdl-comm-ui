@@ -90,11 +90,21 @@ interface DocumentData {
 
 interface Step3Props {
   agreementId?: string | undefined
+  stepStatus?: {
+    step1?: boolean
+    lastCompletedStep?: number
+    stepData?: {
+      step1?: Agreement | null
+    }
+    errors?: {
+      step1?: unknown
+    }
+  } | null | undefined
   onEditStep?: ((stepNumber: number) => void) | undefined
   isReadOnly?: boolean
 }
 
-const Step3 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }: Step3Props) => {
+const Step3 = ({ agreementId: propAgreementId, stepStatus, onEditStep, isReadOnly = false }: Step3Props) => {
   const params = useParams()
   const agreementId = propAgreementId || (params.id as string)
   const isDarkMode = useIsDarkMode()
@@ -131,16 +141,32 @@ const Step3 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
     [isDarkMode]
   )
 
-  // Use React Query hooks instead of direct API calls
-  const { data: agreementDetailsData, isLoading: isLoadingDetails, error: detailsError } = useAgreement(agreementId || '')
-  const { data: documentsResponse, isLoading: isLoadingDocuments, error: documentsError } = useAgreementDocuments(agreementId || '', 'AGREEMENT', 0, 20)
+  // Use stepStatus data first (from parent), fallback to API call only if not available
+  const step1Data = stepStatus?.stepData?.step1
+  const shouldFetchAgreement = !step1Data && !!agreementId && agreementId.trim() !== ''
+  
+  // Only fetch if stepStatus doesn't have the data
+  const { data: agreementDetailsData, isLoading: isLoadingDetails, error: detailsError } = useAgreement(
+    shouldFetchAgreement ? agreementId : ''
+  )
+  
+  // Always fetch documents (not available in stepStatus)
+  const { data: documentsResponse, isLoading: isLoadingDocuments, error: documentsError } = useAgreementDocuments(
+    agreementId || '', 
+    'AGREEMENT', 
+    0, 
+    20
+  )
 
-  // Update local state when React Query data changes
+  // Update local state from stepStatus or API response
   useEffect(() => {
-    if (agreementDetailsData) {
+    if (step1Data) {
+      setAgreementDetails(step1Data)
+      setLoading(false)
+    } else if (agreementDetailsData) {
       setAgreementDetails(agreementDetailsData)
     }
-  }, [agreementDetailsData])
+  }, [step1Data, agreementDetailsData])
 
   useEffect(() => {
     if (documentsResponse) {
@@ -183,15 +209,32 @@ const Step3 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
 
   // Update loading and error states
   useEffect(() => {
-    setLoading(isLoadingDetails || isLoadingDocuments)
-    setError(
-      detailsError 
-        ? (detailsError instanceof Error ? detailsError.message : 'Failed to fetch agreement details')
-        : documentsError
-          ? (documentsError instanceof Error ? documentsError.message : 'Failed to fetch documents')
-          : null
-    )
-  }, [isLoadingDetails, isLoadingDocuments, detailsError, documentsError])
+    // If we have stepStatus data, we're not loading
+    if (step1Data) {
+      setLoading(isLoadingDocuments)
+    } else {
+      setLoading(isLoadingDetails || isLoadingDocuments)
+    }
+    
+    // CRITICAL FIX: Only show critical errors, not optional operations like documents
+    // Documents are optional, so don't show error for document fetch failures
+    // Only show error if agreement details fail (and we don't have stepStatus data)
+    if (step1Data) {
+      // We have agreement data from stepStatus, so don't show errors
+      setError(null)
+    } else if (detailsError) {
+      // Format error message to be user-friendly
+      const errorMessage = detailsError instanceof Error 
+        ? detailsError.message.includes('status code')
+          ? 'Failed to load agreement details. Please try refreshing the page.'
+          : detailsError.message
+        : 'Failed to fetch agreement details'
+      setError(errorMessage)
+    } else {
+      // Don't show document errors - documents are optional
+      setError(null)
+    }
+  }, [step1Data, isLoadingDetails, isLoadingDocuments, detailsError, documentsError])
 
   // Loading state
   if (loading) {

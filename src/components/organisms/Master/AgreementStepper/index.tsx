@@ -168,11 +168,12 @@ export default function AgreementStepperWrapper({
           );
         case 2:
           // Review step - show agreement details and documents
-          // Ensure agreementId is passed correctly
+          // Pass stepStatus data to avoid duplicate API calls
           return (
             <Step3
-              key={`review-${agreementId}-${activeStep}`}
+              key={`review-${agreementId}`}
               agreementId={agreementId}
+              stepStatus={stepStatus}
               onEditStep={handleEditStep}
               isReadOnly={isViewMode}
             />
@@ -181,7 +182,7 @@ export default function AgreementStepperWrapper({
           return null;
       }
     },
-    [agreementId, isViewMode, handleEditStep, handleDocumentsChange, activeStep]
+    [agreementId, isViewMode, handleEditStep, handleDocumentsChange, stepStatus]
   );
 
   // Set editing mode based on URL parameter or developerId
@@ -210,7 +211,7 @@ export default function AgreementStepperWrapper({
 
   useEffect(() => {
     // Only process step data if we have agreementId and stepStatus
-    // Skip processing for Review step (Step 3) as it loads its own data
+    // Skip processing for Review step (Step 3) as it receives stepStatus data directly
     if (
       activeStep !== 2 && // Don't process data for Review step
       agreementId &&

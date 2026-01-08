@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState, useEffect } from "react";
+import type { Agreement } from "@/services/api/masterApi/Entitie/agreementService";
 import {
   agreementService,
   type AgreementFilters,
@@ -29,9 +30,20 @@ export function useAgreements(page = 0, size = 20, filters?: AgreementFilters) {
     queryFn: () =>
       agreementService.getAgreements(pagination.page, pagination.size, filters),
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000, // 10 minutes cache time
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 
   useEffect(() => {
@@ -75,9 +87,20 @@ export function useAgreement(id: string) {
     queryFn: () => agreementService.getAgreement(id),
     enabled: !!id && id.trim() !== "",
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000, // 10 minutes cache time
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -90,7 +113,17 @@ export function useCreateAgreement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [AGREEMENTS_QUERY_KEY] });
     },
-    retry: 1, // Reduce retries to prevent 500 error loops
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -110,7 +143,17 @@ export function useUpdateAgreement() {
         queryKey: [AGREEMENTS_QUERY_KEY, id],
       });
     },
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -151,9 +194,20 @@ export function useAgreementLabels() {
     },
     enabled: !!isAuthenticated,
     staleTime: 24 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours cache time
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -208,7 +262,17 @@ export function useSaveAgreementDetails() {
         });
       }
     },
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -221,7 +285,17 @@ export function useSaveAgreementReview() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [AGREEMENTS_QUERY_KEY] });
     },
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -231,9 +305,20 @@ export function useAgreementStepData(step: number) {
     queryFn: () => agreementService.getStepData(step),
     enabled: step > 0 && step <= 5,
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000, // 10 minutes cache time
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -252,6 +337,8 @@ export function useValidateAgreementStep() {
 }
 
 export function useAgreementStepStatus(agreementId: string) {
+  const queryClient = useQueryClient();
+  
   return useQuery({
     queryKey: [AGREEMENTS_QUERY_KEY, "stepStatus", agreementId],
     queryFn: async () => {
@@ -268,18 +355,40 @@ export function useAgreementStepStatus(agreementId: string) {
         };
       }
 
-      const [step1Result] = await Promise.allSettled([
-        agreementService.getAgreement(agreementId),
-      ]);
+      // CRITICAL FIX: Use existing query cache instead of making new API call
+      // This prevents duplicate API calls when useAgreement is also called
+      const existingData = queryClient.getQueryData<Agreement>([AGREEMENTS_QUERY_KEY, agreementId]);
+      
+      let agreementData: Agreement | null = null;
+      let step1Error: unknown = null;
+      
+      if (existingData) {
+        // Use cached data - no API call needed
+        agreementData = existingData;
+      } else {
+        // Only fetch if not in cache
+        const [step1Result] = await Promise.allSettled([
+          agreementService.getAgreement(agreementId),
+        ]);
+
+        if (step1Result.status === "fulfilled") {
+          agreementData = step1Result.value;
+          // Cache the result for useAgreement to use
+          queryClient.setQueryData([AGREEMENTS_QUERY_KEY, agreementId], agreementData);
+        } else {
+          // Store error for proper error handling
+          step1Error = step1Result.reason;
+        }
+      }
 
       const stepStatus = {
-        step1: step1Result.status === "fulfilled" && step1Result.value !== null,
+        step1: agreementData !== null,
         lastCompletedStep: 0,
         stepData: {
-          step1: step1Result.status === "fulfilled" ? step1Result.value : null,
+          step1: agreementData,
         },
         errors: {
-          step1: step1Result.status === "rejected" ? step1Result.reason : null,
+          step1: step1Error,
         },
       };
 
@@ -289,9 +398,20 @@ export function useAgreementStepStatus(agreementId: string) {
     },
     enabled: !!agreementId && agreementId.trim() !== "",
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000, // 10 minutes cache time
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -332,15 +452,35 @@ export function useAgreementStepManager() {
   };
 }
 
-export function useCustomerDetailsByCif(cif: string) {
+export function useCustomerDetailsByCif(cif: string, options?: { skipMinimumLength?: boolean }) {
+  // CRITICAL FIX: Only enable query when CIF is complete (not on every keystroke)
+  // Minimum length check prevents API calls on partial input
+  // But allow override for edit mode where CIF might be short but valid
+  const isValidCif = !!cif && cif.trim() !== "" && (options?.skipMinimumLength || cif.trim().length >= 3);
+  
   return useQuery({
     queryKey: [AGREEMENTS_QUERY_KEY, "customerDetails", cif],
     queryFn: () => agreementService.getCustomerDetailsByCif(cif),
-    enabled: !!cif && cif.trim() !== "",
+    enabled: isValidCif, // Only fetch when CIF is valid
     staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000, // 15 minutes cache time
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+        // Also don't retry on 404 (customer not found) - this is expected
+        if (httpError.response?.status === 404) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }
 
@@ -363,8 +503,19 @@ export function useAgreementDocuments(
       agreementService.getAgreementDocuments(agreementId, module, page, size),
     enabled: !!agreementId && agreementId.trim() !== "",
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000, // 10 minutes cache time
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
   });
 }

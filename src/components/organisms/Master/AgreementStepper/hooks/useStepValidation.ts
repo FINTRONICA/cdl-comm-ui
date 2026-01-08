@@ -19,8 +19,8 @@ export const useStepValidation = () => {
         } else {
           const errorMessages =
             "error" in result && result.error?.issues
-              ? result.error.issues.map((issue: any) => {
-                  const fieldPath = issue.path.join(".");
+              ? result.error.issues.map((issue) => {
+                  const fieldPath = issue.path.map(String).join(".");
                   return fieldPath
                     ? `${fieldPath}: ${issue.message}`
                     : issue.message;
@@ -33,7 +33,7 @@ export const useStepValidation = () => {
             source: "client",
           };
         }
-      } catch (error) {
+      } catch {
         return {
           isValid: false,
           errors: ["Validation failed"],
@@ -60,8 +60,8 @@ export const useStepValidation = () => {
         } else {
           const errorMessages =
             "error" in result && result.error?.issues
-              ? result.error.issues.map((issue: any) => {
-                  const fieldPath = issue.path.join(".");
+              ? result.error.issues.map((issue) => {
+                  const fieldPath = issue.path.map(String).join(".");
                   return fieldPath
                     ? `${fieldPath}: ${issue.message}`
                     : issue.message;
@@ -74,7 +74,7 @@ export const useStepValidation = () => {
             source: "client",
           };
         }
-      } catch (error) {
+      } catch {
         return {
           isValid: false,
           errors: ["Validation failed"],

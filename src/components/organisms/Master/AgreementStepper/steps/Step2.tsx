@@ -133,9 +133,18 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
   )
 
 
-  // Use React Query hooks instead of direct API calls
-  const { data: agreementDetailsData, isLoading: isLoadingDetails, error: detailsError } = useAgreement(agreementId || '')
-  const { data: documentsResponse, isLoading: isLoadingDocuments, error: documentsError } = useAgreementDocuments(agreementId || '', 'AGREEMENT', 0, 20)
+  // CRITICAL FIX: Step2 should use stepStatus data from parent if available
+  // Only fetch independently if stepStatus is not provided
+  // This prevents duplicate API calls when parent already has the data
+  const { data: agreementDetailsData, isLoading: isLoadingDetails, error: detailsError } = useAgreement(
+    agreementId || ''
+  )
+  const { data: documentsResponse, isLoading: isLoadingDocuments, error: documentsError } = useAgreementDocuments(
+    agreementId || '', 
+    'AGREEMENT', 
+    0, 
+    20
+  )
 
   // Update local state when React Query data changes
   useEffect(() => {
