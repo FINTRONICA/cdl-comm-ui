@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import type { ZodIssue } from 'zod'
 import { validateAgreementSignatoryStepData } from '@/lib/validation/masterValidation/agreementSignatorySchemasSchemas'
 import { ValidationResult } from '@/components/organisms/Master/PartyStepper/types'
 
@@ -28,7 +29,7 @@ export const useStepValidation = () => {
           // Extract detailed error messages with field names
           const errorMessages =
             'error' in result && result.error?.issues
-              ? result.error.issues.map((issue: any) => {
+              ? result.error.issues.map((issue: ZodIssue) => {
                   const fieldPath = issue.path.join('.')
                   return fieldPath
                     ? `${fieldPath}: ${issue.message}`
@@ -42,7 +43,7 @@ export const useStepValidation = () => {
             source: 'client',
           }
         }
-      } catch (error) {
+      } catch {
         return {
           isValid: false,
           errors: ['Validation failed'],
@@ -74,7 +75,7 @@ export const useStepValidation = () => {
           // Extract detailed error messages with field names
           const errorMessages =
             'error' in result && result.error?.issues
-              ? result.error.issues.map((issue: any) => {
+              ? result.error.issues.map((issue: ZodIssue) => {
                   const fieldPath = issue.path.join('.')
                   return fieldPath
                     ? `${fieldPath}: ${issue.message}`
@@ -88,7 +89,7 @@ export const useStepValidation = () => {
             source: 'client',
           }
         }
-      } catch (error) {
+      } catch {
         return {
           isValid: false,
           errors: ['Validation failed'],

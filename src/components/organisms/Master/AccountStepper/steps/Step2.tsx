@@ -20,10 +20,6 @@ import {
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import { useParams } from 'next/navigation'
-import {
-  accountService,
-  type Account,
-} from '@/services/api/masterApi/Entitie/accountService'
 import { formatDate } from '@/utils'
 import { GlobalLoading } from '@/components/atoms'
 import { useAccountLabelsWithCache, useAccount, useAccountDocuments } from '@/hooks'
@@ -78,15 +74,6 @@ const fieldBoxSx = {
   flexDirection: 'column',
   gap: 0.5,
   marginBottom: '16px',
-}
-
-// Data interfaces
-interface DocumentData {
-  id: string
-  fileName: string
-  documentType: string
-  uploadDate: string
-  fileSize: number
 }
 
 interface Step2Props {

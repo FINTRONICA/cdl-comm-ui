@@ -135,7 +135,6 @@ const Step2 = ({ agreementParameterId: propAgreementParameterId, onEditStep, isR
   useEffect(() => {
     const fetchAllData = async () => {
       if (!agreementParameterId || agreementParameterId.trim() === '') {
-        console.warn('[Step3] Agreement Parameter ID is missing or empty:', agreementParameterId)
         setError('Agreement Parameter ID is required to load review data')
         setLoading(false)
         return

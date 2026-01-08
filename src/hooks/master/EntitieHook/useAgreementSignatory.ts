@@ -38,7 +38,7 @@ export function useAgreementSignatories(
         filters
       ),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: 1, // Reduce retries to prevent 500 error storms
@@ -78,7 +78,7 @@ export function useAgreementSignatory(id: string) {
     queryFn: () => agreementSignatoryService.getAgreementSignatory(id),
     enabled: !!id && id.trim() !== '',
     staleTime: 5 * 60 * 1000, // 5 minutes cache
-    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: 1, // Reduce retries to prevent 500 error storms
@@ -191,7 +191,7 @@ export function useAgreementSignatoryLabels() {
     },
     enabled: !!isAuthenticated,
     staleTime: 24 * 60 * 60 * 1000,
-    cacheTime: 24 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000, // Keep in cache for 24 hours (formerly cacheTime)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: 1,
@@ -280,7 +280,7 @@ export function useAgreementSignatoryStepData(step: number) {
     queryFn: () => agreementSignatoryService.getStepData(step),
     enabled: step > 0 && step <= 3,
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: false,
     retry: 1,
   })
@@ -381,7 +381,7 @@ export function useAgreementSignatoryStepStatus(agreementSignatoryId: string) {
       agreementSignatoryId.trim() !== '' &&
       !agreementSignatoryQuery.isLoading, // Don't run if main query is loading
     staleTime: 2 * 60 * 1000, // Cache for 2 minutes (was 0, causing constant refetches)
-    cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes (formerly cacheTime)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: 1, // Reduce retries to prevent 500 error storms

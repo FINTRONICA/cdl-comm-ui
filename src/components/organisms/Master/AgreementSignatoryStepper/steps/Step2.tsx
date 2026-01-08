@@ -20,7 +20,6 @@ import {
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import { useParams } from 'next/navigation'
-import type { AgreementSignatory } from '@/services/api/masterApi/Entitie/agreementSignatoryService'
 import { formatDate } from '@/utils'
 import { GlobalLoading } from '@/components/atoms'
 import {
@@ -81,15 +80,6 @@ const fieldBoxSx = {
   marginBottom: '16px',
 }
 
-// Data interfaces
-interface DocumentData {
-  id: string
-  fileName: string
-  documentType: string
-  uploadDate: string
-  fileSize: number
-}
-
 interface Step2Props {
   agreementSignatoryId?: string | undefined
   onEditStep?: ((stepNumber: number) => void) | undefined
@@ -131,6 +121,9 @@ const Step2 = ({
     : documentsError
       ? (documentsError as Error).message
       : null
+
+  // Type guard to ensure agreementSignatoryDetails is properly typed
+  const hasValidDetails = agreementSignatoryDetails && typeof agreementSignatoryDetails === 'object' && 'id' in agreementSignatoryDetails
 
   // Dynamic labels helper
   const { data: agreementSignatoryLabels, getLabel } =
@@ -236,12 +229,25 @@ const Step2 = ({
   }
 
   // No data state
-  if (!agreementSignatoryDetails) {
+  if (!hasValidDetails) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">No agreement signatory details found.</Alert>
       </Box>
     )
+  }
+
+  // Type assertion for agreementSignatoryDetails after validation
+  const details = agreementSignatoryDetails as {
+    id?: number | string
+    partyFullName?: string
+    signatoryRole?: string
+    addressLine1?: string
+    addressLine2?: string
+    addressLine3?: string
+    notificationContactName?: string
+    notificationEmailAddress?: string
+    associationType?: string
   }
 
   return (
@@ -315,7 +321,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_REF_NO'
                 ),
-                agreementSignatoryDetails.id?.toString() || '-'
+                details.id?.toString() || '-'
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -323,7 +329,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_NAME'
                 ),
-                agreementSignatoryDetails.partyFullName
+                details.partyFullName
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -331,7 +337,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_ROLE'
                 ),
-                agreementSignatoryDetails.signatoryRole
+                details.signatoryRole
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -339,7 +345,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_ADDRESS_1'
                 ),
-                agreementSignatoryDetails.addressLine1
+                details.addressLine1
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -347,7 +353,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_ADDRESS_2'
                 ),
-                agreementSignatoryDetails.addressLine2
+                details.addressLine2
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -355,7 +361,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_ADDRESS_3'
                 ),
-                agreementSignatoryDetails.addressLine3
+                details.addressLine3
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -363,7 +369,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_NOTICE_PERSON'
                 ),
-                agreementSignatoryDetails.notificationContactName
+                details.notificationContactName
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -371,7 +377,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_NOTICE_PERSON_EMAIL'
                 ),
-                agreementSignatoryDetails.notificationEmailAddress
+                details.notificationEmailAddress
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -379,7 +385,7 @@ const Step2 = ({
                 getAgreementSignatoryLabelDynamic(
                   'CDL_ESCROW_AGREEMENT_SIGNATORY_PARTY_ASSOCIATE_TYPE'
                 ),
-                agreementSignatoryDetails.associationType
+                details.associationType
               )}
             </Grid>
           </Grid>

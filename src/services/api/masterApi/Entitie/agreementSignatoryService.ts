@@ -352,7 +352,7 @@ export class AgreementSignatoryService {
   }
 
   async saveAgreementSignatoryReview(
-    data: AgreementSignatoryReviewData
+    _data: AgreementSignatoryReviewData
   ): Promise<StepSaveResponse> {
     // Implementation for review step if needed
     return {
@@ -452,10 +452,7 @@ export class AgreementSignatoryService {
     }
   }
 
-  async validateStep(
-    _step: number,
-    _data: unknown
-  ): Promise<StepValidationResponse> {
+  async validateStep(): Promise<StepValidationResponse> {
     // Basic validation - can be enhanced with server-side validation
     return {
       isValid: true,

@@ -45,7 +45,7 @@ export class AgreementParameterLabelsService {
         }
       )
       return labels
-    } catch (error) {
+    } catch {
       throw new Error(ERROR_MESSAGE)
     }
   }
@@ -83,7 +83,7 @@ export class AgreementParameterLabelsService {
         })
       })
       return Array.from(languages)
-    } catch (error) {
+    } catch {
       return [DEFAULT_LANGUAGE]
     }
   }

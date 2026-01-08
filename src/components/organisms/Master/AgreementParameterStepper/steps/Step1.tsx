@@ -151,12 +151,6 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
         
         // Fetch agreement parameter data to populate fields
         const agreementParameter = await agreementParameterService.getAgreementParameter(agreementParameterId)
-        
-        console.log('[Step1] Fetched agreement parameter data for population:', {
-          agreementParameterId,
-          agreementEffectiveDate: agreementParameter?.agreementEffectiveDate,
-          agreementExpiryDate: agreementParameter?.agreementExpiryDate,
-          agreementRemarks: agreementParameter?.agreementRemarks,
         })
         
         // Populate fields if they exist in API response and form fields are empty
@@ -248,8 +242,8 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
             })
           }
         }
-      } catch (error) {
-        console.error('[Step1] Error populating fields:', error)
+      } catch {
+        // Error handled silently - form will remain empty
       } finally {
         isPopulating = false
         if (timeoutId) {
@@ -326,8 +320,7 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
             // Only validate non-empty values
             try {
               return validateAgreementParameterField(0, name, value)
-            } catch (error) {
-              console.error(`[TextField Validation Error] ${name}:`, error)
+            } catch {
               return `${label} validation failed`
             }
           },
@@ -464,8 +457,7 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
                 }
                 
                 return validateAgreementParameterField(0, name, value)
-              } catch (error) {
-                console.error(`[Step1 Validation Error] ${name}:`, error, 'Value:', value)
+              } catch {
                 // Return a more specific error message
                 return `${label} validation failed`
               }

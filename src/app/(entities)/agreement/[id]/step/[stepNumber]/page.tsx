@@ -6,19 +6,13 @@ import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/templates/DashboardLayout";
 import AgreementStepperWrapper from "@/components/organisms/Master/AgreementStepper";
 import { GlobalLoading } from "@/components/atoms";
-import {
-  agreementService,
-  type Agreement,
-} from "@/services/api/masterApi/Entitie/agreementService";
+import { useAgreement } from "@/hooks";
 
 function AgreementStepPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isValidating, setIsValidating] = useState(true);
-  const [agreementData, setAgreementData] = useState<Agreement | null>(null);
-  const [isLoadingData, setIsLoadingData] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const agreementId = params.id as string;
   const stepNumber = parseInt(params.stepNumber as string);
@@ -27,6 +21,14 @@ function AgreementStepPageContent() {
   const editing = searchParams.get("editing");
   const isViewMode = mode === "view";
   const isEditingMode = editing === "true";
+
+  // Use React Query hook for data fetching (prevents duplicate API calls)
+  const {
+    data: agreementData,
+    isLoading: isLoadingData,
+    error: queryError,
+  } = useAgreement(agreementId);
+
   useEffect(() => {
     if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 3) {
       router.push("/agreement");
@@ -34,26 +36,6 @@ function AgreementStepPageContent() {
     }
     setIsValidating(false);
   }, [stepNumber, router]);
-
-  useEffect(() => {
-    const fetchAgreementData = async () => {
-      try {
-        setIsLoadingData(true);
-        setError(null);
-        const data = await agreementService.getAgreement(agreementId);
-        setAgreementData(data);
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        setError(error.message || "Failed to fetch agreement data");
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
-
-    if (agreementId && !isValidating) {
-      fetchAgreementData();
-    }
-  }, [agreementId, isValidating]);
 
   if (isValidating || isLoadingData) {
     return (
@@ -64,6 +46,10 @@ function AgreementStepPageContent() {
       </DashboardLayout>
     );
   }
+
+  const error = queryError
+    ? (queryError as { message?: string })?.message || "Failed to fetch agreement data"
+    : null;
 
   if (error) {
     return (

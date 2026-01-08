@@ -6,21 +6,13 @@ import { useEffect, useState } from 'react'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import AgreementFeeScheduleStepperWrapper from '@/components/organisms/Master/AgreementFeeScheduleStepper'
 import { GlobalLoading } from '@/components/atoms'
-import {
-  agreementFeeScheduleService,
-  type AgreementFeeSchedule,
-} from '@/services/api/masterApi/Entitie/agreementFeeScheduleService'
+import { useAgreementFeeSchedule } from '@/hooks'
 
 function AgreementFeeScheduleStepPageContent() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isValidating, setIsValidating] = useState(true)
-  const [agreementFeeScheduleData, setAgreementFeeScheduleData] = useState<AgreementFeeSchedule | null>(
-    null
-  )
-  const [isLoadingData, setIsLoadingData] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   const agreementFeeScheduleId = params.id as string
   const stepNumber = parseInt(params.stepNumber as string)
@@ -31,7 +23,14 @@ function AgreementFeeScheduleStepPageContent() {
   const isViewMode = mode === 'view'
   const isEditingMode = editing === 'true'
 
-  // Validate step number and fetch agreement fee schedule data
+  // Use React Query hook for data fetching (prevents duplicate API calls)
+  const {
+    data: agreementFeeScheduleData,
+    isLoading: isLoadingData,
+    error: queryError,
+  } = useAgreementFeeSchedule(agreementFeeScheduleId)
+
+  // Validate step number
   useEffect(() => {
     if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 3) {
       router.push('/agreement-fee-schedule')
@@ -39,27 +38,6 @@ function AgreementFeeScheduleStepPageContent() {
     }
     setIsValidating(false)
   }, [stepNumber, router])
-
-  // Fetch agreement fee schedule data
-  useEffect(() => {
-    const fetchAgreementFeeScheduleData = async () => {
-      try {
-        setIsLoadingData(true)
-        setError(null)
-        const data = await agreementFeeScheduleService.getAgreementFeeSchedule(agreementFeeScheduleId)
-        setAgreementFeeScheduleData(data)
-      } catch (err: unknown) {
-        const error = err as { message?: string }
-        setError(error.message || 'Failed to fetch agreement fee schedule data')
-      } finally {
-        setIsLoadingData(false)
-      }
-    }
-
-    if (agreementFeeScheduleId && !isValidating) {
-      fetchAgreementFeeScheduleData()
-    }
-  }, [agreementFeeScheduleId, isValidating])
 
   if (isValidating || isLoadingData) {
     return (
@@ -70,6 +48,10 @@ function AgreementFeeScheduleStepPageContent() {
       </DashboardLayout>
     )
   }
+
+  const error = queryError
+    ? (queryError as { message?: string })?.message || 'Failed to fetch agreement fee schedule data'
+    : null
 
   if (error) {
     return (

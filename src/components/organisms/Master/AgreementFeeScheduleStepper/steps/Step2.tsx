@@ -21,10 +21,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit'
 import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import {
-  agreementFeeScheduleService,
-  type AgreementFeeSchedule,
-} from '@/services/api/masterApi/Entitie/agreementFeeScheduleService'
+import { agreementFeeScheduleService } from '@/services/api/masterApi/Entitie/agreementFeeScheduleService'
 import { formatDate } from '@/utils'
 import { GlobalLoading } from '@/components/atoms'
 import { useAgreementFeeScheduleLabelsWithCache, useAgreementFeeSchedule } from '@/hooks'
@@ -79,15 +76,6 @@ const fieldBoxSx = {
   flexDirection: 'column',
   gap: 0.5,
   marginBottom: '16px',
-}
-
-// Data interfaces
-interface DocumentData {
-  id: string
-  fileName: string
-  documentType: string
-  uploadDate: string
-  fileSize: number
 }
 
 interface Step2Props {

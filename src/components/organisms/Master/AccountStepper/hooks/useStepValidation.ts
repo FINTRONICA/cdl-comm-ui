@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
+import type { ZodIssue } from 'zod'
 import { validateAccountStepData } from '@/lib/validation/masterValidation/accountSchemasSchemas'
-import { ValidationResult } from '../../DeveloperStepper/types'
+import { ValidationResult } from "../../PartyStepper/types";
 
 /**
  * Custom hook for managing step validation logic for Account Stepper
@@ -26,7 +27,7 @@ export const useStepValidation = () => {
       } else {
         // Extract detailed error messages with field names
         const errorMessages = 'error' in result && result.error?.issues
-          ? result.error.issues.map((issue: any) => {
+          ? result.error.issues.map((issue: ZodIssue) => {
             const fieldPath = issue.path.join('.');
             return fieldPath ? `${fieldPath}: ${issue.message}` : issue.message;
           })
@@ -38,7 +39,7 @@ export const useStepValidation = () => {
           source: 'client',
         }
       }
-    } catch (error) {
+    } catch {
       return {
         isValid: false,
         errors: ['Validation failed'],
@@ -66,7 +67,7 @@ export const useStepValidation = () => {
       } else {
         // Extract detailed error messages with field names
         const errorMessages = 'error' in result && result.error?.issues
-          ? result.error.issues.map((issue: any) => {
+          ? result.error.issues.map((issue: ZodIssue) => {
             const fieldPath = issue.path.join('.');
             return fieldPath ? `${fieldPath}: ${issue.message}` : issue.message;
           })
@@ -78,7 +79,7 @@ export const useStepValidation = () => {
           source: 'client',
         }
       }
-    } catch (error) {
+    } catch {
       return {
         isValid: false,
         errors: ['Validation failed'],

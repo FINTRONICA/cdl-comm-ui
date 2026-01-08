@@ -201,7 +201,7 @@ export default function AccountStepperWrapper({
         });
         methods.reset(processedData);
         setShouldResetForm(false);
-      } catch (error) {}
+      } catch {}
     }
   }, [
     activeStep,

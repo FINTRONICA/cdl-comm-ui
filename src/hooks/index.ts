@@ -304,6 +304,7 @@ export { useAccountLabelsWithCache } from './master/EntitieHook/useAccountLabels
 export {
   useAgreementSignatories,
   useAgreementSignatory,
+  useAgreementSignatoryDocuments,
   useCreateAgreementSignatory,
   useUpdateAgreementSignatory,
   useDeleteAgreementSignatory,

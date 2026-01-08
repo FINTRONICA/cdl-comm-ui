@@ -239,7 +239,7 @@ export default function AgreementSignatoryStepperWrapper({
         })
         methods.reset(processedData)
         setShouldResetForm(false)
-      } catch (error) {
+      } catch {
         // Don't throw - allow component to continue rendering
       }
     }

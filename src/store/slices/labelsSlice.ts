@@ -101,6 +101,47 @@ export interface LabelsState {
   discardedTransactionLabelsError: string | null
   discardedTransactionLabelsLastFetched: number | null
 
+  // Entity labels (Account, Agreement, etc.)
+  accountLabels: ProcessedLabels | null
+  accountLabelsLoading: boolean
+  accountLabelsError: string | null
+  accountLabelsLastFetched: number | null
+
+  agreementLabels: ProcessedLabels | null
+  agreementLabelsLoading: boolean
+  agreementLabelsError: string | null
+  agreementLabelsLastFetched: number | null
+
+  agreementFeeScheduleLabels: ProcessedLabels | null
+  agreementFeeScheduleLabelsLoading: boolean
+  agreementFeeScheduleLabelsError: string | null
+  agreementFeeScheduleLabelsLastFetched: number | null
+
+  agreementParameterLabels: ProcessedLabels | null
+  agreementParameterLabelsLoading: boolean
+  agreementParameterLabelsError: string | null
+  agreementParameterLabelsLastFetched: number | null
+
+  agreementSignatoryLabels: ProcessedLabels | null
+  agreementSignatoryLabelsLoading: boolean
+  agreementSignatoryLabelsError: string | null
+  agreementSignatoryLabelsLastFetched: number | null
+
+  paymentInstructionLabels: ProcessedLabels | null
+  paymentInstructionLabelsLoading: boolean
+  paymentInstructionLabelsError: string | null
+  paymentInstructionLabelsLastFetched: number | null
+
+  standingInstructionLabels: ProcessedLabels | null
+  standingInstructionLabelsLoading: boolean
+  standingInstructionLabelsError: string | null
+  standingInstructionLabelsLastFetched: number | null
+
+  standingInstructionBeneficiaryLabels: ProcessedLabels | null
+  standingInstructionBeneficiaryLabelsLoading: boolean
+  standingInstructionBeneficiaryLabelsError: string | null
+  standingInstructionBeneficiaryLabelsLastFetched: number | null
+
   // Global loading state for all labels
   allLabelsLoading: boolean
   allLabelsError: string | null
@@ -173,6 +214,39 @@ export interface LabelsActions {
   setDiscardedTransactionLabelsLoading: (loading: boolean) => void
   setDiscardedTransactionLabelsError: (error: string | null) => void
 
+  // Entity labels actions
+  setAccountLabels: (labels: ProcessedLabels) => void
+  setAccountLabelsLoading: (loading: boolean) => void
+  setAccountLabelsError: (error: string | null) => void
+
+  setAgreementLabels: (labels: ProcessedLabels) => void
+  setAgreementLabelsLoading: (loading: boolean) => void
+  setAgreementLabelsError: (error: string | null) => void
+
+  setAgreementFeeScheduleLabels: (labels: ProcessedLabels) => void
+  setAgreementFeeScheduleLabelsLoading: (loading: boolean) => void
+  setAgreementFeeScheduleLabelsError: (error: string | null) => void
+
+  setAgreementParameterLabels: (labels: ProcessedLabels) => void
+  setAgreementParameterLabelsLoading: (loading: boolean) => void
+  setAgreementParameterLabelsError: (error: string | null) => void
+
+  setAgreementSignatoryLabels: (labels: ProcessedLabels) => void
+  setAgreementSignatoryLabelsLoading: (loading: boolean) => void
+  setAgreementSignatoryLabelsError: (error: string | null) => void
+
+  setPaymentInstructionLabels: (labels: ProcessedLabels) => void
+  setPaymentInstructionLabelsLoading: (loading: boolean) => void
+  setPaymentInstructionLabelsError: (error: string | null) => void
+
+  setStandingInstructionLabels: (labels: ProcessedLabels) => void
+  setStandingInstructionLabelsLoading: (loading: boolean) => void
+  setStandingInstructionLabelsError: (error: string | null) => void
+
+  setStandingInstructionBeneficiaryLabels: (labels: ProcessedLabels) => void
+  setStandingInstructionBeneficiaryLabelsLoading: (loading: boolean) => void
+  setStandingInstructionBeneficiaryLabelsError: (error: string | null) => void
+
   // Global actions
   setAllLabelsLoading: (loading: boolean) => void
   setAllLabelsError: (error: string | null) => void
@@ -193,7 +267,15 @@ export interface LabelsActions {
       | 'workflowAmountStageOverride'
       | 'workflowRequested'
       | 'pendingTransaction'
-      | 'discardedTransaction',
+      | 'discardedTransaction'
+      | 'account'
+      | 'agreement'
+      | 'agreementFeeSchedule'
+      | 'agreementParameter'
+      | 'agreementSignatory'
+      | 'paymentInstruction'
+      | 'standingInstruction'
+      | 'standingInstructionBeneficiary',
     configId: string,
     language: string,
     fallback: string
@@ -215,6 +297,14 @@ export interface LabelsActions {
       | 'workflowRequested'
       | 'pendingTransaction'
       | 'discardedTransaction'
+      | 'account'
+      | 'agreement'
+      | 'agreementFeeSchedule'
+      | 'agreementParameter'
+      | 'agreementSignatory'
+      | 'paymentInstruction'
+      | 'standingInstruction'
+      | 'standingInstructionBeneficiary'
   ) => boolean
   getAvailableLanguages: (
     type:
@@ -231,6 +321,14 @@ export interface LabelsActions {
       | 'workflowRequested'
       | 'pendingTransaction'
       | 'discardedTransaction'
+      | 'account'
+      | 'agreement'
+      | 'agreementFeeSchedule'
+      | 'agreementParameter'
+      | 'agreementSignatory'
+      | 'paymentInstruction'
+      | 'standingInstruction'
+      | 'standingInstructionBeneficiary'
   ) => string[]
 
   // Status helpers
@@ -248,6 +346,14 @@ export interface LabelsActions {
     workflowRequested: boolean
     pendingTransaction: boolean
     discardedTransaction: boolean
+    account: boolean
+    agreement: boolean
+    agreementFeeSchedule: boolean
+    agreementParameter: boolean
+    agreementSignatory: boolean
+    paymentInstruction: boolean
+    standingInstruction: boolean
+    standingInstructionBeneficiary: boolean
     any: boolean
     all: boolean
   }
@@ -324,6 +430,47 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
   discardedTransactionLabelsLoading: false,
   discardedTransactionLabelsError: null,
   discardedTransactionLabelsLastFetched: null,
+
+  // Entity labels initial state
+  accountLabels: null,
+  accountLabelsLoading: false,
+  accountLabelsError: null,
+  accountLabelsLastFetched: null,
+
+  agreementLabels: null,
+  agreementLabelsLoading: false,
+  agreementLabelsError: null,
+  agreementLabelsLastFetched: null,
+
+  agreementFeeScheduleLabels: null,
+  agreementFeeScheduleLabelsLoading: false,
+  agreementFeeScheduleLabelsError: null,
+  agreementFeeScheduleLabelsLastFetched: null,
+
+  agreementParameterLabels: null,
+  agreementParameterLabelsLoading: false,
+  agreementParameterLabelsError: null,
+  agreementParameterLabelsLastFetched: null,
+
+  agreementSignatoryLabels: null,
+  agreementSignatoryLabelsLoading: false,
+  agreementSignatoryLabelsError: null,
+  agreementSignatoryLabelsLastFetched: null,
+
+  paymentInstructionLabels: null,
+  paymentInstructionLabelsLoading: false,
+  paymentInstructionLabelsError: null,
+  paymentInstructionLabelsLastFetched: null,
+
+  standingInstructionLabels: null,
+  standingInstructionLabelsLoading: false,
+  standingInstructionLabelsError: null,
+  standingInstructionLabelsLastFetched: null,
+
+  standingInstructionBeneficiaryLabels: null,
+  standingInstructionBeneficiaryLabelsLoading: false,
+  standingInstructionBeneficiaryLabelsError: null,
+  standingInstructionBeneficiaryLabelsLastFetched: null,
 
   allLabelsLoading: false,
   allLabelsError: null,
@@ -567,6 +714,127 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
     set({ discardedTransactionLabelsError: error })
   },
 
+  // Entity labels actions
+  setAccountLabels: (labels) => {
+    set({
+      accountLabels: labels,
+      accountLabelsLastFetched: Date.now(),
+      accountLabelsError: null,
+    })
+  },
+  setAccountLabelsLoading: (loading) => set({ accountLabelsLoading: loading }),
+  setAccountLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Account labels error:', error)
+    }
+    set({ accountLabelsError: error })
+  },
+
+  setAgreementLabels: (labels) => {
+    set({
+      agreementLabels: labels,
+      agreementLabelsLastFetched: Date.now(),
+      agreementLabelsError: null,
+    })
+  },
+  setAgreementLabelsLoading: (loading) => set({ agreementLabelsLoading: loading }),
+  setAgreementLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Agreement labels error:', error)
+    }
+    set({ agreementLabelsError: error })
+  },
+
+  setAgreementFeeScheduleLabels: (labels) => {
+    set({
+      agreementFeeScheduleLabels: labels,
+      agreementFeeScheduleLabelsLastFetched: Date.now(),
+      agreementFeeScheduleLabelsError: null,
+    })
+  },
+  setAgreementFeeScheduleLabelsLoading: (loading) => set({ agreementFeeScheduleLabelsLoading: loading }),
+  setAgreementFeeScheduleLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Agreement fee schedule labels error:', error)
+    }
+    set({ agreementFeeScheduleLabelsError: error })
+  },
+
+  setAgreementParameterLabels: (labels) => {
+    set({
+      agreementParameterLabels: labels,
+      agreementParameterLabelsLastFetched: Date.now(),
+      agreementParameterLabelsError: null,
+    })
+  },
+  setAgreementParameterLabelsLoading: (loading) => set({ agreementParameterLabelsLoading: loading }),
+  setAgreementParameterLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Agreement parameter labels error:', error)
+    }
+    set({ agreementParameterLabelsError: error })
+  },
+
+  setAgreementSignatoryLabels: (labels) => {
+    set({
+      agreementSignatoryLabels: labels,
+      agreementSignatoryLabelsLastFetched: Date.now(),
+      agreementSignatoryLabelsError: null,
+    })
+  },
+  setAgreementSignatoryLabelsLoading: (loading) => set({ agreementSignatoryLabelsLoading: loading }),
+  setAgreementSignatoryLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Agreement signatory labels error:', error)
+    }
+    set({ agreementSignatoryLabelsError: error })
+  },
+
+  setPaymentInstructionLabels: (labels) => {
+    set({
+      paymentInstructionLabels: labels,
+      paymentInstructionLabelsLastFetched: Date.now(),
+      paymentInstructionLabelsError: null,
+    })
+  },
+  setPaymentInstructionLabelsLoading: (loading) => set({ paymentInstructionLabelsLoading: loading }),
+  setPaymentInstructionLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Payment instruction labels error:', error)
+    }
+    set({ paymentInstructionLabelsError: error })
+  },
+
+  setStandingInstructionLabels: (labels) => {
+    set({
+      standingInstructionLabels: labels,
+      standingInstructionLabelsLastFetched: Date.now(),
+      standingInstructionLabelsError: null,
+    })
+  },
+  setStandingInstructionLabelsLoading: (loading) => set({ standingInstructionLabelsLoading: loading }),
+  setStandingInstructionLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Standing instruction labels error:', error)
+    }
+    set({ standingInstructionLabelsError: error })
+  },
+
+  setStandingInstructionBeneficiaryLabels: (labels) => {
+    set({
+      standingInstructionBeneficiaryLabels: labels,
+      standingInstructionBeneficiaryLabelsLastFetched: Date.now(),
+      standingInstructionBeneficiaryLabelsError: null,
+    })
+  },
+  setStandingInstructionBeneficiaryLabelsLoading: (loading) => set({ standingInstructionBeneficiaryLabelsLoading: loading }),
+  setStandingInstructionBeneficiaryLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Standing instruction beneficiary labels error:', error)
+    }
+    set({ standingInstructionBeneficiaryLabelsError: error })
+  },
+
   // Global actions
   setAllLabelsLoading: (loading) => set({ allLabelsLoading: loading }),
 
@@ -596,7 +864,6 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       workflowAmountStageOverrideLabels: null,
       workflowRequestedLabels: null,
       buildPartnerLabelsLastFetched: null,
-    
       capitalPartnerLabelsLastFetched: null,
       buildPartnerAssetLabelsLastFetched: null,
       workflowActionLabelsLastFetched: null,
@@ -620,6 +887,31 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       workflowRequestedLabelsError: null,
       pendingTransactionLabelsError: null,
       discardedTransactionLabelsError: null,
+      // Entity labels
+      accountLabels: null,
+      accountLabelsLastFetched: null,
+      accountLabelsError: null,
+      agreementLabels: null,
+      agreementLabelsLastFetched: null,
+      agreementLabelsError: null,
+      agreementFeeScheduleLabels: null,
+      agreementFeeScheduleLabelsLastFetched: null,
+      agreementFeeScheduleLabelsError: null,
+      agreementParameterLabels: null,
+      agreementParameterLabelsLastFetched: null,
+      agreementParameterLabelsError: null,
+      agreementSignatoryLabels: null,
+      agreementSignatoryLabelsLastFetched: null,
+      agreementSignatoryLabelsError: null,
+      paymentInstructionLabels: null,
+      paymentInstructionLabelsLastFetched: null,
+      paymentInstructionLabelsError: null,
+      standingInstructionLabels: null,
+      standingInstructionLabelsLastFetched: null,
+      standingInstructionLabelsError: null,
+      standingInstructionBeneficiaryLabels: null,
+      standingInstructionBeneficiaryLabelsLastFetched: null,
+      standingInstructionBeneficiaryLabelsError: null,
       allLabelsError: null,
     })
   },
@@ -629,6 +921,7 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
     let labels: ProcessedLabels | null = null
 
     switch (type) {
+      // Core labels
       case 'sidebar':
         labels = state.sidebarLabels
         break
@@ -644,6 +937,8 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       case 'buildPartnerAsset':
         labels = state.buildPartnerAssetLabels
         break
+      
+      // Workflow labels
       case 'workflowAction':
         labels = state.workflowActionLabels
         break
@@ -662,12 +957,41 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       case 'workflowRequested':
         labels = state.workflowRequestedLabels
         break
+      
+      // Transaction labels
       case 'pendingTransaction':
         labels = state.pendingTransactionLabels
         break
       case 'discardedTransaction':
         labels = state.discardedTransactionLabels
         break
+      
+      // Entity labels
+      case 'account':
+        labels = state.accountLabels
+        break
+      case 'agreement':
+        labels = state.agreementLabels
+        break
+      case 'agreementFeeSchedule':
+        labels = state.agreementFeeScheduleLabels
+        break
+      case 'agreementParameter':
+        labels = state.agreementParameterLabels
+        break
+      case 'agreementSignatory':
+        labels = state.agreementSignatoryLabels
+        break
+      case 'paymentInstruction':
+        labels = state.paymentInstructionLabels
+        break
+      case 'standingInstruction':
+        labels = state.standingInstructionLabels
+        break
+      case 'standingInstructionBeneficiary':
+        labels = state.standingInstructionBeneficiaryLabels
+        break
+      
       default:
         console.warn('⚠️ [COMPLIANCE] Unknown label type:', type)
         return fallback
@@ -687,6 +1011,7 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
   hasLabels: (type) => {
     const state = get()
     switch (type) {
+      // Core labels
       case 'sidebar':
         return !!(
           state.sidebarLabels && Object.keys(state.sidebarLabels).length > 0
@@ -710,6 +1035,8 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
           state.buildPartnerAssetLabels &&
           Object.keys(state.buildPartnerAssetLabels).length > 0
         )
+      
+      // Workflow labels
       case 'workflowAction':
         return !!(
           state.workflowActionLabels &&
@@ -740,6 +1067,8 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
           state.workflowRequestedLabels &&
           Object.keys(state.workflowRequestedLabels).length > 0
         )
+      
+      // Transaction labels
       case 'pendingTransaction':
         return !!(
           state.pendingTransactionLabels &&
@@ -750,18 +1079,60 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
           state.discardedTransactionLabels &&
           Object.keys(state.discardedTransactionLabels).length > 0
         )
+      
+      // Entity labels
+      case 'account':
+        return !!(
+          state.accountLabels &&
+          Object.keys(state.accountLabels).length > 0
+        )
+      case 'agreement':
+        return !!(
+          state.agreementLabels &&
+          Object.keys(state.agreementLabels).length > 0
+        )
+      case 'agreementFeeSchedule':
+        return !!(
+          state.agreementFeeScheduleLabels &&
+          Object.keys(state.agreementFeeScheduleLabels).length > 0
+        )
+      case 'agreementParameter':
+        return !!(
+          state.agreementParameterLabels &&
+          Object.keys(state.agreementParameterLabels).length > 0
+        )
+      case 'agreementSignatory':
+        return !!(
+          state.agreementSignatoryLabels &&
+          Object.keys(state.agreementSignatoryLabels).length > 0
+        )
+      case 'paymentInstruction':
+        return !!(
+          state.paymentInstructionLabels &&
+          Object.keys(state.paymentInstructionLabels).length > 0
+        )
+      case 'standingInstruction':
+        return !!(
+          state.standingInstructionLabels &&
+          Object.keys(state.standingInstructionLabels).length > 0
+        )
+      case 'standingInstructionBeneficiary':
+        return !!(
+          state.standingInstructionBeneficiaryLabels &&
+          Object.keys(state.standingInstructionBeneficiaryLabels).length > 0
+        )
+      
       default:
         return false
     }
   },
-
-
 
   getAvailableLanguages: (type) => {
     const state = get()
     let labels: ProcessedLabels | null = null
 
     switch (type) {
+      // Core labels
       case 'sidebar':
         labels = state.sidebarLabels
         break
@@ -777,6 +1148,8 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       case 'buildPartnerAsset':
         labels = state.buildPartnerAssetLabels
         break
+      
+      // Workflow labels
       case 'workflowAction':
         labels = state.workflowActionLabels
         break
@@ -795,12 +1168,41 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       case 'workflowRequested':
         labels = state.workflowRequestedLabels
         break
+      
+      // Transaction labels
       case 'pendingTransaction':
         labels = state.pendingTransactionLabels
         break
       case 'discardedTransaction':
         labels = state.discardedTransactionLabels
         break
+      
+      // Entity labels
+      case 'account':
+        labels = state.accountLabels
+        break
+      case 'agreement':
+        labels = state.agreementLabels
+        break
+      case 'agreementFeeSchedule':
+        labels = state.agreementFeeScheduleLabels
+        break
+      case 'agreementParameter':
+        labels = state.agreementParameterLabels
+        break
+      case 'agreementSignatory':
+        labels = state.agreementSignatoryLabels
+        break
+      case 'paymentInstruction':
+        labels = state.paymentInstructionLabels
+        break
+      case 'standingInstruction':
+        labels = state.standingInstructionLabels
+        break
+      case 'standingInstructionBeneficiary':
+        labels = state.standingInstructionBeneficiaryLabels
+        break
+      
       default:
         return ['EN']
     }
@@ -816,43 +1218,86 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       })
     })
 
-    const availableLanguages = Array.from(languages)
-    return availableLanguages
+    return Array.from(languages)
   },
 
   // Status helpers
   getLoadingStatus: () => {
     const state = get()
+    
+    // Core label loading states
+    const coreLabelsLoading =
+      state.sidebarLabelsLoading ||
+      state.partyLabelsLoading ||
+      state.buildPartnerLabelsLoading ||
+      state.capitalPartnerLabelsLoading ||
+      state.buildPartnerAssetLabelsLoading
+    
+    // Workflow label loading states
+    const workflowLabelsLoading =
+      state.workflowActionLabelsLoading ||
+      state.workflowDefinitionLabelsLoading ||
+      state.workflowStageTemplateLabelsLoading ||
+      state.workflowAmountRuleLabelsLoading ||
+      state.workflowAmountStageOverrideLabelsLoading ||
+      state.workflowRequestedLabelsLoading
+    
+    // Transaction label loading states
+    const transactionLabelsLoading =
+      state.pendingTransactionLabelsLoading ||
+      state.discardedTransactionLabelsLoading
+    
+    // Entity label loading states
+    const entityLabelsLoading =
+      state.accountLabelsLoading ||
+      state.agreementLabelsLoading ||
+      state.agreementFeeScheduleLabelsLoading ||
+      state.agreementParameterLabelsLoading ||
+      state.agreementSignatoryLabelsLoading ||
+      state.paymentInstructionLabelsLoading ||
+      state.standingInstructionLabelsLoading ||
+      state.standingInstructionBeneficiaryLabelsLoading
+    
+    // Combined loading state
+    const anyLoading =
+      coreLabelsLoading ||
+      workflowLabelsLoading ||
+      transactionLabelsLoading ||
+      entityLabelsLoading ||
+      state.allLabelsLoading
+    
     return {
+      // Core labels
       sidebar: state.sidebarLabelsLoading,
       party: state.partyLabelsLoading,
       buildPartner: state.buildPartnerLabelsLoading,
       capitalPartner: state.capitalPartnerLabelsLoading,
       buildPartnerAsset: state.buildPartnerAssetLabelsLoading,
+      
+      // Workflow labels
       workflowAction: state.workflowActionLabelsLoading,
       workflowDefinition: state.workflowDefinitionLabelsLoading,
       workflowStageTemplate: state.workflowStageTemplateLabelsLoading,
       workflowAmountRule: state.workflowAmountRuleLabelsLoading,
-      workflowAmountStageOverride:
-        state.workflowAmountStageOverrideLabelsLoading,
+      workflowAmountStageOverride: state.workflowAmountStageOverrideLabelsLoading,
       workflowRequested: state.workflowRequestedLabelsLoading,
+      
+      // Transaction labels
       pendingTransaction: state.pendingTransactionLabelsLoading,
       discardedTransaction: state.discardedTransactionLabelsLoading,
-      any:
-        state.sidebarLabelsLoading ||
-        state.partyLabelsLoading ||
-        state.buildPartnerLabelsLoading ||
-        state.capitalPartnerLabelsLoading ||
-        state.buildPartnerAssetLabelsLoading ||
-        state.workflowActionLabelsLoading ||
-        state.workflowDefinitionLabelsLoading ||
-        state.workflowStageTemplateLabelsLoading ||
-        state.workflowAmountRuleLabelsLoading ||
-        state.workflowAmountStageOverrideLabelsLoading ||
-        state.workflowRequestedLabelsLoading ||
-        state.pendingTransactionLabelsLoading ||
-        state.discardedTransactionLabelsLoading ||
-        state.allLabelsLoading,
+      
+      // Entity labels
+      account: state.accountLabelsLoading,
+      agreement: state.agreementLabelsLoading,
+      agreementFeeSchedule: state.agreementFeeScheduleLabelsLoading,
+      agreementParameter: state.agreementParameterLabelsLoading,
+      agreementSignatory: state.agreementSignatoryLabelsLoading,
+      paymentInstruction: state.paymentInstructionLabelsLoading,
+      standingInstruction: state.standingInstructionLabelsLoading,
+      standingInstructionBeneficiary: state.standingInstructionBeneficiaryLabelsLoading,
+      
+      // Combined states
+      any: anyLoading,
       all: state.allLabelsLoading,
     }
   },

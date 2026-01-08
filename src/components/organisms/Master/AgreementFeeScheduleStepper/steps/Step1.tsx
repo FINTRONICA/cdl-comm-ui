@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -95,7 +95,6 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
     control,
     watch,
     setValue,
-    trigger,
     formState: { errors },
   } = useFormContext()
 
@@ -125,7 +124,15 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
   const agreementSubTypes = agreementSubTypesResponse?.content || []
 
   // Helper to get display label for dropdown options
-  const getDisplayLabel = useCallback((option: any, fallback?: string): string => {
+  const getDisplayLabel = useCallback((option: {
+    settingValue?: string
+    agreementTypeName?: string
+    subTypeName?: string
+    programName?: string
+    configValue?: string
+    name?: string
+    id?: number | string
+  } | null | undefined, fallback?: string): string => {
     if (!option) return fallback || ''
     if (option.settingValue) return option.settingValue
     if (option.agreementTypeName) return option.agreementTypeName
@@ -135,8 +142,6 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
     if (option.name) return option.name
     return fallback || String(option.id || '')
   }, [])
-
-  const dropdownsLoading = feeCategoriesLoading || feeFrequenciesLoading || agreementTypesLoading || agreementSubTypesLoading || productProgramsLoading
 
   // Populate fields when agreement fee schedule data is loaded (for edit mode)
   useEffect(() => {
@@ -169,7 +174,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
           ]
 
           fieldsToPopulate.forEach((field) => {
-            const value = (agreementFeeSchedule as Record<string, unknown>)[field]
+            const value = (agreementFeeSchedule as unknown as Record<string, unknown>)[field]
             if (value !== undefined && value !== null) {
               const currentValue = watch(field)
               if (!currentValue || String(currentValue).trim() === '') {
@@ -260,7 +265,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             })
           }
         }
-      } catch (error) {
+      } catch {
         // Error handled silently - form will remain empty
     } finally {
         isPopulating = false
@@ -421,7 +426,16 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
   const renderSelectField = (
     name: string,
     label: string,
-    options: any[],
+    options: Array<{
+      id?: number | string
+      settingValue?: string
+      agreementTypeName?: string
+      subTypeName?: string
+      programName?: string
+      configValue?: string
+      name?: string
+      [key: string]: unknown
+    }>,
     gridSize: number = 6,
     loading = false,
     required = false
