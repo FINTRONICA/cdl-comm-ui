@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { validateAgreementSignatoryStepData } from '@/lib/validation/masterValidation/agreementSignatorySchemasSchemas'
-import { ValidationResult } from '../../DeveloperStepper/types'
+import { ValidationResult } from '@/components/organisms/Master/PartyStepper/types'
 
 /**
  * Custom hook for managing step validation logic for Agreement Signatory Stepper

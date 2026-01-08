@@ -291,10 +291,6 @@ const AccountsPageImpl: React.FC = () => {
           setIsDeleting(true)
           await deleteMutation.mutateAsync(String(row.id))
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(`Failed to delete account: ${errorMessage}`)
-
           throw error
         } finally {
           setIsDeleting(false)

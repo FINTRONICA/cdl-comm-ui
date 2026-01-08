@@ -5,14 +5,14 @@ import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
 import { DateRangePicker } from './components/filters/DateRangePicker'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import { Autocomplete } from '@/components/atoms/Autocomplete'
+// import { Autocomplete } from '@/components/atoms/Autocomplete'
 import { GlobalLoading, GlobalError } from '@/components/atoms'
 import { useSidebarConfig } from '@/hooks/useSidebarConfig'
 import { useDashboardSummary } from '@/hooks/useDashboard'
-import { useBuildPartnerAutocomplete } from '@/hooks/useBuildPartnerAutocomplete'
-import { useRealEstateAssetAutocomplete } from '@/hooks/useRealEstateAssetAutocomplete'
-import type { BuildPartner } from '@/services/api/buildPartnerService'
-import type { RealEstateAsset } from '@/services/api/realEstateAssetService'
+// import { useBuildPartnerAutocomplete } from '@/hooks/useBuildPartnerAutocomplete'
+// import { useRealEstateAssetAutocomplete } from '@/hooks/useRealEstateAssetAutocomplete'
+// import type { BuildPartner } from '@/services/api/buildPartnerService'
+// import type { RealEstateAsset } from '@/services/api/realEstateAssetService'
 
 const formatIndianCurrency = (amount: string | number): string => {
   // Handle null, undefined, or empty values
@@ -231,81 +231,81 @@ const FiltersRow = ({
   onSubmit?: () => void
   isSubmitting?: boolean
 }) => {
-  const [selectedDeveloper, setSelectedDeveloper] = useState('')
-  const [selectedBuildPartner, setSelectedBuildPartner] =
-    useState<BuildPartner | null>(null)
-  const [selectedBuildPartnerOption, setSelectedBuildPartnerOption] =
-    useState<any>(null)
-  const [selectedProject, setSelectedProject] = useState('')
-  const [selectedRealEstateAsset, setSelectedRealEstateAsset] =
-    useState<RealEstateAsset | null>(null)
-  const [selectedRealEstateAssetOption, setSelectedRealEstateAssetOption] =
-    useState<any>(null)
+  // const [selectedDeveloper, setSelectedDeveloper] = useState('')
+  // const [selectedBuildPartner, setSelectedBuildPartner] =
+  //   useState<BuildPartner | null>(null)
+  // const [selectedBuildPartnerOption, setSelectedBuildPartnerOption] =
+  //   useState<any>(null)
+  // const [selectedProject, setSelectedProject] = useState('')
+  // const [selectedRealEstateAsset, setSelectedRealEstateAsset] =
+  //   useState<RealEstateAsset | null>(null)
+  // const [selectedRealEstateAssetOption, setSelectedRealEstateAssetOption] =
+  //   useState<any>(null)
   const [dateRange, setDateRange] = useState({
     startDate: '10-05-2025',
     endDate: '25-05-2025',
   })
 
   // Use the build partner autocomplete hook
-  const { searchBuildPartners, isLoading: isSearchingBuildPartners } =
-    useBuildPartnerAutocomplete({
-      debounceMs: 300,
-      minSearchLength: 1,
-    })
+  // const { searchBuildPartners, isLoading: isSearchingBuildPartners } =
+  //   useBuildPartnerAutocomplete({
+  //     debounceMs: 300,
+  //     minSearchLength: 1,
+  //   })
 
   // Use the real estate asset autocomplete hook
-  const { searchRealEstateAssets, isLoading: isSearchingRealEstateAssets } =
-    useRealEstateAssetAutocomplete({
-      debounceMs: 300,
-      minSearchLength: 1,
-    })
+  // const { searchRealEstateAssets, isLoading: isSearchingRealEstateAssets } =
+  //   useRealEstateAssetAutocomplete({
+  //     debounceMs: 300,
+  //     minSearchLength: 1,
+  //   })
 
   const handleDateRangeChange = (start: string, end: string) => {
     setDateRange({ startDate: start, endDate: end })
   }
 
   // Handle build partner selection
-  const handleBuildPartnerChange = (value: string) => {
-    setSelectedDeveloper(value)
-  }
+  // const handleBuildPartnerChange = (value: string) => {
+  //   setSelectedDeveloper(value)
+  // }
 
-  const handleBuildPartnerOptionSelect = (option: any) => {
-    setSelectedBuildPartnerOption(option)
-    if (option.buildPartner) {
-      setSelectedBuildPartner(option.buildPartner)
-    }
-  }
+  // const handleBuildPartnerOptionSelect = (option: any) => {
+  //   setSelectedBuildPartnerOption(option)
+  //   if (option.buildPartner) {
+  //     setSelectedBuildPartner(option.buildPartner)
+  //   }
+  // }
 
   // Handle real estate asset selection
-  const handleRealEstateAssetChange = (value: string) => {
-    setSelectedProject(value)
-  }
+  // const handleRealEstateAssetChange = (value: string) => {
+  //   setSelectedProject(value)
+  // }
 
-  const handleRealEstateAssetOptionSelect = (option: any) => {
-    setSelectedRealEstateAssetOption(option)
-    if (option.realEstateAsset) {
-      setSelectedRealEstateAsset(option.realEstateAsset)
-    }
-  }
+  // const handleRealEstateAssetOptionSelect = (option: any) => {
+  //   setSelectedRealEstateAssetOption(option)
+  //   if (option.realEstateAsset) {
+  //     setSelectedRealEstateAsset(option.realEstateAsset)
+  //   }
+  // }
 
   // Log selected build partner for debugging (remove in production)
-  React.useEffect(() => {
-    if (selectedBuildPartner) {
-      // Example of accessing build partner data for other API calls:
-    }
-  }, [selectedBuildPartner])
+  // React.useEffect(() => {
+  //   if (selectedBuildPartner) {
+  //     // Example of accessing build partner data for other API calls:
+  //   }
+  // }, [selectedBuildPartner])
 
-  // Log selected real estate asset for debugging (remove in production)
-  React.useEffect(() => {
-    if (selectedRealEstateAsset) {
-      // Example of accessing real estate asset data for other API calls:
-    }
-  }, [selectedRealEstateAsset])
+  // // Log selected real estate asset for debugging (remove in production)
+  // React.useEffect(() => {
+  //   if (selectedRealEstateAsset) {
+  //     // Example of accessing real estate asset data for other API calls:
+  //   }
+  // }, [selectedRealEstateAsset])
 
   return (
     <div className="flex flex-col gap-4 mt-2 mb-6 lg:flex-row lg:justify-between lg:items-end">
       <div className="flex flex-wrap gap-3">
-        <div className="flex flex-col">
+        {/* <div className="flex flex-col">
           <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
             Build Partner
           </label>
@@ -322,9 +322,9 @@ const FiltersRow = ({
             clearable={true}
             minSearchLength={1}
           />
-        </div>
+        </div> */}
 
-        <div className="flex flex-col">
+        {/* <div className="flex flex-col">
           <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
             Build Partner Assets
           </label>
@@ -341,7 +341,7 @@ const FiltersRow = ({
             clearable={true}
             minSearchLength={1}
           />
-        </div>
+        </div> */}
 
         <div className="flex flex-col">
           <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">

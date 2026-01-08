@@ -297,9 +297,6 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(
-            `Failed to delete agreement signatory: ${errorMessage}`
-          )
 
           throw error
         } finally {

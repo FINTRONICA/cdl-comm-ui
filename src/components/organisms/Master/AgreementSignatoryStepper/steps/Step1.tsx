@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback, useMemo } from 'react'
 import {
   Box,
   Card,
@@ -7,15 +7,13 @@ import {
   TextField,
   Typography,
   useTheme,
-  alpha,
 } from '@mui/material'
 import { LocalizationProvider } from '@mui/x-date-pickers'
 import { Controller, useFormContext } from 'react-hook-form'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { getAgreementSignatoryLabel } from '@/constants/mappings/master/Entity/agreementSignatoryMapping'
-import { useAgreementSignatoryLabelsWithCache } from '@/hooks'
+import { useAgreementSignatoryLabelsWithCache, useAgreementSignatory } from '@/hooks'
 import { useAppStore } from '@/store'
-import { agreementSignatoryService } from '@/services/api/masterApi/Entitie/agreementSignatoryService'
 import { validateAgreementSignatoryField } from '@/lib/validation/masterValidation/agreementSignatorySchemasSchemas'
 import {
   commonFieldStyles as sharedCommonFieldStyles,
@@ -35,28 +33,28 @@ const Step1 = ({ isReadOnly = false, agreementSignatoryId }: Step1Props) => {
   const isDark = theme.palette.mode === 'dark'
   const textPrimary = isDark ? '#FFFFFF' : '#1E2939'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const fieldStyles = React.useMemo(() => {
+  const fieldStyles = useMemo(() => {
     if (typeof sharedCommonFieldStyles === 'function') {
       return sharedCommonFieldStyles(theme)
     }
     return sharedCommonFieldStyles
   }, [theme])
 
-  const labelStyles = React.useMemo(() => {
+  const labelStyles = useMemo(() => {
     if (typeof sharedLabelSx === 'function') {
       return sharedLabelSx(theme)
     }
     return sharedLabelSx
   }, [theme])
 
-  const valueStyles = React.useMemo(() => {
+  const valueStyles = useMemo(() => {
     if (typeof sharedValueSx === 'function') {
       return sharedValueSx(theme)
     }
     return sharedValueSx
   }, [theme])
 
-  const cardBaseStyles = React.useMemo(() => {
+  const cardBaseStyles = useMemo(() => {
     if (typeof sharedCardStyles === 'function') {
       return sharedCardStyles(theme)
     }
@@ -68,11 +66,13 @@ const Step1 = ({ isReadOnly = false, agreementSignatoryId }: Step1Props) => {
   const isEditMode = !!agreementSignatoryId
   const {
     control,
-    watch,
     setValue,
-    trigger,
     formState: { errors },
   } = useFormContext()
+
+  // Use React Query hook instead of direct API call - prevents duplicate calls
+  const { data: agreementSignatory, isLoading: isLoadingAgreementSignatory } =
+    useAgreementSignatory(agreementSignatoryId || '')
 
   // Dynamic label support
   const { data: agreementSignatoryLabels, getLabel } =
@@ -92,134 +92,100 @@ const Step1 = ({ isReadOnly = false, agreementSignatoryId }: Step1Props) => {
   )
 
   // Populate fields when agreement signatory data is loaded (for edit mode)
+  // Using React Query data instead of direct API call
   useEffect(() => {
-    if (!agreementSignatoryId || !isEditMode) {
+    if (!agreementSignatoryId || !isEditMode || !agreementSignatory || isLoadingAgreementSignatory) {
       return
     }
 
-    let isPopulating = false
-    let timeoutId: NodeJS.Timeout | null = null
-
-    const populateFields = async () => {
-      if (isPopulating) return
-      isPopulating = true
-
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        const agreementSignatory =
-          await agreementSignatoryService.getAgreementSignatory(
-            agreementSignatoryId
-          )
-
-        // Populate fields from API response
-        if (agreementSignatory?.partyFullName) {
-          setValue('partyFullName', agreementSignatory.partyFullName, {
-            shouldValidate: true,
-            shouldDirty: false,
-          })
-        }
-        if (agreementSignatory?.addressLine1) {
-          setValue('addressLine1', agreementSignatory.addressLine1, {
-            shouldValidate: true,
-            shouldDirty: false,
-          })
-        }
-        if (agreementSignatory?.addressLine2) {
-          setValue('addressLine2', agreementSignatory.addressLine2, {
-            shouldValidate: true,
-            shouldDirty: false,
-          })
-        }
-        if (agreementSignatory?.addressLine3) {
-          setValue('addressLine3', agreementSignatory.addressLine3, {
-            shouldValidate: true,
-            shouldDirty: false,
-          })
-        }
-        if (agreementSignatory?.signatoryRole) {
-          setValue('signatoryRole', agreementSignatory.signatoryRole, {
-            shouldValidate: true,
-            shouldDirty: false,
-          })
-        }
-        if (agreementSignatory?.notificationContactName) {
-          setValue(
-            'notificationContactName',
-            agreementSignatory.notificationContactName,
-            {
-              shouldValidate: true,
-              shouldDirty: false,
-            }
-          )
-        }
-        if (agreementSignatory?.notificationAddressLine1) {
-          setValue(
-            'notificationAddressLine1',
-            agreementSignatory.notificationAddressLine1,
-            {
-              shouldValidate: true,
-              shouldDirty: false,
-            }
-          )
-        }
-        if (agreementSignatory?.notificationAddressLine2) {
-          setValue(
-            'notificationAddressLine2',
-            agreementSignatory.notificationAddressLine2,
-            {
-              shouldValidate: true,
-              shouldDirty: false,
-            }
-          )
-        }
-        if (agreementSignatory?.notificationAddressLine3) {
-          setValue(
-            'notificationAddressLine3',
-            agreementSignatory.notificationAddressLine3,
-            {
-              shouldValidate: true,
-              shouldDirty: false,
-            }
-          )
-        }
-        if (agreementSignatory?.notificationEmailAddress) {
-          setValue(
-            'notificationEmailAddress',
-            agreementSignatory.notificationEmailAddress,
-            {
-              shouldValidate: true,
-              shouldDirty: false,
-            }
-          )
-        }
-        if (agreementSignatory?.associationType) {
-          setValue('associationType', agreementSignatory.associationType, {
-            shouldValidate: true,
-            shouldDirty: false,
-          })
-        }
-      } catch (error) {
-        console.error(
-          'Error fetching agreement signatory data for form population:',
-          error
-        )
-      } finally {
-        isPopulating = false
-      }
+    // Populate fields from React Query cached data
+    if (agreementSignatory?.partyFullName) {
+      setValue('partyFullName', agreementSignatory.partyFullName, {
+        shouldValidate: true,
+        shouldDirty: false,
+      })
     }
-
-    timeoutId = setTimeout(() => {
-      populateFields()
-    }, 300)
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
+    if (agreementSignatory?.addressLine1) {
+      setValue('addressLine1', agreementSignatory.addressLine1, {
+        shouldValidate: true,
+        shouldDirty: false,
+      })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agreementSignatoryId, isEditMode])
+    if (agreementSignatory?.addressLine2) {
+      setValue('addressLine2', agreementSignatory.addressLine2, {
+        shouldValidate: true,
+        shouldDirty: false,
+      })
+    }
+    if (agreementSignatory?.addressLine3) {
+      setValue('addressLine3', agreementSignatory.addressLine3, {
+        shouldValidate: true,
+        shouldDirty: false,
+      })
+    }
+    if (agreementSignatory?.signatoryRole) {
+      setValue('signatoryRole', agreementSignatory.signatoryRole, {
+        shouldValidate: true,
+        shouldDirty: false,
+      })
+    }
+    if (agreementSignatory?.notificationContactName) {
+      setValue(
+        'notificationContactName',
+        agreementSignatory.notificationContactName,
+        {
+          shouldValidate: true,
+          shouldDirty: false,
+        }
+      )
+    }
+    if (agreementSignatory?.notificationAddressLine1) {
+      setValue(
+        'notificationAddressLine1',
+        agreementSignatory.notificationAddressLine1,
+        {
+          shouldValidate: true,
+          shouldDirty: false,
+        }
+      )
+    }
+    if (agreementSignatory?.notificationAddressLine2) {
+      setValue(
+        'notificationAddressLine2',
+        agreementSignatory.notificationAddressLine2,
+        {
+          shouldValidate: true,
+          shouldDirty: false,
+        }
+      )
+    }
+    if (agreementSignatory?.notificationAddressLine3) {
+      setValue(
+        'notificationAddressLine3',
+        agreementSignatory.notificationAddressLine3,
+        {
+          shouldValidate: true,
+          shouldDirty: false,
+        }
+      )
+    }
+    if (agreementSignatory?.notificationEmailAddress) {
+      setValue(
+        'notificationEmailAddress',
+        agreementSignatory.notificationEmailAddress,
+        {
+          shouldValidate: true,
+          shouldDirty: false,
+        }
+      )
+    }
+    if (agreementSignatory?.associationType) {
+      setValue('associationType', agreementSignatory.associationType, {
+        shouldValidate: true,
+        shouldDirty: false,
+      })
+    }
+  }, [agreementSignatory, agreementSignatoryId, isEditMode, isLoadingAgreementSignatory, setValue])
 
   const renderTextField = (
     name: string,

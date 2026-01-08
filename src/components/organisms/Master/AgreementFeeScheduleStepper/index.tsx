@@ -30,11 +30,11 @@ import {
   useStepNotifications,
   useStepDataProcessing,
   useStepForm,
-} from '../../DeveloperStepper/hooks'
+} from "../PartyStepper/hooks";
 import { useStepValidation } from './hooks/useStepValidation'
-import { Step1, Step3 } from './steps'
+import { Step1, Step2 } from './steps'
 import DocumentUploadFactory from '../../DocumentUpload/DocumentUploadFactory'
-import { DocumentItem } from '../../DeveloperStepper/developerTypes'
+import { DocumentItem } from "../PartyStepper/partyTypes";
 
 // Hook to detect dark mode
 const useIsDarkMode = () => {
@@ -166,7 +166,7 @@ export default function AgreementFeeScheduleStepperWrapper({
           // Review step - show agreement fee schedule details and documents
           // Ensure agreementFeeScheduleId is passed correctly
           return (
-            <Step3
+            <Step2
               key={`review-${agreementFeeScheduleId}-${activeStep}`}
               agreementFeeScheduleId={agreementFeeScheduleId}
               onEditStep={handleEditStep}

@@ -1,4 +1,6 @@
 import { SxProps, Theme, alpha } from '@mui/material/styles'
+
+
 import {
   commonFieldStyles as projectCommonFieldStyles,
   selectStyles as projectSelectStyles,
@@ -13,9 +15,8 @@ import {
   buttonContainerSx as projectButtonContainerSx,
   backButtonSx as projectBackButtonSx,
   nextButtonSx as projectNextButtonSx,
-  primaryButtonSx as projectPrimaryButtonSx,
-  
-} from '@/components/organisms/ProjectStepper/styles'
+  primaryButtonSx as projectPrimaryButtonSx
+} from '../styles'
 
 export const commonFieldStyles = projectCommonFieldStyles
 

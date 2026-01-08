@@ -38,8 +38,10 @@ export function useAgreementSignatories(
         filters
       ),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchOnWindowFocus: false,
-    retry: 3,
+    refetchOnMount: false,
+    retry: 1, // Reduce retries to prevent 500 error storms
   })
 
   // Update API pagination when data changes
@@ -74,9 +76,44 @@ export function useAgreementSignatory(id: string) {
   return useQuery({
     queryKey: [AGREEMENT_SIGNATORIES_QUERY_KEY, id],
     queryFn: () => agreementSignatoryService.getAgreementSignatory(id),
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000,
-    retry: 3,
+    enabled: !!id && id.trim() !== '',
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1, // Reduce retries to prevent 500 error storms
+  })
+}
+
+// Hook to fetch agreement signatory documents
+export function useAgreementSignatoryDocuments(
+  agreementSignatoryId: string,
+  module: string = 'AGREEMENT_SIGNATORY',
+  page: number = 0,
+  size: number = 20
+) {
+  return useQuery({
+    queryKey: [
+      AGREEMENT_SIGNATORIES_QUERY_KEY,
+      'documents',
+      agreementSignatoryId,
+      module,
+      page,
+      size,
+    ],
+    queryFn: () =>
+      agreementSignatoryService.getAgreementSignatoryDocuments(
+        agreementSignatoryId,
+        module,
+        page,
+        size
+      ),
+    enabled: !!agreementSignatoryId && agreementSignatoryId.trim() !== '',
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    retry: 1, // Reduce retries to prevent 500 error storms
   })
 }
 
@@ -89,7 +126,7 @@ export function useCreateAgreementSignatory() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [AGREEMENT_SIGNATORIES_QUERY_KEY] })
     },
-    retry: 2,
+    retry: 1,
   })
 }
 
@@ -110,7 +147,7 @@ export function useUpdateAgreementSignatory() {
         queryKey: [AGREEMENT_SIGNATORIES_QUERY_KEY, id],
       })
     },
-    retry: 2,
+    retry: 1,
   })
 }
 
@@ -154,8 +191,10 @@ export function useAgreementSignatoryLabels() {
     },
     enabled: !!isAuthenticated,
     staleTime: 24 * 60 * 60 * 1000,
+    cacheTime: 24 * 60 * 60 * 1000,
     refetchOnWindowFocus: false,
-    retry: 3,
+    refetchOnMount: false,
+    retry: 1,
   })
 }
 
@@ -218,7 +257,7 @@ export function useSaveAgreementSignatoryDetails() {
         })
       }
     },
-    retry: 2,
+    retry: 1,
   })
 }
 
@@ -231,7 +270,7 @@ export function useSaveAgreementSignatoryReview() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [AGREEMENT_SIGNATORIES_QUERY_KEY] })
     },
-    retry: 2,
+    retry: 1,
   })
 }
 
@@ -241,7 +280,9 @@ export function useAgreementSignatoryStepData(step: number) {
     queryFn: () => agreementSignatoryService.getStepData(step),
     enabled: step > 0 && step <= 3,
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    cacheTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 }
 
@@ -260,6 +301,9 @@ export function useValidateAgreementSignatoryStep() {
 }
 
 export function useAgreementSignatoryStepStatus(agreementSignatoryId: string) {
+  // Use the existing hook to avoid duplicate API calls
+  const agreementSignatoryQuery = useAgreementSignatory(agreementSignatoryId)
+
   return useQuery({
     queryKey: [
       AGREEMENT_SIGNATORIES_QUERY_KEY,
@@ -281,6 +325,37 @@ export function useAgreementSignatoryStepStatus(agreementSignatoryId: string) {
         }
       }
 
+      // Use the cached data from useAgreementSignatory if available
+      // This prevents duplicate API calls
+      if (agreementSignatoryQuery.data) {
+        return {
+          step1: true,
+          lastCompletedStep: 1,
+          stepData: {
+            step1: agreementSignatoryQuery.data,
+          },
+          errors: {
+            step1: null,
+          },
+        }
+      }
+
+      // If data is loading, wait for it instead of making another call
+      if (agreementSignatoryQuery.isLoading) {
+        // Return a pending state - the query will refetch when data is available
+        return {
+          step1: false,
+          lastCompletedStep: 0,
+          stepData: {
+            step1: null,
+          },
+          errors: {
+            step1: null,
+          },
+        }
+      }
+
+      // Fallback: only fetch if not in cache and not loading (should rarely happen)
       const [step1Result] = await Promise.allSettled([
         agreementSignatoryService.getAgreementSignatory(agreementSignatoryId),
       ])
@@ -301,9 +376,15 @@ export function useAgreementSignatoryStepStatus(agreementSignatoryId: string) {
 
       return stepStatus
     },
-    enabled: !!agreementSignatoryId && agreementSignatoryId.trim() !== '',
-    staleTime: 0, // Always refetch when navigating back
-    retry: 1,
+    enabled:
+      !!agreementSignatoryId &&
+      agreementSignatoryId.trim() !== '' &&
+      !agreementSignatoryQuery.isLoading, // Don't run if main query is loading
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes (was 0, causing constant refetches)
+    cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1, // Reduce retries to prevent 500 error storms
   })
 }
 

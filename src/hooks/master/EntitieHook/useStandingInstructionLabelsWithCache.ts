@@ -1,46 +1,58 @@
 import { useCallback } from 'react'
-import { useStandingInstructionLabels } from './usePaymentInstruction'
+import { useLabels, useLabelsLoadingState } from '@/store'
 import { StandingInstructionLabelsService } from '@/services/api/masterApi/Entitie/standingInstructionLabelsService'
 
 export function useStandingInstructionLabelsWithCache() {
-  // Use React Query hook to fetch labels
-  const query = useStandingInstructionLabels()
-  
+  // 🏦 BANKING COMPLIANCE: Now using Zustand store instead of localStorage
+  // API remains identical for backward compatibility
+  const { standingInstructionLabels } = useLabels()
+  const { standingInstructionLabelsLoading } = useLabelsLoadingState()
+
+  // Note: We no longer use the old React Query hook since Zustand is the source of truth
+  // Labels are loaded by the compliance loader service on app initialization
+
   const getLabel = useCallback(
     (configId: string, language: string, fallback: string) => {
-      if (query.data) {
-        return StandingInstructionLabelsService.getLabel(query.data, configId, language, fallback)
+      // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+        if (standingInstructionLabels) {
+        return StandingInstructionLabelsService.getLabel(standingInstructionLabels, configId, language, fallback)
       }
       return fallback
     },
-    [query.data]
+    [standingInstructionLabels]
   )
 
   const hasLabels = useCallback(() => {
-    return StandingInstructionLabelsService.hasLabels(query.data || {})
-  }, [query.data])
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return StandingInstructionLabelsService.hasLabels(standingInstructionLabels || {})
+  }, [standingInstructionLabels])
 
   const getAvailableLanguages = useCallback(() => {
-    return StandingInstructionLabelsService.getAvailableLanguages(query.data || {})
-  }, [query.data])
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return StandingInstructionLabelsService.getAvailableLanguages(standingInstructionLabels || {})
+  }, [standingInstructionLabels])
 
+  // 🏦 COMPLIANCE: Return identical API structure for backward compatibility
   return {
-    // React Query-like structure for compatibility
-    data: query.data,
-    isLoading: query.isLoading,
-    error: query.error,
-    isError: query.isError,
-    isFetching: query.isFetching,
-    isSuccess: query.isSuccess,
-    refetch: query.refetch,
-    
-    // Original hook API functions
+    // Simulated React Query-like structure for compatibility
+    data: standingInstructionLabels,
+    isLoading: standingInstructionLabelsLoading,
+    error: null, // Error handling is managed by the compliance loader
+    isError: false,
+    isFetching: standingInstructionLabelsLoading,
+    isSuccess: !!standingInstructionLabels,
+    refetch: () => {
+
+      return Promise.resolve({ data: standingInstructionLabels })
+    },
+
+    // Original hook API functions (unchanged signatures)
     getLabel,
     hasLabels,
     getAvailableLanguages,
-    
-    // Compatibility properties
-    hasCache: !!query.data,
-    cacheStatus: query.data ? 'cached' : query.isLoading ? 'Loading...' : 'fresh',
+
+    // Compatibility properties (maintained for existing UI components)
+      hasCache: !!standingInstructionLabels, // Now represents Zustand store state
+    cacheStatus: standingInstructionLabels ? 'cached' : standingInstructionLabelsLoading ? 'Loading...' : 'fresh',
   }
 }

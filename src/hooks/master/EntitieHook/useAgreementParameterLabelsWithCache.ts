@@ -1,53 +1,58 @@
 import { useCallback } from 'react'
-import { useAgreementParameterLabels } from './useAgreementParameter'
+import { useLabels, useLabelsLoadingState } from '@/store'
 import { AgreementParameterLabelsService } from '@/services/api/masterApi/Entitie/agreementParameterLabelsService'
-import type { ProcessedAgreementParameterLabels } from '@/services/api/masterApi/Entitie/agreementParameterLabelsService'
 
-export function useAgreementParameterLabelsWithCache() {
-    // Use React Query hook to fetch labels
-    const query = useAgreementParameterLabels()
-    
-    // Process the labels data to match the expected format
-    const agreementParameterLabels = query.data as ProcessedAgreementParameterLabels | undefined
+export function useAgreementLabelsWithCache() {
+  // 🏦 BANKING COMPLIANCE: Now using Zustand store instead of localStorage
+  // API remains identical for backward compatibility
+  const { agreementParameterLabels } = useLabels()
+  const { agreementParameterLabelsLoading } = useLabelsLoadingState()
 
-    const getLabel = useCallback(
-        (configId: string, language: string, fallback: string) => {
-            if (agreementParameterLabels) {
-                return AgreementParameterLabelsService.getLabel(agreementParameterLabels, configId, language, fallback)
-            }
-            return fallback
-        },
-        [agreementParameterLabels]
-    )
+  // Note: We no longer use the old React Query hook since Zustand is the source of truth
+  // Labels are loaded by the compliance loader service on app initialization
 
-    const hasLabels = useCallback(() => {
-        return AgreementParameterLabelsService.hasLabels(agreementParameterLabels || {})
-    }, [agreementParameterLabels])
+  const getLabel = useCallback(
+    (configId: string, language: string, fallback: string) => {
+      // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+      if (agreementParameterLabels) {
+        return AgreementParameterLabelsService.getLabel(agreementParameterLabels, configId, language, fallback)
+      }
+      return fallback
+    },
+    [agreementParameterLabels]
+  )
 
-    const getAvailableLanguages = useCallback(() => {
-        return AgreementParameterLabelsService.getAvailableLanguages(agreementParameterLabels || {})
-    }, [agreementParameterLabels])
+  const hasLabels = useCallback(() => {
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return AgreementParameterLabelsService.hasLabels(agreementParameterLabels || {})
+  }, [agreementParameterLabels])
 
-    // Return identical API structure for backward compatibility
-    return {
-        // React Query-like structure for compatibility
-        data: agreementParameterLabels,
-        isLoading: query.isLoading,
-        error: query.error,
-        isError: query.isError,
-        isFetching: query.isFetching,
-        isSuccess: query.isSuccess,
-        refetch: query.refetch,
+  const getAvailableLanguages = useCallback(() => {
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return AgreementParameterLabelsService.getAvailableLanguages(agreementParameterLabels || {})
+  }, [agreementParameterLabels])
 
-        // Original hook API functions (unchanged signatures)
-        getLabel,
-        hasLabels,
-        getAvailableLanguages,
+  // 🏦 COMPLIANCE: Return identical API structure for backward compatibility
+  return {
+    // Simulated React Query-like structure for compatibility
+    data: agreementParameterLabels,
+    isLoading: agreementParameterLabelsLoading,
+    error: null, // Error handling is managed by the compliance loader
+    isError: false,
+    isFetching: agreementParameterLabelsLoading,
+    isSuccess: !!agreementParameterLabels,
+    refetch: () => {
 
-        // Compatibility properties (maintained for existing UI components)
-        hasCache: !!agreementParameterLabels,
-        cacheStatus: agreementParameterLabels ? 'cached' : query.isLoading ? 'Loading...' : 'fresh',
-    }
+      return Promise.resolve({ data: agreementParameterLabels })
+    },
+
+    // Original hook API functions (unchanged signatures)
+    getLabel,
+    hasLabels,
+    getAvailableLanguages,
+
+    // Compatibility properties (maintained for existing UI components)
+    hasCache: !!agreementParameterLabels, // Now represents Zustand store state
+    cacheStatus: agreementParameterLabels ? 'cached' : agreementParameterLabelsLoading ? 'Loading...' : 'fresh',
+  }
 }
-
-

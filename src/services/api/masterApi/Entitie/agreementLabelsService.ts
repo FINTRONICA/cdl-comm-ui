@@ -1,64 +1,69 @@
-import { apiClient } from '@/lib/apiClient'
-import { API_ENDPOINTS } from '@/constants/apiEndpoints'
-import { getAuthCookies } from '@/utils/cookieUtils'
+import { apiClient } from "@/lib/apiClient";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
+import { getAuthCookies } from "@/utils/cookieUtils";
 export interface AgreementLabelResponse {
-  id: number
-  configId: string
-  configValue: string
-  content: string | null
+  id: number;
+  configId: string;
+  configValue: string;
+  content: string | null;
   appLanguageCode: {
-    id: number
-    languageCode: string
-    nameKey: string
-    nameNativeValue: string
-    enabled: boolean
-    rtl: boolean
-  }
+    id: number;
+    languageCode: string;
+    nameKey: string;
+    nameNativeValue: string;
+    enabled: boolean;
+    rtl: boolean;
+  };
   applicationModuleDTO: {
-    id: number
-    moduleName: string
-    moduleDescription: string
-    active: boolean
-  }
-  status: string | null
-  enabled: boolean
+    id: number;
+    moduleName: string;
+    moduleDescription: string;
+    active: boolean;
+  };
+  status: string | null;
+  enabled: boolean;
 }
 
-export type ProcessedAgreementLabels = Record<string, Record<string, string>> // configId -> language -> label
+export type ProcessedAgreementLabels = Record<string, Record<string, string>>; // configId -> language -> label
 
-const DEFAULT_LANGUAGE = 'EN'
-const ERROR_MESSAGE = 'Failed to fetch agreement labels'
+const DEFAULT_LANGUAGE = "EN";
+const ERROR_MESSAGE = "Failed to fetch agreement labels";
 
 export class AgreementLabelsService {
+
   static async fetchLabels(): Promise<AgreementLabelResponse[]> {
     try {
-      const { token } = getAuthCookies()
-
+      const { token } = getAuthCookies();
       if (!token) {
-        throw new Error('Authentication token not found')
+        throw new Error("Authentication token not found");
       }
       const labels = await apiClient.get<AgreementLabelResponse[]>(
         API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.ESCROW_AGREEMENT,
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
-      )
-      return labels
+      );
+      return labels;
     } catch (error) {
-      throw new Error(ERROR_MESSAGE)
+      throw new Error(ERROR_MESSAGE);
     }
   }
 
-  static processLabels(labels: AgreementLabelResponse[]): ProcessedAgreementLabels {
-    return labels.reduce((processedLabels, { configId, configValue, appLanguageCode }) => {
-      if (!processedLabels[configId]) {
-        processedLabels[configId] = {}
-      }
-      processedLabels[configId][appLanguageCode.languageCode] = configValue
-      return processedLabels
-    }, {} as Record<string, Record<string, string>>)
+  static processLabels(
+    labels: AgreementLabelResponse[]
+  ): ProcessedAgreementLabels {
+    return labels.reduce(
+      (processedLabels, { configId, configValue, appLanguageCode }) => {
+        if (!processedLabels[configId]) {
+          processedLabels[configId] = {};
+        }
+        processedLabels[configId][appLanguageCode.languageCode] = configValue;
+        return processedLabels;
+      },
+      {} as Record<string, Record<string, string>>
+    );
   }
 
   static getLabel(
@@ -67,29 +72,33 @@ export class AgreementLabelsService {
     language: string,
     fallback: string
   ): string {
-    const languageLabels = labels[configId]
-    return languageLabels?.[language] || languageLabels?.[DEFAULT_LANGUAGE] || fallback
+    const languageLabels = labels[configId];
+    return (
+      languageLabels?.[language] ||
+      languageLabels?.[DEFAULT_LANGUAGE] ||
+      fallback
+    );
   }
 
   static hasLabels(labels: ProcessedAgreementLabels): boolean {
-    return labels && Object.keys(labels).length > 0
+    return labels && Object.keys(labels).length > 0;
   }
 
   static getAvailableLanguages(labels: ProcessedAgreementLabels): string[] {
     try {
-      const languages = new Set<string>()
+      const languages = new Set<string>();
+      Object.values(labels).forEach((languageLabels) => {
+        Object.keys(languageLabels).forEach((language) => {
+          languages.add(language);
+        });
+      });
 
-      Object.values(labels).forEach(languageLabels => {
-        Object.keys(languageLabels).forEach(language => {
-          languages.add(language)
-        })
-      })
-
-      return Array.from(languages)
+      return Array.from(languages);
     } catch (error) {
-      return [DEFAULT_LANGUAGE]
+      return [DEFAULT_LANGUAGE];
     }
   }
+  
 }
 
-export default AgreementLabelsService
+export default AgreementLabelsService;

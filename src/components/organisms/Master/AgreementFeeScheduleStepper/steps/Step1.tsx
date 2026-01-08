@@ -158,11 +158,6 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
         // Fetch agreement fee schedule data to populate fields
         const agreementFeeSchedule = await agreementFeeScheduleService.getAgreementFeeSchedule(agreementFeeScheduleId)
         
-        console.log('[AgreementFeeScheduleStep1] Fetched agreement fee schedule data for population:', {
-          agreementFeeScheduleId,
-          agreementFeeSchedule,
-        })
-        
         // Populate all fields from agreement fee schedule data
         if (agreementFeeSchedule) {
           const fieldsToPopulate = [
@@ -266,7 +261,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
           }
         }
       } catch (error) {
-        console.error('Error fetching agreement fee schedule data for form population:', error)
+        // Error handled silently - form will remain empty
     } finally {
         isPopulating = false
       }

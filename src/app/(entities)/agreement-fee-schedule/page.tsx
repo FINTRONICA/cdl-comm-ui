@@ -161,56 +161,59 @@ const AgreementFeeSchedulesPageImpl: React.FC = () => {
     [agreementFeeScheduleLabels, currentLanguage, getLabel]
   )
 
-  const tableColumns = [
-    {
-      key: 'operatingLocation',
-      label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_LOCATION'),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-    },
-    {
-      key: 'priorityLevel',
-      label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEAL_PRIORITY'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'effectiveStartDate',
-      label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_START_DATE'),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-    },
-    {
-      key: 'effectiveEndDate',
-      label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_END_DATE'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'transactionRateAmount',
-      label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_AMOUNT_RATE_PER_TRANSACTION'),
-      type: 'text' as const,
-      width: 'w-48',
-      sortable: true,
-    },
-    {
-      key: 'status',
-      label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DOC_ACTION'),
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  const tableColumns = useMemo(
+    () => [
+      {
+        key: 'operatingLocation',
+        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_LOCATION'),
+        type: 'text' as const,
+        width: 'w-40',
+        sortable: true,
+      },
+      {
+        key: 'priorityLevel',
+        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEAL_PRIORITY'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'effectiveStartDate',
+        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_START_DATE'),
+        type: 'text' as const,
+        width: 'w-40',
+        sortable: true,
+      },
+      {
+        key: 'effectiveEndDate',
+        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_END_DATE'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'transactionRateAmount',
+        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_AMOUNT_RATE_PER_TRANSACTION'),
+        type: 'text' as const,
+        width: 'w-48',
+        sortable: true,
+      },
+      {
+        key: 'status',
+        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_STATUS'),
+        type: 'status' as const,
+        width: 'w-32',
+        sortable: true,
+      },
+      {
+        key: 'actions',
+        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DOC_ACTION'),
+        type: 'actions' as const,
+        width: 'w-20',
+      },
+    ],
+    [getAgreementFeeScheduleLabelDynamic]
+  )
 
   const {
     search,
@@ -301,7 +304,6 @@ const AgreementFeeSchedulesPageImpl: React.FC = () => {
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(`Failed to delete agreement fee schedule: ${errorMessage}`)
 
           throw error
         } finally {

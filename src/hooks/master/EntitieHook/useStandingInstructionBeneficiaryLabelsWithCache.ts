@@ -1,48 +1,58 @@
 import { useCallback } from 'react'
-import { useStandingInstructionBeneficiaryLabels } from './useStandingInstructionBeneficiary'
+import { useLabels, useLabelsLoadingState } from '@/store'
 import { StandingInstructionBeneficiaryLabelsService } from '@/services/api/masterApi/Entitie/standingInstructionBeneficiaryLabelsService'
 
 export function useStandingInstructionBeneficiaryLabelsWithCache() {
-  // Use React Query hook to fetch labels
-  const query = useStandingInstructionBeneficiaryLabels()
-  
+  // 🏦 BANKING COMPLIANCE: Now using Zustand store instead of localStorage
+  // API remains identical for backward compatibility
+  const { standingInstructionBeneficiaryLabels } = useLabels()
+  const { standingInstructionBeneficiaryLabelsLoading } = useLabelsLoadingState()
+
+  // Note: We no longer use the old React Query hook since Zustand is the source of truth
+  // Labels are loaded by the compliance loader service on app initialization
+
   const getLabel = useCallback(
     (configId: string, language: string, fallback: string) => {
-      if (query.data) {
-        return StandingInstructionBeneficiaryLabelsService.getLabel(query.data, configId, language, fallback)
+      // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+      if (standingInstructionBeneficiaryLabels) {
+        return StandingInstructionBeneficiaryLabelsService.getLabel(standingInstructionBeneficiaryLabels, configId, language, fallback)
       }
       return fallback
     },
-    [query.data]
+    [standingInstructionBeneficiaryLabels]
   )
 
   const hasLabels = useCallback(() => {
-    return StandingInstructionBeneficiaryLabelsService.hasLabels(query.data || {})
-  }, [query.data])
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return StandingInstructionBeneficiaryLabelsService.hasLabels(standingInstructionBeneficiaryLabels || {})
+  }, [standingInstructionBeneficiaryLabels])
 
   const getAvailableLanguages = useCallback(() => {
-    return StandingInstructionBeneficiaryLabelsService.getAvailableLanguages(query.data || {})
-  }, [query.data])
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return StandingInstructionBeneficiaryLabelsService.getAvailableLanguages(standingInstructionBeneficiaryLabels || {})
+  }, [standingInstructionBeneficiaryLabels])
 
+  // 🏦 COMPLIANCE: Return identical API structure for backward compatibility
   return {
-    // React Query-like structure for compatibility
-    data: query.data,
-    isLoading: query.isLoading,
-    error: query.error,
-    isError: query.isError,
-    isFetching: query.isFetching,
-    isSuccess: query.isSuccess,
-    refetch: query.refetch,
-    
-    // Original hook API functions
+    // Simulated React Query-like structure for compatibility
+    data: standingInstructionBeneficiaryLabels,
+    isLoading: standingInstructionBeneficiaryLabelsLoading,
+    error: null, // Error handling is managed by the compliance loader
+    isError: false,
+    isFetching: standingInstructionBeneficiaryLabelsLoading,
+    isSuccess: !!standingInstructionBeneficiaryLabels,
+    refetch: () => {
+
+      return Promise.resolve({ data: standingInstructionBeneficiaryLabels })
+    },
+
+    // Original hook API functions (unchanged signatures)
     getLabel,
     hasLabels,
     getAvailableLanguages,
-    
-    // Compatibility properties
-    hasCache: !!query.data,
-    cacheStatus: query.data ? 'cached' : query.isLoading ? 'Loading...' : 'fresh',
+
+    // Compatibility properties (maintained for existing UI components)
+    hasCache: !!standingInstructionBeneficiaryLabels, // Now represents Zustand store state
+    cacheStatus: standingInstructionBeneficiaryLabels ? 'cached' : standingInstructionBeneficiaryLabelsLoading ? 'Loading...' : 'fresh',
   }
 }
-
-

@@ -470,9 +470,6 @@ export default function AgreementStepperWrapper({
             | undefined,
         };
 
-        // Always include enabled and deleted fields
-        // For new agreements: enabled=true, deleted=false
-        // For editing: enabled=true, deleted=false (maintain existing state)
         stepSpecificData = {
           ...step1Data,
           enabled: true,
