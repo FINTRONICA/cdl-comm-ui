@@ -111,12 +111,12 @@ export interface UpdatePartyRequest {
 
 export interface PartyFilters {
   status?:
-    | 'PENDING'
-    | 'APPROVED'
-    | 'REJECTED'
-    | 'IN_PROGRESS'
-    | 'DRAFT'
-    | 'INITIATED'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'IN_PROGRESS'
+  | 'DRAFT'
+  | 'INITIATED'
   name?: string
   partyId?: string
 }
@@ -199,12 +199,12 @@ export interface PartyUIData {
   lastUpdated?: string | undefined
   contactPerson?: string | undefined
   documents?:
-    | Array<{
-        name: string
-        type: string
-        url: string
-      }>
-    | undefined
+  | Array<{
+    name: string
+    type: string
+    url: string
+  }>
+  | undefined
 }
 
 // Utility function to map API Party to UI PartyUIData
@@ -215,7 +215,6 @@ export const mapPartyToUIData = (
     if (!taskStatusDTO) {
       return 'INITIATED'
     }
-
     // Use the code from taskStatusDTO directly as it matches our new status options
     return taskStatusDTO.code || 'INITIATED'
   }
@@ -381,27 +380,11 @@ export class PartyService {
     }
     const url = `${baseUrl}?${new URLSearchParams(allParams).toString()}`
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[PartyService] Fetching parties from URL:', url)
-      console.log('[PartyService] Query parameters:', allParams)
-    }
-
     try {
       const result = await apiClient.get<PaginatedResponse<Party>>(url)
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[PartyService] Raw API response:', result)
-        console.log('[PartyService] Response type:', typeof result)
-        console.log('[PartyService] Is array?', Array.isArray(result))
-        console.log('[PartyService] Has content?', 'content' in (result || {}))
-        console.log('[PartyService] Content length:', result?.content?.length || 0)
-      }
-
       // Handle case where API returns array directly instead of paginated response
       if (Array.isArray(result)) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[PartyService] API returned array directly, converting to paginated format')
-        }
         return {
           content: result,
           page: {
@@ -415,9 +398,6 @@ export class PartyService {
 
       // Handle case where content might be missing
       if (result && !result.content) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[PartyService] API response missing content field, response:', result)
-        }
         return {
           content: [],
           page: {
@@ -439,9 +419,6 @@ export class PartyService {
         },
       }
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[PartyService] Error fetching parties:', error)
-      }
       throw error
     }
   }
@@ -460,23 +437,33 @@ export class PartyService {
 
   async getPartyAuthorizedSignatory(partyId: string): Promise<PartyAuthorizedSignatoryResponse[]> {
     try {
-      // Get all authorized signatories for a party
+      // Get all authorized signatories - filter by deleted and enabled only
+      // Note: partyId is kept for potential client-side filtering if needed
+      const baseUrl = buildApiUrl('/authorised-signatory')
       const params = new URLSearchParams({
-        'partyDTO.id.equals': partyId,
         'deleted.equals': 'false',
         'enabled.equals': 'true',
       })
-      const url = `${buildApiUrl(API_ENDPOINTS.PARTY_AUTHORIZED_SIGNATORY.GET_ALL)}&${params.toString()}`
+      const url = `${baseUrl}?${params.toString()}`
 
       const result = await apiClient.get<PaginatedResponse<PartyAuthorizedSignatoryResponse>>(url)
-      return result?.content || []
+      const allSignatories = result?.content || []
+      
+      // Filter by partyId on client-side if partyId is provided
+      if (partyId) {
+        return allSignatories.filter(
+          (signatory) => signatory.partyDTO?.id?.toString() === partyId.toString()
+        )
+      }
+      
+      return allSignatories
     } catch (error) {
       throw error
     }
   }
 
   async savePartyReview(
-    data:PartyReviewData
+    data: PartyReviewData
   ): Promise<StepSaveResponse> {
     const url = buildApiUrl(API_ENDPOINTS.PARTY_CREATE.REVIEW_SAVE)
     return apiClient.post<StepSaveResponse>(url, data)
@@ -491,7 +478,7 @@ export class PartyService {
   ): Promise<PaginatedResponse<PartyAuthorizedSignatoryResponse>> {
     try {
       const url = buildApiUrl(
-        API_ENDPOINTS.PARTY_AUTHORIZED_SIGNATORY.GET_BY_ID( partyAuthorizedSignatoryId)
+        API_ENDPOINTS.PARTY_AUTHORIZED_SIGNATORY.GET_BY_ID(partyAuthorizedSignatoryId)
       )
       const params = buildPaginationParams(page, size)
       const queryString = new URLSearchParams(params).toString()
@@ -512,7 +499,7 @@ export class PartyService {
   // Get fees with UI transformation
 
   // Get fees with pagination
- 
+
 
   async getPartyByCif(cif: string): Promise<Party> {
     try {
@@ -636,7 +623,7 @@ export class PartyService {
     // return apiClient.get<PartyLabel[]>(
     //   buildApiUrl(API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.PARTY)
     // )
-    
+
     // Return empty array for now
     return []
   }
@@ -714,15 +701,6 @@ export class PartyService {
       throw error
     }
   }
-
-
-
- 
-
-
-
-  // Get a specific beneficiary by ID for editing
-  
 
   async savePartyAuthorizedSignatoryReview(
     data: PartyDetailsData
@@ -877,7 +855,7 @@ export class PartyService {
         'enabled.equals': 'true',
       }
       const url = `${buildApiUrl(API_ENDPOINTS.PARTY.SAVE)}?${new URLSearchParams(params).toString()}`
-      const response = await apiClient.get(url) 
+      const response = await apiClient.get(url)
       // Handle both single object and paginated response formats
       let parties: Party[] = []
 
@@ -908,26 +886,19 @@ export class PartyService {
     try {
       const url = buildApiUrl(API_ENDPOINTS.PARTY.FIND_ALL)
       const result = await apiClient.get<Party[]>(url)
-      
+
       // Handle both array and paginated response formats
       if (Array.isArray(result)) {
         return result
       } else if (result && typeof result === 'object' && 'content' in result) {
         return (result as PaginatedResponse<Party>).content || []
       }
-      
+
       return []
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[PartyService] Error fetching all parties:', error)
-      }
+    } catch {
       throw new Error('Failed to fetch parties')
     }
   }
-  // Data mapping functions for fees
- 
-
-
 }
 
 export const partyService = new PartyService()

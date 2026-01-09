@@ -1,7 +1,5 @@
 
 export interface BeneficiaryData {
-   
-   
     id: number,
     beneficiaryFullName: string | null,
     beneficiaryAddressLine1: string | null,

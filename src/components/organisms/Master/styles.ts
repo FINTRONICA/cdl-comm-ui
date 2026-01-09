@@ -365,3 +365,23 @@ export const buttonContainerSx: SxProps<Theme> = (theme: Theme) => ({
   mx: 6,
   mb: 2,
 })
+
+// View mode input styles
+export const viewModeInputStyles = (theme: Theme) => ({
+  backgroundColor:
+    theme.palette.mode === 'dark'
+      ? alpha(theme.palette.background.paper, 0.25)
+      : '#F9FAFB',
+  borderColor:
+    theme.palette.mode === 'dark'
+      ? alpha('#FFFFFF', 0.2)
+      : '#E5E7EB',
+  textColor: theme.palette.mode === 'dark' ? '#CBD5E1' : '#6B7280',
+})
+
+// Neutral border colors
+export const neutralBorder = (theme: Theme): string =>
+  theme.palette.mode === 'dark' ? alpha('#FFFFFF', 0.3) : '#CAD5E2'
+
+export const neutralBorderHover = (theme: Theme): string =>
+  theme.palette.mode === 'dark' ? alpha('#FFFFFF', 0.5) : '#CAD5E2'

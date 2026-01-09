@@ -142,6 +142,12 @@ export interface LabelsState {
   standingInstructionBeneficiaryLabelsError: string | null
   standingInstructionBeneficiaryLabelsLastFetched: number | null
 
+  // Beneficiary labels
+  beneficiaryLabels: ProcessedLabels | null
+  beneficiaryLabelsLoading: boolean
+  beneficiaryLabelsError: string | null
+  beneficiaryLabelsLastFetched: number | null
+
   // Global loading state for all labels
   allLabelsLoading: boolean
   allLabelsError: string | null
@@ -247,6 +253,11 @@ export interface LabelsActions {
   setStandingInstructionBeneficiaryLabelsLoading: (loading: boolean) => void
   setStandingInstructionBeneficiaryLabelsError: (error: string | null) => void
 
+  // Beneficiary labels actions
+  setBeneficiaryLabels: (labels: ProcessedLabels) => void
+  setBeneficiaryLabelsLoading: (loading: boolean) => void
+  setBeneficiaryLabelsError: (error: string | null) => void
+
   // Global actions
   setAllLabelsLoading: (loading: boolean) => void
   setAllLabelsError: (error: string | null) => void
@@ -275,7 +286,8 @@ export interface LabelsActions {
       | 'agreementSignatory'
       | 'paymentInstruction'
       | 'standingInstruction'
-      | 'standingInstructionBeneficiary',
+      | 'standingInstructionBeneficiary'
+      | 'beneficiary',
     configId: string,
     language: string,
     fallback: string
@@ -305,6 +317,7 @@ export interface LabelsActions {
       | 'paymentInstruction'
       | 'standingInstruction'
       | 'standingInstructionBeneficiary'
+      | 'beneficiary'
   ) => boolean
   getAvailableLanguages: (
     type:
@@ -329,6 +342,7 @@ export interface LabelsActions {
       | 'paymentInstruction'
       | 'standingInstruction'
       | 'standingInstructionBeneficiary'
+      | 'beneficiary'
   ) => string[]
 
   // Status helpers
@@ -471,6 +485,11 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
   standingInstructionBeneficiaryLabelsLoading: false,
   standingInstructionBeneficiaryLabelsError: null,
   standingInstructionBeneficiaryLabelsLastFetched: null,
+
+  beneficiaryLabels: null,
+  beneficiaryLabelsLoading: false,
+  beneficiaryLabelsError: null,
+  beneficiaryLabelsLastFetched: null,
 
   allLabelsLoading: false,
   allLabelsError: null,
@@ -835,6 +854,22 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
     set({ standingInstructionBeneficiaryLabelsError: error })
   },
 
+  // Beneficiary labels actions
+  setBeneficiaryLabels: (labels) => {
+    set({
+      beneficiaryLabels: labels,
+      beneficiaryLabelsLastFetched: Date.now(),
+      beneficiaryLabelsError: null,
+    })
+  },
+  setBeneficiaryLabelsLoading: (loading) => set({ beneficiaryLabelsLoading: loading }),
+  setBeneficiaryLabelsError: (error) => {
+    if (error) {
+      console.error('❌ [COMPLIANCE] Beneficiary labels error:', error)
+    }
+    set({ beneficiaryLabelsError: error })
+  },
+
   // Global actions
   setAllLabelsLoading: (loading) => set({ allLabelsLoading: loading }),
 
@@ -912,6 +947,9 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       standingInstructionBeneficiaryLabels: null,
       standingInstructionBeneficiaryLabelsLastFetched: null,
       standingInstructionBeneficiaryLabelsError: null,
+      beneficiaryLabels: null,
+      beneficiaryLabelsLastFetched: null,
+      beneficiaryLabelsError: null,
       allLabelsError: null,
     })
   },
@@ -990,6 +1028,9 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
         break
       case 'standingInstructionBeneficiary':
         labels = state.standingInstructionBeneficiaryLabels
+        break
+      case 'beneficiary':
+        labels = state.beneficiaryLabels
         break
       
       default:
@@ -1121,6 +1162,11 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
           state.standingInstructionBeneficiaryLabels &&
           Object.keys(state.standingInstructionBeneficiaryLabels).length > 0
         )
+      case 'beneficiary':
+        return !!(
+          state.beneficiaryLabels &&
+          Object.keys(state.beneficiaryLabels).length > 0
+        )
       
       default:
         return false
@@ -1202,6 +1248,9 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       case 'standingInstructionBeneficiary':
         labels = state.standingInstructionBeneficiaryLabels
         break
+      case 'beneficiary':
+        labels = state.beneficiaryLabels
+        break
       
       default:
         return ['EN']
@@ -1256,7 +1305,8 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       state.agreementSignatoryLabelsLoading ||
       state.paymentInstructionLabelsLoading ||
       state.standingInstructionLabelsLoading ||
-      state.standingInstructionBeneficiaryLabelsLoading
+      state.standingInstructionBeneficiaryLabelsLoading ||
+      state.beneficiaryLabelsLoading
     
     // Combined loading state
     const anyLoading =
@@ -1295,6 +1345,7 @@ export const labelsSlice: StateCreator<LabelsSlice> = (set, get) => ({
       paymentInstruction: state.paymentInstructionLabelsLoading,
       standingInstruction: state.standingInstructionLabelsLoading,
       standingInstructionBeneficiary: state.standingInstructionBeneficiaryLabelsLoading,
+      beneficiary: state.beneficiaryLabelsLoading,
       
       // Combined states
       any: anyLoading,

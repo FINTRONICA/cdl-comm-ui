@@ -8,7 +8,7 @@ import type { PaginatedResponse } from '@/types'
 import type {
   ApiDocumentResponse,
   PaginatedDocumentResponse,
-} from '@/components/organisms/DeveloperStepper/developerTypes'
+} from '@/components/organisms/Master/PartyStepper/partyTypes'
 
 export interface TaskStatusDTO {
   id: number
@@ -273,25 +273,25 @@ export class BeneficiaryService {
       const url = buildApiUrl(
         API_ENDPOINTS.MASTER_BENEFICIARY.UPDATE(String(beneficiaryId))
       )
-      
+
       // For updates, clean up the payload to match backend expectations
       const cleanedData: Record<string, unknown> = { ...data }
-      
+
       // Remove uuid from updates (backend manages this)
       if ('uuid' in cleanedData) {
         delete cleanedData.uuid
       }
-      
+
       // Remove deleted from updates (backend manages this)
       if ('deleted' in cleanedData) {
         delete cleanedData.deleted
       }
-      
+
       // Remove enabled from updates (backend manages this, or it's already set)
       if ('enabled' in cleanedData) {
         delete cleanedData.enabled
       }
-      
+
       // Remove null DTOs - only include DTOs with valid IDs
       if (cleanedData.accountTypeDTO === null || cleanedData.accountTypeDTO === undefined) {
         delete cleanedData.accountTypeDTO
@@ -316,10 +316,10 @@ export class BeneficiaryService {
     } else {
       // Use POST for creating new beneficiary
       const url = buildApiUrl(API_ENDPOINTS.MASTER_BENEFICIARY.SAVE)
-      
+
       // For creates, clean up null DTOs but keep uuid and deleted
       const cleanedData: Record<string, unknown> = { ...data }
-      
+
       // Remove null DTOs
       if (cleanedData.accountTypeDTO === null || cleanedData.accountTypeDTO === undefined) {
         delete cleanedData.accountTypeDTO
@@ -333,12 +333,12 @@ export class BeneficiaryService {
       if (cleanedData.taskStatusDTO === null || cleanedData.taskStatusDTO === undefined) {
         delete cleanedData.taskStatusDTO
       }
-      
+
       // Remove id from creates (backend will generate it)
       if ('id' in cleanedData) {
         delete cleanedData.id
       }
-      
+
       const requestData = {
         ...cleanedData,
         enabled: data.enabled ?? true,
@@ -538,6 +538,3 @@ export const mapBeneficiaryToUIData = (
 }
 
 export const beneficiaryService = new BeneficiaryService()
-
-
-

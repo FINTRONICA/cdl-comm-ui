@@ -289,12 +289,6 @@ const BeneficiariesPageImpl: React.FC = () => {
             setIsDeleting(true)
             await deleteMutation.mutateAsync(row.id)
           } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : 'Unknown error occurred'
-            if (process.env.NODE_ENV === 'development') {
-              // eslint-disable-next-line no-console
-              console.error(`Failed to delete beneficiary: ${errorMessage}`)
-            }
             throw error
           } finally {
             setIsDeleting(false)

@@ -194,6 +194,7 @@ export const useLabels = () => {
   const paymentInstructionLabels = useAppStore((state) => state.paymentInstructionLabels)
   const standingInstructionLabels = useAppStore((state) => state.standingInstructionLabels)
   const standingInstructionBeneficiaryLabels = useAppStore((state) => state.standingInstructionBeneficiaryLabels)
+  const beneficiaryLabels = useAppStore((state) => state.beneficiaryLabels)
   const allLabelsLoading = useAppStore((state) => state.allLabelsLoading)
   const allLabelsError = useAppStore((state) => state.allLabelsError)
 
@@ -218,10 +219,11 @@ export const useLabels = () => {
       paymentInstructionLabels,
       standingInstructionLabels,
       standingInstructionBeneficiaryLabels,
+      beneficiaryLabels,
       allLabelsLoading,
       allLabelsError,
     }),
-    [sidebarLabels, partyLabels, buildPartnerLabels, capitalPartnerLabels, buildPartnerAssetLabels, workflowActionLabels, workflowDefinitionLabels, workflowStageTemplateLabels, workflowAmountRuleLabels, workflowAmountStageOverrideLabels, workflowRequestedLabels, accountLabels, agreementLabels, agreementFeeScheduleLabels, agreementParameterLabels, agreementSignatoryLabels, paymentInstructionLabels, standingInstructionLabels, standingInstructionBeneficiaryLabels, allLabelsLoading, allLabelsError]
+    [sidebarLabels, partyLabels, buildPartnerLabels, capitalPartnerLabels, buildPartnerAssetLabels, workflowActionLabels, workflowDefinitionLabels, workflowStageTemplateLabels, workflowAmountRuleLabels, workflowAmountStageOverrideLabels, workflowRequestedLabels, accountLabels, agreementLabels, agreementFeeScheduleLabels, agreementParameterLabels, agreementSignatoryLabels, paymentInstructionLabels, standingInstructionLabels, standingInstructionBeneficiaryLabels, beneficiaryLabels, allLabelsLoading, allLabelsError]
   )
 }
 
@@ -246,6 +248,7 @@ export const useLabelsLoadingState = () => {
   const paymentInstructionLabelsLoading = useAppStore((state) => state.paymentInstructionLabelsLoading)
   const standingInstructionLabelsLoading = useAppStore((state) => state.standingInstructionLabelsLoading)
   const standingInstructionBeneficiaryLabelsLoading = useAppStore((state) => state.standingInstructionBeneficiaryLabelsLoading)
+  const beneficiaryLabelsLoading = useAppStore((state) => state.beneficiaryLabelsLoading)
 
   const getLoadingStatus = useAppStore((state) => state.getLoadingStatus)
 
@@ -270,9 +273,10 @@ export const useLabelsLoadingState = () => {
       paymentInstructionLabelsLoading,
       standingInstructionLabelsLoading,
       standingInstructionBeneficiaryLabelsLoading,
+      beneficiaryLabelsLoading,
       getLoadingStatus,
     }),
-    [sidebarLabelsLoading, partyLabelsLoading, buildPartnerLabelsLoading, capitalPartnerLabelsLoading, buildPartnerAssetLabelsLoading, workflowActionLabelsLoading, workflowDefinitionLabelsLoading, workflowStageTemplateLabelsLoading, workflowAmountRuleLabelsLoading, workflowAmountStageOverrideLabelsLoading, workflowRequestedLabelsLoading, accountLabelsLoading, agreementLabelsLoading, agreementFeeScheduleLabelsLoading, agreementParameterLabelsLoading, agreementSignatoryLabelsLoading, paymentInstructionLabelsLoading, standingInstructionLabelsLoading, standingInstructionBeneficiaryLabelsLoading, getLoadingStatus]
+    [sidebarLabelsLoading, partyLabelsLoading, buildPartnerLabelsLoading, capitalPartnerLabelsLoading, buildPartnerAssetLabelsLoading, workflowActionLabelsLoading, workflowDefinitionLabelsLoading, workflowStageTemplateLabelsLoading, workflowAmountRuleLabelsLoading, workflowAmountStageOverrideLabelsLoading, workflowRequestedLabelsLoading, accountLabelsLoading, agreementLabelsLoading, agreementFeeScheduleLabelsLoading, agreementParameterLabelsLoading, agreementSignatoryLabelsLoading, paymentInstructionLabelsLoading, standingInstructionLabelsLoading, standingInstructionBeneficiaryLabelsLoading, beneficiaryLabelsLoading, getLoadingStatus]
   )
 }
 
@@ -389,6 +393,10 @@ export const useLabelsActions = () => {
   const setStandingInstructionBeneficiaryLabelsLoading = useAppStore((state) => state.setStandingInstructionBeneficiaryLabelsLoading)
   const setStandingInstructionBeneficiaryLabelsError = useAppStore((state) => state.setStandingInstructionBeneficiaryLabelsError)
 
+  const setBeneficiaryLabels = useAppStore((state) => state.setBeneficiaryLabels)
+  const setBeneficiaryLabelsLoading = useAppStore((state) => state.setBeneficiaryLabelsLoading)
+  const setBeneficiaryLabelsError = useAppStore((state) => state.setBeneficiaryLabelsError)
+
   // Global actions
   const setAllLabelsLoading = useAppStore((state) => state.setAllLabelsLoading)
   const setAllLabelsError = useAppStore((state) => state.setAllLabelsError)
@@ -494,6 +502,10 @@ export const useLabelsActions = () => {
       setStandingInstructionBeneficiaryLabelsLoading,
       setStandingInstructionBeneficiaryLabelsError,
 
+      setBeneficiaryLabels,
+      setBeneficiaryLabelsLoading,
+      setBeneficiaryLabelsError,
+
       // Global
       setAllLabelsLoading,
       setAllLabelsError,
@@ -538,6 +550,7 @@ export const useLabelsActions = () => {
       setPaymentInstructionLabels, setPaymentInstructionLabelsLoading, setPaymentInstructionLabelsError,
       setStandingInstructionLabels, setStandingInstructionLabelsLoading, setStandingInstructionLabelsError,
       setStandingInstructionBeneficiaryLabels, setStandingInstructionBeneficiaryLabelsLoading, setStandingInstructionBeneficiaryLabelsError,
+      setBeneficiaryLabels, setBeneficiaryLabelsLoading, setBeneficiaryLabelsError,
       // Global & utilities
       setAllLabelsLoading, setAllLabelsError,
       clearAllLabels, getLabel, hasLabels, getAvailableLanguages,

@@ -21,6 +21,7 @@ import {
   Select,
   TextField,
   useTheme,
+  type Theme,
 } from '@mui/material'
 import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
@@ -48,7 +49,7 @@ import {
   viewModeInputStyles,
   neutralBorder,
   neutralBorderHover,
-} from '../styles'
+} from '@/components/organisms/Master/styles'
 
 export interface Step1Ref {
   handleSaveAndNext: () => Promise<void>
@@ -69,22 +70,32 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
     const textPrimary = isDark ? '#FFFFFF' : '#1E2939'
     const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
     const fieldStyles = React.useMemo(
-      () => sharedCommonFieldStyles(theme),
+      () => (sharedCommonFieldStyles as (theme: Theme) => Record<string, unknown>)(theme),
       [theme]
     )
     const selectFieldStyles = React.useMemo(
-      () => sharedSelectStyles(theme),
+      () => (sharedSelectStyles as (theme: Theme) => Record<string, unknown>)(theme),
       [theme]
     )
-    const labelStyles = React.useMemo(() => sharedLabelSx(theme), [theme])
-    const valueStyles = React.useMemo(() => sharedValueSx(theme), [theme])
+    const labelStyles = React.useMemo(
+      () => (sharedLabelSx as (theme: Theme) => Record<string, unknown>)(theme),
+      [theme]
+    )
+    const valueStyles = React.useMemo(
+      () => (sharedValueSx as (theme: Theme) => Record<string, unknown>)(theme),
+      [theme]
+    )
     const cardBaseStyles = React.useMemo(
-      () => (sharedCardStyles as (t: typeof theme) => Record<string, unknown>)(theme),
+      () => (sharedCardStyles as (theme: Theme) => Record<string, unknown>)(theme),
       [theme]
     )
-    const viewModeStyles = viewModeInputStyles(theme)
-    const neutralBorderColor = neutralBorder(theme)
-    const neutralBorderHoverColor = neutralBorderHover(theme)
+    const viewModeStyles = (viewModeInputStyles as (theme: Theme) => {
+      backgroundColor: string
+      borderColor: string
+      textColor: string
+    })(theme)
+    const neutralBorderColor = (neutralBorder as (theme: Theme) => string)(theme)
+    const neutralBorderHoverColor = (neutralBorderHover as (theme: Theme) => string)(theme)
 
     const {
       control,
@@ -275,11 +286,8 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
         }
 
         hasLoadedDataRef.current = true
-        } catch (error) {
+        } catch {
           hasLoadedDataRef.current = false // Reset on error to allow retry
-          if (process.env.NODE_ENV === 'development') {
-            console.error('[BeneficiaryStepper Step1] Error loading existing beneficiary data:', error)
-          }
         } finally {
         isLoadingRef.current = false
       }
@@ -493,7 +501,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                 },
               }}
               sx={{
-                ...fieldStyles,
+                ...(fieldStyles as Record<string, unknown>),
                 ...(disabled && {
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: viewModeStyles.backgroundColor,
@@ -520,7 +528,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                       },
                     },
                   }),
-              }}
+              } as Record<string, unknown>}
             />
           )}
         />
@@ -601,7 +609,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                 },
               }}
               sx={{
-                ...fieldStyles,
+                ...(fieldStyles as Record<string, unknown>),
                 ...((isReadOnly || isEditMode || isViewMode) && {
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: viewModeStyles.backgroundColor,
@@ -614,7 +622,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                     },
                   },
                 }),
-              }}
+              } as Record<string, unknown>}
             />
           )}
         />
@@ -796,10 +804,6 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                       onClick={(e) => {
                         e.stopPropagation()
                         e.preventDefault()
-                        // TODO: Implement bank details fetch when API is available
-                        if (process.env.NODE_ENV === 'development') {
-                          console.log('Bank details fetch not yet implemented for IFSC:', field.value)
-                        }
                       }}
                       disabled={isReadOnly || isViewMode || !field.value?.trim()}
                     >
@@ -820,7 +824,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                 },
               }}
               sx={{
-                ...fieldStyles,
+                ...(fieldStyles as Record<string, unknown>),
                 ...(isReadOnly && {
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: viewModeStyles.backgroundColor,
@@ -833,7 +837,7 @@ const Step1 = forwardRef<Step1Ref, Step1Props>(
                     },
                   },
                 }),
-              }}
+              } as Record<string, unknown>}
             />
           )}
         />

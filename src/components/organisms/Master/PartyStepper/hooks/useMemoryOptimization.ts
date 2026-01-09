@@ -43,8 +43,8 @@ export const useResourceCleanup = () => {
     cleanupFunctions.current.forEach(cleanupFn => {
       try {
         cleanupFn()
-      } catch (error) {
-        console.warn('Cleanup function failed:', error)
+      } catch {
+        // Silently handle cleanup errors
       }
     })
     cleanupFunctions.current.clear()

@@ -15,6 +15,7 @@ import {
   Select,
   TextField,
   useTheme,
+  type Theme,
 } from '@mui/material'
 import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
@@ -27,8 +28,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { getPartyLabel } from '@/constants/mappings/master/partyMapping'
 import { usePartyLabelsWithCache } from '@/hooks/master/CustomerHook/usePartyLabelsWithCache'
 import { useAppStore } from '@/store'
-import { partyService } from '@/services/api/masterApi/Customer/partyService'
-import { usePartiesForDropdown } from '@/hooks/master/CustomerHook/useParty'
+import { usePartiesForDropdown, usePartyStepStatus } from '@/hooks/master/CustomerHook/useParty'
 import {
   commonFieldStyles as sharedCommonFieldStyles,
   selectStyles as sharedSelectStyles,
@@ -39,7 +39,7 @@ import {
   viewModeInputStyles,
   neutralBorder,
   neutralBorderHover,
-} from '../styles'
+} from '@/components/organisms/Master/styles'
 
 interface Step2Props {
   isReadOnly?: boolean
@@ -52,26 +52,32 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
   const textPrimary = isDark ? '#FFFFFF' : '#1E2939'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
   const fieldStyles = React.useMemo(
-    () => sharedCommonFieldStyles(theme),
+    () => (sharedCommonFieldStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
   const selectFieldStyles = React.useMemo(
-    () => sharedSelectStyles(theme),
+    () => (sharedSelectStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
   const dateFieldStyles = React.useMemo(
-    () => sharedDatePickerStyles(theme),
+    () => (sharedDatePickerStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
-  const labelStyles = React.useMemo(() => sharedLabelSx(theme), [theme])
-  const valueStyles = React.useMemo(() => sharedValueSx(theme), [theme])
+  const labelStyles = React.useMemo(
+    () => (sharedLabelSx as (theme: Theme) => Record<string, unknown>)(theme),
+    [theme]
+  )
+  const valueStyles = React.useMemo(
+    () => (sharedValueSx as (theme: Theme) => Record<string, unknown>)(theme),
+    [theme]
+  )
   const cardBaseStyles = React.useMemo(
-    () => (sharedCardStyles as (t: ReturnType<typeof useTheme>) => Record<string, unknown>)(theme),
+    () => (sharedCardStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
-  const viewModeStyles = viewModeInputStyles(theme)
-  const neutralBorderColor = neutralBorder(theme)
-  const neutralBorderHoverColor = neutralBorderHover(theme)
+  const viewModeStyles = (viewModeInputStyles as (theme: Theme) => Record<string, unknown>)(theme)
+  const neutralBorderColor = (neutralBorder as (theme: Theme) => string)(theme)
+  const neutralBorderHoverColor = (neutralBorderHover as (theme: Theme) => string)(theme)
   const focusBorder = theme.palette.primary.main
   // Check if we're in edit mode (existing developer)
   const isEditMode = !!partyId
@@ -144,69 +150,62 @@ const Step2 = ({ isReadOnly = false, partyId }: Step2Props) => {
     }
   }
 
+  // Use React Query hook to get authorized signatory data - prevents duplicate API calls
+  const { data: stepStatus } = usePartyStepStatus(partyId || '')
+
   // Load existing authorized signatory data when in edit mode
   useEffect(() => {
     if (!isEditMode || !partyId) return
 
-    const loadExisting = async () => {
-      try {
-        const authorizedSignatories =
-          await partyService.getPartyAuthorizedSignatory(partyId)
-        if (
-          authorizedSignatories &&
-          Array.isArray(authorizedSignatories) &&
-          authorizedSignatories.length > 0
-        ) {
-          const firstSignatory = authorizedSignatories[0]
-          // Load cifExistsDTO if available
-          if (
-            firstSignatory &&
-            firstSignatory.cifExistsDTO &&
-            typeof firstSignatory.cifExistsDTO === 'object' &&
-            'id' in firstSignatory.cifExistsDTO
-          ) {
-            setValue(
-              'cifExistsDTO.id',
-              (firstSignatory.cifExistsDTO as { id?: number }).id,
-              {
-                shouldValidate: true,
-                shouldDirty: false,
-              }
-            )
+    // Use data from React Query hook instead of making direct API call
+    const authorizedSignatories = stepStatus?.stepData?.step2
+    if (
+      authorizedSignatories &&
+      Array.isArray(authorizedSignatories) &&
+      authorizedSignatories.length > 0
+    ) {
+      const firstSignatory = authorizedSignatories[0]
+      // Load cifExistsDTO if available
+      if (
+        firstSignatory &&
+        firstSignatory.cifExistsDTO &&
+        typeof firstSignatory.cifExistsDTO === 'object' &&
+        'id' in firstSignatory.cifExistsDTO
+      ) {
+        setValue(
+          'cifExistsDTO.id',
+          (firstSignatory.cifExistsDTO as { id?: number }).id,
+          {
+            shouldValidate: true,
+            shouldDirty: false,
           }
-          // Load partyDTO if available
-          if (
-            firstSignatory &&
-            firstSignatory.partyDTO &&
-            typeof firstSignatory.partyDTO === 'object' &&
-            'id' in firstSignatory.partyDTO
-          ) {
-            const partyIdValue = (firstSignatory.partyDTO as { id?: number }).id
-            if (partyIdValue) {
-              setValue('partyDropdown', partyIdValue.toString(), {
+        )
+      }
+      // Load partyDTO if available
+      if (
+        firstSignatory &&
+        firstSignatory.partyDTO &&
+        typeof firstSignatory.partyDTO === 'object' &&
+        'id' in firstSignatory.partyDTO
+      ) {
+        const partyIdValue = (firstSignatory.partyDTO as { id?: number }).id
+        if (partyIdValue) {
+          setValue('partyDropdown', partyIdValue.toString(), {
+            shouldValidate: true,
+            shouldDirty: false,
+          })
+          setValue(
+            'partyDTO',
+            { id: partyIdValue },
+            {
               shouldValidate: true,
               shouldDirty: false,
-            })
-              setValue(
-                'partyDTO',
-                { id: partyIdValue },
-                {
-                  shouldValidate: true,
-                  shouldDirty: false,
-                }
-              )
             }
-          }
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[PartyStepper Step2] Error loading existing authorized signatory data:', error)
+          )
         }
       }
     }
-
-    loadExisting()
-  }, [isEditMode, partyId, setValue])
+  }, [isEditMode, partyId, setValue, stepStatus?.stepData?.step2])
 
   // Handle party selection from dropdown
   const handlePartySelection = useCallback(

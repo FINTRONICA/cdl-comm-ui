@@ -180,7 +180,7 @@ export default function PartyStepperWrapper({
         })
         methods.reset(processedData)
         setShouldResetForm(false)
-      } catch (error) {
+      } catch {
         // Silently handle processing errors - they're usually non-critical
       }
     }
