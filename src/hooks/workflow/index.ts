@@ -3,18 +3,10 @@ export {
   WORKFLOW_ACTIONS_QUERY_KEY,
   useWorkflowActions,
   useWorkflowAction,
-  useSearchWorkflowActions,
-  useWorkflowActionLabels,
-  useWorkflowActionLabelsWithUtils,
-  useCreateWorkflowAction,
-  useUpdateWorkflowAction,
   useDeleteWorkflowAction,
-  useWorkflowActionsUIData,
-  useWorkflowActionsWithMutations,
-  useOptimisticWorkflowActions,
-  useWorkflowActionUtils,
-  useWorkflowActionService,
-  useWorkflowActionListUtils,
+  useSaveWorkflowAction,
+  useRefreshWorkflowActions,
+  useAllWorkflowActions,
 } from './useWorkflowActions'
 
 export { useWorkflowActionLabelsWithCache } from './useWorkflowActionLabelsWithCache'
@@ -159,12 +151,10 @@ import {
   WORKFLOW_ACTIONS_QUERY_KEY,
   useWorkflowActions,
   useWorkflowAction,
-  useSearchWorkflowActions,
-  useWorkflowActionLabels,
-  useCreateWorkflowAction,
-  useUpdateWorkflowAction,
   useDeleteWorkflowAction,
-  useWorkflowActionsUIData,
+  useSaveWorkflowAction,
+  useRefreshWorkflowActions,
+  useAllWorkflowActions,
 } from './useWorkflowActions'
 
 import { useWorkflowActionLabelsWithCache } from './useWorkflowActionLabelsWithCache'
@@ -285,12 +275,10 @@ import {
 export const workflowActionHooks = {
   useList: useWorkflowActions,
   useGet: useWorkflowAction,
-  useSearch: useSearchWorkflowActions,
-  useCreate: useCreateWorkflowAction,
-  useUpdate: useUpdateWorkflowAction,
+  useSave: useSaveWorkflowAction,
   useDelete: useDeleteWorkflowAction,
-  useUIData: useWorkflowActionsUIData,
-  useLabels: useWorkflowActionLabels,
+  useRefresh: useRefreshWorkflowActions,
+  useAll: useAllWorkflowActions,
   useLabelsWithCache: useWorkflowActionLabelsWithCache,
 } as const
 

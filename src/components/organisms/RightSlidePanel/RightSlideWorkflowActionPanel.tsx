@@ -10,7 +10,6 @@ import {
   Box,
   Alert,
   Snackbar,
-  Typography,
   CircularProgress,
 } from '@mui/material'
 import { Controller, useForm } from 'react-hook-form'
@@ -103,8 +102,9 @@ export const RightSlideWorkflowActionPanel: React.FC<RightSlidePanelProps> = ({
   const dropdownsError = propDropdownsError || null
 
   // Dynamic labels: same pattern used in Step4 & Contact Details
-  const { data: workflowActionLabels, getLabel } =
-    useWorkflowActionLabelsWithCache()
+  const workflowActionLabelsHook = useWorkflowActionLabelsWithCache()
+  const workflowActionLabels = workflowActionLabelsHook.data
+  const getLabel = workflowActionLabelsHook.getLabel
   const currentLanguage = useAppStore((state) => state.language) || 'EN'
   const getWorkflowActionLabelDynamic = useCallback(
     (configId: string): string => {
