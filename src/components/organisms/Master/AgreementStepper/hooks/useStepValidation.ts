@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { validateAgreementStepData } from "@/lib/validation/masterValidation/agreementSchemas";
-import { ValidationResult } from "../../PartyStepper/types";
+import { ValidationResult } from '@/components/organisms/Master/PartyStepper/types'
 
 export const useStepValidation = () => {
   const validateStepData = useCallback(

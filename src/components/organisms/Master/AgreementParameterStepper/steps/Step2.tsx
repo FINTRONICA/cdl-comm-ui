@@ -551,5 +551,3 @@ const Step2 = ({ agreementParameterId: propAgreementParameterId, onEditStep, isR
 }
 
 export default Step2
-
-

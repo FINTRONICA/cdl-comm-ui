@@ -14,7 +14,7 @@ import {
   backButtonSx as projectBackButtonSx,
   nextButtonSx as projectNextButtonSx,
   primaryButtonSx as projectPrimaryButtonSx
-} from '../styles'
+} from '@/components/organisms/Master/styles'
 
 export const commonFieldStyles = projectCommonFieldStyles
 

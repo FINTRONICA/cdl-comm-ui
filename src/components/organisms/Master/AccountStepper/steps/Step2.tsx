@@ -96,7 +96,6 @@ const Step2 = ({ accountId: propAccountId, onEditStep, isReadOnly = false }: Ste
 
   const {
     data: documentsResponse,
-    isLoading: isLoadingDocuments,
     error: documentsError,
   } = useAccountDocuments(accountId || '', 'ACCOUNT', 0, 100) // Fetch all documents for review
 
@@ -137,8 +136,16 @@ const Step2 = ({ accountId: propAccountId, onEditStep, isReadOnly = false }: Ste
     })
   }, [documentsResponse])
 
-  const loading = isLoadingAccount || isLoadingDocuments
-  const error = accountError || documentsError
+  // Only show loading if account details are loading (documents are optional)
+  const loading = isLoadingAccount
+  // Only show error if account details fail (documents errors are non-critical)
+  const error = accountError
+    ? (accountError instanceof Error ? accountError.message : 'Failed to fetch account details')
+    : null
+  // Documents error is non-critical - log it but don't block the UI
+  const documentsErrorMsg = documentsError
+    ? (documentsError instanceof Error ? documentsError.message : 'Failed to load documents')
+    : null
 
   // Dynamic labels helper
   const { data: accountLabels, getLabel } = useAccountLabelsWithCache()
@@ -184,29 +191,53 @@ const Step2 = ({ accountId: propAccountId, onEditStep, isReadOnly = false }: Ste
     )
   }
 
-  // Error state
+  // Error state - only show if account details failed (critical error)
   if (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data'
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
-          {errorMessage}
+          {error}
         </Alert>
+        {documentsErrorMsg && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Note: Could not load documents. {documentsErrorMsg}
+          </Alert>
+        )}
       </Box>
     )
   }
 
+  // Show warning if documents failed but account details loaded successfully
+  const showDocumentsWarning = documentsErrorMsg && !error && accountDetails
+
   // No data state
   if (!accountDetails) {
+    if (!accountId || accountId.trim() === '') {
+      return (
+        <Box sx={{ p: 3 }}>
+          <Alert severity="info">Account ID is required to load review data.</Alert>
+        </Box>
+      )
+    }
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">No account details found.</Alert>
+        {documentsErrorMsg && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Note: Could not load documents. {documentsErrorMsg}
+          </Alert>
+        )}
       </Box>
     )
   }
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
+      {showDocumentsWarning && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Note: Could not load documents. {documentsErrorMsg}
+        </Alert>
+      )}
       <Card
         sx={{
           boxShadow: 'none',
@@ -527,7 +558,4 @@ const Step2 = ({ accountId: propAccountId, onEditStep, isReadOnly = false }: Ste
     </Box>
   )
 }
-
 export default Step2
-
-

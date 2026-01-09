@@ -303,25 +303,49 @@ export function useAccountDocuments(
       module,
       { page: pagination.page, size: pagination.size },
     ],
-    queryFn: () =>
-      accountService.getAccountDocuments(
-        accountId!,
-        module,
-        pagination.page,
-        pagination.size
-      ),
+    queryFn: async () => {
+      try {
+        return await accountService.getAccountDocuments(
+          accountId!,
+          module,
+          pagination.page,
+          pagination.size
+        )
+      } catch (error) {
+        // For documents, return empty result instead of throwing
+        // Documents are optional, so we don't want to block the UI
+        if (error && typeof error === 'object' && 'response' in error) {
+          const httpError = error as { response?: { status?: number } }
+          if (httpError.response?.status === 500 || httpError.response?.status === 404) {
+            // Return empty paginated response for 500/404 errors
+            return {
+              content: [],
+              page: {
+                size: pagination.size,
+                number: pagination.page,
+                totalElements: 0,
+                totalPages: 0,
+              },
+            }
+          }
+        }
+        // Re-throw other errors
+        throw error
+      }
+    },
     enabled: !!accountId && accountId.trim() !== '',
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: (failureCount, error) => {
+      // Don't retry on 500/404 for documents - they're optional
       if (error && typeof error === 'object' && 'response' in error) {
         const httpError = error as { response?: { status?: number } }
-        if (httpError.response?.status === 500) {
-          return failureCount < 1
+        if (httpError.response?.status === 500 || httpError.response?.status === 404) {
+          return false
         }
       }
-      return failureCount < 2
+      return failureCount < 1 // Only retry once for other errors
     },
   })
 

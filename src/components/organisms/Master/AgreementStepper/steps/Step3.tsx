@@ -580,4 +580,3 @@ const Step3 = ({ agreementId: propAgreementId, stepStatus, onEditStep, isReadOnl
 }
 
 export default Step3
-

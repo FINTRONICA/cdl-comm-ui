@@ -105,7 +105,6 @@ const Step2 = ({
 
   const {
     data: documentsResponse,
-    isLoading: isLoadingDocuments,
     error: documentsError,
   } = useAgreementSignatoryDocuments(
     agreementSignatoryId || '',
@@ -115,12 +114,16 @@ const Step2 = ({
   )
 
   // Compute loading and error states
-  const loading = isLoadingDetails || isLoadingDocuments
+  // Only show loading if details are loading (documents are optional)
+  const loading = isLoadingDetails
+  // Only show error if details fail (documents errors are non-critical)
   const error = detailsError
     ? (detailsError as Error).message
-    : documentsError
-      ? (documentsError as Error).message
-      : null
+    : null
+  // Documents error is non-critical - log it but don't block the UI
+  const documentsErrorMsg = documentsError
+    ? (documentsError as Error).message
+    : null
 
   // Type guard to ensure agreementSignatoryDetails is properly typed
   const hasValidDetails = agreementSignatoryDetails && typeof agreementSignatoryDetails === 'object' && 'id' in agreementSignatoryDetails
@@ -217,22 +220,35 @@ const Step2 = ({
     )
   }
 
-  // Error state
+  // Error state - only show if details failed (critical error)
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
+        {documentsErrorMsg && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Note: Could not load documents. {documentsErrorMsg}
+          </Alert>
+        )}
       </Box>
     )
   }
+
+  // Show warning if documents failed but details loaded successfully
+  const showDocumentsWarning = documentsErrorMsg && !error && hasValidDetails
 
   // No data state
   if (!hasValidDetails) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">No agreement signatory details found.</Alert>
+        {documentsErrorMsg && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Note: Could not load documents. {documentsErrorMsg}
+          </Alert>
+        )}
       </Box>
     )
   }
@@ -252,6 +268,11 @@ const Step2 = ({
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
+      {showDocumentsWarning && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Note: Could not load documents. {documentsErrorMsg}
+        </Alert>
+      )}
       <Card
         sx={{
           boxShadow: 'none',

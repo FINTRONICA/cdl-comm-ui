@@ -203,7 +203,7 @@ const AgreementsPageImpl: React.FC = () => {
     },
     {
       key: "actions",
-      label: getAgreementLabelDynamic("CDL_ESCROW_DOC_ACTION"),
+      label: getAgreementLabelDynamic("CDL_COMMON_ACTION"),
       type: "actions" as const,
       width: "w-20",
     },

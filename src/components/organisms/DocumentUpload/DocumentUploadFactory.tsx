@@ -9,7 +9,7 @@ import { createSuretyBondDocumentConfig } from "./configs/suretyBondConfig";
 import { DocumentItem } from "../Master/PartyStepper/partyTypes";
 import { createPartyDocumentConfig } from "./configs/masterConfigs/partyConfig";
 import { createBeneficiaryDocumentConfig } from "./configs/masterConfigs/beneficiaryConfig";
-import { createEscrowAccountDocumentConfig } from "./configs/masterConfigs/escrowAccountConfig";
+import { createEscrowAccountDocumentConfig } from "./configs/masterConfigs/agreementAccountConfig";
 import { createAgreementDocumentConfig } from "./configs/masterConfigs/agreementConfig";
 import { createAgreementSignatoryDocumentConfig } from "./configs/masterConfigs/agreementSignatoryConfig";
 import { createAccountDocumentConfig } from "./configs/masterConfigs/accountConfig";

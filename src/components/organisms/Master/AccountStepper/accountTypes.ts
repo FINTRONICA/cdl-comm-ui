@@ -96,9 +96,5 @@ export interface AccountData {
   escrowAgreementDTO?: { id: number } | number | null | undefined;
   enabled?: boolean;
   deleted?: boolean;
-
-  // Step 2: Documents (Optional)
   documents: DocumentItem[]
 }
-
-

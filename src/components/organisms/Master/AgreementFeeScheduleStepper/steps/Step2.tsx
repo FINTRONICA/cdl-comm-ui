@@ -95,7 +95,7 @@ const Step2 = ({ agreementFeeScheduleId: propAgreementFeeScheduleId, onEditStep,
   )
 
   // Use React Query for documents
-  const { data: documentsResponse, isLoading: isLoadingDocuments, error: documentsError } = useQuery({
+  const { data: documentsResponse, error: documentsError } = useQuery({
     queryKey: ['agreementFeeScheduleDocuments', agreementFeeScheduleId, 'AGREEMENT_FEE_SCHEDULE'],
     queryFn: async () => {
       if (!agreementFeeScheduleId || agreementFeeScheduleId.trim() === '') {
@@ -125,8 +125,16 @@ const Step2 = ({ agreementFeeScheduleId: propAgreementFeeScheduleId, onEditStep,
     },
   })
 
-  const loading = isLoadingDetails || isLoadingDocuments
-  const error = detailsError || documentsError
+  // Only show loading if details are loading (documents are optional)
+  const loading = isLoadingDetails
+  // Only show error if details fail (documents errors are non-critical)
+  const error = detailsError
+    ? (detailsError as Error).message
+    : null
+  // Documents error is non-critical - log it but don't block the UI
+  const documentsErrorMsg = documentsError
+    ? (documentsError as Error).message
+    : null
 
   // Dynamic labels helper
   const { data: agreementFeeScheduleLabels, getLabel } = useAgreementFeeScheduleLabelsWithCache()
@@ -210,17 +218,24 @@ const Step2 = ({ agreementFeeScheduleId: propAgreementFeeScheduleId, onEditStep,
     )
   }
 
-  // Error state
+  // Error state - only show if details failed (critical error)
   if (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data'
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
-          {errorMessage}
+          {error}
         </Alert>
+        {documentsErrorMsg && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Note: Could not load documents. {documentsErrorMsg}
+          </Alert>
+        )}
       </Box>
     )
   }
+
+  // Show warning if documents failed but details loaded successfully
+  const showDocumentsWarning = documentsErrorMsg && !error && agreementFeeScheduleDetails
 
   // No data state
   if (!agreementFeeScheduleDetails) {
@@ -234,12 +249,22 @@ const Step2 = ({ agreementFeeScheduleId: propAgreementFeeScheduleId, onEditStep,
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">No agreement fee schedule details found.</Alert>
+        {documentsErrorMsg && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Note: Could not load documents. {documentsErrorMsg}
+          </Alert>
+        )}
       </Box>
     )
   }
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
+      {showDocumentsWarning && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Note: Could not load documents. {documentsErrorMsg}
+        </Alert>
+      )}
       <Card
         sx={{
           boxShadow: 'none',
@@ -534,4 +559,3 @@ const Step2 = ({ agreementFeeScheduleId: propAgreementFeeScheduleId, onEditStep,
 }
 
 export default Step2
-

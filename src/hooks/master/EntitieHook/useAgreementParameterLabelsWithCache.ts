@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useLabels, useLabelsLoadingState } from '@/store'
 import { AgreementParameterLabelsService } from '@/services/api/masterApi/Entitie/agreementParameterLabelsService'
 
-export function useAgreementLabelsWithCache() {
+export function useAgreementParameterLabelsWithCache() {
   // 🏦 BANKING COMPLIANCE: Now using Zustand store instead of localStorage
   // API remains identical for backward compatibility
   const { agreementParameterLabels } = useLabels()

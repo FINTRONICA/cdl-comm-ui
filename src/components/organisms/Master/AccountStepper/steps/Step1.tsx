@@ -569,5 +569,3 @@ const Step1 = ({ isReadOnly = false, accountId }: Step1Props) => {
 }
 
 export default Step1
-
-

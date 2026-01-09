@@ -110,10 +110,19 @@ export function useAgreementSignatoryDocuments(
       ),
     enabled: !!agreementSignatoryId && agreementSignatoryId.trim() !== '',
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 1, // Reduce retries to prevent 500 error storms
+    retry: (failureCount, error) => {
+      // Don't retry on 500 errors to prevent error storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 

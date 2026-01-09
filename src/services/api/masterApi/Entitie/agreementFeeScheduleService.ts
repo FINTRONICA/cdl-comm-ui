@@ -433,6 +433,23 @@ export class AgreementFeeScheduleService {
         }
       )
     } catch (error) {
+      // For 500 errors on documents endpoint, return empty result instead of throwing
+      // Documents are optional and shouldn't block the UI
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return {
+            content: [],
+            page: {
+              size: size,
+              number: page,
+              totalElements: 0,
+              totalPages: 0,
+            },
+          }
+        }
+      }
+      // For other errors, still throw to allow proper error handling
       throw error
     }
   }

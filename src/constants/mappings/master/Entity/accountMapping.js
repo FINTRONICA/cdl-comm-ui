@@ -25,6 +25,8 @@ export const ACCOUNTLABEL = {
   'CDL_ESCROW_ACCOUNT_LOOKUP_FIELD_2': ' Reference Field 2', // Text Field
   'CDL_ESCROW_ACCOUNT_DISPLAY_NAME': ' Account Display Name', // Text Field
   'CDL_ESCROW_ACCOUNT_ASSIGNMENT_STATUS': ' Assignment Status', // Text Field
+  'CDL_ESCROW_STATUS': ' Status', // Drop Down
+  // 'CDL_ESCROW_DOC_ACTION': 'Action',
 
   // Common UI labels
   'CDL_COMMON_ACTION': 'Action',

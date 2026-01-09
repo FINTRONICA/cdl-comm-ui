@@ -1,8 +1,6 @@
-'use client'
-
-import dynamic from 'next/dynamic'
-import React from 'react'
-
+"use client";
+import dynamic from "next/dynamic";
+import React from "react";
 const AgreementParametersPageClient = dynamic(
   () => Promise.resolve(AgreementParametersPageImpl),
   {
@@ -13,42 +11,41 @@ const AgreementParametersPageClient = dynamic(
       </div>
     ),
   }
-)
+);
 
-import { useCallback, useState, useMemo } from 'react'
-import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import LeftSlidePanel from '@/components/organisms/LeftSlidePanel/LeftSlidePanel'
-import { useAgreementParameterLabelsWithCache } from '@/hooks'
-import { getAgreementParameterLabel } from '@/constants/mappings/master/Entity/agreementParameterMapping'
-import { useAppStore } from '@/store'
-import { GlobalLoading } from '@/components/atoms'
-import {
-  useAgreementParameters,
-  useDeleteAgreementParameter,
-} from '@/hooks'
+import { useCallback, useState, useMemo } from "react";
+import { DashboardLayout } from "@/components/templates/DashboardLayout";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import LeftSlidePanel from "@/components/organisms/LeftSlidePanel/LeftSlidePanel";
+import { useAgreementParameterLabelsWithCache } from "@/hooks";
+import { getAgreementParameterLabel } from "@/constants/mappings/master/Entity/agreementParameterMapping";
+import { useAppStore } from "@/store";
+import { GlobalLoading } from "@/components/atoms";
+import { useAgreementParameters, useDeleteAgreementParameter } from "@/hooks";
 import {
   mapAgreementParameterToUIData,
   type AgreementParameterUIData,
   type AgreementParameter,
-} from '@/services/api/masterApi/Entitie/agreementParameterService'
-import type { AgreementParameterFilters } from '@/services/api/masterApi/Entitie/agreementParameterService'
-import { useSidebarConfig } from '@/hooks/useSidebarConfig'
-import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
-import { useRouter } from 'next/navigation'
+} from "@/services/api/masterApi/Entitie/agreementParameterService";
+import type { AgreementParameterFilters } from "@/services/api/masterApi/Entitie/agreementParameterService";
+import { useSidebarConfig } from "@/hooks/useSidebarConfig";
+import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
+import { useRouter } from "next/navigation";
 
-interface AgreementParameterData extends AgreementParameterUIData, Record<string, unknown> {}
+interface AgreementParameterData
+  extends AgreementParameterUIData,
+    Record<string, unknown> {}
 
 const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
@@ -77,9 +74,9 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
         </h1>
         <p className="mb-4 text-gray-600">
           {error.message ||
-            'An error occurred while loading the data. Please try again.'}
+            "An error occurred while loading the data. Please try again."}
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <details className="text-left">
             <summary className="text-sm font-medium text-gray-600 cursor-pointer">
               Error Details (Development)
@@ -100,33 +97,33 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       )}
     </div>
   </div>
-)
+);
 
-const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />
+const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />;
 
 const AgreementParametersPageImpl: React.FC = () => {
-  const router = useRouter()
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const router = useRouter();
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const currentLanguage = useAppStore((state) => state.language)
+  const currentLanguage = useAppStore((state) => state.language);
 
-  const isDownloading = false
-  const downloadError = null
-  const clearError = () => {}
+  const isDownloading = false;
+  const downloadError = null;
+  const clearError = () => {};
 
   const { data: agreementParameterLabels, getLabel } =
-    useAgreementParameterLabelsWithCache()
+    useAgreementParameterLabelsWithCache();
 
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [filters] = useState<AgreementParameterFilters>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [filters] = useState<AgreementParameterFilters>({});
 
-  const { getLabelResolver } = useSidebarConfig()
+  const { getLabelResolver } = useSidebarConfig();
 
   const agreementParametersPageTitle = getLabelResolver
-    ? getLabelResolver('agreement-parameters', 'Agreement Parameters')
-    : 'Agreement Parameters'
+    ? getLabelResolver("agreement-parameters", "Agreement Parameters")
+    : "Agreement Parameters";
 
   const {
     data: apiResponse,
@@ -135,75 +132,91 @@ const AgreementParametersPageImpl: React.FC = () => {
     refetch: refetchAgreementParameters,
     updatePagination,
     apiPagination,
-  } = useAgreementParameters(Math.max(0, currentApiPage - 1), currentApiSize, filters)
+  } = useAgreementParameters(
+    Math.max(0, currentApiPage - 1),
+    currentApiSize,
+    filters
+  );
 
-  const deleteMutation = useDeleteAgreementParameter()
-  const confirmDelete = useDeleteConfirmation()
+  const deleteMutation = useDeleteAgreementParameter();
+  const confirmDelete = useDeleteConfirmation();
 
   const agreementParametersData = useMemo(() => {
     if (apiResponse?.content) {
       return apiResponse.content.map((item) =>
         mapAgreementParameterToUIData(item as AgreementParameter)
-      ) as AgreementParameterData[]
+      ) as AgreementParameterData[];
     }
-    return []
-    }, [apiResponse])
+    return [];
+  }, [apiResponse]);
 
   const getAgreementParameterLabelDynamic = useCallback(
     (configId: string): string => {
-      const fallback = getAgreementParameterLabel(configId)
+      const fallback = getAgreementParameterLabel(configId);
 
       if (agreementParameterLabels) {
-        return getLabel(configId, currentLanguage || 'EN', fallback)
+        return getLabel(configId, currentLanguage || "EN", fallback);
       }
-      return fallback
+      return fallback;
     },
     [agreementParameterLabels, currentLanguage, getLabel]
-  )
+  );
 
   const tableColumns = [
     {
-      key: 'id',
-      label: getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_REF_NO'),
-      type: 'text' as const,
-      width: 'w-40',
+      key: "id",
+      label: getAgreementParameterLabelDynamic(
+        "CDL_AGREEMENT_PARAMETER_REF_NO"
+      ),
+      type: "text" as const,
+      width: "w-40",
       sortable: true,
     },
     {
-      key: 'agreementEffectiveDate',
-      label: getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_EFFECTIVE_DATE'),
-      type: 'text' as const,
-      width: 'w-48',
+      key: "agreementEffectiveDate",
+      label: getAgreementParameterLabelDynamic(
+        "CDL_AGREEMENT_PARAMETER_EFFECTIVE_DATE"
+      ),
+      type: "text" as const,
+      width: "w-48",
       sortable: true,
     },
     {
-      key: 'agreementExpiryDate',
-      label: getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_EXPIRY_DATE'),
-      type: 'text' as const,
-      width: 'w-48',
+      key: "agreementExpiryDate",
+      label: getAgreementParameterLabelDynamic(
+        "CDL_AGREEMENT_PARAMETER_EXPIRY_DATE"
+      ),
+      type: "text" as const,
+      width: "w-48",
       sortable: true,
     },
     {
-      key: 'agreementRemarks',
-      label: getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_REMARKS'),
-      type: 'text' as const,
-      width: 'w-48',
+      key: "agreementRemarks",
+      label: getAgreementParameterLabelDynamic(
+        "CDL_AGREEMENT_PARAMETER_REMARKS"
+      ),
+      type: "text" as const,
+      width: "w-48",
       sortable: true,
     },
     {
-      key: 'status',
-      label: getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
+      key: "status",
+      label: getAgreementParameterLabelDynamic(
+        "CDL_AGREEMENT_PARAMETER_STATUS"
+      ),
+      type: "status" as const,
+      width: "w-32",
       sortable: true,
     },
     {
-      key: 'actions',
-      label: getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_DOC_ACTION'),
-      type: 'actions' as const,
-      width: 'w-20',
+      key: "actions",
+      label: getAgreementParameterLabelDynamic(
+        "CDL_AGREEMENT_PARAMETER_DOC_ACTION"
+      ),
+      type: "actions" as const,
+      width: "w-20",
     },
-  ]
+  ];
 
   const {
     search,
@@ -226,61 +239,61 @@ const AgreementParametersPageImpl: React.FC = () => {
   } = useTableState({
     data: agreementParametersData,
     searchFields: [
-      'id',
-      'agreementEffectiveDate',
-      'agreementExpiryDate',
-      'agreementRemarks',
-      'status',
+      "id",
+      "agreementEffectiveDate",
+      "agreementExpiryDate",
+      "agreementRemarks",
+      "status",
     ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+    const hasSearch = Object.values(search).some((value) => value.trim());
 
     if (hasSearch) {
-      localHandlePageChange(newPage)
+      localHandlePageChange(newPage);
     } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      setCurrentApiPage(newPage);
+      updatePagination(Math.max(0, newPage - 1), currentApiSize);
     }
-  }
+  };
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+    setCurrentApiSize(newRowsPerPage);
+    setCurrentApiPage(1);
+    updatePagination(0, newRowsPerPage);
+    localHandleRowsPerPageChange(newRowsPerPage);
+  };
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const actionButtons: Array<{
-    label: string
-    onClick: () => void
-    disabled?: boolean
-    variant?: 'primary' | 'secondary'
-    icon?: string
-    iconAlt?: string
-  }> = []
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    variant?: "primary" | "secondary";
+    icon?: string;
+    iconAlt?: string;
+  }> = [];
 
   const handleRowDelete = (row: AgreementParameterData) => {
     if (isDeleting) {
-      return
+      return;
     }
 
     confirmDelete({
@@ -288,36 +301,38 @@ const AgreementParametersPageImpl: React.FC = () => {
       itemId: row.id,
       onConfirm: async () => {
         try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(row.id)
+          setIsDeleting(true);
+          await deleteMutation.mutateAsync(row.id);
         } catch (error) {
           const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(`Failed to delete agreement parameter: ${errorMessage}`)
+            error instanceof Error ? error.message : "Unknown error occurred";
+          console.error(
+            `Failed to delete agreement parameter: ${errorMessage}`
+          );
 
-          throw error
+          throw error;
         } finally {
-          setIsDeleting(false)
+          setIsDeleting(false);
         }
       },
-    })
-  }
+    });
+  };
 
   const handleRowView = (row: AgreementParameterData) => {
-    router.push(`/agreement-parameter/${row.id}/step/1?mode=view`)
-  }
+    router.push(`/agreement-parameter/${row.id}/step/1?mode=view`);
+  };
 
   const handleRowEdit = (row: AgreementParameterData) => {
-    router.push(`/agreement-parameter/${row.id}/step/1?editing=true`)
-  }
+    router.push(`/agreement-parameter/${row.id}/step/1?editing=true`);
+  };
 
   const handleDownloadTemplate = async () => {
     // TODO: Add AGREEMENT_PARAMETER template file when available
-  }
+  };
 
   const renderExpandedContent = () => (
     <div className="grid grid-cols-2 gap-8"></div>
-  )
+  );
 
   return (
     <>
@@ -399,10 +414,10 @@ const AgreementParametersPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={['bp_delete']}
-                    viewPermissions={['bp_view']}
-                    editPermissions={['bp_update']}
-                    updatePermissions={['bp_update']}
+                    deletePermissions={["bp_delete"]}
+                    viewPermissions={["bp_view"]}
+                    editPermissions={["bp_update"]}
+                    updatePermissions={["bp_update"]}
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
@@ -413,13 +428,11 @@ const AgreementParametersPageImpl: React.FC = () => {
         </div>
       </DashboardLayout>
     </>
-  )
-}
+  );
+};
 
 const AgreementParametersPage: React.FC = () => {
-  return <AgreementParametersPageClient />
-}
+  return <AgreementParametersPageClient />;
+};
 
-export default AgreementParametersPage
-
-
+export default AgreementParametersPage;

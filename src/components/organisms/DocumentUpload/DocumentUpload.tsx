@@ -179,10 +179,22 @@ const DocumentUpload = <
     setIsLoadingDocuments(isLoadingDocumentsQuery)
   }, [isLoadingDocumentsQuery])
 
-  // Handle errors from React Query
+  // Handle errors from React Query - make documents errors non-critical
   useEffect(() => {
-    if (documentsError && !config.isOptional) {
-      setUploadError('Failed to load existing documents')
+    if (documentsError) {
+      // Only show error if documents are required (not optional)
+      // For optional documents, errors are non-critical and shouldn't block UI
+      if (!config.isOptional) {
+        const errorMessage = documentsError instanceof Error
+          ? documentsError.message
+          : 'Failed to load existing documents'
+        
+        // Don't show 500 errors for optional documents
+        if (!errorMessage.includes('500')) {
+          setUploadError(errorMessage)
+        }
+      }
+      // For optional documents, silently ignore errors (they're non-critical)
     }
   }, [documentsError, config.isOptional])
 
