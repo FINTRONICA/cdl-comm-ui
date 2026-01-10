@@ -33,7 +33,7 @@ import {
   useStepForm,
 } from "../../PartyStepper/hooks";
 import { useStepValidation } from "./hooks/useStepValidation";
-import { Step1, Step3 } from "./steps";
+import { Step1, Step2 } from "./steps";
 import DocumentUploadFactory from "../../../DocumentUpload/DocumentUploadFactory";
 import { DocumentItem } from "../../PartyStepper/partyTypes";
 
@@ -167,7 +167,7 @@ export default function PaymentBeneficiaryStepperWrapper({
           );
         case 2:
           return (
-            <Step3
+            <Step2
               key={`review-${paymentBeneficiaryId}-${activeStep}`}
               paymentBeneficiaryId={paymentBeneficiaryId}
               onEditStep={handleEditStep}
