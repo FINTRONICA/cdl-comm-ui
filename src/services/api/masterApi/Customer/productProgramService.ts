@@ -28,7 +28,7 @@ export interface ProductProgram {
   uuid?: string
 }
 
-  export interface CreateProductProgramRequest {
+export interface CreateProductProgramRequest {
   programName: string
   programDescription: string
   active: boolean
@@ -123,7 +123,7 @@ export class ProductProgramService {
   async updateProductProgram(
     id: string,
     updates: UpdateProductProgramRequest
-        ): Promise<ProductProgram> {
+  ): Promise<ProductProgram> {
     try {
       const result = await apiClient.put<ProductProgram>(
         buildApiUrl(API_ENDPOINTS.MASTER_PRODUCT_PROGRAM.UPDATE(id)),
@@ -149,14 +149,14 @@ export class ProductProgramService {
     try {
       const url = buildApiUrl(API_ENDPOINTS.MASTER_PRODUCT_PROGRAM.FIND_ALL)
       const result = await apiClient.get<ProductProgram[] | PaginatedResponse<ProductProgram>>(url)
-      
+
       // Handle different response structures
       if (Array.isArray(result)) {
         return result
       } else if (result && typeof result === 'object' && 'content' in result && Array.isArray((result as PaginatedResponse<ProductProgram>).content)) {
         return (result as PaginatedResponse<ProductProgram>).content
       }
-      
+
       return []
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -167,5 +167,4 @@ export class ProductProgramService {
   }
 }
 
-    export const productProgramService = new ProductProgramService()
-
+export const productProgramService = new ProductProgramService()

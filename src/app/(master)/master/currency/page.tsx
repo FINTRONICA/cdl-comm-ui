@@ -1,30 +1,30 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React, { useCallback, useState, useMemo } from 'react'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { GlobalLoading } from '@/components/atoms'
-import { RightSlideCurrencyPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideCurrency'
+import dynamic from "next/dynamic";
+import React, { useCallback, useState, useMemo } from "react";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import { getLabelByConfigId as getMasterLabel } from "@/constants/mappings/master/masterMapping";
+import { GlobalLoading } from "@/components/atoms";
+import { RightSlideCurrencyPanel } from "@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideCurrency";
 import {
   useCurrencies,
   useDeleteCurrency,
   useRefreshCurrencies,
-} from '@/hooks/master/CustomerHook/useCurrency'
-import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
-import { UploadDialog } from '@/components/molecules/UploadDialog'
-import { Currency } from '@/services/api/masterApi/Customer/currencyService'
+} from "@/hooks/master/CustomerHook/useCurrency";
+import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
+import { UploadDialog } from "@/components/molecules/UploadDialog";
+import { Currency } from "@/services/api/masterApi/Customer/currencyService";
 import {
   useDeleteConfirmation,
   useApproveConfirmation,
-} from '@/store/confirmationDialogStore'
-import { useCreateWorkflowRequest } from '@/hooks/workflow'
+} from "@/store/confirmationDialogStore";
+import { useCreateWorkflowRequest } from "@/hooks/workflow";
 
 interface CurrencyTableData extends Currency, Record<string, unknown> {
-  currencyId?: string
-  status?: string
+  currencyId?: string;
+  status?: string;
 }
 
 export const CurrencyPageClient = dynamic(
@@ -32,20 +32,22 @@ export const CurrencyPageClient = dynamic(
   {
     ssr: false,
   }
-)
+);
 
 const CurrencyPageImpl: React.FC = () => {
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
-  const [editingItem, setEditingItem] = useState<CurrencyTableData | null>(null)
-  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
+  const [editingItem, setEditingItem] = useState<CurrencyTableData | null>(
+    null
+  );
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
   // API-driven pagination state
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [searchFilters] = useState<{ description?: string }>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [searchFilters] = useState<{ description?: string }>({});
 
   // API hooks
   const {
@@ -58,18 +60,18 @@ const CurrencyPageImpl: React.FC = () => {
     Math.max(0, currentApiPage - 1),
     currentApiSize,
     searchFilters
-  )
+  );
 
-  const deleteCurrencyMutation = useDeleteCurrency()
-  const confirmDelete = useDeleteConfirmation()
-  const confirmApprove = useApproveConfirmation()
-  const createWorkflowRequest = useCreateWorkflowRequest()
-  const refreshCurrencies = useRefreshCurrencies()
-  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
+  const deleteCurrencyMutation = useDeleteCurrency();
+  const confirmDelete = useDeleteConfirmation();
+  const confirmApprove = useApproveConfirmation();
+  const createWorkflowRequest = useCreateWorkflowRequest();
+  const refreshCurrencies = useRefreshCurrencies();
+  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
 
   // Transform API data to table format
   const currencyData = useMemo(() => {
-    if (!currenciesResponse?.content) return []
+    if (!currenciesResponse?.content) return [];
     return currenciesResponse.content.map((currency: Currency) => ({
       id: currency.id,
       uuid: currency.uuid,
@@ -79,42 +81,39 @@ const CurrencyPageImpl: React.FC = () => {
       enabled: currency.enabled,
       deleted: currency.deleted,
       taskStatusDTO: currency.taskStatusDTO,
-      status: currency.taskStatusDTO?.name || '',
-    })) as CurrencyTableData[]
-  }, [currenciesResponse])
+      status: currency.taskStatusDTO?.name || "",
+    })) as CurrencyTableData[];
+  }, [currenciesResponse]);
 
-  const getCurrencyLabelDynamic = useCallback(
-    (configId: string): string => {
-      return getMasterLabel(configId)
-    },
-    []
-  )
+  const getCurrencyLabelDynamic = useCallback((configId: string): string => {
+    return getMasterLabel(configId);
+  }, []);
 
   const tableColumns = useMemo(
     () => [
       {
-        key: 'currencyId',
-        label: getCurrencyLabelDynamic('CDL_MCUR_ID'),
-        type: 'text' as const,
-        width: 'w-80',
+        key: "currencyId",
+        label: getCurrencyLabelDynamic("CDL_MCUR_ID"),
+        type: "text" as const,
+        width: "w-80",
         sortable: true,
       },
       {
-        key: 'description',
-        label: getCurrencyLabelDynamic('CDL_MCUR_DESCRIPTION'),
-        type: 'text' as const,
-        width: 'w-80',
+        key: "description",
+        label: getCurrencyLabelDynamic("CDL_MCUR_DESCRIPTION"),
+        type: "text" as const,
+        width: "w-80",
         sortable: true,
       },
       {
-        key: 'actions',
-        label: getCurrencyLabelDynamic('CDL_COMMON_ACTIONS'),
-        type: 'actions' as const,
-        width: 'w-48',
+        key: "actions",
+        label: getCurrencyLabelDynamic("CDL_COMMON_ACTIONS"),
+        type: "actions" as const,
+        width: "w-20",
       },
     ],
     [getCurrencyLabelDynamic]
-  )
+  );
 
   const {
     search,
@@ -136,55 +135,55 @@ const CurrencyPageImpl: React.FC = () => {
     handleSort,
   } = useTableState({
     data: currencyData,
-    searchFields: ['currencyId', 'description'],
+    searchFields: ["currencyId", "description"],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      const hasSearch = Object.values(search).some((value) => value.trim())
+      const hasSearch = Object.values(search).some((value) => value.trim());
 
       if (hasSearch) {
-        localHandlePageChange(newPage)
+        localHandlePageChange(newPage);
       } else {
-        setCurrentApiPage(newPage)
-        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+        setCurrentApiPage(newPage);
+        updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
     [search, localHandlePageChange, currentApiSize, updatePagination]
-  )
+  );
 
   const handleRowsPerPageChange = useCallback(
     (newRowsPerPage: number) => {
-      setCurrentApiSize(newRowsPerPage)
-      setCurrentApiPage(1)
-      updatePagination(0, newRowsPerPage)
-      localHandleRowsPerPageChange(newRowsPerPage)
+      setCurrentApiSize(newRowsPerPage);
+      setCurrentApiPage(1);
+      updatePagination(0, newRowsPerPage);
+      localHandleRowsPerPageChange(newRowsPerPage);
     },
     [localHandleRowsPerPageChange, updatePagination]
-  )
+  );
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const handleRowDelete = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: CurrencyTableData, _index: number) => {
       if (isDeleting) {
-        return
+        return;
       }
 
       confirmDelete({
@@ -192,63 +191,65 @@ const CurrencyPageImpl: React.FC = () => {
         itemId: String(row.id),
         onConfirm: async () => {
           try {
-            setIsDeleting(true)
-            await deleteCurrencyMutation.mutateAsync(String(row.id))
-            refreshCurrencies()
+            setIsDeleting(true);
+            await deleteCurrencyMutation.mutateAsync(String(row.id));
+            refreshCurrencies();
           } catch (error) {
-            throw error
+            throw error;
           } finally {
-            setIsDeleting(false)
+            setIsDeleting(false);
           }
         },
-      })
+      });
     },
     [deleteCurrencyMutation, confirmDelete, isDeleting, refreshCurrencies]
-  )
+  );
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: CurrencyTableData, _index: number) => {
-      const dataIndex = currencyData.findIndex((item) => item.id === row.id)
-      setEditingItem(row)
-      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
-      setPanelMode('edit')
-      setIsPanelOpen(true)
+      const dataIndex = currencyData.findIndex((item) => item.id === row.id);
+      setEditingItem(row);
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
+      setPanelMode("edit");
+      setIsPanelOpen(true);
     },
     [currencyData]
-  )
+  );
 
   const handleAddNew = useCallback(() => {
-    setEditingItem(null)
-    setEditingItemIndex(null)
-    setPanelMode('add')
-    setIsPanelOpen(true)
-  }, [])
+    setEditingItem(null);
+    setEditingItemIndex(null);
+    setPanelMode("add");
+    setIsPanelOpen(true);
+  }, []);
 
   const handleClosePanel = useCallback(() => {
-    setIsPanelOpen(false)
-    setEditingItem(null)
-    setEditingItemIndex(null)
-  }, [])
+    setIsPanelOpen(false);
+    setEditingItem(null);
+    setEditingItemIndex(null);
+  }, []);
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      await downloadTemplate('CurrencyTemplate.xlsx')
+      await downloadTemplate("CurrencyTemplate.xlsx");
     } catch {
       // Error handling is done by the hook
     }
-  }, [downloadTemplate])
+  }, [downloadTemplate]);
 
   const handleUploadSuccess = useCallback(() => {
-    refreshCurrencies()
-    setIsUploadDialogOpen(false)
-  }, [refreshCurrencies])
+    refreshCurrencies();
+    setIsUploadDialogOpen(false);
+  }, [refreshCurrencies]);
 
   const handleUploadError = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_error: string) => {
-    // Error is handled by UploadDialog component
-  }, [])
+      // Error is handled by UploadDialog component
+    },
+    []
+  );
 
   const handleRowApprove = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -260,30 +261,30 @@ const CurrencyPageImpl: React.FC = () => {
           try {
             await createWorkflowRequest.mutateAsync({
               referenceId: String(row.id),
-              referenceType: 'CURRENCY',
-              moduleName: 'CURRENCY',
-              actionKey: 'APPROVE',
+              referenceType: "CURRENCY",
+              moduleName: "CURRENCY",
+              actionKey: "APPROVE",
               payloadJson: row as Record<string, unknown>,
-            })
-            refreshCurrencies()
+            });
+            refreshCurrencies();
           } catch (error) {
-            throw error
+            throw error;
           }
         },
-      })
+      });
     },
     [confirmApprove, createWorkflowRequest, refreshCurrencies]
-  )
+  );
 
   const handleCurrencyAdded = useCallback(() => {
-    refreshCurrencies()
-    handleClosePanel()
-  }, [handleClosePanel, refreshCurrencies])
+    refreshCurrencies();
+    handleClosePanel();
+  }, [handleClosePanel, refreshCurrencies]);
 
   const handleCurrencyUpdated = useCallback(() => {
-    refreshCurrencies()
-    handleClosePanel()
-  }, [handleClosePanel, refreshCurrencies])
+    refreshCurrencies();
+    handleClosePanel();
+  }, [handleClosePanel, refreshCurrencies]);
 
   const renderExpandedContent = useCallback(
     (row: CurrencyTableData) => (
@@ -295,18 +296,18 @@ const CurrencyPageImpl: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600 dark:text-gray-400">
-                {getCurrencyLabelDynamic('CDL_MCUR_ID')}:
+                {getCurrencyLabelDynamic("CDL_MCUR_ID")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.currencyId || row.uuid || `MCUR-${row.id}` || '-'}
+                {row.currencyId || row.uuid || `MCUR-${row.id}` || "-"}
               </span>
             </div>
             <div className="col-span-2">
               <span className="text-gray-600 dark:text-gray-400">
-                {getCurrencyLabelDynamic('CDL_MCUR_DESCRIPTION')}:
+                {getCurrencyLabelDynamic("CDL_MCUR_DESCRIPTION")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.description || '-'}
+                {row.description || "-"}
               </span>
             </div>
           </div>
@@ -314,7 +315,7 @@ const CurrencyPageImpl: React.FC = () => {
       </div>
     ),
     [getCurrencyLabelDynamic]
-  )
+  );
 
   return (
     <>
@@ -371,12 +372,12 @@ const CurrencyPageImpl: React.FC = () => {
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
                 // deletePermissions={['currency_delete']}
-                deletePermissions={['*']}
+                deletePermissions={["*"]}
                 // editPermissions={['currency_update']}
-                editPermissions={['*']}
+                editPermissions={["*"]}
                 // approvePermissions={['currency_approve']}
-                approvePermissions={['*']}
-                updatePermissions={['currency_update']}
+                approvePermissions={["*"]}
+                updatePermissions={["currency_update"]}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -385,14 +386,13 @@ const CurrencyPageImpl: React.FC = () => {
         </div>
       </div>
 
-
       {isPanelOpen && (
         <RightSlideCurrencyPanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onCurrencyAdded={handleCurrencyAdded}
           onCurrencyUpdated={handleCurrencyUpdated}
-          mode={panelMode === 'approve' ? 'edit' : panelMode}
+          mode={panelMode === "approve" ? "edit" : panelMode}
           actionData={editingItem as Currency | null}
           {...(editingItemIndex !== null && {
             currencyIndex: editingItemIndex,
@@ -411,11 +411,11 @@ const CurrencyPageImpl: React.FC = () => {
         />
       )}
     </>
-  )
-}
+  );
+};
 
 const CurrencyPage: React.FC = () => {
-  return <CurrencyPageClient />
-}
+  return <CurrencyPageClient />;
+};
 
-export default CurrencyPage
+export default CurrencyPage;

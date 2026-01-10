@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+} from "react";
 import {
   DialogTitle,
   DialogContent,
@@ -11,56 +17,56 @@ import {
   Alert,
   Snackbar,
   InputAdornment,
-} from '@mui/material'
-import { Refresh as RefreshIcon } from '@mui/icons-material'
-import { Controller, useForm } from 'react-hook-form'
-import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import { alpha, useTheme } from '@mui/material/styles'
+} from "@mui/material";
+import { Refresh as RefreshIcon } from "@mui/icons-material";
+import { Controller, useForm } from "react-hook-form";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { alpha, useTheme } from "@mui/material/styles";
 import {
   useSaveAgreementType,
   useAgreementType,
-} from '@/hooks/master/CustomerHook/useAgreementType'
+} from "@/hooks/master/CustomerHook/useAgreementType";
 import {
   validateAgreementTypeData,
   sanitizeAgreementTypeData,
   type AgreementTypeFormData,
-} from '@/lib/validation/masterValidation/agreementTypeSchemas'
+} from "@/lib/validation/masterValidation/agreementTypeSchemas";
 import type {
   CreateAgreementTypeRequest,
   UpdateAgreementTypeRequest,
   AgreementType,
   TaskStatusDTO,
-} from '@/services/api/masterApi/Customer/agreementTypeService'
-import { getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { buildPanelSurfaceTokens } from '../panelTheme'
-import { useTaskStatuses } from '@/hooks/master/CustomerHook/useTaskStatus'
-import { idService } from '@/services/api/developerIdService'
+} from "@/services/api/masterApi/Customer/agreementTypeService";
+import { getMasterLabel } from "@/constants/mappings/master/masterMapping";
+import { buildPanelSurfaceTokens } from "../panelTheme";
+import { useTaskStatuses } from "@/hooks/master/CustomerHook/useTaskStatus";
+import { idService } from "@/services/api/developerIdService";
 
 interface RightSlideAgreementTypePanelProps {
-  isOpen: boolean
-  onClose: () => void
-  onAgreementTypeAdded?: (agreementType: AgreementType) => void
+  isOpen: boolean;
+  onClose: () => void;
+  onAgreementTypeAdded?: (agreementType: AgreementType) => void;
   onAgreementTypeUpdated?: (
     agreementType: AgreementType,
     index: number
-  ) => void
-  title?: string
-  mode?: 'add' | 'edit'
-  actionData?: AgreementType | null
-  agreementTypeIndex?: number | undefined
-  taskStatusOptions?: TaskStatusDTO[]
-  taskStatusLoading?: boolean
-  taskStatusError?: unknown
+  ) => void;
+  title?: string;
+  mode?: "add" | "edit";
+  actionData?: AgreementType | null;
+  agreementTypeIndex?: number | undefined;
+  taskStatusOptions?: TaskStatusDTO[];
+  taskStatusLoading?: boolean;
+  taskStatusError?: unknown;
 }
 
 const SNACKBAR_AUTO_HIDE_DURATION = {
   ERROR: 6000,
   SUCCESS: 3000,
-} as const
+} as const;
 
-const PANEL_CLOSE_DELAY = 1500
+const PANEL_CLOSE_DELAY = 1500;
 
 export const RightSlideAgreementTypePanel: React.FC<
   RightSlideAgreementTypePanelProps
@@ -69,39 +75,39 @@ export const RightSlideAgreementTypePanel: React.FC<
   onClose,
   onAgreementTypeAdded,
   onAgreementTypeUpdated,
-  mode = 'add',
+  mode = "add",
   actionData,
   agreementTypeIndex,
   taskStatusOptions: _propTaskStatusOptions = [],
   taskStatusLoading: propTaskStatusLoading = false,
   taskStatusError: propTaskStatusError = null,
 }) => {
-  const theme = useTheme()
-  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme])
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [generatedId, setGeneratedId] = useState<string>('')
-  const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
+  const theme = useTheme();
+  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [generatedId, setGeneratedId] = useState<string>("");
+  const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false);
 
-  const isEditMode = mode === 'edit'
-  const isReadOnly = false
+  const isEditMode = mode === "edit";
+  const isReadOnly = false;
 
-  const saveAgreementTypeMutation = useSaveAgreementType()
+  const saveAgreementTypeMutation = useSaveAgreementType();
 
   // Fetch full agreement type data when in edit mode
   const { data: apiAgreementTypeData } = useAgreementType(
     isEditMode && actionData?.id ? String(actionData.id) : null
-  )
+  );
 
   // Fetch task statuses
-  const { isLoading: taskStatusesLoading } = useTaskStatuses()
-  const taskStatusLoading = propTaskStatusLoading || taskStatusesLoading
-  const taskStatusError = propTaskStatusError || null
+  const { isLoading: taskStatusesLoading } = useTaskStatuses();
+  const taskStatusLoading = propTaskStatusLoading || taskStatusesLoading;
+  const taskStatusError = propTaskStatusError || null;
 
   const getAgreementTypeLabel = useCallback(
     (configId: string): string => getMasterLabel(configId),
     []
-  )
+  );
 
   const {
     control,
@@ -113,113 +119,113 @@ export const RightSlideAgreementTypePanel: React.FC<
     formState: { errors },
   } = useForm<AgreementTypeFormData & { agreementTypeId?: string }>({
     defaultValues: {
-      agreementTypeId: '',
-      agreementTypeName: '',
-      agreementTypeDescription: '',
+      agreementTypeId: "",
+      agreementTypeName: "",
+      agreementTypeDescription: "",
       active: true,
       taskStatusDTO: null,
     },
-    mode: 'onChange',
-  })
+    mode: "onChange",
+  });
 
   // Initialize agreement type ID from form value
   useEffect(() => {
     const subscription = watch((value, { name }) => {
-      if (name === 'agreementTypeId' && value.agreementTypeId) {
-        setGeneratedId(value.agreementTypeId)
+      if (name === "agreementTypeId" && value.agreementTypeId) {
+        setGeneratedId(value.agreementTypeId);
       }
-    })
-    return () => subscription.unsubscribe()
-  }, [watch])
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   const handleGenerateNewId = useCallback(async () => {
     try {
-      setIsGeneratingId(true)
-      const newIdResponse = idService.generateNewId('MAT')
-      setGeneratedId(newIdResponse.id)
-      setValue('agreementTypeId', newIdResponse.id, {
+      setIsGeneratingId(true);
+      const newIdResponse = idService.generateNewId("MAT");
+      setGeneratedId(newIdResponse.id);
+      setValue("agreementTypeId", newIdResponse.id, {
         shouldValidate: true,
         shouldDirty: true,
-      })
+      });
     } catch (error) {
-      console.error('Error generating ID:', error)
-      setErrorMessage('Failed to generate ID. Please try again.')
+      console.error("Error generating ID:", error);
+      setErrorMessage("Failed to generate ID. Please try again.");
     } finally {
-      setIsGeneratingId(false)
+      setIsGeneratingId(false);
     }
-  }, [setValue])
+  }, [setValue]);
 
   // Track the last reset ID and mode to prevent unnecessary resets
-  const lastResetIdRef = useRef<string | number | null>(null)
-  const lastModeRef = useRef<'add' | 'edit' | null>(null)
-  const lastIsOpenRef = useRef<boolean>(false)
+  const lastResetIdRef = useRef<string | number | null>(null);
+  const lastModeRef = useRef<"add" | "edit" | null>(null);
+  const lastIsOpenRef = useRef<boolean>(false);
 
   // Reset form when panel opens/closes or mode/data changes
   useEffect(() => {
     if (!isOpen) {
       if (lastIsOpenRef.current) {
         reset({
-          agreementTypeId: '',
-          agreementTypeName: '',
-          agreementTypeDescription: '',
+          agreementTypeId: "",
+          agreementTypeName: "",
+          agreementTypeDescription: "",
           active: true,
           taskStatusDTO: null,
-        })
-        setGeneratedId('')
-        lastResetIdRef.current = null
-        lastModeRef.current = null
+        });
+        setGeneratedId("");
+        lastResetIdRef.current = null;
+        lastModeRef.current = null;
       }
-      lastIsOpenRef.current = false
-      return
+      lastIsOpenRef.current = false;
+      return;
     }
 
     if (!lastIsOpenRef.current) {
-      lastIsOpenRef.current = true
+      lastIsOpenRef.current = true;
     }
 
-    if (mode === 'edit' && taskStatusLoading) {
-      return
+    if (mode === "edit" && taskStatusLoading) {
+      return;
     }
 
-    const currentId = (apiAgreementTypeData?.id || actionData?.id) ?? null
+    const currentId = (apiAgreementTypeData?.id || actionData?.id) ?? null;
     const shouldReset =
       lastModeRef.current !== mode ||
-      (mode === 'edit' && lastResetIdRef.current !== currentId)
+      (mode === "edit" && lastResetIdRef.current !== currentId);
 
     if (!shouldReset) {
-      return
+      return;
     }
 
-    if (mode === 'edit' && (apiAgreementTypeData || actionData)) {
-      const dataToUse = apiAgreementTypeData || actionData
-      if (!dataToUse) return
+    if (mode === "edit" && (apiAgreementTypeData || actionData)) {
+      const dataToUse = apiAgreementTypeData || actionData;
+      if (!dataToUse) return;
 
-      const agreementTypeId = dataToUse.uuid || `MAT-${dataToUse.id}` || ''
-      setGeneratedId(agreementTypeId)
+      const agreementTypeId = dataToUse.uuid || `MAT-${dataToUse.id}` || "";
+      setGeneratedId(agreementTypeId);
 
       reset({
         agreementTypeId: agreementTypeId,
-        agreementTypeName: dataToUse.agreementTypeName || '',
-        agreementTypeDescription: dataToUse.agreementTypeDescription || '',
+        agreementTypeName: dataToUse.agreementTypeName || "",
+        agreementTypeDescription: dataToUse.agreementTypeDescription || "",
         active: dataToUse.active ?? true,
         taskStatusDTO: dataToUse.taskStatusDTO?.id
           ? { id: dataToUse.taskStatusDTO.id }
           : null,
-      })
+      });
 
-      lastResetIdRef.current = dataToUse.id
-      lastModeRef.current = mode
-    } else if (mode === 'add') {
+      lastResetIdRef.current = dataToUse.id;
+      lastModeRef.current = mode;
+    } else if (mode === "add") {
       reset({
-        agreementTypeId: '',
-        agreementTypeName: '',
-        agreementTypeDescription: '',
+        agreementTypeId: "",
+        agreementTypeName: "",
+        agreementTypeDescription: "",
         active: true,
         taskStatusDTO: null,
-      })
-      setGeneratedId('')
-      lastResetIdRef.current = null
-      lastModeRef.current = mode
+      });
+      setGeneratedId("");
+      lastResetIdRef.current = null;
+      lastModeRef.current = mode;
     }
   }, [
     isOpen,
@@ -230,7 +236,7 @@ export const RightSlideAgreementTypePanel: React.FC<
     reset,
     apiAgreementTypeData,
     actionData,
-  ])
+  ]);
 
   const validateAgreementTypeField = useCallback(
     (
@@ -240,95 +246,99 @@ export const RightSlideAgreementTypePanel: React.FC<
     ): string | boolean => {
       try {
         const requiredFields: Record<string, string> = {
-          agreementTypeName: 'Agreement Type Name is required',
-          agreementTypeDescription: 'Agreement Type Description is required',
-        }
+          agreementTypeName: "Agreement Type Name is required",
+          agreementTypeDescription: "Agreement Type Description is required",
+        };
 
         if (requiredFields[fieldName]) {
-          if (!value || (typeof value === 'string' && value.trim() === '')) {
-            return requiredFields[fieldName]
+          if (!value || (typeof value === "string" && value.trim() === "")) {
+            return requiredFields[fieldName];
           }
         }
 
         // Validate agreement type ID for new agreement types
-        if (fieldName === 'agreementTypeId' && mode === 'add') {
-          if (!value || (typeof value === 'string' && value.trim() === '')) {
-            return 'Agreement Type ID is required. Please generate an ID.'
+        if (fieldName === "agreementTypeId" && mode === "add") {
+          if (!value || (typeof value === "string" && value.trim() === "")) {
+            return "Agreement Type ID is required. Please generate an ID.";
           }
         }
 
         if (
-          (fieldName === 'agreementTypeName' ||
-            fieldName === 'agreementTypeDescription') &&
+          (fieldName === "agreementTypeName" ||
+            fieldName === "agreementTypeDescription") &&
           value &&
-          typeof value === 'string' &&
-          value.trim() !== ''
+          typeof value === "string" &&
+          value.trim() !== ""
         ) {
-          const result = validateAgreementTypeData(allValues)
+          const result = validateAgreementTypeData(allValues);
           if (result.success) {
-            return true
+            return true;
           }
           const fieldError = result.errors?.issues.find((issue) =>
             issue.path.some((p) => String(p) === fieldName)
-          )
-          return fieldError ? fieldError.message : true
+          );
+          return fieldError ? fieldError.message : true;
         }
 
-        return true
+        return true;
       } catch {
-        return true
+        return true;
       }
     },
     [mode]
-  )
+  );
 
   const onSubmit = useCallback(
     async (data: AgreementTypeFormData & { agreementTypeId?: string }) => {
       try {
-        setErrorMessage(null)
-        setSuccessMessage(null)
+        setErrorMessage(null);
+        setSuccessMessage(null);
 
         if (taskStatusLoading) {
           setErrorMessage(
-            'Please wait for dropdown options to load before submitting.'
-          )
-          return
+            "Please wait for dropdown options to load before submitting."
+          );
+          return;
         }
 
-        const validatedData = sanitizeAgreementTypeData(data)
-        const currentDataToEdit = apiAgreementTypeData || actionData
-        const isEditing = Boolean(mode === 'edit' && currentDataToEdit?.id)
+        const validatedData = sanitizeAgreementTypeData(data);
+        const currentDataToEdit = apiAgreementTypeData || actionData;
+        const isEditing = Boolean(mode === "edit" && currentDataToEdit?.id);
 
         // Validate agreement type ID for new agreement types
         if (!isEditing && !data.agreementTypeId && !generatedId) {
-          setErrorMessage('Please generate an Agreement Type ID before submitting.')
-          return
+          setErrorMessage(
+            "Please generate an Agreement Type ID before submitting."
+          );
+          return;
         }
 
-        const isValid = await trigger()
+        const isValid = await trigger();
         if (!isValid) {
-          const errors: string[] = []
+          const errors: string[] = [];
           if (!data.agreementTypeName) {
-            errors.push('Agreement Type Name is required')
+            errors.push("Agreement Type Name is required");
           }
           if (!data.agreementTypeDescription) {
-            errors.push('Agreement Type Description is required')
+            errors.push("Agreement Type Description is required");
           }
           if (errors.length > 0) {
             setErrorMessage(
-              `Please fill in the required fields: ${errors.join(', ')}`
-            )
+              `Please fill in the required fields: ${errors.join(", ")}`
+            );
           }
-          return
+          return;
         }
 
         const agreementTypeId = isEditing
-          ? String(currentDataToEdit?.id || '')
-          : undefined
+          ? String(currentDataToEdit?.id || "")
+          : undefined;
 
-        const formAgreementTypeId = data.agreementTypeId || generatedId
+        const formAgreementTypeId = data.agreementTypeId || generatedId;
 
-        let agreementTypeData: CreateAgreementTypeRequest | UpdateAgreementTypeRequest
+        let agreementTypeData:
+          | CreateAgreementTypeRequest
+          | UpdateAgreementTypeRequest;
 
         if (isEditing) {
           agreementTypeData = {
@@ -343,7 +353,7 @@ export const RightSlideAgreementTypePanel: React.FC<
               validatedData.taskStatusDTO?.id && {
                 taskStatusDTO: { id: validatedData.taskStatusDTO.id },
               }),
-          } as UpdateAgreementTypeRequest
+          } as UpdateAgreementTypeRequest;
         } else {
           agreementTypeData = {
             agreementTypeName: validatedData.agreementTypeName,
@@ -356,51 +366,51 @@ export const RightSlideAgreementTypePanel: React.FC<
               validatedData.taskStatusDTO?.id && {
                 taskStatusDTO: { id: validatedData.taskStatusDTO.id },
               }),
-          } as CreateAgreementTypeRequest
+          } as CreateAgreementTypeRequest;
         }
 
         const result = await saveAgreementTypeMutation.mutateAsync({
           data: agreementTypeData,
           isEditing,
           ...(agreementTypeId && { agreementTypeId }),
-        })
+        });
 
         if (result?.uuid) {
-          setGeneratedId(result.uuid)
+          setGeneratedId(result.uuid);
         }
 
         setSuccessMessage(
           isEditing
-            ? 'Agreement Type updated successfully!'
-            : 'Agreement Type added successfully!'
-        )
+            ? "Agreement Type updated successfully!"
+            : "Agreement Type added successfully!"
+        );
 
         if (
-          mode === 'edit' &&
+          mode === "edit" &&
           onAgreementTypeUpdated &&
           agreementTypeIndex !== null &&
           agreementTypeIndex !== undefined
         ) {
-          onAgreementTypeUpdated(result as AgreementType, agreementTypeIndex)
+          onAgreementTypeUpdated(result as AgreementType, agreementTypeIndex);
         } else if (onAgreementTypeAdded) {
-          onAgreementTypeAdded(result as AgreementType)
+          onAgreementTypeAdded(result as AgreementType);
         }
 
         setTimeout(() => {
-          reset()
-          setGeneratedId('')
-          handleClose()
-        }, PANEL_CLOSE_DELAY)
+          reset();
+          setGeneratedId("");
+          handleClose();
+        }, PANEL_CLOSE_DELAY);
       } catch (error: unknown) {
-        let errorMessage = 'Failed to save agreement type. Please try again.'
+        let errorMessage = "Failed to save agreement type. Please try again.";
         if (error instanceof Error) {
-          if (error.message.includes('validation')) {
-            errorMessage = 'Please check your input and try again.'
+          if (error.message.includes("validation")) {
+            errorMessage = "Please check your input and try again.";
           } else {
-            errorMessage = error.message
+            errorMessage = error.message;
           }
         }
-        setErrorMessage(errorMessage)
+        setErrorMessage(errorMessage);
       }
     },
     [
@@ -416,35 +426,35 @@ export const RightSlideAgreementTypePanel: React.FC<
       onAgreementTypeAdded,
       reset,
     ]
-  )
+  );
 
   const handleClose = useCallback(() => {
-    reset()
-    setErrorMessage(null)
-    setSuccessMessage(null)
-    setGeneratedId('')
-    onClose()
-  }, [reset, onClose])
+    reset();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setGeneratedId("");
+    onClose();
+  }, [reset, onClose]);
 
   // Style variables
-  const isDark = theme.palette.mode === 'dark'
-  const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
-  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
-  const labelSx = tokens.label
-  const valueSx = tokens.value
+  const isDark = theme.palette.mode === "dark";
+  const textSecondary = isDark ? "#CBD5E1" : "#6B7280";
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens]);
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens]);
+  const labelSx = tokens.label;
+  const valueSx = tokens.value;
 
   const viewModeStyles = useMemo(
     () => ({
-      backgroundColor: isDark ? alpha('#1E293B', 0.5) : '#F9FAFB',
-      borderColor: isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB',
+      backgroundColor: isDark ? alpha("#1E293B", 0.5) : "#F9FAFB",
+      borderColor: isDark ? alpha("#FFFFFF", 0.2) : "#E5E7EB",
     }),
     [isDark]
-  )
+  );
 
   const renderTextField = useCallback(
     (
-      name: 'agreementTypeName' | 'agreementTypeDescription',
+      name: "agreementTypeName" | "agreementTypeDescription",
       label: string,
       gridSize: number = 6,
       required = false
@@ -473,12 +483,20 @@ export const RightSlideAgreementTypePanel: React.FC<
         />
       </Grid>
     ),
-    [control, errors, labelSx, valueSx, errorFieldStyles, commonFieldStyles, validateAgreementTypeField]
-  )
+    [
+      control,
+      errors,
+      labelSx,
+      valueSx,
+      errorFieldStyles,
+      commonFieldStyles,
+      validateAgreementTypeField,
+    ]
+  );
 
   const renderAgreementTypeIdField = useCallback(
     (
-      name: 'agreementTypeId',
+      name: "agreementTypeId",
       label: string,
       gridSize: number = 6,
       required = false
@@ -494,11 +512,13 @@ export const RightSlideAgreementTypePanel: React.FC<
               validateAgreementTypeField(
                 name,
                 value,
-                formValues as AgreementTypeFormData & { agreementTypeId?: string }
+                formValues as AgreementTypeFormData & {
+                  agreementTypeId?: string;
+                }
               ),
           }}
           render={({ field }) => {
-            const fieldError = errors[name as keyof typeof errors]
+            const fieldError = errors[name as keyof typeof errors];
             return (
               <TextField
                 {...field}
@@ -509,8 +529,8 @@ export const RightSlideAgreementTypePanel: React.FC<
                 error={!!fieldError}
                 helperText={fieldError?.message?.toString()}
                 onChange={(e) => {
-                  setGeneratedId(e.target.value)
-                  field.onChange(e)
+                  setGeneratedId(e.target.value);
+                  field.onChange(e);
                 }}
                 disabled={isReadOnly || isEditMode}
                 InputProps={{
@@ -524,24 +544,24 @@ export const RightSlideAgreementTypePanel: React.FC<
                         disabled={isGeneratingId || isReadOnly || isEditMode}
                         sx={{
                           color: theme.palette.primary.contrastText,
-                          borderRadius: '8px',
-                          textTransform: 'none',
+                          borderRadius: "8px",
+                          textTransform: "none",
                           background: theme.palette.primary.main,
-                          '&:hover': {
+                          "&:hover": {
                             background: theme.palette.primary.dark,
                           },
-                          minWidth: '100px',
-                          height: '32px',
-                          fontFamily: 'Outfit, sans-serif',
+                          minWidth: "100px",
+                          height: "32px",
+                          fontFamily: "Outfit, sans-serif",
                           fontWeight: 500,
-                          fontStyle: 'normal',
-                          fontSize: '11px',
-                          lineHeight: '14px',
-                          letterSpacing: '0.3px',
+                          fontStyle: "normal",
+                          fontSize: "11px",
+                          lineHeight: "14px",
+                          letterSpacing: "0.3px",
                           px: 1,
                         }}
                       >
-                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                        {isGeneratingId ? "Generating..." : "Generate ID"}
                       </Button>
                     </InputAdornment>
                   ),
@@ -552,28 +572,30 @@ export const RightSlideAgreementTypePanel: React.FC<
                     ...labelSx,
                     ...(!!fieldError && {
                       color: theme.palette.error.main,
-                      '&.Mui-focused': { color: theme.palette.error.main },
-                      '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                      "&.Mui-focused": { color: theme.palette.error.main },
+                      "&.MuiFormLabel-filled": {
+                        color: theme.palette.error.main,
+                      },
                     }),
                   },
                 }}
                 sx={{
                   ...commonFieldStyles,
                   ...((isReadOnly || isEditMode) && {
-                    '& .MuiOutlinedInput-root': {
+                    "& .MuiOutlinedInput-root": {
                       backgroundColor: viewModeStyles.backgroundColor,
                       color: textSecondary,
-                      '& fieldset': {
+                      "& fieldset": {
                         borderColor: viewModeStyles.borderColor,
                       },
-                      '&:hover fieldset': {
+                      "&:hover fieldset": {
                         borderColor: viewModeStyles.borderColor,
                       },
                     },
                   }),
                 }}
               />
-            )
+            );
           }}
         />
       </Grid>
@@ -594,7 +616,7 @@ export const RightSlideAgreementTypePanel: React.FC<
       textSecondary,
       validateAgreementTypeField,
     ]
-  )
+  );
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -606,24 +628,24 @@ export const RightSlideAgreementTypePanel: React.FC<
           sx: {
             ...tokens.paper,
             width: 460,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
           },
         }}
       >
         <DialogTitle
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontFamily: 'Outfit, sans-serif',
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontFamily: "Outfit, sans-serif",
             fontWeight: 500,
-            fontStyle: 'normal',
-            fontSize: '20px',
-            lineHeight: '28px',
-            letterSpacing: '0.15px',
-            verticalAlign: 'middle',
+            fontStyle: "normal",
+            fontSize: "20px",
+            lineHeight: "28px",
+            letterSpacing: "0.15px",
+            verticalAlign: "middle",
             borderBottom: `1px solid ${tokens.dividerColor}`,
             backgroundColor: tokens.paper.backgroundColor as string,
             color: theme.palette.text.primary,
@@ -631,14 +653,14 @@ export const RightSlideAgreementTypePanel: React.FC<
             pl: 3,
           }}
         >
-          {mode === 'edit'
-            ? `${getAgreementTypeLabel('CDL_COMMON_UPDATE')} ${getAgreementTypeLabel('CDL_MAT_NAME')}`
-            : `${getAgreementTypeLabel('CDL_COMMON_ADD')} ${getAgreementTypeLabel('CDL_MAT_NAME')}`}
+          {mode === "edit"
+            ? `${getAgreementTypeLabel("CDL_COMMON_UPDATE")} ${getAgreementTypeLabel("CDL_MAT_NAME")}`
+            : `${getAgreementTypeLabel("CDL_COMMON_ADD")} ${getAgreementTypeLabel("CDL_MAT_NAME")}`}
           <IconButton
             onClick={handleClose}
             sx={{
               color: theme.palette.text.secondary,
-              '&:hover': {
+              "&:hover": {
                 backgroundColor: theme.palette.action.hover,
               },
             }}
@@ -662,9 +684,9 @@ export const RightSlideAgreementTypePanel: React.FC<
                 sx={{
                   mb: 2,
                   backgroundColor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(239, 68, 68, 0.08)'
-                      : 'rgba(254, 226, 226, 0.4)',
+                    theme.palette.mode === "dark"
+                      ? "rgba(239, 68, 68, 0.08)"
+                      : "rgba(254, 226, 226, 0.4)",
                   borderColor: alpha(theme.palette.error.main, 0.4),
                   color: theme.palette.error.main,
                 }}
@@ -675,20 +697,20 @@ export const RightSlideAgreementTypePanel: React.FC<
 
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
               {renderAgreementTypeIdField(
-                'agreementTypeId',
-                getAgreementTypeLabel('CDL_MAT_ID'),
+                "agreementTypeId",
+                getAgreementTypeLabel("CDL_MAT_ID"),
                 12,
                 true
               )}
               {renderTextField(
-                'agreementTypeName',
-                getAgreementTypeLabel('CDL_MAT_NAME'),
+                "agreementTypeName",
+                getAgreementTypeLabel("CDL_MAT_NAME"),
                 12,
                 true
               )}
               {renderTextField(
-                'agreementTypeDescription',
-                getAgreementTypeLabel('CDL_MAT_DESCRIPTION'),
+                "agreementTypeDescription",
+                getAgreementTypeLabel("CDL_MAT_DESCRIPTION"),
                 12,
                 true
               )}
@@ -697,19 +719,19 @@ export const RightSlideAgreementTypePanel: React.FC<
 
           <Box
             sx={{
-              position: 'absolute',
+              position: "absolute",
               bottom: 0,
               left: 0,
               right: 0,
               padding: 2,
-              display: 'flex',
+              display: "flex",
               gap: 2,
               borderTop: `1px solid ${tokens.dividerColor}`,
               backgroundColor: alpha(
                 theme.palette.background.paper,
-                theme.palette.mode === 'dark' ? 0.92 : 0.9
+                theme.palette.mode === "dark" ? 0.92 : 0.9
               ),
-              backdropFilter: 'blur(10px)',
+              backdropFilter: "blur(10px)",
               zIndex: 10,
             }}
           >
@@ -719,22 +741,24 @@ export const RightSlideAgreementTypePanel: React.FC<
                   fullWidth
                   variant="outlined"
                   onClick={handleClose}
-                  disabled={saveAgreementTypeMutation.isPending || taskStatusLoading}
+                  disabled={
+                    saveAgreementTypeMutation.isPending || taskStatusLoading
+                  }
                   sx={{
-                    fontFamily: 'Outfit, sans-serif',
+                    fontFamily: "Outfit, sans-serif",
                     fontWeight: 500,
-                    fontStyle: 'normal',
-                    fontSize: '14px',
-                    lineHeight: '20px',
+                    fontStyle: "normal",
+                    fontSize: "14px",
+                    lineHeight: "20px",
                     letterSpacing: 0,
-                    borderWidth: '1px',
+                    borderWidth: "1px",
                     borderColor:
-                      theme.palette.mode === 'dark'
+                      theme.palette.mode === "dark"
                         ? theme.palette.primary.main
                         : undefined,
                   }}
                 >
-                  {getAgreementTypeLabel('CDL_COMMON_CANCEL')}
+                  {getAgreementTypeLabel("CDL_COMMON_CANCEL")}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
@@ -743,49 +767,51 @@ export const RightSlideAgreementTypePanel: React.FC<
                   variant="outlined"
                   color="primary"
                   type="submit"
-                  disabled={saveAgreementTypeMutation.isPending || taskStatusLoading}
+                  disabled={
+                    saveAgreementTypeMutation.isPending || taskStatusLoading
+                  }
                   sx={{
-                    fontFamily: 'Outfit, sans-serif',
+                    fontFamily: "Outfit, sans-serif",
                     fontWeight: 500,
-                    fontStyle: 'normal',
-                    fontSize: '14px',
-                    lineHeight: '20px',
+                    fontStyle: "normal",
+                    fontSize: "14px",
+                    lineHeight: "20px",
                     letterSpacing: 0,
                     backgroundColor: theme.palette.primary.main,
                     color: theme.palette.primary.contrastText,
-                    borderWidth: '1px',
-                    borderStyle: 'solid',
+                    borderWidth: "1px",
+                    borderStyle: "solid",
                     borderColor:
-                      theme.palette.mode === 'dark'
+                      theme.palette.mode === "dark"
                         ? theme.palette.primary.main
-                        : 'transparent',
-                    '&:hover': {
+                        : "transparent",
+                    "&:hover": {
                       backgroundColor: theme.palette.primary.dark,
                       borderColor:
-                        theme.palette.mode === 'dark'
+                        theme.palette.mode === "dark"
                           ? theme.palette.primary.main
-                          : 'transparent',
+                          : "transparent",
                     },
-                    '&:disabled': {
+                    "&:disabled": {
                       backgroundColor:
-                        theme.palette.mode === 'dark'
+                        theme.palette.mode === "dark"
                           ? alpha(theme.palette.grey[600], 0.5)
                           : theme.palette.grey[300],
                       borderColor:
-                        theme.palette.mode === 'dark'
+                        theme.palette.mode === "dark"
                           ? alpha(theme.palette.primary.main, 0.5)
-                          : 'transparent',
+                          : "transparent",
                       color: theme.palette.text.disabled,
                     },
                   }}
                 >
                   {saveAgreementTypeMutation.isPending
-                    ? mode === 'edit'
-                      ? getAgreementTypeLabel('CDL_COMMON_UPDATING')
-                      : getAgreementTypeLabel('CDL_COMMON_ADDING')
-                    : mode === 'edit'
-                      ? getAgreementTypeLabel('CDL_COMMON_UPDATE')
-                      : getAgreementTypeLabel('CDL_COMMON_ADD')}
+                    ? mode === "edit"
+                      ? getAgreementTypeLabel("CDL_COMMON_UPDATING")
+                      : getAgreementTypeLabel("CDL_COMMON_ADDING")
+                    : mode === "edit"
+                      ? getAgreementTypeLabel("CDL_COMMON_UPDATE")
+                      : getAgreementTypeLabel("CDL_COMMON_ADD")}
                 </Button>
               </Grid>
             </Grid>
@@ -796,12 +822,12 @@ export const RightSlideAgreementTypePanel: React.FC<
           open={!!errorMessage}
           autoHideDuration={SNACKBAR_AUTO_HIDE_DURATION.ERROR}
           onClose={() => setErrorMessage(null)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
         >
           <Alert
             onClose={() => setErrorMessage(null)}
             severity="error"
-            sx={{ width: '100%' }}
+            sx={{ width: "100%" }}
           >
             {errorMessage}
           </Alert>
@@ -811,17 +837,17 @@ export const RightSlideAgreementTypePanel: React.FC<
           open={!!successMessage}
           autoHideDuration={SNACKBAR_AUTO_HIDE_DURATION.SUCCESS}
           onClose={() => setSuccessMessage(null)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
         >
           <Alert
             onClose={() => setSuccessMessage(null)}
             severity="success"
-            sx={{ width: '100%' }}
+            sx={{ width: "100%" }}
           >
             {successMessage}
           </Alert>
         </Snackbar>
       </Drawer>
     </LocalizationProvider>
-  )
-}
+  );
+};

@@ -122,7 +122,7 @@ export class BusinessSegmentService {
   async updateBusinessSegment(
     id: string,
     updates: UpdateBusinessSegmentRequest
-        ): Promise<BusinessSegment> {
+  ): Promise<BusinessSegment> {
     try {
       const result = await apiClient.put<BusinessSegment>(
         buildApiUrl(API_ENDPOINTS.MASTER_BUSINESS_SEGMENT.UPDATE(id)),
@@ -148,14 +148,14 @@ export class BusinessSegmentService {
     try {
       const url = buildApiUrl(API_ENDPOINTS.MASTER_BUSINESS_SEGMENT.FIND_ALL)
       const result = await apiClient.get<BusinessSegment[] | PaginatedResponse<BusinessSegment>>(url)
-      
+
       // Handle different response structures
       if (Array.isArray(result)) {
         return result
       } else if (result && typeof result === 'object' && 'content' in result && Array.isArray((result as PaginatedResponse<BusinessSegment>).content)) {
         return (result as PaginatedResponse<BusinessSegment>).content
       }
-      
+
       return []
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -167,4 +167,3 @@ export class BusinessSegmentService {
 }
 
 export const businessSegmentService = new BusinessSegmentService()
-

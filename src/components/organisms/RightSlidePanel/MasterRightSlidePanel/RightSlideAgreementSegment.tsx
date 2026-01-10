@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+} from "react";
 import {
   DialogTitle,
   DialogContent,
@@ -11,97 +17,96 @@ import {
   Alert,
   Snackbar,
   InputAdornment,
-} from '@mui/material'
-import { Refresh as RefreshIcon } from '@mui/icons-material'
-import { Controller, useForm } from 'react-hook-form'
-import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import { alpha, useTheme } from '@mui/material/styles'
+} from "@mui/material";
+import { Refresh as RefreshIcon } from "@mui/icons-material";
+import { Controller, useForm } from "react-hook-form";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { alpha, useTheme } from "@mui/material/styles";
 import {
   useSaveAgreementSegment,
   useAgreementSegment,
-} from '@/hooks/master/CustomerHook/useAgreementSegment'
+} from "@/hooks/master/CustomerHook/useAgreementSegment";
 import {
   validateAgreementSegmentData as validateAgreementSegmentSchema,
   sanitizeAgreementSegmentData,
   type AgreementSegmentFormData,
-} from '@/lib/validation/masterValidation/agreementSegmentSchemas'
+} from "@/lib/validation/masterValidation/agreementSegmentSchemas";
 import type {
   CreateAgreementSegmentRequest,
   UpdateAgreementSegmentRequest,
   AgreementSegment,
   TaskStatusDTO,
-} from '@/services/api/masterApi/Customer/agreementSegmentService'
-import { getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { buildPanelSurfaceTokens } from '../panelTheme'
-import { useTaskStatuses } from '@/hooks/master/CustomerHook/useTaskStatus'
-import { idService } from '@/services/api/developerIdService'
+} from "@/services/api/masterApi/Customer/agreementSegmentService";
+import { getMasterLabel } from "@/constants/mappings/master/masterMapping";
+import { buildPanelSurfaceTokens } from "../panelTheme";
+import { useTaskStatuses } from "@/hooks/master/CustomerHook/useTaskStatus";
+import { idService } from "@/services/api/developerIdService";
 
 interface RightSlideAgreementSegmentPanelProps {
-  isOpen: boolean
-  onClose: () => void
-  onAgreementSegmentAdded?: (agreementSegment: AgreementSegment) => void
+  isOpen: boolean;
+  onClose: () => void;
+  onAgreementSegmentAdded?: (agreementSegment: AgreementSegment) => void;
   onAgreementSegmentUpdated?: (
     agreementSegment: AgreementSegment,
     index: number
-  ) => void
-  title?: string
-  mode?: 'add' | 'edit'
-  actionData?: AgreementSegment | null
-  agreementSegmentIndex?: number | undefined
-  taskStatusOptions?: TaskStatusDTO[]
-  taskStatusLoading?: boolean
-  taskStatusError?: unknown
+  ) => void;
+  title?: string;
+  mode?: "add" | "edit";
+  actionData?: AgreementSegment | null;
+  agreementSegmentIndex?: number | undefined;
+  taskStatusOptions?: TaskStatusDTO[];
+  taskStatusLoading?: boolean;
+  taskStatusError?: unknown;
 }
 
 const DEFAULT_FORM_VALUES = {
-  agreementSegmentId: '',
-  segmentName: '',
-  segmentDescription: '',
+  agreementSegmentId: "",
+  segmentName: "",
+  segmentDescription: "",
   active: true,
   taskStatusDTO: null,
-} as const
+} as const;
 
-export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmentPanelProps> = ({
+export const RightSlideAgreementSegmentPanel: React.FC<
+  RightSlideAgreementSegmentPanelProps
+> = ({
   isOpen,
   onClose,
   onAgreementSegmentAdded,
   onAgreementSegmentUpdated,
-  mode = 'add',
+  mode = "add",
   actionData,
   agreementSegmentIndex,
   taskStatusOptions: _propTaskStatusOptions,
   taskStatusLoading: propTaskStatusLoading = false,
   taskStatusError: propTaskStatusError = null,
 }) => {
-  const theme = useTheme()
-  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme])
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [generatedId, setGeneratedId] = useState<string>('')
-  const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
+  const theme = useTheme();
+  const tokens = useMemo(() => buildPanelSurfaceTokens(theme), [theme]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [generatedId, setGeneratedId] = useState<string>("");
+  const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false);
 
-  const isEditMode = mode === 'edit'
-  const saveAgreementSegmentMutation = useSaveAgreementSegment()
+  const isEditMode = mode === "edit";
+  const saveAgreementSegmentMutation = useSaveAgreementSegment();
 
   // Fetch full agreement segment data when in edit mode
   const { data: apiAgreementSegmentData } = useAgreementSegment(
     isEditMode && actionData?.id ? String(actionData.id) : null
-  )
+  );
 
   // Fetch task statuses
-  const { isLoading: taskStatusesLoading } = useTaskStatuses()
-  const taskStatusLoading = propTaskStatusLoading || taskStatusesLoading
-  const taskStatusError = propTaskStatusError || null
+  const { isLoading: taskStatusesLoading } = useTaskStatuses();
+  const taskStatusLoading = propTaskStatusLoading || taskStatusesLoading;
+  const taskStatusError = propTaskStatusError || null;
 
   // Dynamic labels
-  const getLabel = useCallback(
-    (configId: string): string => {
-      return getMasterLabel(configId)
-    },
-    []
-  )
+  const getLabel = useCallback((configId: string): string => {
+    return getMasterLabel(configId);
+  }, []);
 
   const {
     control,
@@ -113,134 +118,133 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
     formState: { errors },
   } = useForm<AgreementSegmentFormData & { agreementSegmentId?: string }>({
     defaultValues: DEFAULT_FORM_VALUES,
-    mode: 'onChange',
-  })
+    mode: "onChange",
+  });
 
   // Sync generatedId with form value
   useEffect(() => {
     const subscription = watch((value, { name }) => {
-      if (name === 'agreementSegmentId' && value.agreementSegmentId) {
-        setGeneratedId(value.agreementSegmentId)
+      if (name === "agreementSegmentId" && value.agreementSegmentId) {
+        setGeneratedId(value.agreementSegmentId);
       }
-    })
-    return () => subscription.unsubscribe()
-  }, [watch])
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   // Generate new agreement segment ID
   const handleGenerateNewId = useCallback(async () => {
     try {
-      setIsGeneratingId(true)
-      const newIdResponse = idService.generateNewId('MAS')
-      setGeneratedId(newIdResponse.id)
-      setValue('agreementSegmentId', newIdResponse.id, {
+      setIsGeneratingId(true);
+      const newIdResponse = idService.generateNewId("MAS");
+      setGeneratedId(newIdResponse.id);
+      setValue("agreementSegmentId", newIdResponse.id, {
         shouldValidate: true,
         shouldDirty: true,
-      })
+      });
     } catch (error) {
-      setErrorMessage('Failed to generate ID. Please try again.')
+      setErrorMessage("Failed to generate ID. Please try again.");
     } finally {
-      setIsGeneratingId(false)
+      setIsGeneratingId(false);
     }
-  }, [setValue])
+  }, [setValue]);
 
   // Track form reset state
-  const lastResetIdRef = useRef<string | number | null>(null)
-  const lastModeRef = useRef<'add' | 'edit' | null>(null)
-  const lastIsOpenRef = useRef<boolean>(false)
+  const lastResetIdRef = useRef<string | number | null>(null);
+  const lastModeRef = useRef<"add" | "edit" | null>(null);
+  const lastIsOpenRef = useRef<boolean>(false);
 
   // Transform data to form format
   const transformDataToForm = useCallback((data: AgreementSegment | null) => {
-    if (!data) return null
+    if (!data) return null;
 
     const segmentName =
-      'segmentName' in data && data.segmentName
+      "segmentName" in data && data.segmentName
         ? data.segmentName
-        : 'agreementSegmentName' in data && (data as any).agreementSegmentName
+        : "agreementSegmentName" in data && (data as any).agreementSegmentName
           ? (data as any).agreementSegmentName
-          : ''
+          : "";
 
     const segmentDescription =
-      'segmentDescription' in data && data.segmentDescription
+      "segmentDescription" in data && data.segmentDescription
         ? data.segmentDescription
-        : 'agreementSegmentDescription' in data &&
+        : "agreementSegmentDescription" in data &&
             (data as any).agreementSegmentDescription
           ? (data as any).agreementSegmentDescription
-          : ''
+          : "";
 
     const agreementSegmentId =
-      data.uuid || (data.id ? `MAS-${data.id}` : '') || ''
+      data.uuid || (data.id ? `MAS-${data.id}` : "") || "";
 
     return {
       agreementSegmentId,
-      segmentName: segmentName || '',
-      segmentDescription: segmentDescription || '',
-      active: 'active' in data ? (data.active ?? true) : true,
+      segmentName: segmentName || "",
+      segmentDescription: segmentDescription || "",
+      active: "active" in data ? (data.active ?? true) : true,
       taskStatusDTO: data.taskStatusDTO?.id
         ? { id: data.taskStatusDTO.id }
         : null,
-    }
-  }, [])
+    };
+  }, []);
 
   // Reset form when panel opens/closes or mode/data changes
   useEffect(() => {
     if (!isOpen) {
       if (lastIsOpenRef.current) {
-        reset(DEFAULT_FORM_VALUES)
-        setGeneratedId('')
-        lastResetIdRef.current = null
-        lastModeRef.current = null
+        reset(DEFAULT_FORM_VALUES);
+        setGeneratedId("");
+        lastResetIdRef.current = null;
+        lastModeRef.current = null;
       }
-      lastIsOpenRef.current = false
-      return
+      lastIsOpenRef.current = false;
+      return;
     }
 
     if (!lastIsOpenRef.current) {
-      lastIsOpenRef.current = true
+      lastIsOpenRef.current = true;
     }
 
     // Handle ADD mode
-    if (mode === 'add') {
-      if (lastModeRef.current !== 'add') {
-        reset(DEFAULT_FORM_VALUES)
-        setGeneratedId('')
-        lastResetIdRef.current = null
-        lastModeRef.current = 'add'
+    if (mode === "add") {
+      if (lastModeRef.current !== "add") {
+        reset(DEFAULT_FORM_VALUES);
+        setGeneratedId("");
+        lastResetIdRef.current = null;
+        lastModeRef.current = "add";
       }
-      return
+      return;
     }
 
     // Handle EDIT mode
-    if (mode === 'edit') {
-      const currentId = actionData?.id ?? apiAgreementSegmentData?.id ?? null
+    if (mode === "edit") {
+      const currentId = actionData?.id ?? apiAgreementSegmentData?.id ?? null;
 
       if (!currentId) {
-        return
+        return;
       }
 
       const shouldReset =
-        lastModeRef.current !== 'edit' ||
-        lastResetIdRef.current !== currentId
+        lastModeRef.current !== "edit" || lastResetIdRef.current !== currentId;
 
-      const dataToUse = apiAgreementSegmentData || actionData
+      const dataToUse = apiAgreementSegmentData || actionData;
 
       if (shouldReset && dataToUse) {
-        const formData = transformDataToForm(dataToUse as AgreementSegment)
+        const formData = transformDataToForm(dataToUse as AgreementSegment);
 
         if (formData) {
-          setGeneratedId(formData.agreementSegmentId)
-          reset(formData)
-          lastResetIdRef.current = currentId
-          lastModeRef.current = 'edit'
+          setGeneratedId(formData.agreementSegmentId);
+          reset(formData);
+          lastResetIdRef.current = currentId;
+          lastModeRef.current = "edit";
         }
       } else if (
         apiAgreementSegmentData &&
         lastResetIdRef.current === apiAgreementSegmentData.id
       ) {
         // Update form when API data arrives (refinement after initial actionData)
-        const formData = transformDataToForm(apiAgreementSegmentData)
+        const formData = transformDataToForm(apiAgreementSegmentData);
         if (formData) {
-          setGeneratedId(formData.agreementSegmentId)
-          reset(formData, { keepDefaultValues: false })
+          setGeneratedId(formData.agreementSegmentId);
+          reset(formData, { keepDefaultValues: false });
         }
       }
     }
@@ -251,50 +255,60 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
     actionData,
     reset,
     transformDataToForm,
-  ])
+  ]);
 
   const onSubmit = useCallback(
-    async (data: AgreementSegmentFormData & { agreementSegmentId?: string }) => {
+    async (
+      data: AgreementSegmentFormData & { agreementSegmentId?: string }
+    ) => {
       try {
-        setErrorMessage(null)
-        setSuccessMessage(null)
+        setErrorMessage(null);
+        setSuccessMessage(null);
 
         if (taskStatusLoading) {
-          setErrorMessage('Please wait for dropdown options to load before submitting.')
-          return
+          setErrorMessage(
+            "Please wait for dropdown options to load before submitting."
+          );
+          return;
         }
 
-        const validatedData = sanitizeAgreementSegmentData(data)
-        const currentDataToEdit = apiAgreementSegmentData || actionData
-        const isEditing = Boolean(isEditMode && currentDataToEdit?.id)
+        const validatedData = sanitizeAgreementSegmentData(data);
+        const currentDataToEdit = apiAgreementSegmentData || actionData;
+        const isEditing = Boolean(isEditMode && currentDataToEdit?.id);
 
         // Validate agreement segment ID for new segments
         if (!isEditing && !data.agreementSegmentId && !generatedId) {
-          setErrorMessage('Please generate an Agreement Segment ID before submitting.')
-          return
+          setErrorMessage(
+            "Please generate an Agreement Segment ID before submitting."
+          );
+          return;
         }
 
-        const isValid = await trigger()
+        const isValid = await trigger();
         if (!isValid) {
-          const errors: string[] = []
+          const errors: string[] = [];
           if (!data.segmentName) {
-            errors.push('Agreement Segment Name is required')
+            errors.push("Agreement Segment Name is required");
           }
           if (!data.segmentDescription) {
-            errors.push('Agreement Segment Description is required')
+            errors.push("Agreement Segment Description is required");
           }
           if (errors.length > 0) {
-            setErrorMessage(`Please fill in the required fields: ${errors.join(', ')}`)
+            setErrorMessage(
+              `Please fill in the required fields: ${errors.join(", ")}`
+            );
           }
-          return
+          return;
         }
 
         const agreementSegmentId = isEditing
-          ? String(currentDataToEdit?.id || '')
-          : undefined
-        const formAgreementSegmentId = data.agreementSegmentId || generatedId
+          ? String(currentDataToEdit?.id || "")
+          : undefined;
+        const formAgreementSegmentId = data.agreementSegmentId || generatedId;
 
-        let agreementSegmentData: CreateAgreementSegmentRequest | UpdateAgreementSegmentRequest
+        let agreementSegmentData:
+          | CreateAgreementSegmentRequest
+          | UpdateAgreementSegmentRequest;
 
         if (isEditing) {
           agreementSegmentData = {
@@ -309,7 +323,7 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
               validatedData.taskStatusDTO?.id && {
                 taskStatusDTO: { id: validatedData.taskStatusDTO.id },
               }),
-          } as UpdateAgreementSegmentRequest
+          } as UpdateAgreementSegmentRequest;
         } else {
           agreementSegmentData = {
             segmentName: validatedData.segmentName,
@@ -322,24 +336,24 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
               validatedData.taskStatusDTO?.id && {
                 taskStatusDTO: { id: validatedData.taskStatusDTO.id },
               }),
-          } as CreateAgreementSegmentRequest
+          } as CreateAgreementSegmentRequest;
         }
 
         const result = await saveAgreementSegmentMutation.mutateAsync({
           data: agreementSegmentData,
           isEditing,
           ...(agreementSegmentId && { agreementSegmentId }),
-        })
+        });
 
         if (result?.uuid) {
-          setGeneratedId(result.uuid)
+          setGeneratedId(result.uuid);
         }
 
         setSuccessMessage(
           isEditing
-            ? 'Agreement Segment updated successfully!'
-            : 'Agreement Segment added successfully!'
-        )
+            ? "Agreement Segment updated successfully!"
+            : "Agreement Segment added successfully!"
+        );
 
         if (
           isEditMode &&
@@ -347,26 +361,30 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
           agreementSegmentIndex !== null &&
           agreementSegmentIndex !== undefined
         ) {
-          onAgreementSegmentUpdated(result as AgreementSegment, agreementSegmentIndex)
+          onAgreementSegmentUpdated(
+            result as AgreementSegment,
+            agreementSegmentIndex
+          );
         } else if (onAgreementSegmentAdded) {
-          onAgreementSegmentAdded(result as AgreementSegment)
+          onAgreementSegmentAdded(result as AgreementSegment);
         }
 
         setTimeout(() => {
-          reset(DEFAULT_FORM_VALUES)
-          setGeneratedId('')
-          handleClose()
-        }, 1500)
+          reset(DEFAULT_FORM_VALUES);
+          setGeneratedId("");
+          handleClose();
+        }, 1500);
       } catch (error: unknown) {
-        let errorMessage = 'Failed to save agreement segment. Please try again.'
+        let errorMessage =
+          "Failed to save agreement segment. Please try again.";
         if (error instanceof Error) {
-          if (error.message.includes('validation')) {
-            errorMessage = 'Please check your input and try again.'
+          if (error.message.includes("validation")) {
+            errorMessage = "Please check your input and try again.";
           } else {
-            errorMessage = error.message
+            errorMessage = error.message;
           }
         }
-        setErrorMessage(errorMessage)
+        setErrorMessage(errorMessage);
       }
     },
     [
@@ -382,35 +400,35 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
       onAgreementSegmentAdded,
       reset,
     ]
-  )
+  );
 
   const handleClose = useCallback(() => {
-    reset(DEFAULT_FORM_VALUES)
-    setErrorMessage(null)
-    setSuccessMessage(null)
-    setGeneratedId('')
-    onClose()
-  }, [reset, onClose])
+    reset(DEFAULT_FORM_VALUES);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setGeneratedId("");
+    onClose();
+  }, [reset, onClose]);
 
   // Style variables
-  const isDark = theme.palette.mode === 'dark'
-  const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
-  const commonFieldStyles = useMemo(() => tokens.input, [tokens])
-  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens])
-  const labelSx = tokens.label
-  const valueSx = tokens.value
+  const isDark = theme.palette.mode === "dark";
+  const textSecondary = isDark ? "#CBD5E1" : "#6B7280";
+  const commonFieldStyles = useMemo(() => tokens.input, [tokens]);
+  const errorFieldStyles = useMemo(() => tokens.inputError, [tokens]);
+  const labelSx = tokens.label;
+  const valueSx = tokens.value;
 
   const viewModeStyles = useMemo(
     () => ({
-      backgroundColor: isDark ? alpha('#1E293B', 0.5) : '#F9FAFB',
-      borderColor: isDark ? alpha('#FFFFFF', 0.2) : '#E5E7EB',
+      backgroundColor: isDark ? alpha("#1E293B", 0.5) : "#F9FAFB",
+      borderColor: isDark ? alpha("#FFFFFF", 0.2) : "#E5E7EB",
     }),
     [isDark]
-  )
+  );
 
   const renderTextField = useCallback(
     (
-      name: 'segmentName' | 'segmentDescription',
+      name: "segmentName" | "segmentDescription",
       label: string,
       gridSize: number = 6,
       required = false
@@ -423,15 +441,17 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
             required: required ? `${label} is required` : false,
             validate: (_value, formValues) => {
               const result = validateAgreementSegmentSchema(
-                formValues as AgreementSegmentFormData & { agreementSegmentId?: string }
-              )
+                formValues as AgreementSegmentFormData & {
+                  agreementSegmentId?: string;
+                }
+              );
               if (result.success) {
-                return true
+                return true;
               }
               const fieldError = result.errors?.issues.find((issue) =>
                 issue.path.some((p) => String(p) === name)
-              )
-              return fieldError ? fieldError.message : true
+              );
+              return fieldError ? fieldError.message : true;
             },
           }}
           render={({ field }) => (
@@ -451,11 +471,11 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
       </Grid>
     ),
     [control, errors, labelSx, valueSx, errorFieldStyles, commonFieldStyles]
-  )
+  );
 
   const renderAgreementSegmentIdField = useCallback(
     (
-      name: 'agreementSegmentId',
+      name: "agreementSegmentId",
       label: string,
       gridSize: number = 6,
       required = false
@@ -469,16 +489,16 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
             required: required ? `${label} is required` : false,
             validate: (value) => {
               if (
-                mode === 'add' &&
-                (!value || (typeof value === 'string' && value.trim() === ''))
+                mode === "add" &&
+                (!value || (typeof value === "string" && value.trim() === ""))
               ) {
-                return 'Agreement Segment ID is required. Please generate an ID.'
+                return "Agreement Segment ID is required. Please generate an ID.";
               }
-              return true
+              return true;
             },
           }}
           render={({ field }) => {
-            const fieldError = errors[name as keyof typeof errors]
+            const fieldError = errors[name as keyof typeof errors];
             return (
               <TextField
                 {...field}
@@ -489,8 +509,8 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
                 error={!!fieldError}
                 helperText={fieldError?.message?.toString()}
                 onChange={(e) => {
-                  setGeneratedId(e.target.value)
-                  field.onChange(e)
+                  setGeneratedId(e.target.value);
+                  field.onChange(e);
                 }}
                 disabled={isEditMode}
                 InputProps={{
@@ -504,24 +524,24 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
                         disabled={isGeneratingId || isEditMode}
                         sx={{
                           color: theme.palette.primary.contrastText,
-                          borderRadius: '8px',
-                          textTransform: 'none',
+                          borderRadius: "8px",
+                          textTransform: "none",
                           background: theme.palette.primary.main,
-                          '&:hover': {
+                          "&:hover": {
                             background: theme.palette.primary.dark,
                           },
-                          minWidth: '100px',
-                          height: '32px',
-                          fontFamily: 'Outfit, sans-serif',
+                          minWidth: "100px",
+                          height: "32px",
+                          fontFamily: "Outfit, sans-serif",
                           fontWeight: 500,
-                          fontStyle: 'normal',
-                          fontSize: '11px',
-                          lineHeight: '14px',
-                          letterSpacing: '0.3px',
+                          fontStyle: "normal",
+                          fontSize: "11px",
+                          lineHeight: "14px",
+                          letterSpacing: "0.3px",
                           px: 1,
                         }}
                       >
-                        {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                        {isGeneratingId ? "Generating..." : "Generate ID"}
                       </Button>
                     </InputAdornment>
                   ),
@@ -532,28 +552,30 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
                     ...labelSx,
                     ...(!!fieldError && {
                       color: theme.palette.error.main,
-                      '&.Mui-focused': { color: theme.palette.error.main },
-                      '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                      "&.Mui-focused": { color: theme.palette.error.main },
+                      "&.MuiFormLabel-filled": {
+                        color: theme.palette.error.main,
+                      },
                     }),
                   },
                 }}
                 sx={{
                   ...commonFieldStyles,
                   ...(isEditMode && {
-                    '& .MuiOutlinedInput-root': {
+                    "& .MuiOutlinedInput-root": {
                       backgroundColor: viewModeStyles.backgroundColor,
                       color: textSecondary,
-                      '& fieldset': {
+                      "& fieldset": {
                         borderColor: viewModeStyles.borderColor,
                       },
-                      '&:hover fieldset': {
+                      "&:hover fieldset": {
                         borderColor: viewModeStyles.borderColor,
                       },
                     },
                   }),
                 }}
               />
-            )
+            );
           }}
         />
       </Grid>
@@ -573,7 +595,7 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
       viewModeStyles,
       textSecondary,
     ]
-  )
+  );
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -585,24 +607,24 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
           sx: {
             ...tokens.paper,
             width: 460,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
           },
         }}
       >
         <DialogTitle
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontFamily: 'Outfit, sans-serif',
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontFamily: "Outfit, sans-serif",
             fontWeight: 500,
-            fontStyle: 'normal',
-            fontSize: '20px',
-            lineHeight: '28px',
-            letterSpacing: '0.15px',
-            verticalAlign: 'middle',
+            fontStyle: "normal",
+            fontSize: "20px",
+            lineHeight: "28px",
+            letterSpacing: "0.15px",
+            verticalAlign: "middle",
             borderBottom: `1px solid ${tokens.dividerColor}`,
             backgroundColor: tokens.paper.backgroundColor as string,
             color: theme.palette.text.primary,
@@ -611,13 +633,13 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
           }}
         >
           {isEditMode
-            ? `${getLabel('CDL_COMMON_UPDATE')} ${getLabel('CDL_MAS_NAME')}`
-            : `${getLabel('CDL_COMMON_ADD')} ${getLabel('CDL_MAS_NAME')}`}
+            ? `${getLabel("CDL_COMMON_UPDATE")} ${getLabel("CDL_MAS_NAME")}`
+            : `${getLabel("CDL_COMMON_ADD")} ${getLabel("CDL_MAS_NAME")}`}
           <IconButton
             onClick={handleClose}
             sx={{
               color: theme.palette.text.secondary,
-              '&:hover': {
+              "&:hover": {
                 backgroundColor: theme.palette.action.hover,
               },
             }}
@@ -641,9 +663,9 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
                 sx={{
                   mb: 2,
                   backgroundColor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(239, 68, 68, 0.08)'
-                      : 'rgba(254, 226, 226, 0.4)',
+                    theme.palette.mode === "dark"
+                      ? "rgba(239, 68, 68, 0.08)"
+                      : "rgba(254, 226, 226, 0.4)",
                   borderColor: alpha(theme.palette.error.main, 0.4),
                   color: theme.palette.error.main,
                 }}
@@ -654,20 +676,20 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
 
             <Grid container rowSpacing={4} columnSpacing={2} mt={3}>
               {renderAgreementSegmentIdField(
-                'agreementSegmentId',
-                getLabel('CDL_MAS_ID'),
+                "agreementSegmentId",
+                getLabel("CDL_MAS_ID"),
                 12,
                 true
               )}
               {renderTextField(
-                'segmentName',
-                getLabel('CDL_MAS_NAME'),
+                "segmentName",
+                getLabel("CDL_MAS_NAME"),
                 12,
                 true
               )}
               {renderTextField(
-                'segmentDescription',
-                getLabel('CDL_MAS_DESCRIPTION'),
+                "segmentDescription",
+                getLabel("CDL_MAS_DESCRIPTION"),
                 12,
                 true
               )}
@@ -676,19 +698,19 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
 
           <Box
             sx={{
-              position: 'absolute',
+              position: "absolute",
               bottom: 0,
               left: 0,
               right: 0,
               padding: 2,
-              display: 'flex',
+              display: "flex",
               gap: 2,
               borderTop: `1px solid ${tokens.dividerColor}`,
               backgroundColor: alpha(
                 theme.palette.background.paper,
-                theme.palette.mode === 'dark' ? 0.92 : 0.9
+                theme.palette.mode === "dark" ? 0.92 : 0.9
               ),
-              backdropFilter: 'blur(10px)',
+              backdropFilter: "blur(10px)",
               zIndex: 10,
             }}
           >
@@ -698,22 +720,24 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
                   fullWidth
                   variant="outlined"
                   onClick={handleClose}
-                  disabled={saveAgreementSegmentMutation.isPending || taskStatusLoading}
+                  disabled={
+                    saveAgreementSegmentMutation.isPending || taskStatusLoading
+                  }
                   sx={{
-                    fontFamily: 'Outfit, sans-serif',
+                    fontFamily: "Outfit, sans-serif",
                     fontWeight: 500,
-                    fontStyle: 'normal',
-                    fontSize: '14px',
-                    lineHeight: '20px',
+                    fontStyle: "normal",
+                    fontSize: "14px",
+                    lineHeight: "20px",
                     letterSpacing: 0,
-                    borderWidth: '1px',
+                    borderWidth: "1px",
                     borderColor:
-                      theme.palette.mode === 'dark'
+                      theme.palette.mode === "dark"
                         ? theme.palette.primary.main
                         : undefined,
                   }}
                 >
-                  {getLabel('CDL_COMMON_CANCEL')}
+                  {getLabel("CDL_COMMON_CANCEL")}
                 </Button>
               </Grid>
               <Grid size={{ xs: 6 }}>
@@ -722,49 +746,51 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
                   variant="outlined"
                   color="primary"
                   type="submit"
-                  disabled={saveAgreementSegmentMutation.isPending || taskStatusLoading}
+                  disabled={
+                    saveAgreementSegmentMutation.isPending || taskStatusLoading
+                  }
                   sx={{
-                    fontFamily: 'Outfit, sans-serif',
+                    fontFamily: "Outfit, sans-serif",
                     fontWeight: 500,
-                    fontStyle: 'normal',
-                    fontSize: '14px',
-                    lineHeight: '20px',
+                    fontStyle: "normal",
+                    fontSize: "14px",
+                    lineHeight: "20px",
                     letterSpacing: 0,
                     backgroundColor: theme.palette.primary.main,
                     color: theme.palette.primary.contrastText,
-                    borderWidth: '1px',
-                    borderStyle: 'solid',
+                    borderWidth: "1px",
+                    borderStyle: "solid",
                     borderColor:
-                      theme.palette.mode === 'dark'
+                      theme.palette.mode === "dark"
                         ? theme.palette.primary.main
-                        : 'transparent',
-                    '&:hover': {
+                        : "transparent",
+                    "&:hover": {
                       backgroundColor: theme.palette.primary.dark,
                       borderColor:
-                        theme.palette.mode === 'dark'
+                        theme.palette.mode === "dark"
                           ? theme.palette.primary.main
-                          : 'transparent',
+                          : "transparent",
                     },
-                    '&:disabled': {
+                    "&:disabled": {
                       backgroundColor:
-                        theme.palette.mode === 'dark'
+                        theme.palette.mode === "dark"
                           ? alpha(theme.palette.grey[600], 0.5)
                           : theme.palette.grey[300],
                       borderColor:
-                        theme.palette.mode === 'dark'
+                        theme.palette.mode === "dark"
                           ? alpha(theme.palette.primary.main, 0.5)
-                          : 'transparent',
+                          : "transparent",
                       color: theme.palette.text.disabled,
                     },
                   }}
                 >
                   {saveAgreementSegmentMutation.isPending
                     ? isEditMode
-                      ? getLabel('CDL_COMMON_UPDATING')
-                      : getLabel('CDL_COMMON_ADDING')
+                      ? getLabel("CDL_COMMON_UPDATING")
+                      : getLabel("CDL_COMMON_ADDING")
                     : isEditMode
-                      ? getLabel('CDL_COMMON_UPDATE')
-                      : getLabel('CDL_COMMON_ADD')}
+                      ? getLabel("CDL_COMMON_UPDATE")
+                      : getLabel("CDL_COMMON_ADD")}
                 </Button>
               </Grid>
             </Grid>
@@ -775,12 +801,12 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
           open={!!errorMessage}
           autoHideDuration={6000}
           onClose={() => setErrorMessage(null)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
         >
           <Alert
             onClose={() => setErrorMessage(null)}
             severity="error"
-            sx={{ width: '100%' }}
+            sx={{ width: "100%" }}
           >
             {errorMessage}
           </Alert>
@@ -790,17 +816,17 @@ export const RightSlideAgreementSegmentPanel: React.FC<RightSlideAgreementSegmen
           open={!!successMessage}
           autoHideDuration={3000}
           onClose={() => setSuccessMessage(null)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
         >
           <Alert
             onClose={() => setSuccessMessage(null)}
             severity="success"
-            sx={{ width: '100%' }}
+            sx={{ width: "100%" }}
           >
             {successMessage}
           </Alert>
         </Snackbar>
       </Drawer>
     </LocalizationProvider>
-  )
-}
+  );
+};

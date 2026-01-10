@@ -1,52 +1,52 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React, { useCallback, useState, useMemo } from 'react'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { GlobalLoading } from '@/components/atoms'
-import { RightSlideProductProgramPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideProductProgramPanel'
+import dynamic from "next/dynamic";
+import React, { useCallback, useState, useMemo } from "react";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import { getLabelByConfigId as getMasterLabel } from "@/constants/mappings/master/masterMapping";
+import { GlobalLoading } from "@/components/atoms";
+import { RightSlideProductProgramPanel } from "@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideProductProgramPanel";
 import {
   useProductPrograms,
   useDeleteProductProgram,
   useRefreshProductPrograms,
-} from '@/hooks/master/CustomerHook/useProductProgram'
-import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
-import { UploadDialog } from '@/components/molecules/UploadDialog'
-import { ProductProgram } from '@/services/api/masterApi/Customer/productProgramService'
+} from "@/hooks/master/CustomerHook/useProductProgram";
+import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
+import { UploadDialog } from "@/components/molecules/UploadDialog";
+import { ProductProgram } from "@/services/api/masterApi/Customer/productProgramService";
 import {
   useDeleteConfirmation,
   useApproveConfirmation,
-} from '@/store/confirmationDialogStore'
-import { useCreateWorkflowRequest } from '@/hooks/workflow'
+} from "@/store/confirmationDialogStore";
+import { useCreateWorkflowRequest } from "@/hooks/workflow";
 
 // Constants
 const STATUS_OPTIONS: string[] = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
-const DEFAULT_PAGE_SIZE = 20
-const DEFAULT_PAGE = 1
-const TEMPLATE_NAME = 'ProductProgramTemplate.xlsx'
+const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE = 1;
+const TEMPLATE_NAME = "ProductProgramTemplate.xlsx";
 
 // Types
 interface ProductProgramData extends Record<string, unknown> {
-  id: number
-  productProgramId?: string
-  uuid?: string
-  productProgramName: string
-  productProgramDescription: string
-  active?: boolean
-  enabled?: boolean
-  deleted?: boolean
-  status?: string
+  id: number;
+  productProgramId?: string;
+  uuid?: string;
+  productProgramName: string;
+  productProgramDescription: string;
+  active?: boolean;
+  enabled?: boolean;
+  deleted?: boolean;
+  status?: string;
 }
 
 // Dynamic import
@@ -55,25 +55,27 @@ export const ProductProgramPageClient = dynamic(
   {
     ssr: false,
   }
-)
+);
 
 // Main component implementation
 const ProductProgramPageImpl: React.FC = () => {
   // Panel state
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
-  const [editingItem, setEditingItem] = useState<ProductProgramData | null>(null)
-  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
+  const [editingItem, setEditingItem] = useState<ProductProgramData | null>(
+    null
+  );
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Upload dialog state
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
   // Pagination state
-  const [currentApiPage, setCurrentApiPage] = useState(DEFAULT_PAGE)
-  const [currentApiSize, setCurrentApiSize] = useState(DEFAULT_PAGE_SIZE)
-  const [searchFilters] = useState<{ name?: string }>({})
+  const [currentApiPage, setCurrentApiPage] = useState(DEFAULT_PAGE);
+  const [currentApiSize, setCurrentApiSize] = useState(DEFAULT_PAGE_SIZE);
+  const [searchFilters] = useState<{ name?: string }>({});
 
   // API hooks
   const {
@@ -86,18 +88,18 @@ const ProductProgramPageImpl: React.FC = () => {
     Math.max(0, currentApiPage - 1),
     currentApiSize,
     searchFilters
-  )
+  );
 
-  const deleteProductProgramMutation = useDeleteProductProgram()
-  const confirmDelete = useDeleteConfirmation()
-  const confirmApprove = useApproveConfirmation()
-  const createWorkflowRequest = useCreateWorkflowRequest()
-  const refreshProductPrograms = useRefreshProductPrograms()
-  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
+  const deleteProductProgramMutation = useDeleteProductProgram();
+  const confirmDelete = useDeleteConfirmation();
+  const confirmApprove = useApproveConfirmation();
+  const createWorkflowRequest = useCreateWorkflowRequest();
+  const refreshProductPrograms = useRefreshProductPrograms();
+  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
 
   // Transform API data to table format
   const productProgramData = useMemo(() => {
-    if (!productProgramsResponse?.content) return []
+    if (!productProgramsResponse?.content) return [];
     return productProgramsResponse.content.map(
       (productProgram: ProductProgram) => ({
         id: productProgram.id,
@@ -108,57 +110,57 @@ const ProductProgramPageImpl: React.FC = () => {
         active: productProgram.active,
         enabled: productProgram.enabled,
         deleted: productProgram.deleted,
-        status: productProgram.active ? 'ACTIVE' : 'INACTIVE',
+        status: productProgram.active ? "ACTIVE" : "INACTIVE",
       })
-    ) as ProductProgramData[]
-  }, [productProgramsResponse])
+    ) as ProductProgramData[];
+  }, [productProgramsResponse]);
 
   // Label helper
   const getLabel = useCallback(
     (configId: string): string => getMasterLabel(configId),
     []
-  )
+  );
 
   // Table columns configuration
   const tableColumns = useMemo(
     () => [
       {
-        key: 'productProgramId',
-        label: getLabel('CDL_MPP_ID'),
-        type: 'text' as const,
-        width: 'w-48',
+        key: "productProgramId",
+        label: getLabel("CDL_MPP_ID"),
+        type: "text" as const,
+        width: "w-48",
         sortable: true,
       },
       {
-        key: 'productProgramName',
-        label: getLabel('CDL_MPP_NAME'),
-        type: 'text' as const,
-        width: 'w-64',
+        key: "productProgramName",
+        label: getLabel("CDL_MPP_NAME"),
+        type: "text" as const,
+        width: "w-64",
         sortable: true,
       },
       {
-        key: 'productProgramDescription',
-        label: getLabel('CDL_MPP_DESCRIPTION'),
-        type: 'text' as const,
-        width: 'w-96',
+        key: "productProgramDescription",
+        label: getLabel("CDL_MPP_DESCRIPTION"),
+        type: "text" as const,
+        width: "w-96",
         sortable: true,
       },
       {
-        key: 'status',
-        label: getLabel('CDL_MPP_STATUS'),
-        type: 'status' as const,
-        width: 'w-32',
+        key: "status",
+        label: getLabel("CDL_MPP_STATUS"),
+        type: "status" as const,
+        width: "w-32",
         sortable: true,
       },
       {
-        key: 'actions',
-        label: 'Actions',
-        type: 'actions' as const,
-        width: 'w-20',
+        key: "actions",
+        label: "Actions",
+        type: "actions" as const,
+        width: "w-20",
       },
     ],
     [getLabel]
-  )
+  );
 
   // Table state management
   const {
@@ -181,83 +183,89 @@ const ProductProgramPageImpl: React.FC = () => {
     handleSort,
   } = useTableState({
     data: productProgramData,
-    searchFields: ['productProgramId', 'productProgramName', 'productProgramDescription'],
+    searchFields: [
+      "productProgramId",
+      "productProgramName",
+      "productProgramDescription",
+    ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   // Pagination calculations
   const hasActiveSearch = useMemo(
     () => Object.values(search).some((value) => value.trim()),
     [search]
-  )
+  );
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   // Event handlers
   const handlePageChange = useCallback(
     (newPage: number) => {
       if (hasActiveSearch) {
-        localHandlePageChange(newPage)
+        localHandlePageChange(newPage);
       } else {
-        setCurrentApiPage(newPage)
-        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+        setCurrentApiPage(newPage);
+        updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
     [hasActiveSearch, localHandlePageChange, currentApiSize, updatePagination]
-  )
+  );
 
   const handleRowsPerPageChange = useCallback(
     (newRowsPerPage: number) => {
-      setCurrentApiSize(newRowsPerPage)
-      setCurrentApiPage(DEFAULT_PAGE)
-      updatePagination(0, newRowsPerPage)
-      localHandleRowsPerPageChange(newRowsPerPage)
+      setCurrentApiSize(newRowsPerPage);
+      setCurrentApiPage(DEFAULT_PAGE);
+      updatePagination(0, newRowsPerPage);
+      localHandleRowsPerPageChange(newRowsPerPage);
     },
     [localHandleRowsPerPageChange, updatePagination]
-  )
+  );
 
   const handleAddNew = useCallback(() => {
-    setEditingItem(null)
-    setEditingItemIndex(null)
-    setPanelMode('add')
-    setIsPanelOpen(true)
-  }, [])
+    setEditingItem(null);
+    setEditingItemIndex(null);
+    setPanelMode("add");
+    setIsPanelOpen(true);
+  }, []);
 
   const handleClosePanel = useCallback(() => {
-    setIsPanelOpen(false)
-    setEditingItem(null)
-    setEditingItemIndex(null)
-  }, [])
+    setIsPanelOpen(false);
+    setEditingItem(null);
+    setEditingItemIndex(null);
+  }, []);
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: ProductProgramData, _index: number) => {
-      const dataIndex = productProgramData.findIndex((item) => item.id === row.id)
-      setEditingItem(row)
-      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
-      setPanelMode('edit')
-      setIsPanelOpen(true)
+      const dataIndex = productProgramData.findIndex(
+        (item) => item.id === row.id
+      );
+      setEditingItem(row);
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
+      setPanelMode("edit");
+      setIsPanelOpen(true);
     },
     [productProgramData]
-  )
+  );
 
   const handleRowDelete = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: ProductProgramData, _index: number) => {
       if (isDeleting) {
-        return
+        return;
       }
 
       confirmDelete({
@@ -265,33 +273,38 @@ const ProductProgramPageImpl: React.FC = () => {
         itemId: String(row.id),
         onConfirm: async () => {
           try {
-            setIsDeleting(true)
-            await deleteProductProgramMutation.mutateAsync(String(row.id))
-            refreshProductPrograms()
+            setIsDeleting(true);
+            await deleteProductProgramMutation.mutateAsync(String(row.id));
+            refreshProductPrograms();
           } catch (error) {
-            throw error
+            throw error;
           } finally {
-            setIsDeleting(false)
+            setIsDeleting(false);
           }
         },
-      })
+      });
     },
-    [deleteProductProgramMutation, confirmDelete, isDeleting, refreshProductPrograms]
-  )
+    [
+      deleteProductProgramMutation,
+      confirmDelete,
+      isDeleting,
+      refreshProductPrograms,
+    ]
+  );
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      await downloadTemplate(TEMPLATE_NAME)
+      await downloadTemplate(TEMPLATE_NAME);
     } catch {
       // Error handling is managed by the hook
       // Could add user notification here if needed
     }
-  }, [downloadTemplate])
+  }, [downloadTemplate]);
 
   const handleUploadSuccess = useCallback(() => {
-    refreshProductPrograms()
-    setIsUploadDialogOpen(false)
-  }, [refreshProductPrograms])
+    refreshProductPrograms();
+    setIsUploadDialogOpen(false);
+  }, [refreshProductPrograms]);
 
   const handleUploadError = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -300,7 +313,7 @@ const ProductProgramPageImpl: React.FC = () => {
       // Could add additional error handling here if needed
     },
     []
-  )
+  );
 
   const handleRowApprove = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -312,30 +325,30 @@ const ProductProgramPageImpl: React.FC = () => {
           try {
             await createWorkflowRequest.mutateAsync({
               referenceId: String(row.id),
-              referenceType: 'PRODUCT_PROGRAM',
-              moduleName: 'PRODUCT_PROGRAM',
-              actionKey: 'APPROVE',
+              referenceType: "PRODUCT_PROGRAM",
+              moduleName: "PRODUCT_PROGRAM",
+              actionKey: "APPROVE",
               payloadJson: row as Record<string, unknown>,
-            })
-            refreshProductPrograms()
+            });
+            refreshProductPrograms();
           } catch (error) {
-            throw error
+            throw error;
           }
         },
-      })
+      });
     },
     [confirmApprove, createWorkflowRequest, refreshProductPrograms]
-  )
+  );
 
   const handleProductProgramAdded = useCallback(() => {
-    refreshProductPrograms()
-    handleClosePanel()
-  }, [handleClosePanel, refreshProductPrograms])
+    refreshProductPrograms();
+    handleClosePanel();
+  }, [handleClosePanel, refreshProductPrograms]);
 
   const handleProductProgramUpdated = useCallback(() => {
-    refreshProductPrograms()
-    handleClosePanel()
-  }, [handleClosePanel, refreshProductPrograms])
+    refreshProductPrograms();
+    handleClosePanel();
+  }, [handleClosePanel, refreshProductPrograms]);
 
   // Render expanded content
   const renderExpandedContent = useCallback(
@@ -348,26 +361,26 @@ const ProductProgramPageImpl: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600 dark:text-gray-400">
-                {getLabel('CDL_MPP_ID')}:
+                {getLabel("CDL_MPP_ID")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.productProgramId || '-'}
+                {row.productProgramId || "-"}
               </span>
             </div>
             <div className="col-span-2">
               <span className="text-gray-600 dark:text-gray-400">
-                {getLabel('CDL_MPP_NAME')}:
+                {getLabel("CDL_MPP_NAME")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.productProgramName || '-'}
+                {row.productProgramName || "-"}
               </span>
             </div>
             <div className="col-span-2">
               <span className="text-gray-600 dark:text-gray-400">
-                {getLabel('CDL_MPP_DESCRIPTION')}:
+                {getLabel("CDL_MPP_DESCRIPTION")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.productProgramDescription || '-'}
+                {row.productProgramDescription || "-"}
               </span>
             </div>
           </div>
@@ -375,7 +388,7 @@ const ProductProgramPageImpl: React.FC = () => {
       </div>
     ),
     [getLabel]
-  )
+  );
 
   return (
     <>
@@ -433,12 +446,12 @@ const ProductProgramPageImpl: React.FC = () => {
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
                 // deletePermissions={['product_program_delete']}
-                deletePermissions={['*']}
+                deletePermissions={["*"]}
                 // editPermissions={['product_program_update']}
-                editPermissions={['*']}
+                editPermissions={["*"]}
                 // approvePermissions={['product_program_approve']}
-                approvePermissions={['*']}
-                updatePermissions={['product_program_update']}
+                approvePermissions={["*"]}
+                updatePermissions={["product_program_update"]}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -447,14 +460,13 @@ const ProductProgramPageImpl: React.FC = () => {
         </div>
       </div>
 
-
       {isPanelOpen && (
         <RightSlideProductProgramPanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onProductProgramAdded={handleProductProgramAdded}
           onProductProgramUpdated={handleProductProgramUpdated}
-          mode={panelMode === 'approve' ? 'edit' : panelMode}
+          mode={panelMode === "approve" ? "edit" : panelMode}
           actionData={editingItem as ProductProgram | null}
           {...(editingItemIndex !== null && {
             productProgramIndex: editingItemIndex,
@@ -473,12 +485,12 @@ const ProductProgramPageImpl: React.FC = () => {
         />
       )}
     </>
-  )
-}
+  );
+};
 
 // Export component
 const ProductProgramPage: React.FC = () => {
-  return <ProductProgramPageClient />
-}
+  return <ProductProgramPageClient />;
+};
 
-export default ProductProgramPage
+export default ProductProgramPage;
