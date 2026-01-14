@@ -355,7 +355,7 @@ export default function BeneficiaryStepperWrapper({
                       : "Complete"
                     : isViewMode
                       ? "Next"
-                      : "Save and Next"}
+                      : "Save & Next"}
               </Button>
             </Box>
           </Box>

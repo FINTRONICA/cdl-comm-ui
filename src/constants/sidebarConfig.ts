@@ -24,8 +24,12 @@ import {
   Shield,
   Tv,
   Workflow,
+  Handshake,
   BanknoteArrowUp,
+  UserRoundCheck,
+  Signature,
   ArrowsUpFromLine,
+  Columns3Cog,
 } from 'lucide-react'
 
 interface SidebarItem {
@@ -90,20 +94,20 @@ export const createSidebarConfig = (
         {
           id: ' Agreement',
           label: getLabel(' Agreement', ' Agreement'),
-          icon: SquareUserRound,
+          icon: Handshake,
           href: '/agreement',
           permissions: ['*']
         },
         {
           id: 'Agreement Signatory',
           label: getLabel('Agreement Signatory', 'Agreement Signatory'),
-          icon: SquareUserRound,
+          icon: UserRoundCheck,
           href: '/agreement-signatory',
           permissions: ['nav_menu_agreement_signatory', 'nav_menu_all']
         },
         {
           id: 'Escrow Account',
-          label: getLabel('Escrow Account', 'Escrow Account'),
+          label: getLabel('Agreement Account', 'Agreement Account'),
           icon: Building,
           href: '/escrow-account',
           permissions: ['nav_menu_escrow_account', 'nav_menu_all']
@@ -112,7 +116,7 @@ export const createSidebarConfig = (
         {
           id: 'Agreement Parameters',
           label: getLabel('Agreement Parameters', 'Agreement Parameters'),
-          icon: CircleUserRound,
+          icon: Signature,
           href: '/agreement-parameter',
           permissions: ['nav_menu_agreement_parameters', 'nav_menu_all']
         },
@@ -157,7 +161,7 @@ export const createSidebarConfig = (
     {
       id: 'master',
       label: getLabel('master', 'MASTER'),
-      icon: Building,
+      icon: Columns3Cog,
       permissions: ['*'],
       items: [
         {
@@ -224,7 +228,7 @@ export const createSidebarConfig = (
     {
       id: 'payment',
       label: getLabel('payment', 'PAYMENTS'),
-      icon: CircleDollarSign,
+      icon: HandCoins,
       permissions: ['*'],
       items: [
         {

@@ -1,11 +1,8 @@
 import React, { useMemo, useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 import DocumentUpload from "./DocumentUpload";
-import { createBuildPartnerDocumentConfig } from "./configs/buildPartnerConfig";
 import { createProjectDocumentConfig } from "./configs/projectConfig";
-import { createInvestorDocumentConfig } from "./configs/investorConfig";
 import { createPaymentDocumentConfig } from "./configs/paymentConfig";
-import { createSuretyBondDocumentConfig } from "./configs/suretyBondConfig";
 import { DocumentItem } from "../Master/PartyStepper/partyTypes";
 import { createPartyDocumentConfig } from "./configs/masterConfigs/partyConfig";
 import { createBeneficiaryDocumentConfig } from "./configs/masterConfigs/beneficiaryConfig";
@@ -19,22 +16,15 @@ import { createPaymentInstructionDocumentConfig } from "./configs/masterConfigs/
 import { createPaymentBeneficiaryDocumentConfig } from "./configs/masterConfigs/paymentBeneficiaryConfig";
 
 export type DocumentUploadType =
-  | "BUILD_PARTNER"
-  | "BUILD_PARTNER_ASSET"
-  | "CAPITAL_PARTNER"
-  | "INVESTOR"
   | "PROJECT"
   | "NAV_MENU"
   | "PAYMENTS"
   | "TRANSACTIONS"
-  | "FEE_REPUSH"
-  | "DISCARDED_TRANSACTION"
   | "PROCESSED_TRANSACTION"
   | "PENDING_TRANSACTION"
   | "STAKEHOLDER"
   | "ROLES"
   | "PERMISSIONS"
-  | "SURETY_BOND"
   | "PARTY"
   | "BENEFICIARY"
   | "ESCROW_ACCOUNT"
@@ -89,33 +79,8 @@ const DocumentUploadFactory: React.FC<DocumentUploadFactoryProps> = ({
     };
 
     switch (type) {
-      case "BUILD_PARTNER":
-        return createBuildPartnerDocumentConfig(entityId, baseOptions);
-
-      case "BUILD_PARTNER_ASSET":
-        return createProjectDocumentConfig(entityId, {
-          ...baseOptions,
-          title: "Build Partner Asset Documents",
-          description: "Upload build partner asset-related documents.",
-        });
-
-      case "CAPITAL_PARTNER":
-        return createInvestorDocumentConfig(entityId, {
-          ...baseOptions,
-          title: "Capital Partner Documents",
-          description: "Upload capital partner-related documents.",
-        });
-
-      case "INVESTOR":
-        return createInvestorDocumentConfig(entityId, {
-          ...baseOptions,
-          title: "Investor Documents",
-          description:
-            "This step is optional. You can upload investor-related documents or skip to continue.",
-        });
-
       case "NAV_MENU":
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createProjectDocumentConfig(entityId, {
           ...baseOptions,
           title: "Navigation Menu Documents",
           description: "Upload navigation menu-related documents.",
@@ -129,64 +94,43 @@ const DocumentUploadFactory: React.FC<DocumentUploadFactoryProps> = ({
             "This step is optional. You can upload payment-related documents or skip to continue.",
         });
 
-      case "SURETY_BOND":
-        return createSuretyBondDocumentConfig(entityId, {
-          ...baseOptions,
-          title: "Surety Bond Documents",
-          description: "Upload surety bond-related documents.",
-        });
-
       case "TRANSACTIONS":
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createProjectDocumentConfig(entityId, {
           ...baseOptions,
           title: "Transaction Documents",
           description: "Upload transaction-related documents.",
         });
 
-      case "FEE_REPUSH":
-        return createBuildPartnerDocumentConfig(entityId, {
-          ...baseOptions,
-          title: "Fee Repush Documents",
-          description: "Upload fee repush-related documents.",
-        });
-
-      case "DISCARDED_TRANSACTION":
-        return createBuildPartnerDocumentConfig(entityId, {
-          ...baseOptions,
-          title: "Discarded Transaction Documents",
-          description: "Upload discarded transaction-related documents.",
-        });
-
       case "PROCESSED_TRANSACTION":
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createProjectDocumentConfig(entityId, {
           ...baseOptions,
           title: "Processed Transaction Documents",
           description: "Upload processed transaction-related documents.",
         });
 
       case "PENDING_TRANSACTION":
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createProjectDocumentConfig(entityId, {
           ...baseOptions,
           title: "Pending Transaction Documents",
           description: "Upload pending transaction-related documents.",
         });
 
       case "STAKEHOLDER":
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createProjectDocumentConfig(entityId, {
           ...baseOptions,
           title: "Stakeholder Documents",
           description: "Upload stakeholder-related documents.",
         });
 
       case "ROLES":
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createProjectDocumentConfig(entityId, {
           ...baseOptions,
           title: "Role Documents",
           description: "Upload role-related documents.",
         });
 
       case "PERMISSIONS":
-        return createBuildPartnerDocumentConfig(entityId, {
+        return createProjectDocumentConfig(entityId, {
           ...baseOptions,
           title: "Permission Documents",
           description: "Upload permission-related documents.",
@@ -195,7 +139,7 @@ const DocumentUploadFactory: React.FC<DocumentUploadFactoryProps> = ({
       case "PROJECT":
         return createProjectDocumentConfig(entityId, {
           ...baseOptions,
-          title: "Build Partner Assest Documents",
+          title: "Project Documents",
           description:
             "This step is optional. You can upload project-related documents or skip to continue.",
         });

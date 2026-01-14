@@ -4,12 +4,8 @@
 // import {
 //   DocumentItem,
 //   ApiDocumentResponse,
-// } from '../../DeveloperStepper/developerTypes'
-<<<<<<< Updated upstream
-// import { accountService } from '@/services/api/masterApi/Entitie/accountService'
-=======
+// } from '../../Master/PartyStepper/partyTypes'
 // import { agreementService } from '@/services/api/masterApi/Entitie/agreementService'
->>>>>>> Stashed changes
 // import {
 //   DocumentUploadConfig,
 //   DocumentService,
@@ -23,11 +19,7 @@
 //   ApiDocumentResponse
 // > = {
 //   getDocuments: async (agreementId: string, page = 0, size = 20) => {
-<<<<<<< Updated upstream
-//     return escrowAgreementService.getEscrowAgreementDocuments(
-=======
 //     return agreementService.getAgreementDocuments(
->>>>>>> Stashed changes
 //       agreementId,
 //       'AGREEMENT',
 //       page,
@@ -40,11 +32,7 @@
 //     agreementId: string,
 //     documentType?: string
 //   ) => {
-<<<<<<< Updated upstream
-//     return escrowAgreementService.uploadEscrowAgreementDocument(
-=======
 //     return agreementService.uploadAgreementDocument(
->>>>>>> Stashed changes
 //       file,
 //       agreementId,
 //       'AGREEMENT',

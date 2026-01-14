@@ -69,3 +69,16 @@ export function hasBasePath(pathname: string): boolean {
   return hasExactBasePath(pathname)
 }
 
+
+export function getPublicAssetPath(assetPath: string): string {
+  // Ensure the path starts with /
+  const normalizedPath = assetPath.startsWith('/') ? assetPath : `/${assetPath}`
+  
+  // If it already has the base path, return as is
+  if (hasExactBasePath(normalizedPath)) {
+    return normalizedPath
+  }
+  
+  // Add base path prefix
+  return `${BASE_PATH}${normalizedPath}`
+}

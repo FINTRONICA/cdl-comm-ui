@@ -378,7 +378,7 @@ export default function EscrowAccountStepperWrapper({
                       : 'Complete'
                     : isViewMode
                       ? 'Next'
-                      : 'Save and Next'}
+                      : 'Save & Next'}
               </Button>
             </Box>
           </Box>

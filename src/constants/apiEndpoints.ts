@@ -65,7 +65,6 @@ export const API_ENDPOINTS = {
     ROLE_MANAGEMENT_LABEL: '/app-language-translation/role-management',
     GROUP_MANAGEMENT_LABEL: '/app-language-translation/group-management',
     PAYMENTS_LABEL: '/app-language-translation/payments',
-    FEE_REPUSH: '/app-language-translation/fee-repush',
     PARTY: '/app-language-translation/party',
     ACCOUNT_PURPOSE: '/app-language-translation/account-purpose',
     INVESTMENT: '/app-language-translation/investment',
@@ -603,15 +602,6 @@ export const API_ENDPOINTS = {
     FIND_ALL: '/financial-institution/find-all',
   },
 
-  // App Language Translation - Surety Bond
-  APP_LANGUAGE_TRANSLATION_SURETY_BOND: {
-    GET_BY_ID: (id: string) => `/app-language-translation/surety-bond/${id}`,
-    UPDATE: (id: string) => `/app-language-translation/surety-bond/${id}`,
-    DELETE: (id: string) => `/app-language-translation/surety-bond/${id}`,
-    GET_ALL: '/app-language-translation/surety-bond',
-    SAVE: '/app-language-translation/surety-bond',
-    FIND_ALL: '/app-language-translation/surety-bond/find-all',
-  },
 
   // Fund Management
   FUND_EGRESS: {

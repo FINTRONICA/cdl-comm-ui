@@ -259,7 +259,7 @@ export default function AccountStepperWrapper({
       }
 
       // Review step (step 3) - complete the process and submit workflow request
-      // This should ONLY run when clicking "Save and Next" ON the Review step itself
+      // This should ONLY run when clicking "Save & Next" ON the Review step itself
       if (activeStep === 2) {
         if (isViewMode) {
           router.push("/escrow-account");
@@ -697,7 +697,7 @@ export default function AccountStepperWrapper({
                       : "Next"
                     : activeStep === steps.length - 1
                       ? "Complete"
-                      : "Save and Next"}
+                      : "Save & Next"}
               </Button>
             </Box>
           </Box>

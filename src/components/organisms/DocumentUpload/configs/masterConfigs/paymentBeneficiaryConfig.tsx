@@ -3,7 +3,7 @@ import React from 'react'
 import {
   DocumentItem,
   ApiDocumentResponse,
-} from '../../../DeveloperStepper/developerTypes'
+} from '../../../Master/PartyStepper/partyTypes'
 import { paymentBeneficiaryService } from '@/services/api/masterApi/Payment/paymentBeneficiaryService'
 import {
   DocumentUploadConfig,

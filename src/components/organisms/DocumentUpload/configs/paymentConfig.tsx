@@ -2,8 +2,9 @@ import React from 'react'
 import {
   DocumentItem,
   ApiDocumentResponse,
-} from '../../DeveloperStepper/developerTypes'
-import { buildPartnerService } from '../../../../services/api/buildPartnerService'
+} from '../../Master/PartyStepper/partyTypes'
+// Note: buildPartnerService removed - using alternative service if needed
+// import { buildPartnerService } from '../../../../services/api/buildPartnerService'
 import {
   DocumentUploadConfig,
   DocumentService,
@@ -13,19 +14,16 @@ import {
 import { formatDate, downloadFile } from '../utils'
 import { Download, Trash2 } from 'lucide-react'
 
-// Service adapter for payment documents using PAYMENTS module
+// Service adapter for payment documents
+// NOTE: buildPartnerService has been removed
+// This service needs to be updated to use an appropriate payment document service
 export const paymentDocumentService: DocumentService<
   DocumentItem,
   ApiDocumentResponse
 > = {
   getDocuments: async (paymentId: string, page = 0, size = 20) => {
-    // Use PAYMENTS module for payment documents
-    return buildPartnerService.getBuildPartnerDocuments(
-      paymentId,
-      'PAYMENTS',
-      page,
-      size
-    )
+    // TODO: Update to use appropriate payment document service
+    throw new Error('buildPartnerService has been removed. Please update to use appropriate payment document service.')
   },
 
   uploadDocument: async (
@@ -33,13 +31,8 @@ export const paymentDocumentService: DocumentService<
     paymentId: string,
     documentType?: string
   ) => {
-    // Use PAYMENTS module for payment documents
-    return buildPartnerService.uploadBuildPartnerDocument(
-      file,
-      paymentId,
-      'PAYMENTS',
-      documentType
-    )
+    // TODO: Update to use appropriate payment document service
+    throw new Error('buildPartnerService has been removed. Please update to use appropriate payment document service.')
   },
 }
 

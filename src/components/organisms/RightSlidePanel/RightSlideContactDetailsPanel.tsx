@@ -19,18 +19,19 @@ import {
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
-import {
-  useSaveBuildPartnerContact,
-  useBuildPartnerContactById,
-} from '@/hooks/useBuildPartners'
-import { DeveloperStep3Schema } from '@/lib/validation/developerSchemas'
+// Build Partner hooks and services removed - module deleted
+// import {
+//   useSaveBuildPartnerContact,
+//   useBuildPartnerContactById,
+// } from '@/hooks/useBuildPartners'
+// import { DeveloperStep3Schema } from '@/lib/validation/developerSchemas'
 import { useFeeDropdownLabels } from '@/hooks/useFeeDropdowns'
-import {
-  type BuildPartnerContactData,
-  type BuildPartnerContactResponse,
-} from '@/services/api/buildPartnerService'
-import { useBuildPartnerLabelsWithCache } from '@/hooks/useBuildPartnerLabelsWithCache'
-import { getBuildPartnerLabel } from '@/constants/mappings/buildPartnerMapping'
+// import {
+//   type BuildPartnerContactData,
+//   type BuildPartnerContactResponse,
+// } from '@/services/api/buildPartnerService'
+// import { useBuildPartnerLabelsWithCache } from '@/hooks/useBuildPartnerLabelsWithCache'
+// import { getBuildPartnerLabel } from '@/constants/mappings/buildPartnerMapping'
 import { useAppStore } from '@/store'
 import { FormError } from '../../atoms/FormError'
 import { alpha, useTheme } from '@mui/material/styles'

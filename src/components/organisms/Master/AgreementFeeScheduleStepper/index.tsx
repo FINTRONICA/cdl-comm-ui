@@ -282,7 +282,7 @@ export default function AgreementFeeScheduleStepperWrapper({
       }
 
       // Review step (step 3) - complete the process and submit workflow request
-      // This should ONLY run when clicking "Save and Next" ON the Review step itself
+      // This should ONLY run when clicking "Save & Next" ON the Review step itself
       if (activeStep === 2) {
         // Check if we're in view mode - if so, just navigate away
         if (isViewMode) {
@@ -713,7 +713,7 @@ export default function AgreementFeeScheduleStepperWrapper({
                       : 'Next'
                     : activeStep === steps.length - 1
                       ? 'Complete'
-                      : 'Save and Next'}
+                      : 'Save & Next'}
               </Button>
             </Box>
           </Box>
