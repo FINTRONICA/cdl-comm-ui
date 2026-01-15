@@ -1,7 +1,6 @@
 import { apiClient } from '@/lib/apiClient'
 import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 import { getAuthCookies } from '@/utils/cookieUtils'
-import { ProcessedProductProgramLabels, ProductProgramLabelResponse } from './productProgramLabelsService'
 
 export interface BeneficiaryLabelResponse {
   id: number

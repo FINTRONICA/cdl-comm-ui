@@ -1,54 +1,48 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React from 'react'
+import dynamic from "next/dynamic";
+import React from "react";
 
-const AccountsPageClient = dynamic(
-  () => Promise.resolve(AccountsPageImpl),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
-        <GlobalLoading fullHeight />
-      </div>
-    ),
-  }
-)
+const AccountsPageClient = dynamic(() => Promise.resolve(AccountsPageImpl), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+      <GlobalLoading fullHeight />
+    </div>
+  ),
+});
 
-import { useCallback, useState, useMemo } from 'react'
-import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import LeftSlidePanel from '@/components/organisms/LeftSlidePanel/LeftSlidePanel'
-import { useAccountLabelsWithCache } from '@/hooks'
-import { getAccountLabel } from '@/constants/mappings/master/Entity/accountMapping'
-import { useAppStore } from '@/store'
-import { GlobalLoading } from '@/components/atoms'
-import {
-  useAccounts,
-  useDeleteAccount,
-} from '@/hooks'
+import { useCallback, useState, useMemo } from "react";
+import { DashboardLayout } from "@/components/templates/DashboardLayout";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import LeftSlidePanel from "@/components/organisms/LeftSlidePanel/LeftSlidePanel";
+import { useAccountLabelsWithCache } from "@/hooks";
+import { getAccountLabel } from "@/constants/mappings/master/Entity/accountMapping";
+import { useAppStore } from "@/store";
+import { GlobalLoading } from "@/components/atoms";
+import { useAccounts, useDeleteAccount } from "@/hooks";
 import {
   mapAccountToUIData,
   type AccountUIData,
   type Account,
-} from '@/services/api/masterApi/Entitie/accountService'
-import type { AccountFilters } from '@/services/api/masterApi/Entitie/accountService'
-import { useSidebarConfig } from '@/hooks/useSidebarConfig'
-import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
-import { useRouter } from 'next/navigation'
+} from "@/services/api/masterApi/Entitie/accountService";
+import type { AccountFilters } from "@/services/api/masterApi/Entitie/accountService";
+import { useSidebarConfig } from "@/hooks/useSidebarConfig";
+import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
+import { useRouter } from "next/navigation";
 
 interface AccountData extends AccountUIData, Record<string, unknown> {}
 
 const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
@@ -77,9 +71,9 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
         </h1>
         <p className="mb-4 text-gray-600">
           {error.message ||
-            'An error occurred while loading the data. Please try again.'}
+            "An error occurred while loading the data. Please try again."}
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <details className="text-left">
             <summary className="text-sm font-medium text-gray-600 cursor-pointer">
               Error Details (Development)
@@ -100,33 +94,32 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       )}
     </div>
   </div>
-)
+);
 
-const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />
+const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />;
 
 const AccountsPageImpl: React.FC = () => {
-  const router = useRouter()
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const router = useRouter();
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const currentLanguage = useAppStore((state) => state.language)
+  const currentLanguage = useAppStore((state) => state.language);
 
-  const isDownloading = false
-  const downloadError = null
-  const clearError = () => {}
+  const isDownloading = false;
+  const downloadError = null;
+  const clearError = () => {};
 
-  const { data: accountLabels, getLabel } =
-    useAccountLabelsWithCache()
+  const { data: accountLabels, getLabel } = useAccountLabelsWithCache();
 
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [filters] = useState<AccountFilters>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [filters] = useState<AccountFilters>({});
 
-  const { getLabelResolver } = useSidebarConfig()
+  const { getLabelResolver } = useSidebarConfig();
 
   const accountsPageTitle = getLabelResolver
-    ? getLabelResolver('escrow-account', 'Escrow Account')
-    : 'Escrow Account'
+    ? getLabelResolver("escrow-account", "Escrow Account")
+    : "Escrow Account";
 
   const {
     data: apiResponse,
@@ -135,75 +128,75 @@ const AccountsPageImpl: React.FC = () => {
     refetch: refetchAccounts,
     updatePagination,
     apiPagination,
-  } = useAccounts(Math.max(0, currentApiPage - 1), currentApiSize, filters)
+  } = useAccounts(Math.max(0, currentApiPage - 1), currentApiSize, filters);
 
-  const deleteMutation = useDeleteAccount()
-  const confirmDelete = useDeleteConfirmation()
+  const deleteMutation = useDeleteAccount();
+  const confirmDelete = useDeleteConfirmation();
 
   const accountsData = useMemo(() => {
     if (apiResponse?.content) {
       return apiResponse.content.map((item) =>
         mapAccountToUIData(item as Account)
-      ) as AccountData[]
+      ) as AccountData[];
     }
-    return []
-    }, [apiResponse])
+    return [];
+  }, [apiResponse]);
 
   const getAccountLabelDynamic = useCallback(
     (configId: string): string => {
-      const fallback = getAccountLabel(configId)
+      const fallback = getAccountLabel(configId);
 
       if (accountLabels) {
-        return getLabel(configId, currentLanguage || 'EN', fallback)
+        return getLabel(configId, currentLanguage || "EN", fallback);
       }
-      return fallback
+      return fallback;
     },
     [accountLabels, currentLanguage, getLabel]
-  )
+  );
 
   const tableColumns = [
     {
-      key: 'accountNumber',
-      label: getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_NO'),
-      type: 'text' as const,
-      width: 'w-40',
+      key: "accountNumber",
+      label: getAccountLabelDynamic("CDL_ESCROW_ACCOUNT_NO"),
+      type: "text" as const,
+      width: "w-40",
       sortable: true,
     },
     {
-      key: 'accountDisplayName',
-      label: getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_DISPLAY_NAME'),
-      type: 'text' as const,
-      width: 'w-48',
+      key: "accountDisplayName",
+      label: getAccountLabelDynamic("CDL_ESCROW_ACCOUNT_DISPLAY_NAME"),
+      type: "text" as const,
+      width: "w-48",
       sortable: true,
     },
     {
-      key: 'ibanNumber',
-      label: getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_IBAN_NUMBER'),
-      type: 'text' as const,
-      width: 'w-40',
+      key: "ibanNumber",
+      label: getAccountLabelDynamic("CDL_ESCROW_ACCOUNT_IBAN_NUMBER"),
+      type: "text" as const,
+      width: "w-40",
       sortable: true,
     },
     {
-      key: 'accountTypeCode',
-      label: getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_TYPE'),
-      type: 'text' as const,
-      width: 'w-32',
+      key: "accountTypeCode",
+      label: getAccountLabelDynamic("CDL_ESCROW_ACCOUNT_TYPE"),
+      type: "text" as const,
+      width: "w-32",
       sortable: true,
     },
     {
-      key: 'status',
-      label: getAccountLabelDynamic('CDL_ESCROW_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
+      key: "status",
+      label: getAccountLabelDynamic("CDL_ESCROW_STATUS"),
+      type: "status" as const,
+      width: "w-32",
       sortable: true,
     },
     {
-      key: 'actions',
-      label: getAccountLabelDynamic('CDL_ESCROW_DOC_ACTION'),
-      type: 'actions' as const,
-      width: 'w-20',
+      key: "actions",
+      label: getAccountLabelDynamic("CDL_COMMON_ACTIONS"),
+      type: "actions" as const,
+      width: "w-20",
     },
-  ]
+  ];
 
   const {
     search,
@@ -226,61 +219,61 @@ const AccountsPageImpl: React.FC = () => {
   } = useTableState({
     data: accountsData,
     searchFields: [
-      'accountNumber',
-      'accountDisplayName',
-      'ibanNumber',
-      'accountTypeCode',
-      'status',
+      "accountNumber",
+      "accountDisplayName",
+      "ibanNumber",
+      "accountTypeCode",
+      "status",
     ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+    const hasSearch = Object.values(search).some((value) => value.trim());
 
     if (hasSearch) {
-      localHandlePageChange(newPage)
+      localHandlePageChange(newPage);
     } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      setCurrentApiPage(newPage);
+      updatePagination(Math.max(0, newPage - 1), currentApiSize);
     }
-  }
+  };
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+    setCurrentApiSize(newRowsPerPage);
+    setCurrentApiPage(1);
+    updatePagination(0, newRowsPerPage);
+    localHandleRowsPerPageChange(newRowsPerPage);
+  };
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const actionButtons: Array<{
-    label: string
-    onClick: () => void
-    disabled?: boolean
-    variant?: 'primary' | 'secondary'
-    icon?: string
-    iconAlt?: string
-  }> = []
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    variant?: "primary" | "secondary";
+    icon?: string;
+    iconAlt?: string;
+  }> = [];
 
   const handleRowDelete = (row: AccountData) => {
     if (isDeleting) {
-      return
+      return;
     }
 
     confirmDelete({
@@ -288,36 +281,32 @@ const AccountsPageImpl: React.FC = () => {
       itemId: row.accountNumber,
       onConfirm: async () => {
         try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(String(row.id))
+          setIsDeleting(true);
+          await deleteMutation.mutateAsync(String(row.id));
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(`Failed to delete account: ${errorMessage}`)
-
-          throw error
+          throw error;
         } finally {
-          setIsDeleting(false)
+          setIsDeleting(false);
         }
       },
-    })
-  }
+    });
+  };
 
   const handleRowView = (row: AccountData) => {
-    router.push(`/escrow-account/${row.id}/step/1?mode=view`)
-  }
+    router.push(`/escrow-account/${row.id}/step/1?mode=view`);
+  };
 
   const handleRowEdit = (row: AccountData) => {
-    router.push(`/escrow-account/${row.id}/step/1?editing=true`)
-  }
+    router.push(`/escrow-account/${row.id}/step/1?editing=true`);
+  };
 
   const handleDownloadTemplate = async () => {
     // TODO: Add ACCOUNT template file when available
-  }
+  };
 
   const renderExpandedContent = () => (
     <div className="grid grid-cols-2 gap-8"></div>
-  )
+  );
 
   return (
     <>
@@ -352,10 +341,7 @@ const AccountsPageImpl: React.FC = () => {
             <LoadingSpinner />
           ) : accountsError ? (
             <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
-              <ErrorMessage
-                error={accountsError}
-                onRetry={refetchAccounts}
-              />
+              <ErrorMessage error={accountsError} onRetry={refetchAccounts} />
             </div>
           ) : (
             <>
@@ -399,10 +385,16 @@ const AccountsPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={['escrow_account_delete', 'nav_menu_all']}
-                    viewPermissions={['escrow_account_view', 'nav_menu_all']}
-                    editPermissions={['escrow_account_update', 'nav_menu_all']}
-                    updatePermissions={['escrow_account_update', 'nav_menu_all']}
+                    deletePermissions={[
+                      "escrow_account_delete",
+                      "nav_menu_all",
+                    ]}
+                    viewPermissions={["escrow_account_view", "nav_menu_all"]}
+                    editPermissions={["escrow_account_update", "nav_menu_all"]}
+                    updatePermissions={[
+                      "escrow_account_update",
+                      "nav_menu_all",
+                    ]}
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
@@ -413,12 +405,11 @@ const AccountsPageImpl: React.FC = () => {
         </div>
       </DashboardLayout>
     </>
-  )
-}
+  );
+};
 
 const AccountsPage: React.FC = () => {
-  return <AccountsPageClient />
-}
+  return <AccountsPageClient />;
+};
 
-export default AccountsPage
-
+export default AccountsPage;

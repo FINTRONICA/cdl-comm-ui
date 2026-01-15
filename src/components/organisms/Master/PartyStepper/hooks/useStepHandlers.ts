@@ -1,96 +1,104 @@
-import { useCallback } from 'react'
-import { useBuildPartnerStepManager } from '@/hooks'
-import { ApiError } from '../types'
-import { SKIP_VALIDATION_STEPS } from '../constants'
-import { useStepNavigation } from './useStepNavigation'
-import { useStepValidation } from './useStepValidation'
-import { useStepNotifications } from './useStepNotifications'
-import { transformStepData, useStepDataTransformers } from '../transformers'
-
+import { useCallback } from "react";
+import { usePartyStepManager } from "@/hooks";
+import { ApiError } from "../types";
+import { SKIP_VALIDATION_STEPS } from "../constants";
+import { useStepNavigation } from "./useStepNavigation";
+import { useStepValidation } from "./useStepValidation";
+import { useStepNotifications } from "./useStepNotifications";
+import { transformStepData, useStepDataTransformers } from "../transformers";
 
 export const useStepHandlers = (
   activeStep: number,
   developerId?: string,
-  methods?: any,
-  isEditingMode?: boolean  // Add editing mode parameter
+  methods?: { getValues: () => unknown; reset: () => void },
+  isEditingMode?: boolean // Add editing mode parameter
 ) => {
-  const stepManager = useBuildPartnerStepManager()
-  const navigation = useStepNavigation(developerId)
-  const validation = useStepValidation()
-  const notifications = useStepNotifications()
-  const transformers = useStepDataTransformers()
+  const stepManager = usePartyStepManager();
+  const navigation = useStepNavigation(developerId);
+  const validation = useStepValidation();
+  const notifications = useStepNotifications();
+  const transformers = useStepDataTransformers();
 
   const handleSaveAndNext = useCallback(async () => {
     try {
-    
+      notifications.clearNotifications();
 
-      notifications.clearNotifications()
+      const isEditing = !!isEditingMode;
 
-      const isEditing = !!isEditingMode
-  
-      
-      if (SKIP_VALIDATION_STEPS.includes(activeStep as any)) {
-       
-        const nextStep = navigation.navigateToNextStep({ 
+      if (SKIP_VALIDATION_STEPS.includes(activeStep as 1 | 2 | 3 | 4)) {
+        const nextStep = navigation.navigateToNextStep({
           currentStep: activeStep,
-          developerId: developerId || ''
-        })
-        return nextStep
+          partyId: developerId || "",
+        });
+        return nextStep;
       }
-      
-      
 
       if (activeStep === 5) {
-        navigation.navigateToCompletion()
-        notifications.showSuccess('Developer registration completed successfully!')
-        return
+        navigation.navigateToCompletion();
+        notifications.showSuccess(
+          "Developer registration completed successfully!"
+        );
+        return;
       }
       if (!methods) {
-        notifications.showError('Form methods not available') 
-        return
+        notifications.showError("Form methods not available");
+        return;
       }
 
-      const currentFormData = methods.getValues()
-      
-      const stepSpecificData = transformStepData(activeStep + 1, currentFormData, transformers)
+      const currentFormData = methods.getValues();
 
-      const validationResult = await validation.validateStepData(activeStep, stepSpecificData)
+      const stepSpecificData = transformStepData(
+        activeStep + 1,
+        currentFormData as import("../partyTypes").PartyDataStepsData,
+        transformers
+      );
 
-
+      const validationResult = await validation.validateStepData(
+        activeStep,
+        stepSpecificData
+      );
 
       if (!validationResult.isValid) {
-        const errorPrefix = validationResult.source === 'client' 
-          ? 'Form validation failed' 
-          : 'Server validation failed'
-        notifications.showError(`${errorPrefix}: ${validationResult.errors?.join(', ')}`)
-        return
+        const errorPrefix =
+          validationResult.source === "client"
+            ? "Form validation failed"
+            : "Server validation failed";
+        notifications.showError(
+          `${errorPrefix}: ${validationResult.errors?.join(", ")}`
+        );
+        return;
       }
 
-
-      const saveResponse = await stepManager.saveStep(activeStep + 1, stepSpecificData, isEditing, developerId)
+      const saveResponse = await stepManager.saveStep(
+        activeStep + 1,
+        stepSpecificData,
+        isEditing,
+        developerId
+      );
 
       if (isEditing) {
-        notifications.showSuccess('Step updated successfully!')
+        notifications.showSuccess("Step updated successfully!");
       } else {
-        notifications.showSuccess('Step saved successfully!')
+        notifications.showSuccess("Step saved successfully!");
       }
 
-
-      const savedDeveloperId = (saveResponse as any)?.data?.id || (saveResponse as any)?.id
-      const nextStep = navigation.navigateToNextStep({ 
+      const savedDeveloperId =
+        (saveResponse as { data?: { id?: string }; id?: string })?.data?.id ||
+        (saveResponse as { id?: string })?.id;
+      const nextStep = navigation.navigateToNextStep({
         currentStep: activeStep,
-        developerId: developerId || '',
-        savedDeveloperId 
-      })
-      return nextStep
-
+        partyId: developerId || "",
+        ...(savedDeveloperId && { savedDeveloperId }),
+      });
+      return nextStep;
     } catch (error: unknown) {
-      const errorData = error as ApiError
-      const errorMessage = errorData?.response?.data?.message ||
+      const errorData = error as ApiError;
+      const errorMessage =
+        errorData?.response?.data?.message ||
         errorData?.message ||
-        'Failed to save step. Please try again.'
-      notifications.showError(errorMessage)
-      return
+        "Failed to save step. Please try again.";
+      notifications.showError(errorMessage);
+      return;
     }
   }, [
     activeStep,
@@ -101,28 +109,28 @@ export const useStepHandlers = (
     validation,
     notifications,
     transformers,
-    isEditingMode  
-  ])
+    isEditingMode,
+  ]);
 
   const handleBack = useCallback(() => {
     if (activeStep > 0) {
-      return activeStep - 1
+      return activeStep - 1;
     }
-    return activeStep
-  }, [activeStep])
+    return activeStep;
+  }, [activeStep]);
 
   const handleReset = useCallback(() => {
     if (methods) {
-      methods.reset()
+      methods.reset();
     }
-    notifications.clearNotifications()
-    return 0 
-  }, [methods, notifications])
+    notifications.clearNotifications();
+    return 0;
+  }, [methods, notifications]);
 
   return {
     handleSaveAndNext,
     handleBack,
     handleReset,
     notifications,
-  }
-}
+  };
+};

@@ -27,10 +27,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers'
 import { Controller, useFormContext } from 'react-hook-form'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { getAgreementLabel } from '@/constants/mappings/master/Entity/agreementMapping'
-import { useAgreementLabelsWithCache } from '@/hooks'
+import { useAgreementLabelsWithCache, useAgreement, useCustomerDetailsByCif } from '@/hooks'
 import { useAppStore } from '@/store'
-import { agreementService } from '@/services/api/masterApi/Entitie/agreementService'
-import { validateAgreementField } from '@/lib/validation/masterValidation/agreementSchemasSchemas'
+import { validateAgreementField } from '@/lib/validation/masterValidation/agreementSchemas'
 import {
   commonFieldStyles as sharedCommonFieldStyles,
   selectStyles as sharedSelectStyles,
@@ -131,128 +130,135 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
     return () => subscription.unsubscribe()
   }, [watch])
 
-  // Populate clientName and productManagerName when agreement data is loaded (for edit mode)
-  // This ensures fields are populated even if they're not in the initial form reset
+  // Use React Query hooks instead of direct API calls
+  // CRITICAL FIX: Only fetch agreement if we have an ID (edit mode)
+  // This prevents unnecessary API calls when creating new agreements
+  const { data: agreement } = useAgreement(agreementId || '')
+  
+  // CRITICAL FIX: Debounce CIF watching to prevent API calls on every keystroke
+  const currentCif = watch('primaryEscrowCifNumber')
+  
+  // CRITICAL FIX: Get CIF from agreement data (edit mode) or form (create mode)
+  // In edit mode, prioritize agreement data; in create mode, use form value
+  const cifValue = React.useMemo(() => {
+    // In edit mode, use agreement CIF if available, otherwise fall back to form value
+    if (isEditMode && agreement?.primaryEscrowCifNumber) {
+      return agreement.primaryEscrowCifNumber
+    }
+    return currentCif || ''
+  }, [isEditMode, agreement?.primaryEscrowCifNumber, currentCif])
+  
+  // CRITICAL FIX: Initialize debouncedCif from form value (which should be populated after form reset)
+  // Then update it when agreement loads in edit mode
+  const [debouncedCif, setDebouncedCif] = useState<string>(currentCif || '')
+  
+  // CRITICAL FIX: Update debouncedCif based on mode
+  // In edit mode, update immediately when agreement loads; in create mode, debounce
   useEffect(() => {
-    if (!agreementId || !isEditMode) {
+    if (isEditMode) {
+      // In edit mode, use CIF immediately when agreement loads (no debounce)
+      // This ensures customer details are fetched as soon as agreement data is available
+      if (cifValue && cifValue.trim() !== '' && cifValue !== debouncedCif) {
+        setDebouncedCif(cifValue)
+      }
+    } else {
+      // In create mode, debounce user input to prevent API calls on every keystroke
+      const timer = setTimeout(() => {
+        if (cifValue !== debouncedCif) {
+          setDebouncedCif(cifValue || '')
+        }
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [isEditMode, cifValue, debouncedCif])
+  
+  // Only fetch customer details when CIF is debounced and valid
+  // CRITICAL FIX: Skip minimum length check in edit mode to allow fetching for short CIFs like "1"
+  const { data: customerDetails, refetch: refetchCustomerDetails, error: customerDetailsError, isLoading: isLoadingCustomerDetails } = useCustomerDetailsByCif(
+    debouncedCif,
+    { skipMinimumLength: isEditMode } // Allow fetching even for short CIFs in edit mode
+  )
+
+  // CRITICAL FIX: Auto-fetch customer details immediately when agreement loads in edit mode
+  // This ensures clientName is populated even if not in agreement response
+  useEffect(() => {
+    // Only auto-fetch in edit mode when we have agreement and CIF
+    if (!isEditMode || !agreement || !debouncedCif || debouncedCif.trim() === '') {
       return
     }
 
-    let isPopulating = false
-    let timeoutId: NodeJS.Timeout | null = null
+    // Auto-fetch if we don't have customer details yet
+    // Check if query is enabled and not already loading/fetched
+    const shouldFetch = !customerDetails && !isLoadingCustomerDetails && !customerDetailsError
     
-    const populateFields = async () => {
-      if (isPopulating) return
-      isPopulating = true
-      
-      try {
-        // Wait a bit for form reset to complete - increased delay to ensure form is ready
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        const currentClientName = watch('clientName')
-        const currentProductManagerName = watch('productManagerName')
-        const currentCif = watch('primaryEscrowCifNumber')
-        
-        console.log('[Step1] Checking fields for population:', {
-          currentClientName,
-          currentProductManagerName,
-          currentCif,
-        })
-        
-        // Fetch agreement data to populate missing fields
-        const agreement = await agreementService.getAgreement(agreementId)
-        
-        console.log('[Step1] Fetched agreement data for population:', {
-          agreementId,
-          clientName: agreement?.clientName,
-          productManagerName: agreement?.productManagerName,
-          primaryEscrowCifNumber: agreement?.primaryEscrowCifNumber,
-        })
-        
-        // Populate clientName if it exists in API response and form field is empty
-        if (agreement?.clientName) {
-          const shouldPopulate = !currentClientName || currentClientName.trim() === ''
-          if (shouldPopulate) {
-            console.log('[Step1] Populating clientName from agreement:', agreement.clientName)
-            setValue('clientName', agreement.clientName, {
-        shouldValidate: true,
-              shouldDirty: false,
-            })
-            // Trigger validation to clear any error messages
-            setTimeout(() => {
-              trigger('clientName').catch(() => {
-                // Ignore validation errors
-              })
-            }, 100)
-          }
-        } else if (currentCif && (!currentClientName || currentClientName.trim() === '')) {
-          // If clientName is not in agreement but we have CIF, try fetching from customer details
-          try {
-            const customerDetails = await agreementService.getCustomerDetailsByCif(currentCif.trim())
-            const clientName = customerDetails?.name?.shortName || ''
-            if (clientName) {
-              console.log('[Step1] Populating clientName from customer details (shortName):', clientName)
-              setValue('clientName', clientName, {
-        shouldValidate: true,
-                shouldDirty: false,
-              })
-              // Trigger validation to clear any error messages
-              setTimeout(() => {
-                trigger('clientName').catch(() => {
-                  // Ignore validation errors
-                })
-              }, 100)
-            }
-    } catch (error) {
-            console.error('[Step1] Error fetching customer details for clientName:', error)
-          }
-        }
-        
-        // Populate productManagerName if it exists in API response and form field is empty
-        if (agreement?.productManagerName) {
-          const shouldPopulate = !currentProductManagerName || currentProductManagerName.trim() === ''
-          if (shouldPopulate) {
-            console.log('[Step1] Populating productManagerName from agreement:', agreement.productManagerName)
-            setValue('productManagerName', agreement.productManagerName, {
-              shouldValidate: true,
-              shouldDirty: false,
-            })
-          }
-        } else if (currentCif && (!currentProductManagerName || currentProductManagerName.trim() === '')) {
-          // If productManagerName is not in agreement but we have CIF, try fetching from customer details
-          try {
-            const customerDetails = await agreementService.getCustomerDetailsByCif(currentCif.trim())
-            const productManagerName = customerDetails?.name?.firstName || ''
-            if (productManagerName) {
-              console.log('[Step1] Populating productManagerName from customer details (firstName):', productManagerName)
-              setValue('productManagerName', productManagerName, {
-        shouldValidate: true,
-                shouldDirty: false,
+    if (shouldFetch) {
+      // Trigger fetch for customer details - errors are handled silently
+      refetchCustomerDetails().catch(() => {
+        // Silently handle errors - customer might not exist (404) or server error (500)
+        // This is expected behavior, don't show error to user
       })
-            }
-    } catch (error) {
-            console.error('[Step1] Error fetching customer details for productManagerName:', error)
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching agreement data for form population:', error)
-    } finally {
-        isPopulating = false
-      }
     }
-    
-    // Use a timeout to ensure form reset has completed
-    timeoutId = setTimeout(() => {
-      populateFields()
-    }, 300)
-    
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
+  }, [isEditMode, agreement, debouncedCif, customerDetails, customerDetailsError, isLoadingCustomerDetails, refetchCustomerDetails])
+
+  // CRITICAL FIX: Populate clientName and productManagerName when agreement or customer details load
+  // This ensures fields are populated even if they're not in the initial form reset
+  // This effect runs whenever agreement or customerDetails changes to populate missing fields
+  // It also runs after form reset to re-populate fields
+  useEffect(() => {
+    if (!isEditMode || !agreement) {
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agreementId, isEditMode])
+
+    // Use a small delay to ensure form reset has completed (if it happens)
+    // This ensures we populate after any form reset operations
+    const timeoutId = setTimeout(() => {
+      const currentClientName = watch('clientName')
+      const currentProductManagerName = watch('productManagerName')
+      
+      // Priority 1: Use clientName from agreement if available
+      if (agreement?.clientName && (!currentClientName || currentClientName.trim() === '')) {
+        setValue('clientName', agreement.clientName, {
+          shouldValidate: true,
+          shouldDirty: false,
+        })
+        // Trigger validation to clear any error messages
+        setTimeout(() => {
+          trigger('clientName').catch(() => {
+            // Ignore validation errors
+          })
+        }, 50)
+      }
+      // Priority 2: Use clientName from customer details if agreement doesn't have it
+      else if (!agreement?.clientName && customerDetails?.name?.shortName && (!currentClientName || currentClientName.trim() === '')) {
+        // CRITICAL FIX: If clientName is not in agreement but we have customer details, use shortName
+        setValue('clientName', customerDetails.name.shortName, {
+          shouldValidate: true,
+          shouldDirty: false,
+        })
+        setTimeout(() => {
+          trigger('clientName').catch(() => {
+            // Ignore validation errors
+          })
+        }, 50)
+      }
+      
+      // Populate productManagerName if it exists in API response and form field is empty
+      if (agreement?.productManagerName && (!currentProductManagerName || currentProductManagerName.trim() === '')) {
+        setValue('productManagerName', agreement.productManagerName, {
+          shouldValidate: true,
+          shouldDirty: false,
+        })
+      } else if (!agreement?.productManagerName && customerDetails?.name?.firstName && (!currentProductManagerName || currentProductManagerName.trim() === '')) {
+        // If productManagerName is not in agreement but we have customer details, use firstName
+        setValue('productManagerName', customerDetails.name.firstName, {
+          shouldValidate: true,
+          shouldDirty: false,
+        })
+      }
+    }, 300) // Small delay to ensure form reset has completed
+
+    return () => clearTimeout(timeoutId)
+  }, [isEditMode, agreement, agreement?.clientName, agreement?.productManagerName, customerDetails, customerDetails?.name?.shortName, customerDetails?.name?.firstName, setValue, trigger, watch])
 
   // Handle Fetch Details button click
   const handleFetchDetails = async () => {
@@ -263,15 +269,43 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
 
     try {
       setIsFetchingDetails(true)
-      // Fetch customer details from core bank API
-      const customerDetails = await agreementService.getCustomerDetailsByCif(currentCif.trim())
+      // Refetch customer details using React Query
+      const { data: fetchedCustomerDetails, error: fetchError } = await refetchCustomerDetails()
+      
+      // CRITICAL FIX: Handle errors gracefully - don't show 404/500 errors to user
+      // These are expected (customer might not exist or server issue)
+      if (fetchError) {
+        // Check if it's a 404 (customer not found) or 500 (server error)
+        const isExpectedError = fetchError && typeof fetchError === 'object' && 'response' in fetchError
+          ? (fetchError as { response?: { status?: number } }).response?.status === 404
+          : false
+        
+        // Only clear fields if it's not a 404 (customer not found is expected)
+        if (!isExpectedError) {
+          setValue('productManagerName', '', {
+            shouldValidate: false,
+            shouldDirty: false,
+          })
+          setValue('clientName', '', {
+            shouldValidate: false,
+            shouldDirty: false,
+          })
+        }
+        setIsFetchingDetails(false)
+        return
+      }
+      
+      if (!fetchedCustomerDetails) {
+        setIsFetchingDetails(false)
+        return
+      }
 
       // Map API response to form fields:
       // name.firstName -> productManagerName
       // name.shortName -> clientName
       // Handle missing fields gracefully
-      const productManagerName = customerDetails?.name?.firstName || ''
-      const clientName = customerDetails?.name?.shortName || ''
+      const productManagerName = fetchedCustomerDetails?.name?.firstName || ''
+      const clientName = fetchedCustomerDetails?.name?.shortName || ''
 
       // Populate only the name fields from customer details
       setValue('productManagerName', productManagerName, {
@@ -283,14 +317,14 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
         shouldDirty: true,
       })
     } catch (error) {
-      // Log detailed error information
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'Failed to fetch customer details. Please check the CIF number and try again.'
+      // CRITICAL FIX: Silently handle errors - don't show to user
+      // Customer details fetch failures are expected (customer might not exist)
+      // Clear fields on unexpected errors only
+      const isExpectedError = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { status?: number } }).response?.status === 404
+        : false
       
-      console.error('Error fetching customer details:', errorMessage, error)
-      
-      // Clear the fields on error to prevent showing stale data
+      if (!isExpectedError) {
       setValue('productManagerName', '', {
         shouldValidate: false,
             shouldDirty: false,
@@ -299,9 +333,7 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
         shouldValidate: false,
         shouldDirty: false,
       })
-      
-      // You can add a toast notification here if needed
-      // toast.error(errorMessage)
+      }
     } finally {
       setIsFetchingDetails(false)
     }

@@ -78,7 +78,7 @@ export function useDeleteProductProgram() {
   const queryClient = useQueryClient()
 
   return useMutation({
-          mutationFn: (id: string) => productProgramService.deleteProductProgram(id),
+    mutationFn: (id: string) => productProgramService.deleteProductProgram(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PRODUCT_PROGRAMS_QUERY_KEY] })
     },
@@ -100,7 +100,7 @@ export function useSaveProductProgram() {
       productProgramId?: string
     }) => {
       if (isEditing && productProgramId) {
-          return productProgramService.updateProductProgram(productProgramId, data as UpdateProductProgramRequest)
+        return productProgramService.updateProductProgram(productProgramId, data as UpdateProductProgramRequest)
       } else {
         return productProgramService.createProductProgram(data as CreateProductProgramRequest)
       }
@@ -128,4 +128,3 @@ export function useAllProductPrograms() {
     retry: 3,
   })
 }
-

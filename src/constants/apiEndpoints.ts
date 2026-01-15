@@ -1,9 +1,8 @@
 // API Base URL and Version
-// API Base URL and Version
 export const API_CONFIG = {
   BASE_URL: process.env.NODE_ENV === 'production' ? '/commercial' : (process.env.NEXT_PUBLIC_API_URL || 'https://103.181.200.143:2023'),
   VERSION: 'v1',
-  API_PREFIX: '/api/v1',  // Changed from '/api/v1' since BASE_URL now includes /commercial/api
+  API_PREFIX: '/api/v1',
 } as const
 
 // API Endpoints organized by controller
@@ -48,9 +47,6 @@ export const API_ENDPOINTS = {
     SAVE: '/app-language-translation',
     FIND_ALL: '/app-language-translation/find-all',
     NAV_MENU: '/app-language-translation/nav-menu',
-    // BUILD_PARTNER: '/app-language-translation/build-partner',
-    BUILD_PARTNER_ASSET: '/app-language-translation/build-partner-assests',
-    CAPITAL_PARTNER: '/app-language-translation/capital-partner',
     WORKFLOW_ACTIONS: '/app-language-translation/workflow-actions',
     WORKFLOW_DEFINITION: '/app-language-translation/workflow-definition',
     WORKFLOW_STAGE_TEMPLATE:
@@ -69,7 +65,6 @@ export const API_ENDPOINTS = {
     ROLE_MANAGEMENT_LABEL: '/app-language-translation/role-management',
     GROUP_MANAGEMENT_LABEL: '/app-language-translation/group-management',
     PAYMENTS_LABEL: '/app-language-translation/payments',
-    FEE_REPUSH: '/app-language-translation/fee-repush',
     PARTY: '/app-language-translation/party',
     ACCOUNT_PURPOSE: '/app-language-translation/account-purpose',
     INVESTMENT: '/app-language-translation/investment',
@@ -430,7 +425,6 @@ export const API_ENDPOINTS = {
   },
 
   // END MASTER DOCUMENT API ENDPOINTS
-
   APPLICATION_CONFIGURATION: {
     GET_BY_ID: (id: string) => `/application-configuration/${id}`,
     UPDATE: (id: string) => `/application-configuration/${id}`,
@@ -509,17 +503,6 @@ export const API_ENDPOINTS = {
       `/core-bank-get/sbi/apis/validate-swift?swiftCode=${swiftCode}`,
   },
 
-  // BUILD_PARTNER: {
-  //   GET_BY_ID: (id: string) => `/build-partner/${id}`,
-  //   UPDATE: (id: string) => `/build-partner/${id}`,
-  //   DELETE: (id: string) => `/build-partner/${id}`,
-  //   SOFT_DELETE: (id: string) => `/build-partner/soft/${id}`,
-  //   GET_ALL: '/build-partner?deleted.equals=false&enabled.equals=true',
-  //   SAVE: '/build-partner',
-  //   FIND_ALL:
-  //     '/build-partner/find-all?deleted.equals=false&enabled.equals=true',
-  // },
-
   APPLICATION_TABLE_DESIGN: {
     GET_BY_ID: (id: string) => `/application-table-design/${id}`,
     UPDATE: (id: string) => `/application-table-design/${id}`,
@@ -588,123 +571,6 @@ export const API_ENDPOINTS = {
     FIND_ALL: '/binary-data-store/find-all',
   },
 
-  // // Build Partner
-  // BUILD_PARTNER_ACCOUNT: {
-  //   GET_BY_ID: (id: string) => `/build-partner-account/${id}`,
-  //   UPDATE: (id: string) => `/build-partner-account/${id}`,
-  //   DELETE: (id: string) => `/build-partner-account/${id}`,
-  //   SAVE: '/build-partner-account',
-  //   FIND_ALL: '/build-partner-account/find-all',
-  // },
-
-  // BUILD_PARTNER_BENEFICIARY: {
-  //   GET_BY_ID: (id: string) =>
-  //     `/build-partner-beneficiary?buildPartnerId.equals=${id}&deleted.equals=false&enabled.equals=true`,
-  //   UPDATE: (id: string) => `/build-partner-beneficiary/${id}`,
-  //   DELETE: (id: string) => `/build-partner-beneficiary/${id}`,
-  //   SOFT_DELETE: (id: string) => `/build-partner-beneficiary/soft/${id}`,
-  //   SAVE: '/build-partner-beneficiary',
-  //   FIND_ALL: '/build-partner-beneficiary/find-all',
-  //   UPLOAD: '/build-partner-beneficiary/upload',
-  // },
-
-  // BUILD_PARTNER_CONTACT: {
-  //   GET_BY_ID: (id: string) =>
-  //     `/build-partner-contact?buildPartnerId.equals=${id}&deleted.equals=false&enabled.equals=true`,
-  //   UPDATE: (id: string) => `/build-partner-contact/${id}`,
-  //   DELETE: (id: string) => `/build-partner-contact/${id}`,
-  //   SOFT_DELETE: (id: string) => `/build-partner-contact/soft/${id}`,
-  //   SAVE: '/build-partner-contact',
-  //   FIND_ALL: '/build-partner-contact/find-all',
-  // },
-
-  // BUILD_PARTNER_FEES: {
-  //   GET_BY_ID: (id: string) =>
-  //     `/build-partner-fees?buildPartnerId.equals=${id}&deleted.equals=false&enabled.equals=true`,
-  //   GET_FEE_BY_ID: (feeId: string) => `/build-partner-fees/${feeId}`,
-  //   UPDATE: (id: string) => `/build-partner-fees/${id}`,
-  //   DELETE: (id: string) => `/build-partner-fees/${id}`,
-  //   SOFT_DELETE: (id: string) => `/build-partner-fees/soft/${id}`,
-  //   GET_ALL: '/build-partner-fees',
-  //   SAVE: '/build-partner-fees',
-  //   FIND_ALL: '/build-partner-fees/find-all',
-  // },
-  // Build Partner Stepper APIs
-  // BUILD_PARTNER_CREATE: {
-  //   DETAILS_SAVE: '/build-partner',
-  //   CONTACT_SAVE: '/build-partner-contact',
-  //   FEES_SAVE: '/build-partner-fees',
-  //   BENEFICIARY_SAVE: '/build-partner-beneficiary',
-  //   REVIEW_SAVE: '/build-partner-review',
-  //   GET_STEP_DATA: (step: number) => `/build-partner/create/${step}/data`,
-  //   VALIDATE_STEP: (step: number) => `/build-partner/create/${step}/validate`,
-  // },
-
-  // Capital Partner
-  CAPITAL_PARTNER: {
-    GET_BY_ID: (id: string) => `/capital-partner/${id}`,
-    UPDATE: (id: string) => `/capital-partner/${id}`,
-    DELETE: (id: string) => `/capital-partner/${id}`,
-    SOFT_DELETE: (id: string) => `/capital-partner/soft/${id}`,
-    GET_ALL: '/capital-partner?deleted.equals=false&enabled.equals=true',
-    SAVE: '/capital-partner',
-    FIND_ALL: '/capital-partner/find-all',
-  },
-
-  CAPITAL_PARTNER_BANK_INFO: {
-    GET_BY_ID: (id: string) => `/capital-partner-bank-info/${id}`,
-    UPDATE: (id: string) => `/capital-partner-bank-info/${id}`,
-    DELETE: (id: string) => `/capital-partner-bank-info/${id}`,
-    GET_ALL: '/capital-partner-bank-info',
-    SAVE: '/capital-partner-bank-info',
-    FIND_ALL: '/capital-partner-bank-info/find-all',
-  },
-
-  CAPITAL_PARTNER_UNIT_BOOKING: {
-    GET_BY_ID: (id: string) => `/capital-partner-unit-booking/${id}`,
-    UPDATE: (id: string) => `/capital-partner-unit-booking/${id}`,
-    DELETE: (id: string) => `/capital-partner-unit-booking/${id}`,
-    GET_ALL: '/capital-partner-unit-booking',
-    SAVE: '/capital-partner-unit-booking',
-    FIND_ALL: '/capital-partner-unit-booking/find-all',
-  },
-
-  CAPITAL_PARTNER_PAYMENT_PLAN: {
-    GET_BY_ID: (id: string) => `/capital-partner-payment-plan/${id}`,
-    UPDATE: (id: string) => `/capital-partner-payment-plan/${id}`,
-    DELETE: (id: string) => `/capital-partner-payment-plan/${id}`,
-    SOFT_DELETE: (id: string) => `/capital-partner-payment-plan/soft/${id}`,
-    GET_ALL: '/capital-partner-payment-plan',
-    SAVE: '/capital-partner-payment-plan',
-    FIND_ALL: '/capital-partner-payment-plan/find-all',
-  },
-
-  CAPITAL_PARTNER_UNIT: {
-    GET_BY_ID: (id: string) => `/capital-partner-unit/${id}`,
-    UPDATE: (id: string) => `/capital-partner-unit/${id}`,
-    DELETE: (id: string) => `/capital-partner-unit/${id}`,
-    GET_ALL: '/capital-partner-unit',
-    SAVE: '/capital-partner-unit',
-    FIND_ALL: '/capital-partner-unit/find-all',
-  },
-
-  CAPITAL_PARTNER_UNIT_PURCHASE: {
-    GET_BY_ID: (id: string) => `/capital-partner-unit-purchase/${id}`,
-    UPDATE: (id: string) => `/capital-partner-unit-purchase/${id}`,
-    DELETE: (id: string) => `/capital-partner-unit-purchase/${id}`,
-    GET_ALL: '/capital-partner-unit-purchase',
-    SAVE: '/capital-partner-unit-purchase',
-    FIND_ALL: '/capital-partner-unit-purchase/find-all',
-  },
-
-  CAPITAL_PARTNER_UNIT_TYPE: {
-    GET_BY_ID: (id: string) => `/capital-partner-unit-type/${id}`,
-    UPDATE: (id: string) => `/capital-partner-unit-type/${id}`,
-    DELETE: (id: string) => `/capital-partner-unit-type/${id}`,
-    GET_ALL: '/capital-partner-unit-type',
-    SAVE: '/capital-partner-unit-type',
-    FIND_ALL: '/capital-partner-unit-type/find-all',
-  },
 
   // Configuration
   CONFIGURATION_STORE: {
@@ -736,15 +602,6 @@ export const API_ENDPOINTS = {
     FIND_ALL: '/financial-institution/find-all',
   },
 
-  // App Language Translation - Surety Bond
-  APP_LANGUAGE_TRANSLATION_SURETY_BOND: {
-    GET_BY_ID: (id: string) => `/app-language-translation/surety-bond/${id}`,
-    UPDATE: (id: string) => `/app-language-translation/surety-bond/${id}`,
-    DELETE: (id: string) => `/app-language-translation/surety-bond/${id}`,
-    GET_ALL: '/app-language-translation/surety-bond',
-    SAVE: '/app-language-translation/surety-bond',
-    FIND_ALL: '/app-language-translation/surety-bond/find-all',
-  },
 
   // Fund Management
   FUND_EGRESS: {
@@ -914,43 +771,7 @@ export const API_ENDPOINTS = {
     FIND_ALL: '/secondary-bank-account/find-all',
   },
 
-  // Surety Bond
-  SURETY_BOND: {
-    GET_BY_ID: (id: string) => `/surety-bond/${id}`,
-    UPDATE: (id: string) => `/surety-bond/${id}`,
-    DELETE: (id: string) => `/surety-bond/${id}`,
-    SOFT_DELETE: (id: string) => `/surety-bond/soft/${id}`,
-    GET_ALL: '/surety-bond',
-    SAVE: '/surety-bond',
-    FIND_ALL: '/surety-bond/find-all',
-  },
-
-  SURETY_BOND_RECOVERY: {
-    GET_BY_ID: (id: string) => `/surety-bond-recovery/${id}`,
-    UPDATE: (id: string) => `/surety-bond-recovery/${id}`,
-    DELETE: (id: string) => `/surety-bond-recovery/${id}`,
-    GET_ALL: '/surety-bond-recovery',
-    SAVE: '/surety-bond-recovery',
-    FIND_ALL: '/surety-bond-recovery/find-all',
-  },
-
-  SURETY_BOND_RELEASE: {
-    GET_BY_ID: (id: string) => `/surety-bond-release/${id}`,
-    UPDATE: (id: string) => `/surety-bond-release/${id}`,
-    DELETE: (id: string) => `/surety-bond-release/${id}`,
-    GET_ALL: '/surety-bond-release',
-    SAVE: '/surety-bond-release',
-    FIND_ALL: '/surety-bond-release/find-all',
-  },
-
-  SURETY_BOND_TYPE: {
-    GET_BY_ID: (id: string) => `/surety-bond-type/${id}`,
-    UPDATE: (id: string) => `/surety-bond-type/${id}`,
-    DELETE: (id: string) => `/surety-bond-type/${id}`,
-    GET_ALL: '/surety-bond-type',
-    SAVE: '/surety-bond-type',
-    FIND_ALL: '/surety-bond-type/find-all',
-  },
+  
   //Auth Admin User
   AUTH_ADMIN_USER: {
     GET_BY_ID: (id: string) => `/auth-admin-user/auth/users/${id}`,

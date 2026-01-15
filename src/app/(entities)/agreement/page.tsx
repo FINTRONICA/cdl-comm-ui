@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React from 'react'
+import dynamic from "next/dynamic";
+import React from "react";
 
 const AgreementsPageClient = dynamic(
   () => Promise.resolve(AgreementsPageImpl),
@@ -13,44 +13,41 @@ const AgreementsPageClient = dynamic(
       </div>
     ),
   }
-)
+);
 
-import { useCallback, useState, useMemo } from 'react'
-import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import LeftSlidePanel from '@/components/organisms/LeftSlidePanel/LeftSlidePanel'
-import { useAgreementLabelsWithCache } from '@/hooks'
-import { getAgreementLabel } from '@/constants/mappings/master/Entity/agreementMapping'
-import { useAppStore } from '@/store'
-import { GlobalLoading } from '@/components/atoms'
-import {
-  useAgreements,
-  useDeleteAgreement,
-} from '@/hooks'
+import { useCallback, useState, useMemo } from "react";
+import { DashboardLayout } from "@/components/templates/DashboardLayout";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import LeftSlidePanel from "@/components/organisms/LeftSlidePanel/LeftSlidePanel";
+import { useAgreementLabelsWithCache } from "@/hooks";
+import { getAgreementLabel } from "@/constants/mappings/master/Entity/agreementMapping";
+import { useAppStore } from "@/store";
+import { GlobalLoading } from "@/components/atoms";
+import { useAgreements, useDeleteAgreement } from "@/hooks";
 import {
   mapAgreementToUIData,
   type AgreementUIData,
   type Agreement,
-} from '@/services/api/masterApi/Entitie/agreementService'
-import type { AgreementFilters } from '@/services/api/masterApi/Entitie/agreementService'
-import { useSidebarConfig } from '@/hooks/useSidebarConfig'
+} from "@/services/api/masterApi/Entitie/agreementService";
+import type { AgreementFilters } from "@/services/api/masterApi/Entitie/agreementService";
+import { useSidebarConfig } from "@/hooks/useSidebarConfig";
 // import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 // import { TEMPLATE_FILES } from '@/constants' // TODO: Add when AGREEMENT template is available
-import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
-import { useRouter } from 'next/navigation'
+import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
+import { useRouter } from "next/navigation";
 
 interface AgreementData extends AgreementUIData, Record<string, unknown> {}
 
 const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
@@ -79,9 +76,9 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
         </h1>
         <p className="mb-4 text-gray-600">
           {error.message ||
-            'An error occurred while loading the data. Please try again.'}
+            "An error occurred while loading the data. Please try again."}
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <details className="text-left">
             <summary className="text-sm font-medium text-gray-600 cursor-pointer">
               Error Details (Development)
@@ -102,16 +99,16 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       )}
     </div>
   </div>
-)
+);
 
-const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />
+const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />;
 
 const AgreementsPageImpl: React.FC = () => {
-  const router = useRouter()
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const router = useRouter();
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const currentLanguage = useAppStore((state) => state.language)
+  const currentLanguage = useAppStore((state) => state.language);
 
   // const {
   //   downloadTemplate,
@@ -119,22 +116,21 @@ const AgreementsPageImpl: React.FC = () => {
   //   error: downloadError,
   //   clearError,
   // } = useTemplateDownload() // TODO: Enable when template is available
-  const isDownloading = false
-  const downloadError = null
-  const clearError = () => {}
+  const isDownloading = false;
+  const downloadError = null;
+  const clearError = () => {};
 
-  const { data: agreementLabels, getLabel } =
-    useAgreementLabelsWithCache()
+  const { data: agreementLabels, getLabel } = useAgreementLabelsWithCache();
 
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [filters] = useState<AgreementFilters>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [filters] = useState<AgreementFilters>({});
 
-  const { getLabelResolver } = useSidebarConfig()
+  const { getLabelResolver } = useSidebarConfig();
 
   const agrementPageTitle = getLabelResolver
-    ? getLabelResolver('agreement', 'Agreements')
-    : 'Agreements'
+    ? getLabelResolver("agreement", "Agreements")
+    : "Agreements";
 
   const {
     data: apiResponse,
@@ -143,76 +139,75 @@ const AgreementsPageImpl: React.FC = () => {
     refetch: refetchAgreements,
     updatePagination,
     apiPagination,
-  } = useAgreements(Math.max(0, currentApiPage - 1), currentApiSize, filters)
+  } = useAgreements(Math.max(0, currentApiPage - 1), currentApiSize, filters);
 
-  const deleteMutation = useDeleteAgreement()
-  const confirmDelete = useDeleteConfirmation()
+  const deleteMutation = useDeleteAgreement();
+  const confirmDelete = useDeleteConfirmation();
 
   const agreementsData = useMemo(() => {
     if (apiResponse?.content) {
       return apiResponse.content.map((item) =>
         mapAgreementToUIData(item as Agreement)
-      ) as AgreementData[]
+      ) as AgreementData[];
     }
-    return []
-    }, [apiResponse])
+    return [];
+  }, [apiResponse]);
 
   const getAgreementLabelDynamic = useCallback(
     (configId: string): string => {
-      const fallback = getAgreementLabel(configId)
+      const fallback = getAgreementLabel(configId);
 
       if (agreementLabels) {
-        return getLabel(configId, currentLanguage || 'EN', fallback)
+        return getLabel(configId, currentLanguage || "EN", fallback);
       }
-      return fallback
+      return fallback;
     },
     [agreementLabels, currentLanguage, getLabel]
-  )
+  );
 
   const tableColumns = [
     {
-      key: 'productManagerName',
-      label: getAgreementLabelDynamic('CDL_ESCROW_PRODUCT_MANAGET_NAME'),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
-    },
-      {
-        // Agreement identifier from backend entity (mapAgreementToUIData sets `id`)
-        key: 'id',
-        label: getAgreementLabelDynamic('CDL_ESCROW_AGREEMENT_ID'),
-        type: 'text' as const,
-        width: 'w-48',
-        sortable: true,
-      },
-    {
-      key: 'primaryEscrowCifNumber',
-      label: getAgreementLabelDynamic('CDL_ESCROW_CIF_NUMBER'),
-      type: 'text' as const,
-      width: 'w-40',
+      key: "productManagerName",
+      label: getAgreementLabelDynamic("CDL_ESCROW_PRODUCT_MANAGET_NAME"),
+      type: "text" as const,
+      width: "w-40",
       sortable: true,
     },
     {
-      key: 'relationshipManagerName',
-            label: getAgreementLabelDynamic('CDL_ESCROW_RM_NAME'),
-      type: 'text' as const,
-      width: 'w-48',
+      key: "id",
+      label: getAgreementLabelDynamic("CDL_ESCROW_AGREEMENT_ID"),
+      type: "text" as const,
+      width: "w-48",
       sortable: true,
     },
     {
-      key: 'status',
-      label: getAgreementLabelDynamic('CDL_ESCROW_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
+      key: "primaryEscrowCifNumber",
+      label: getAgreementLabelDynamic("CDL_ESCROW_CIF_NUMBER"),
+      type: "text" as const,
+      width: "w-40",
       sortable: true,
     },
     {
-      key: 'actions',
-      label: getAgreementLabelDynamic('CDL_ESCROW_DOC_ACTION'),
-      type: 'actions' as const,
-      width: 'w-20',
+      key: "relationshipManagerName",
+      label: getAgreementLabelDynamic("CDL_ESCROW_RM_NAME"),
+      type: "text" as const,
+      width: "w-48",
+      sortable: true,
     },
-  ]
+    {
+      key: "status",
+      label: getAgreementLabelDynamic("CDL_ESCROW_STATUS"),
+      type: "status" as const,
+      width: "w-32",
+      sortable: true,
+    },
+    {
+      key: "actions",
+      label: getAgreementLabelDynamic("CDL_COMMON_ACTION"),
+      type: "actions" as const,
+      width: "w-20",
+    },
+  ];
 
   const {
     search,
@@ -235,61 +230,61 @@ const AgreementsPageImpl: React.FC = () => {
   } = useTableState({
     data: agreementsData,
     searchFields: [
-      'productManagerName',
-      'id',
-      'primaryEscrowCifNumber',
-      'relationshipManagerName',
-      'status',
+      "productManagerName",
+      "id",
+      "primaryEscrowCifNumber",
+      "relationshipManagerName",
+      "status",
     ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+    const hasSearch = Object.values(search).some((value) => value.trim());
 
     if (hasSearch) {
-      localHandlePageChange(newPage)
+      localHandlePageChange(newPage);
     } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      setCurrentApiPage(newPage);
+      updatePagination(Math.max(0, newPage - 1), currentApiSize);
     }
-  }
+  };
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+    setCurrentApiSize(newRowsPerPage);
+    setCurrentApiPage(1);
+    updatePagination(0, newRowsPerPage);
+    localHandleRowsPerPageChange(newRowsPerPage);
+  };
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const actionButtons: Array<{
-    label: string
-    onClick: () => void
-    disabled?: boolean
-    variant?: 'primary' | 'secondary'
-    icon?: string
-    iconAlt?: string
-  }> = []
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    variant?: "primary" | "secondary";
+    icon?: string;
+    iconAlt?: string;
+  }> = [];
 
   const handleRowDelete = (row: AgreementData) => {
     if (isDeleting) {
-      return
+      return;
     }
 
     confirmDelete({
@@ -297,37 +292,37 @@ const AgreementsPageImpl: React.FC = () => {
       itemId: row.primaryEscrowCifNumber,
       onConfirm: async () => {
         try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(row.id)
+          setIsDeleting(true);
+          await deleteMutation.mutateAsync(row.id);
         } catch (error) {
           const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(`Failed to delete agreement: ${errorMessage}`)
+            error instanceof Error ? error.message : "Unknown error occurred";
+          console.error(`Failed to delete agreement: ${errorMessage}`);
 
-          throw error
+          throw error;
         } finally {
-          setIsDeleting(false)
+          setIsDeleting(false);
         }
       },
-    })
-  }
+    });
+  };
 
   const handleRowView = (row: AgreementData) => {
-    router.push(`/agreement/${row.primaryEscrowCifNumber}/step/1?mode=view`)
-  }
+    router.push(`/agreement/${row.primaryEscrowCifNumber}/step/1?mode=view`);
+  };
 
   const handleRowEdit = (row: AgreementData) => {
-    router.push(`/agreement/${row.primaryEscrowCifNumber}/step/1?editing=true`)
-  }
+    router.push(`/agreement/${row.primaryEscrowCifNumber}/step/1?editing=true`);
+  };
 
   const handleDownloadTemplate = async () => {
     // TODO: Add AGREEMENT template file when available
     // await downloadTemplate(TEMPLATE_FILES.AGREEMENT)
-  }
+  };
 
   const renderExpandedContent = () => (
     <div className="grid grid-cols-2 gap-8"></div>
-  )
+  );
 
   return (
     <>
@@ -338,7 +333,6 @@ const AgreementsPageImpl: React.FC = () => {
         />
       )}
 
-      {/* Download Error Alert */}
       {downloadError && (
         <div className="fixed z-50 px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded shadow-lg top-4 right-4">
           <div className="flex items-center justify-between">
@@ -357,7 +351,6 @@ const AgreementsPageImpl: React.FC = () => {
 
       <DashboardLayout title={agrementPageTitle}>
         <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
-          {/* Show loading state within the layout */}
           {agreementsLoading ? (
             <LoadingSpinner />
           ) : agreementsError ? (
@@ -409,10 +402,10 @@ const AgreementsPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={['bp_delete']}
-                    viewPermissions={['bp_view']}
-                    editPermissions={['bp_update']}
-                    updatePermissions={['bp_update']}
+                    deletePermissions={["bp_delete"]}
+                    viewPermissions={["bp_view"]}
+                    editPermissions={["bp_update"]}
+                    updatePermissions={["bp_update"]}
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
@@ -423,11 +416,11 @@ const AgreementsPageImpl: React.FC = () => {
         </div>
       </DashboardLayout>
     </>
-  )
-}
+  );
+};
 
 const AgreementsPage: React.FC = () => {
-  return <AgreementsPageClient />
-}
+  return <AgreementsPageClient />;
+};
 
-export default AgreementsPage
+export default AgreementsPage;

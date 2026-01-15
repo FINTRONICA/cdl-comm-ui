@@ -190,7 +190,7 @@
 //         },
 //       }
 
-//       // Store validated account data (will be saved when "Save and Next" is clicked)
+//       // Store validated account data (will be saved when "Save & Next" is clicked)
 //       setValidatedAccounts((prev) => {
 //         const newAccounts = [...prev]
 //         newAccounts[index] = bankAccountData
@@ -231,7 +231,7 @@
 //     }
 //   }
 
-//   // Function to save all validated accounts (called on "Save and Next")
+//   // Function to save all validated accounts (called on "Save & Next")
 //   const saveAllValidatedAccounts = async () => {
 //     const accountsToSave = validatedAccounts.filter(
 //       (account) => account && account.isValidated

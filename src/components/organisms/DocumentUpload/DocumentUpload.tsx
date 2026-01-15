@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Box,
   Button,
@@ -17,6 +17,7 @@ import {
   LinearProgress,
 } from '@mui/material'
 import { alpha, useTheme } from '@mui/material/styles'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { TablePagination } from '../../molecules/TablePagination/TablePagination'
 import { FileUploadOutlined as FileUploadOutlinedIcon } from '@mui/icons-material'
 import { Eye, Pencil, Trash2 } from 'lucide-react'
@@ -58,7 +59,7 @@ const DocumentUpload = <
   config,
   formFieldName = 'documents',
 }: DocumentUploadProps<T, ApiResponse>) => {
-  const { setValue, watch } = useFormContext()
+  const { setValue } = useFormContext()
   const confirmDelete = useDeleteConfirmation()
   const theme = useTheme()
   const { isDark, colors } = useAppTheme()
@@ -93,114 +94,222 @@ const DocumentUpload = <
     loading: false,
   })
 
-  const existingDocuments = watch(formFieldName) || []
+  const queryClient = useQueryClient()
+  const previousFormDocsRef = useRef<T[]>([])
 
-  const uploadConfig = { ...DEFAULT_UPLOAD_CONFIG, ...config.uploadConfig }
+  const uploadConfig = useMemo(() => ({ ...DEFAULT_UPLOAD_CONFIG, ...config.uploadConfig }), [config.uploadConfig])
+
+  // Memoize stable query key to prevent unnecessary re-renders
+  // Flatten object to prevent query key instability
+  const queryKey = useMemo(
+    () => [
+      'documents',
+      config.entityType,
+      config.entityId,
+      currentPage - 1,
+      rowsPerPage,
+    ],
+    [config.entityType, config.entityId, currentPage, rowsPerPage]
+  )
+
+  // FIXED: Use React Query instead of useEffect for document fetching
+  const {
+    data: documentsResponse,
+    isLoading: isLoadingDocumentsQuery,
+    error: documentsError,
+  } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!config.entityId || config.entityId.trim() === '') {
+        return null
+      }
+      return await config.documentService.getDocuments(
+        config.entityId,
+        currentPage - 1, // API expects 0-based page numbers
+        rowsPerPage
+      )
+    },
+    enabled: !!config.entityId && config.entityId.trim() !== '',
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      // Limit retries for other errors
+      return failureCount < 1
+    },
+  })
+
+  // Memoize mapApiToDocument to prevent unnecessary re-renders
+  const mapApiToDocumentMemo = useMemo(
+    () => config.mapApiToDocument,
+    [config.mapApiToDocument]
+  )
+
+  // Update local state from React Query response - single source of truth
+  useEffect(() => {
+    if (documentsResponse) {
+      const mappedDocuments: T[] = documentsResponse.content.map(
+        mapApiToDocumentMemo
+      )
+      setUploadedDocuments(mappedDocuments)
+      setTotalPages(documentsResponse.page.totalPages)
+      setTotalDocuments(documentsResponse.page.totalElements)
+      // Only update form if documents actually changed to prevent circular updates
+      const currentFormDocs = previousFormDocsRef.current
+      const mappedIds = mappedDocuments.map((d) => d.id).sort().join(',')
+      const currentIds = currentFormDocs.map((d: T) => d.id).sort().join(',')
+      
+      if (mappedIds !== currentIds) {
+        setValue(formFieldName, mappedDocuments, { shouldDirty: false })
+        previousFormDocsRef.current = mappedDocuments
+      }
+    }
+  }, [documentsResponse, mapApiToDocumentMemo, setValue, formFieldName])
+
+  // Set loading state from React Query
+  useEffect(() => {
+    setIsLoadingDocuments(isLoadingDocumentsQuery)
+  }, [isLoadingDocumentsQuery])
+
+  // Handle errors from React Query - make documents errors non-critical
+  useEffect(() => {
+    if (documentsError) {
+      // Only show error if documents are required (not optional)
+      // For optional documents, errors are non-critical and shouldn't block UI
+      if (!config.isOptional) {
+        const errorMessage = documentsError instanceof Error
+          ? documentsError.message
+          : 'Failed to load existing documents'
+        
+        // Don't show 500 errors for optional documents
+        if (!errorMessage.includes('500')) {
+          setUploadError(errorMessage)
+        }
+      }
+      // For optional documents, silently ignore errors (they're non-critical)
+    }
+  }, [documentsError, config.isOptional])
 
   // Pagination handlers
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     setCurrentPage(newPage)
-  }
+  }, [])
 
-  const handleRowsPerPageChange = (newRowsPerPage: number) => {
+  const handleRowsPerPageChange = useCallback((newRowsPerPage: number) => {
     setRowsPerPage(newRowsPerPage)
     setCurrentPage(1) // Reset to first page when changing rows per page
-  }
+  }, [])
 
   // Calculate pagination values
   const startItem = totalDocuments > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0
   const endItem = Math.min(currentPage * rowsPerPage, totalDocuments)
 
+  // Only sync form changes when documents are manually updated (not from React Query)
+  // This prevents circular updates between form and React Query
+  const previousUploadedDocumentsRef = useRef<T[]>([])
+  const onDocumentsChangeRef = useRef(config.onDocumentsChange)
+  
+  // Update ref when callback changes
   useEffect(() => {
-    const loadExistingDocuments = async () => {
-      try {
-        setIsLoadingDocuments(true)
-        const response = await config.documentService.getDocuments(
-          config.entityId,
-          currentPage - 1, // API expects 0-based page numbers
-          rowsPerPage
-        )
-        const mappedDocuments: T[] = response.content.map(
-          config.mapApiToDocument
-        )
-
-        setUploadedDocuments(mappedDocuments)
-        setTotalPages(response.page.totalPages)
-        setTotalDocuments(response.page.totalElements)
-        setValue(formFieldName, mappedDocuments)
-      } catch (error) {
-        if (!config.isOptional) {
-          setUploadError('Failed to load existing documents')
-        }
-      } finally {
-        setIsLoadingDocuments(false)
-      }
-    }
-
-    if (config.entityId) {
-      loadExistingDocuments()
-    }
-  }, [config.entityId, currentPage, rowsPerPage, setValue, formFieldName])
-
-  // Initialize documents from form data (fallback)
+    onDocumentsChangeRef.current = config.onDocumentsChange
+  }, [config.onDocumentsChange])
+  
   useEffect(() => {
-    if (existingDocuments.length > 0 && uploadedDocuments.length === 0) {
-      setUploadedDocuments(existingDocuments)
-    }
-  }, [existingDocuments, uploadedDocuments.length])
-
-  useEffect(() => {
+    // Only update form if documents changed from user actions (not from React Query fetch)
     const successfulDocuments = uploadedDocuments.filter(
       (doc) => doc.status !== 'failed'
     )
-    setValue(formFieldName, successfulDocuments)
-    if (config.onDocumentsChange) {
-      config.onDocumentsChange(successfulDocuments)
+    
+    // Check if this is a user-initiated change (upload/delete) vs React Query fetch
+    const isUserAction = 
+      uploadedDocuments.length !== previousUploadedDocumentsRef.current.length ||
+      uploadedDocuments.some((doc, idx) => 
+        doc.id !== previousUploadedDocumentsRef.current[idx]?.id
+      )
+    
+    if (isUserAction && successfulDocuments.length > 0) {
+      setValue(formFieldName, successfulDocuments, { shouldDirty: false })
+      if (onDocumentsChangeRef.current) {
+        onDocumentsChangeRef.current(successfulDocuments)
+      }
     }
+    
+    previousUploadedDocumentsRef.current = uploadedDocuments
   }, [uploadedDocuments, setValue, formFieldName])
 
-  const handleUploadClick = async () => {
+  // Memoize document types query key
+  const documentTypesQueryKey = useMemo(
+    () => ['documentTypes', config.documentTypeSettingKey || 'INVESTOR_ID_TYPE'],
+    [config.documentTypeSettingKey]
+  )
+
+  // Use React Query for document types
+  const { data: documentTypes = [], isLoading: isLoadingDocumentTypes } = useQuery({
+    queryKey: documentTypesQueryKey,
+    queryFn: async () => {
+      const settingKey = config.documentTypeSettingKey || 'INVESTOR_ID_TYPE'
+      return await applicationSettingService.getDropdownOptionsByKey(settingKey)
+    },
+    enabled: false, // Only fetch when popup opens
+    staleTime: 10 * 60 * 1000, // 10 minutes - document types rarely change
+    gcTime: 30 * 60 * 1000, // 30 minutes cache
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
+  })
+
+  const handleUploadClick = useCallback(async () => {
     setUploadPopup((prev) => ({
       ...prev,
       open: true,
       loading: true,
     }))
 
+    // Fetch document types using React Query
     try {
-      const settingKey = config.documentTypeSettingKey || 'INVESTOR_ID_TYPE'
-      console.log('[DocumentUpload] Fetching document types for setting key:', settingKey)
-      
-      const documentTypes =
-        await applicationSettingService.getDropdownOptionsByKey(settingKey)
-      
-      console.log('[DocumentUpload] Received document types:', documentTypes?.length || 0, documentTypes)
-      
-      // Only use fallback if we truly have no options
-      if (!documentTypes || documentTypes.length === 0) {
-        console.warn('[DocumentUpload] No document types found for setting key:', settingKey)
-        // Don't use fallback - let the user see that no types are available
-        setUploadPopup((prev) => ({
-          ...prev,
-          documentTypes: [],
-          loading: false,
-        }))
-      } else {
-        setUploadPopup((prev) => ({
-          ...prev,
-          documentTypes,
-          loading: false,
-        }))
-      }
+      await queryClient.fetchQuery({
+        queryKey: documentTypesQueryKey,
+        queryFn: async () => {
+          const settingKey = config.documentTypeSettingKey || 'INVESTOR_ID_TYPE'
+          return await applicationSettingService.getDropdownOptionsByKey(settingKey)
+        },
+      })
     } catch (error) {
-      console.error('[DocumentUpload] Error fetching document types:', error)
-      // On error, show empty array so user knows something went wrong
+      // Error handled by query
+    } finally {
       setUploadPopup((prev) => ({
         ...prev,
-        documentTypes: [],
         loading: false,
       }))
     }
-  }
+  }, [queryClient, documentTypesQueryKey, config.documentTypeSettingKey])
+
+  // Update popup state when document types load - only when popup is open
+  useEffect(() => {
+    if (uploadPopup.open) {
+      setUploadPopup((prev) => ({
+        ...prev,
+        documentTypes: documentTypes || [],
+        loading: isLoadingDocumentTypes,
+      }))
+    }
+  }, [documentTypes, isLoadingDocumentTypes, uploadPopup.open])
 
   const handlePopupUpload = async (files: File[], documentType: string) => {
     setIsUploading(true)
@@ -257,6 +366,7 @@ const DocumentUpload = <
         setUploadedDocuments((prev) => [...prev, ...newDocuments])
 
         let successfulUploads = 0
+        const successfullyUploadedDocs: T[] = []
 
         for (const document of newDocuments) {
           try {
@@ -267,16 +377,17 @@ const DocumentUpload = <
             )
 
             const updatedDocument = config.mapApiToDocument(response)
-            setUploadedDocuments((prev) =>
-              prev.map((doc) =>
+            setUploadedDocuments((prev) => {
+              const updated = prev.map((doc) =>
                 doc.id === document.id ? updatedDocument : doc
               )
-            )
+              return updated
+            })
+            successfullyUploadedDocs.push(updatedDocument)
             successfulUploads++
           } catch (error) {
             setUploadedDocuments((prev) => {
               const filtered = prev.filter((doc) => doc.id !== document.id)
-
               setValue(formFieldName, filtered)
               return filtered
             })
@@ -292,25 +403,17 @@ const DocumentUpload = <
           const successMessage = `${successfulUploads} document(s) uploaded successfully`
           setUploadSuccess(successMessage)
 
-          if (config.onUploadSuccess) {
-            config.onUploadSuccess(uploadedDocuments)
+          // Invalidate queries - this will automatically trigger refetch
+          queryClient.invalidateQueries({ queryKey })
+
+          // Call success callback with successfully uploaded documents
+          // Use the documents we just uploaded, not the full state
+          if (config.onUploadSuccess && successfullyUploadedDocs.length > 0) {
+            // Call callback in next tick to ensure state updates are complete
+            Promise.resolve().then(() => {
+              config.onUploadSuccess?.(successfullyUploadedDocs as T[])
+            })
           }
-
-          try {
-            const refreshedResponse = await config.documentService.getDocuments(
-              config.entityId,
-              currentPage - 1,
-              rowsPerPage
-            )
-            const mappedDocuments: T[] = refreshedResponse.content.map(
-              config.mapApiToDocument
-            )
-
-            setUploadedDocuments(mappedDocuments)
-            setTotalPages(refreshedResponse.page.totalPages)
-            setTotalDocuments(refreshedResponse.page.totalElements)
-            setValue(formFieldName, mappedDocuments)
-          } catch (refreshError) {}
         }
       }
     } catch (error) {
@@ -402,16 +505,12 @@ const DocumentUpload = <
               )
               await apiClient.delete(deleteUrl)
 
-              // Remove the document from the local state
-              setUploadedDocuments((prev) =>
-                prev.filter((doc) => doc.id !== document.id)
-              )
-
-              // Update form value
-              const updatedDocuments = uploadedDocuments.filter(
-                (doc) => doc.id !== document.id
-              )
-              setValue(formFieldName, updatedDocuments)
+              // Remove the document from the local state and update form
+              setUploadedDocuments((prev) => {
+                const filtered = prev.filter((doc) => doc.id !== document.id)
+                setValue(formFieldName, filtered, { shouldDirty: false })
+                return filtered
+              })
 
               // Call the original action handler if it exists
               if (action.onClick) {
@@ -814,8 +913,8 @@ const DocumentUpload = <
           open={uploadPopup.open}
           onClose={handlePopupClose}
           onUpload={handlePopupUpload}
-          documentTypes={uploadPopup.documentTypes}
-          loading={uploadPopup.loading}
+          documentTypes={documentTypes || uploadPopup.documentTypes}
+          loading={uploadPopup.loading || isLoadingDocumentTypes}
           accept={uploadConfig.accept || '.pdf,.docx,.xlsx,.jpg,.jpeg,.png'}
           multiple={uploadConfig.multiple || true}
           maxFiles={10}

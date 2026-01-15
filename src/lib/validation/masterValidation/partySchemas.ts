@@ -2,12 +2,11 @@ import { z } from 'zod'
 
 // Party Step 1: Basic Details Schema
 export const PartyStep1Schema = z.object({
-  // Party ID - optional for new parties, required for updates
+  // Party ID - mandatory
   id: z
     .string()
-    .max(50, 'Party ID must be 50 characters or less')
-    .optional()
-    .or(z.literal('')),
+    .min(1, 'Party ID is required')
+    .max(50, 'Party ID must be 50 characters or less'),
 
   // Party CIF Number - mandatory
   partyCifNumber: z

@@ -25,7 +25,7 @@ import { useValidateAccountStep } from './useAccount'
 import { useAccountStepManager, useAccountStepStatus } from './useAccount'
 
 import { useAgreementSignatories } from './useAgreementSignatory'
-import { useAgreementSignatory } from './useAgreementSignatory'
+import { useAgreementSignatory, useAgreementSignatoryDocuments } from './useAgreementSignatory'
 import { useCreateAgreementSignatory } from './useAgreementSignatory'
 import { useUpdateAgreementSignatory } from './useAgreementSignatory'
 import { useDeleteAgreementSignatory } from './useAgreementSignatory'
@@ -91,7 +91,7 @@ import { usePaymentBeneficiaryStepManager, usePaymentBeneficiaryStepStatus } fro
 
 export { useAgreements, useAgreement, useCreateAgreement, useUpdateAgreement, useDeleteAgreement, useAgreementLabels, useAgreementLabelsWithUtils, useSaveAgreementDetails, useSaveAgreementReview, useAgreementStepData, useValidateAgreementStep, useAgreementStepManager, useAgreementStepStatus }
 export { useAccounts, useAccount, useCreateAccount, useUpdateAccount, useDeleteAccount, useAccountLabels, useAccountLabelsWithUtils, useSaveAccountDetails, useSaveAccountReview, useAccountStepData, useValidateAccountStep, useAccountStepManager, useAccountStepStatus }
-export { useAgreementSignatories, useAgreementSignatory, useCreateAgreementSignatory, useUpdateAgreementSignatory, useDeleteAgreementSignatory, useAgreementSignatoryLabels, useAgreementSignatoryLabelsWithUtils, useSaveAgreementSignatoryDetails, useSaveAgreementSignatoryReview, useAgreementSignatoryStepData, useValidateAgreementSignatoryStep, useAgreementSignatoryStepManager, useAgreementSignatoryStepStatus }
+export { useAgreementSignatories, useAgreementSignatory, useAgreementSignatoryDocuments, useCreateAgreementSignatory, useUpdateAgreementSignatory, useDeleteAgreementSignatory, useAgreementSignatoryLabels, useAgreementSignatoryLabelsWithUtils, useSaveAgreementSignatoryDetails, useSaveAgreementSignatoryReview, useAgreementSignatoryStepData, useValidateAgreementSignatoryStep, useAgreementSignatoryStepManager, useAgreementSignatoryStepStatus }
 export { useAgreementParameters, useAgreementParameter, useCreateAgreementParameter, useUpdateAgreementParameter, useDeleteAgreementParameter, useAgreementParameterLabels, useAgreementParameterLabelsWithUtils, useSaveAgreementParameterDetails, useSaveAgreementParameterReview, useAgreementParameterStepData, useValidateAgreementParameterStep, useAgreementParameterStepManager, useAgreementParameterStepStatus }
 export { useAgreementFeeSchedules, useAgreementFeeSchedule, useCreateAgreementFeeSchedule, useUpdateAgreementFeeSchedule, useDeleteAgreementFeeSchedule, useAgreementFeeScheduleLabels, useAgreementFeeScheduleLabelsWithUtils, useSaveAgreementFeeScheduleDetails, useSaveAgreementFeeScheduleReview, useAgreementFeeScheduleStepData, useValidateAgreementFeeScheduleStep, useAgreementFeeScheduleStepManager, useAgreementFeeScheduleStepStatus }
 export { usePaymentInstructions, usePaymentInstruction, useCreatePaymentInstruction, useUpdatePaymentInstruction, useDeletePaymentInstruction, usePaymentInstructionLabels, usePaymentInstructionLabelsWithUtils, useSavePaymentInstructionDetails, useSavePaymentInstructionReview, usePaymentInstructionStepData, useValidatePaymentInstructionStep, usePaymentInstructionStepManager, usePaymentInstructionStepStatus }

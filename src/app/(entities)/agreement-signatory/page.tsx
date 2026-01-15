@@ -297,9 +297,6 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(
-            `Failed to delete agreement signatory: ${errorMessage}`
-          )
 
           throw error
         } finally {
@@ -367,7 +364,7 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
             <>
               <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
                 <PageActionButtons
-                  entityType="agreement-signatory"
+                  entityType="escrowAgreementSignatory"
                   customActionButtons={actionButtons}
                   onDownloadTemplate={handleDownloadTemplate}
                   isDownloading={isDownloading}

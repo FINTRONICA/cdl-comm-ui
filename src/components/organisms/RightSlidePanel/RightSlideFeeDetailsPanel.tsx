@@ -19,12 +19,13 @@ import {
 import { KeyboardArrowDown as KeyboardArrowDownIcon } from '@mui/icons-material'
 import { Controller, useForm } from 'react-hook-form'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
-import {
-  useSaveBuildPartnerIndividualFee,
-  useBuildPartnerFeeById,
-} from '@/hooks/useBuildPartners'
+// Build Partner hooks and services removed - module deleted
+// import {
+//   useSaveBuildPartnerIndividualFee,
+//   useBuildPartnerFeeById,
+// } from '@/hooks/useBuildPartners'
 import { feeValidationSchema } from '@/lib/validation'
-import { DeveloperStep4Schema } from '@/lib/validation/developerSchemas'
+// import { DeveloperStep4Schema } from '@/lib/validation/developerSchemas'
 import { convertDatePickerToZonedDateTime } from '@/utils'
 import { useFeeDropdownLabels } from '@/hooks/useFeeDropdowns'
 import { getFeeCategoryLabel } from '@/constants/mappings/feeDropdownMapping'
@@ -33,8 +34,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import dayjs from 'dayjs'
-import { useBuildPartnerLabelsWithCache } from '@/hooks/useBuildPartnerLabelsWithCache'
-import { getBuildPartnerLabel } from '@/constants/mappings/buildPartnerMapping'
+// import { useBuildPartnerLabelsWithCache } from '@/hooks/useBuildPartnerLabelsWithCache'
+// import { getBuildPartnerLabel } from '@/constants/mappings/buildPartnerMapping'
 import { useAppStore } from '@/store'
 import { FormError } from '../../atoms/FormError'
 import { alpha, useTheme } from '@mui/material/styles'

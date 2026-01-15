@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -95,7 +95,6 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
     control,
     watch,
     setValue,
-    trigger,
     formState: { errors },
   } = useFormContext()
 
@@ -125,7 +124,15 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
   const agreementSubTypes = agreementSubTypesResponse?.content || []
 
   // Helper to get display label for dropdown options
-  const getDisplayLabel = useCallback((option: any, fallback?: string): string => {
+  const getDisplayLabel = useCallback((option: {
+    settingValue?: string
+    agreementTypeName?: string
+    subTypeName?: string
+    programName?: string
+    configValue?: string
+    name?: string
+    id?: number | string
+  } | null | undefined, fallback?: string): string => {
     if (!option) return fallback || ''
     if (option.settingValue) return option.settingValue
     if (option.agreementTypeName) return option.agreementTypeName
@@ -135,8 +142,6 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
     if (option.name) return option.name
     return fallback || String(option.id || '')
   }, [])
-
-  const dropdownsLoading = feeCategoriesLoading || feeFrequenciesLoading || agreementTypesLoading || agreementSubTypesLoading || productProgramsLoading
 
   // Populate fields when agreement fee schedule data is loaded (for edit mode)
   useEffect(() => {
@@ -158,11 +163,6 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
         // Fetch agreement fee schedule data to populate fields
         const agreementFeeSchedule = await agreementFeeScheduleService.getAgreementFeeSchedule(agreementFeeScheduleId)
         
-        console.log('[AgreementFeeScheduleStep1] Fetched agreement fee schedule data for population:', {
-          agreementFeeScheduleId,
-          agreementFeeSchedule,
-        })
-        
         // Populate all fields from agreement fee schedule data
         if (agreementFeeSchedule) {
           const fieldsToPopulate = [
@@ -174,7 +174,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
           ]
 
           fieldsToPopulate.forEach((field) => {
-            const value = (agreementFeeSchedule as Record<string, unknown>)[field]
+            const value = (agreementFeeSchedule as unknown as Record<string, unknown>)[field]
             if (value !== undefined && value !== null) {
               const currentValue = watch(field)
               if (!currentValue || String(currentValue).trim() === '') {
@@ -265,8 +265,8 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             })
           }
         }
-      } catch (error) {
-        console.error('Error fetching agreement fee schedule data for form population:', error)
+      } catch {
+        // Error handled silently - form will remain empty
     } finally {
         isPopulating = false
       }
@@ -426,7 +426,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
   const renderSelectField = (
     name: string,
     label: string,
-    options: any[],
+    options: unknown[],
     gridSize: number = 6,
     loading = false,
     required = false
@@ -471,11 +471,12 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
               } as SxProps<Theme>}
             >
               {options.map((option, index) => {
-                const optionId = option.id || option.uuid || index
-                const optionValue = String(option.id || option.uuid || '')
+                const optionObj = option as Record<string, unknown>
+                const optionId = (optionObj.id as number | string | undefined) || (optionObj.uuid as string | undefined) || index
+                const optionValue = String((optionObj.id as number | string | undefined) || (optionObj.uuid as string | undefined) || '')
                 return (
-                  <MenuItem key={optionId} value={optionValue}>
-                    {getDisplayLabel(option, optionValue)}
+                  <MenuItem key={String(optionId)} value={optionValue}>
+                    {getDisplayLabel(optionObj as Parameters<typeof getDisplayLabel>[0], optionValue)}
                   </MenuItem>
                 )
               })}
@@ -526,7 +527,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             {renderSelectField(
               'feeDTO',
               getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEE'),
-              feeCategories,
+              feeCategories as unknown[],
               6,
               feeCategoriesLoading,
               false
@@ -534,7 +535,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             {renderSelectField(
               'feeTypeDTO',
               getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEE_TYPE'),
-              feeCategories, // Using feeCategories as placeholder - TODO: Add specific hook/service
+              feeCategories as unknown[], // Using feeCategories as placeholder - TODO: Add specific hook/service
               6,
               feeCategoriesLoading,
               false
@@ -542,7 +543,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             {renderSelectField(
               'feesFrequencyDTO',
               getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEES_FREQUENCY'),
-              feeFrequencies,
+              feeFrequencies as unknown[],
               6,
               feeFrequenciesLoading,
               false
@@ -550,7 +551,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             {renderSelectField(
               'frequencyBasisDTO',
               getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FREQUENCY_BASIS'),
-              feeFrequencies, // Using feeFrequencies as placeholder - TODO: Add specific hook/service
+              feeFrequencies as unknown[], // Using feeFrequencies as placeholder - TODO: Add specific hook/service
               6,
               feeFrequenciesLoading,
               false
@@ -566,7 +567,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             {renderSelectField(
               'agreementTypeDTO',
               getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEAL_TYPE'),
-              agreementTypes,
+              agreementTypes as unknown[],
               6,
               agreementTypesLoading,
               false
@@ -574,7 +575,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             {renderSelectField(
               'agreementSubTypeDTO',
               getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEAL_SUB_TYPE'),
-              agreementSubTypes,
+              agreementSubTypes as unknown[],
               6,
               agreementSubTypesLoading,
               false
@@ -582,7 +583,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             {renderSelectField(
               'productProgramDTO',
               getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_PRODUCT_PROGRAMME'),
-              productPrograms,
+              productPrograms as unknown[],
               6,
               productProgramsLoading,
               false

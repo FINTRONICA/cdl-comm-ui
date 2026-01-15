@@ -21,13 +21,12 @@ export const BeneficiaryStep1Schema = z.object({
     .min(1, 'Address Line 1 is required')
     .max(200, 'Address Line 1 must be 200 characters or less'),
 
-  // Telephone Number - optional
+  // Telephone Number - mandatory
   telephoneNumber: z
     .string()
+    .min(1, 'Telephone Number is required')
     .max(20, 'Telephone Number must be 20 characters or less')
-    .regex(/^[\d\s\-\(\)]*$/, 'Telephone Number must be valid')
-    .optional()
-    .or(z.literal('')),
+    .regex(/^[\d\s\-\(\)]*$/, 'Telephone Number must be valid'),
 
   // Mobile Number - mandatory
   mobileNumber: z

@@ -7,7 +7,7 @@ import {
   type UpdateCountryRequest,
 } from '@/services/api/masterApi/Customer/countryService'
 
-export const COUNTRIES_QUERY_KEY       = 'countries'
+export const COUNTRIES_QUERY_KEY = 'countries'
 
 export function useCountries(
   page = 0,
@@ -78,7 +78,7 @@ export function useDeleteCountry() {
   const queryClient = useQueryClient()
 
   return useMutation({
-          mutationFn: (id: string) => countryService.deleteCountry(id),
+    mutationFn: (id: string) => countryService.deleteCountry(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [COUNTRIES_QUERY_KEY] })
     },
@@ -86,7 +86,7 @@ export function useDeleteCountry() {
   })
 }
 
-        export function useSaveCountry() {
+export function useSaveCountry() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -100,7 +100,7 @@ export function useDeleteCountry() {
       countryId?: string
     }) => {
       if (isEditing && countryId) {
-          return countryService.updateCountry(countryId, data as UpdateCountryRequest)
+        return countryService.updateCountry(countryId, data as UpdateCountryRequest)
       } else {
         return countryService.createCountry(data as CreateCountryRequest)
       }
@@ -128,4 +128,3 @@ export function useAllCountries() {
     retry: 3,
   })
 }
-

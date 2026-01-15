@@ -3,7 +3,7 @@ import React from 'react'
 import {
   DocumentItem,
   ApiDocumentResponse,
-} from '../../DeveloperStepper/developerTypes'
+} from "@/components/organisms/Master/PartyStepper/partyTypes";
 import { agreementSignatoryService } from '@/services/api/masterApi/Entitie/agreementSignatoryService'
 import {
   DocumentUploadConfig,
@@ -164,7 +164,7 @@ export const agreementSignatoryActions: DocumentAction<DocumentItem>[] = [
     requiresConfirmation: true,
     confirmationMessage:
       'Are you sure you want to delete this document? This action cannot be undone.',
-    onClick: async (document: DocumentItem) => {
+    onClick: async (_document: DocumentItem) => {
       // Note: This would need to be implemented in the parent component
       // as it requires updating the local state
     },

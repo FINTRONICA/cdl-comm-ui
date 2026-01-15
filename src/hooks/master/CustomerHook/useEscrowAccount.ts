@@ -70,9 +70,21 @@ export function useEscrowAccount(id: string) {
   return useQuery({
     queryKey: [ESCROW_ACCOUNTS_QUERY_KEY, id],
     queryFn: () => escrowAccountService.getEscrowAccount(id),
-    enabled: !!id,
+    enabled: !!id && id.trim() !== '',
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      // Don't retry on 500 errors to prevent error storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -147,10 +159,21 @@ export function useEscrowAccountById(escrowAccountId: string | number | null) {
     queryKey: [ESCROW_ACCOUNTS_QUERY_KEY, 'escrowAccount', escrowAccountId],
     queryFn: () =>
       escrowAccountService.getEscrowAccountById(escrowAccountId as string),
-    enabled: !!escrowAccountId,
+    enabled: !!escrowAccountId && String(escrowAccountId).trim() !== '',
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: false,
-    retry: 3,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      // Don't retry on 500 errors to prevent error storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 

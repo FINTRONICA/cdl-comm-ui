@@ -3,8 +3,9 @@ import React from 'react'
 import {
   DocumentItem,
   ApiDocumentResponse,
-} from '../../DeveloperStepper/developerTypes'
-import { buildPartnerService } from '../../../../services/api/buildPartnerService'
+} from '../../Master/PartyStepper/partyTypes'
+// Note: buildPartnerService removed - Build Partner Assets module deleted
+// import { buildPartnerService } from '../../../../services/api/buildPartnerService'
 import {
   DocumentUploadConfig,
   DocumentService,
@@ -13,19 +14,17 @@ import {
 } from '../types'
 import { formatDate, downloadFile } from '../utils'
 import { Download, Trash2 } from 'lucide-react'
-// Service adapter for project documents using BUILD_PARTNER_ASSET module
+// Service adapter for project documents
+// NOTE: Build Partner Assets module has been removed
+// This service is kept for backward compatibility but will need to be updated
+// to use Real Estate Document API or another appropriate service
 export const projectDocumentService: DocumentService<
   DocumentItem,
   ApiDocumentResponse
 > = {
   getDocuments: async (projectId: string, page = 0, size = 20) => {
-    // Use BUILD_PARTNER_ASSET module for project documents
-    return buildPartnerService.getBuildPartnerDocuments(
-      projectId,
-      'BUILD_PARTNER_ASSET',
-      page,
-      size
-    )
+    // TODO: Update to use appropriate document service
+    throw new Error('Build Partner Assets module has been removed. Please update to use Real Estate Document API.')
   },
 
   uploadDocument: async (
@@ -33,13 +32,8 @@ export const projectDocumentService: DocumentService<
     projectId: string,
     documentType?: string
   ) => {
-    // Use BUILD_PARTNER_ASSET module for project documents
-    return buildPartnerService.uploadBuildPartnerDocument(
-      file,
-      projectId,
-      'BUILD_PARTNER_ASSET',
-      documentType
-    )
+    // TODO: Update to use appropriate document service
+    throw new Error('Build Partner Assets module has been removed. Please update to use Real Estate Document API.')
   },
 }
 
@@ -220,7 +214,7 @@ export const createProjectDocumentConfig = (
 
   const config: DocumentUploadConfig<DocumentItem, ApiDocumentResponse> = {
     entityId: projectId,
-    entityType: 'BUILD_PARTNER_ASSET',
+    entityType: 'PROJECT', // Updated from BUILD_PARTNER_ASSET
     documentService: projectDocumentService,
     mapApiToDocument: mapApiToProjectDocumentItem,
     documentTypeSettingKey: 'INVESTOR_ID_TYPE', // Setting key for project document types (can be different from INVESTOR_ID_TYPE)

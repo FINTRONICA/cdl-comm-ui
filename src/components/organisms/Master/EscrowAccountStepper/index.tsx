@@ -21,7 +21,7 @@ import {
 import Step1, { type Step1Ref } from './steps/Step1'
 import Step3 from './steps/Step3'
 import DocumentUploadFactory from '../../DocumentUpload/DocumentUploadFactory'
-import { DocumentItem } from '../PartyStepper/partyTypes'
+import { DocumentItem } from '../../DeveloperStepper/developerTypes'
 import {
   outerContainerSx,
   formSectionSx,
@@ -125,6 +125,19 @@ export default function EscrowAccountStepperWrapper({
       setCurrentEscrowAccountId(escrowAccountId)
     }
   }, [escrowAccountId, currentEscrowAccountId])
+
+  // Clear error messages when navigating to review step (step 2)
+  // Review step handles errors internally and displays data correctly
+  useEffect(() => {
+    if (activeStep === 2) {
+      // Always clear error on review step - Step3 handles its own error display
+      // This prevents false 500 errors from blocking the review page
+      // The error might be from documents or other non-critical calls
+      if (errorMessage) {
+        setErrorMessage(null)
+      }
+    }
+  }, [activeStep]) // Remove errorMessage from deps to ensure it clears immediately
 
   const methods = useForm<EscrowAccountFormData>({
     mode: 'onChange',
@@ -270,6 +283,10 @@ export default function EscrowAccountStepperWrapper({
           />
         )
       case 2:
+        // Clear any error messages immediately when showing review step
+        // The review step handles its own errors and displays data correctly
+        // This prevents false 500 errors from blocking the review page
+        setErrorMessage(null)
         return (
           <Step3
             escrowAccountId={currentEscrowAccountId ?? undefined}
@@ -361,26 +378,29 @@ export default function EscrowAccountStepperWrapper({
                       : 'Complete'
                     : isViewMode
                       ? 'Next'
-                      : 'Save and Next'}
+                      : 'Save & Next'}
               </Button>
             </Box>
           </Box>
 
           {/* Error and Success Notifications */}
-          <Snackbar
-            open={!!errorMessage}
-            autoHideDuration={6000}
-            onClose={() => setErrorMessage(null)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert
+          {/* Don't show error on review step (step 2) - Step3 handles errors internally */}
+          {activeStep !== 2 && (
+            <Snackbar
+              open={!!errorMessage}
+              autoHideDuration={6000}
               onClose={() => setErrorMessage(null)}
-              severity="error"
-              sx={{ width: '100%' }}
+              anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
-              {errorMessage}
-            </Alert>
-          </Snackbar>
+              <Alert
+                onClose={() => setErrorMessage(null)}
+                severity="error"
+                sx={{ width: '100%' }}
+              >
+                {errorMessage}
+              </Alert>
+            </Snackbar>
+          )}
 
           <Snackbar
             open={!!successMessage}

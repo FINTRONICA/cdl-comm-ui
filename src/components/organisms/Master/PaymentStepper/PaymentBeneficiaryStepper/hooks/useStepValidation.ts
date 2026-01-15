@@ -1,11 +1,7 @@
 import { useCallback } from 'react'
 import { validateStandingInstructionBeneficiaryStepData } from '@/lib/validation/masterValidation/paymentBeneficiarySchemas'
-import { ValidationResult } from '../../../DeveloperStepper/types'
+import { ValidationResult } from '@/components/organisms/Master/PartyStepper/types'
 
-/**
- * Custom hook for managing step validation logic for Payment Beneficiary Stepper
- * Validates only the current step's fields using Payment Beneficiary schemas
- */
 export const useStepValidation = () => {
   const validateStepData = useCallback(async (step: number, data: unknown): Promise<ValidationResult> => {
     try {
@@ -92,5 +88,3 @@ export const useStepValidation = () => {
     validateStepDataSync,
   }
 }
-
-

@@ -134,11 +134,6 @@ const Step1 = ({ isReadOnly = false, accountId }: Step1Props) => {
         // Fetch account data to populate fields
         const account = await accountService.getAccount(accountId)
         
-        console.log('[AccountStep1] Fetched account data for population:', {
-          accountId,
-          account,
-        })
-        
         // Populate all fields from account data
         if (account) {
           const fieldsToPopulate = [
@@ -188,7 +183,7 @@ const Step1 = ({ isReadOnly = false, accountId }: Step1Props) => {
           }
         }
       } catch (error) {
-        console.error('Error fetching account data for form population:', error)
+        // Error fetching account data - form will remain empty
     } finally {
         isPopulating = false
       }
@@ -574,5 +569,3 @@ const Step1 = ({ isReadOnly = false, accountId }: Step1Props) => {
 }
 
 export default Step1
-
-

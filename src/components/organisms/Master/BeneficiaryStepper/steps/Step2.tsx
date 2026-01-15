@@ -182,17 +182,12 @@ const Step2 = ({ beneficiaryId, isReadOnly = false, onEditStep }: Step2Props) =>
 
   // Render display field helper
   const renderDisplayField = useCallback(
-    (label: string, value: string | number | null | undefined) => {
-      if (!value || value === null || value === undefined || String(value).trim() === '') {
-        return null
-      }
-      return (
-        <Box sx={fieldBoxSx}>
-          <Typography sx={getLabelSx(isDarkMode)}>{label}</Typography>
-          <Typography sx={getValueSx(isDarkMode)}>{String(value)}</Typography>
-        </Box>
-      )
-    },
+    (label: string, value: string | number | null | undefined = '-') => (
+      <Box sx={fieldBoxSx}>
+        <Typography sx={getLabelSx(isDarkMode)}>{label}</Typography>
+        <Typography sx={getValueSx(isDarkMode)}>{value || '-'}</Typography>
+      </Box>
+    ),
     [isDarkMode]
   )
 
@@ -204,32 +199,22 @@ const Step2 = ({ beneficiaryId, isReadOnly = false, onEditStep }: Step2Props) =>
   }, [])
 
   // Get field value - prioritize form data (user input) over API data
-  // Returns null if field is empty, so we can conditionally render
   const getFieldValue = useCallback((fieldName: string): string | number | null | undefined => {
-    // First check form data (current user input) - this is what user actually entered
+    // First check form data (current user input)
     const formValue = (formData as Record<string, unknown>)[fieldName]
     if (formValue !== undefined && formValue !== null && formValue !== '') {
-      const stringValue = String(formValue).trim()
-      if (stringValue !== '') {
-        return formValue as string | number | null | undefined
-      }
+      return formValue as string | number | null | undefined
     }
-    // Fallback to API data if form data is empty (for edit/view mode or when navigating to review)
+    // Fallback to API data if form data is empty
     if (beneficiaryData && beneficiaryId) {
       const apiData = beneficiaryData as unknown as Record<string, unknown>
       const apiValue = apiData[fieldName]
-      if (apiValue !== undefined && apiValue !== null && String(apiValue).trim() !== '') {
+      if (apiValue !== undefined && apiValue !== null) {
         return apiValue as string | number | null | undefined
       }
     }
-    return null
+    return '-'
   }, [formData, beneficiaryData, beneficiaryId])
-  
-  // Check if field has a value (for conditional rendering)
-  const hasFieldValue = useCallback((fieldName: string): boolean => {
-    const value = getFieldValue(fieldName)
-    return value !== null && value !== undefined && value !== ''
-  }, [getFieldValue])
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -287,118 +272,99 @@ const Step2 = ({ beneficiaryId, isReadOnly = false, onEditStep }: Step2Props) =>
           </Box>
 
           <Grid container spacing={3}>
-            {hasFieldValue('beneficiaryFullName') && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                {renderDisplayField(
-                  getBeneficiaryLabel('CDL_MB_BENEFICIARY_NAME', 'Beneficiary Full Name'),
-                  getFieldValue('beneficiaryFullName')
-                )}
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBeneficiaryLabel('CDL_MB_BENEFICIARY_NAME', 'Beneficiary Full Name'),
+                getFieldValue('beneficiaryFullName')
+              )}
+            </Grid>
 
-            {hasFieldValue('beneficiaryAddressLine1') && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                {renderDisplayField(
-                  getBeneficiaryLabel('CDL_MB_BENEFICIARY_ADDRESS', 'Address'),
-                  getFieldValue('beneficiaryAddressLine1')
-                )}
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBeneficiaryLabel('CDL_MB_BENEFICIARY_ADDRESS', 'Address'),
+                getFieldValue('beneficiaryAddressLine1')
+              )}
+            </Grid>
 
-            {hasFieldValue('telephoneNumber') && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                {renderDisplayField(
-                  getBeneficiaryLabel('CDL_MB_BENEFICIARY_TELEPHONE_NO', 'Telephone Number'),
-                  getFieldValue('telephoneNumber')
-                )}
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBeneficiaryLabel('CDL_MB_BENEFICIARY_TELEPHONE_NO', 'Telephone Number'),
+                getFieldValue('telephoneNumber')
+              )}
+            </Grid>
 
-            {hasFieldValue('mobileNumber') && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                {renderDisplayField(
-                  getBeneficiaryLabel('CDL_MB_BENEFICIARY_MOBILE_NO', 'Mobile Number'),
-                  getFieldValue('mobileNumber')
-                )}
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBeneficiaryLabel('CDL_MB_BENEFICIARY_MOBILE_NO', 'Mobile Number'),
+                getFieldValue('mobileNumber')
+              )}
+            </Grid>
 
-            {hasFieldValue('beneficiaryAccountNumber') && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                {renderDisplayField(
-                  getBeneficiaryLabel('CDL_MB_BENEFICIARY_ACCOUNT_NUMBER', 'Account Number'),
-                  getFieldValue('beneficiaryAccountNumber')
-                )}
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBeneficiaryLabel('CDL_MB_BENEFICIARY_ACCOUNT_NUMBER', 'Account Number'),
+                getFieldValue('beneficiaryAccountNumber')
+              )}
+            </Grid>
 
-            {hasFieldValue('beneficiaryBankName') && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                {renderDisplayField(
-                  getBeneficiaryLabel('CDL_MB_BENEFICIARY_BANK_NAME', 'Bank Name'),
-                  getFieldValue('beneficiaryBankName')
-                )}
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBeneficiaryLabel('CDL_MB_BENEFICIARY_BANK_NAME', 'Bank Name'),
+                getFieldValue('beneficiaryBankName')
+              )}
+            </Grid>
 
-            {hasFieldValue('bankIfscCode') && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                {renderDisplayField(
-                  getBeneficiaryLabel('CDL_MB_BENEFICIARY_BANK_IFSC_CODE', 'Bank IFSC Code'),
-                  getFieldValue('bankIfscCode')
-                )}
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBeneficiaryLabel('CDL_MB_BENEFICIARY_BANK_IFSC_CODE', 'Bank IFSC Code'),
+                getFieldValue('bankIfscCode')
+              )}
+            </Grid>
 
-            {hasFieldValue('bankRoutingCode') && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                {renderDisplayField(
-                  getBeneficiaryLabel('CDL_MB_BENEFICIARY_ROUTING_CODE', 'Routing Code'),
-                  getFieldValue('bankRoutingCode')
-                )}
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getBeneficiaryLabel('CDL_MB_BENEFICIARY_ROUTING_CODE', 'Routing Code'),
+                getFieldValue('bankRoutingCode')
+              )}
+            </Grid>
 
             {(() => {
-              const accountType = formData.accountTypeDTO
-              const accountTypeValue = accountType ? getDTODisplayValue(accountType) : null
-              return accountType && accountTypeValue && accountTypeValue !== '-' ? (
+              const accountType = formData.accountTypeDTO || (beneficiaryData as unknown as { accountTypeDTO?: unknown })?.accountTypeDTO
+              return accountType ? (
                 <Grid size={{ xs: 12, md: 6 }}>
                   {renderDisplayField(
                     getBeneficiaryLabel('CDL_MB_BENEFICIARY_ACCOUNT_TYPE', 'Account Type'),
-                    accountTypeValue
+                    getDTODisplayValue(accountType)
                   )}
                 </Grid>
               ) : null
             })()}
 
             {(() => {
-              const transferType = formData.transferTypeDTO
-              const transferTypeValue = transferType ? getDTODisplayValue(transferType) : null
-              return transferType && transferTypeValue && transferTypeValue !== '-' ? (
+              const transferType = formData.transferTypeDTO || (beneficiaryData as unknown as { transferTypeDTO?: unknown })?.transferTypeDTO
+              return transferType ? (
                 <Grid size={{ xs: 12, md: 6 }}>
                   {renderDisplayField(
                     getBeneficiaryLabel('CDL_MB_BENEFICIARY_TRANSFER_TYPE', 'Transfer Type'),
-                    transferTypeValue
+                    getDTODisplayValue(transferType)
                   )}
                 </Grid>
               ) : null
             })()}
 
             {(() => {
-              const role = formData.roleDTO
-              const roleValue = role ? getDTODisplayValue(role) : null
-              return role && roleValue && roleValue !== '-' ? (
+              const role = formData.roleDTO || (beneficiaryData as unknown as { roleDTO?: unknown })?.roleDTO
+              return role ? (
                 <Grid size={{ xs: 12, md: 6 }}>
                   {renderDisplayField(
                     getBeneficiaryLabel('CDL_MB_BENEFICIARY_ROLE', 'Role'),
-                    roleValue
+                    getDTODisplayValue(role)
                   )}
                 </Grid>
               ) : null
             })()}
 
-            {hasFieldValue('additionalRemarks') && (
+            {getFieldValue('additionalRemarks') && getFieldValue('additionalRemarks') !== '-' && (
               <Grid size={{ xs: 12 }}>
                 {renderDisplayField(
                   getBeneficiaryLabel('CDL_MB_BENEFICIARY_REMARKS', 'Additional Remarks'),

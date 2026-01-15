@@ -15,6 +15,7 @@ import {
   Select,
   TextField,
   useTheme,
+  type Theme,
 } from '@mui/material'
 import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
@@ -27,6 +28,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { getPartyLabel } from '@/constants/mappings/master/partyMapping'
 import { usePartyLabelsWithCache } from '@/hooks/master/CustomerHook/usePartyLabelsWithCache'
 import { useAppStore } from '@/store'
+import { usePartyStepStatus } from '@/hooks/master/CustomerHook/useParty'
 import { partyService } from '@/services/api/masterApi/Customer/partyService'
 import {
   commonFieldStyles as sharedCommonFieldStyles,
@@ -38,7 +40,7 @@ import {
   viewModeInputStyles,
   neutralBorder,
   neutralBorderHover,
-} from '../styles'
+} from '@/components/organisms/Master/styles'
 
 interface Step1Props {
   isReadOnly?: boolean
@@ -51,26 +53,32 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
   const textPrimary = isDark ? '#FFFFFF' : '#1E2939'
   const textSecondary = isDark ? '#CBD5E1' : '#6B7280'
   const fieldStyles = React.useMemo(
-    () => sharedCommonFieldStyles(theme),
+    () => (sharedCommonFieldStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
   const selectFieldStyles = React.useMemo(
-    () => sharedSelectStyles(theme),
+    () => (sharedSelectStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
   const dateFieldStyles = React.useMemo(
-    () => sharedDatePickerStyles(theme),
+    () => (sharedDatePickerStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
-  const labelStyles = React.useMemo(() => sharedLabelSx(theme), [theme])
-  const valueStyles = React.useMemo(() => sharedValueSx(theme), [theme])
+  const labelStyles = React.useMemo(
+    () => (sharedLabelSx as (theme: Theme) => Record<string, unknown>)(theme),
+    [theme]
+  )
+  const valueStyles = React.useMemo(
+    () => (sharedValueSx as (theme: Theme) => Record<string, unknown>)(theme),
+    [theme]
+  )
   const cardBaseStyles = React.useMemo(
-    () => (sharedCardStyles as (theme: typeof theme) => Record<string, unknown>)(theme),
+    () => (sharedCardStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
-  const viewModeStyles = viewModeInputStyles(theme)
-  const neutralBorderColor = neutralBorder(theme)
-  const neutralBorderHoverColor = neutralBorderHover(theme)
+  const viewModeStyles = (viewModeInputStyles as (theme: Theme) => Record<string, unknown>)(theme)
+  const neutralBorderColor = (neutralBorder as (theme: Theme) => string)(theme)
+  const neutralBorderHoverColor = (neutralBorderHover as (theme: Theme) => string)(theme)
   const focusBorder = theme.palette.primary.main
   // Check if we're in edit mode (existing developer)
   const isEditMode = !!partyId
@@ -119,18 +127,9 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
     }
 
     try {
-      const customerDetails =
-        await partyService.getCustomerDetailsByCif(currentCif.trim())
-
-      // TODO: Add field population logic here when requirements are provided
-      // customerDetails contains the fetched data
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[PartyStepper Step1] Customer details fetched:', customerDetails)
-      }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[PartyStepper Step1] Error fetching customer details:', error)
-      }
+      await partyService.getCustomerDetailsByCif(currentCif.trim())
+    } catch {
+      // Silently handle errors
     }
   }
 
@@ -152,53 +151,49 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
     }
   }
 
+  // Use React Query hook to get party data - prevents duplicate API calls
+  const { data: stepStatus } = usePartyStepStatus(partyId || '')
+
   // Prepopulate dropdowns in edit mode based on existing details
   // This ensures dropdown fields are populated when editing existing party
   useEffect(() => {
     if (!isEditMode || !partyId) return
 
-    const loadExisting = async () => {
-      try {
-        const details = await partyService.getParty(partyId)
-        // Load partyConstituentDTO if available (matching DeveloperStepper pattern)
-        if (details.partyConstituentDTO && typeof details.partyConstituentDTO === 'object' && 'id' in details.partyConstituentDTO) {
-          const constituentId = (details.partyConstituentDTO as { id?: number }).id
-          if (constituentId) {
-            setValue('partyConstituentDTO.id', constituentId, {
-              shouldValidate: true,
-              shouldDirty: false,
-            })
-          }
-        }
-        // Load roleDTO if available
-        if (details.roleDTO && typeof details.roleDTO === 'object' && 'id' in details.roleDTO) {
-          const roleId = (details.roleDTO as { id?: number }).id
-          if (roleId) {
-            setValue('roleDTO.id', roleId, {
-              shouldValidate: true,
-              shouldDirty: false,
-            })
-          }
-        }
-        // Load taskStatusDTO if available
-        if (details.taskStatusDTO && typeof details.taskStatusDTO === 'object' && 'id' in details.taskStatusDTO) {
-          const taskStatusId = (details.taskStatusDTO as { id?: number }).id
-          if (taskStatusId) {
-            setValue('taskStatusDTO.id', taskStatusId, {
-              shouldValidate: true,
-              shouldDirty: false,
-            })
-          }
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[PartyStepper Step1] Error loading existing party data:', error)
-        }
+    // Use data from React Query hook instead of making direct API call
+    const details = stepStatus?.stepData?.step1
+    if (!details) return
+
+    // Load partyConstituentDTO if available (matching DeveloperStepper pattern)
+    if (details.partyConstituentDTO && typeof details.partyConstituentDTO === 'object' && 'id' in details.partyConstituentDTO) {
+      const constituentId = (details.partyConstituentDTO as { id?: number }).id
+      if (constituentId) {
+        setValue('partyConstituentDTO.id', constituentId, {
+          shouldValidate: true,
+          shouldDirty: false,
+        })
       }
     }
-
-    loadExisting()
-  }, [isEditMode, partyId, setValue, watch])
+    // Load roleDTO if available
+    if (details.roleDTO && typeof details.roleDTO === 'object' && 'id' in details.roleDTO) {
+      const roleId = (details.roleDTO as { id?: number }).id
+      if (roleId) {
+        setValue('roleDTO.id', roleId, {
+          shouldValidate: true,
+          shouldDirty: false,
+        })
+      }
+    }
+    // Load taskStatusDTO if available
+    if (details.taskStatusDTO && typeof details.taskStatusDTO === 'object' && 'id' in details.taskStatusDTO) {
+      const taskStatusId = (details.taskStatusDTO as { id?: number }).id
+      if (taskStatusId) {
+        setValue('taskStatusDTO.id', taskStatusId, {
+          shouldValidate: true,
+          shouldDirty: false,
+        })
+      }
+    }
+  }, [isEditMode, partyId, setValue, stepStatus?.stepData?.step1])
 
   const renderTextField = (
     name: string,
@@ -248,7 +243,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
               },
             }}
             sx={{
-              ...fieldStyles,
+              ...(fieldStyles as Record<string, unknown>),
               ...(disabled && {
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: viewModeStyles.backgroundColor,
@@ -275,7 +270,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
                     },
                   },
                 }),
-            }}
+            } as Record<string, unknown>}
           />
         )}
       />
@@ -328,8 +323,8 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
                 IconComponent={KeyboardArrowDownIcon}
                 disabled={loading || isReadOnly}
                 sx={{
-                  ...selectFieldStyles,
-                  ...valueStyles,
+                  ...(selectFieldStyles as Record<string, unknown>),
+                  ...(valueStyles as Record<string, unknown>),
                   ...(isReadOnly && {
                     backgroundColor: viewModeStyles.backgroundColor,
                     color: textSecondary,
@@ -343,7 +338,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                     border: `2px solid ${focusBorder}`,
                   },
-                }}
+                } as Record<string, unknown>}
               >
                 {options.map((option) => (
                   <MenuItem
@@ -544,7 +539,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
               },
             }}
             sx={{
-              ...fieldStyles,
+              ...(fieldStyles as Record<string, unknown>),
               ...(isReadOnly && {
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: viewModeStyles.backgroundColor,
@@ -557,7 +552,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
                   },
                 },
               }),
-            }}
+            } as Record<string, unknown>}
           />
         )}
       />
@@ -638,7 +633,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
               },
             }}
             sx={{
-              ...fieldStyles,
+              ...(fieldStyles as Record<string, unknown>),
               ...((isReadOnly || isEditMode) && {
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: viewModeStyles.backgroundColor,
@@ -651,7 +646,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
                   },
                 },
               }),
-            }}
+            } as Record<string, unknown>}
           />
         )}
       />

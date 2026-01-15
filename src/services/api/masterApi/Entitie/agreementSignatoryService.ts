@@ -8,9 +8,7 @@ import type { PaginatedResponse } from '@/types'
 import type {
   ApiDocumentResponse,
   PaginatedDocumentResponse,
-} from '@/components/organisms/DeveloperStepper/developerTypes'
-
-// Task Status DTO interface
+} from '@/components/organisms/Master/PartyStepper/partyTypes'
 export interface TaskStatusDTO {
   id: number
   code: string
@@ -21,8 +19,6 @@ export interface TaskStatusDTO {
   deleted: boolean
   enabled: boolean
 }
-
-// Agreement Signatory types - Based on API response structure
 export interface AgreementSignatory {
   id: number
   partyReferenceNumber: string
@@ -45,7 +41,6 @@ export interface AgreementSignatory {
   enabled: boolean
   deleted: boolean
 }
-
 export interface CreateAgreementSignatoryRequest {
   partyReferenceNumber?: string
   partyCustomerReferenceNumber?: string
@@ -67,7 +62,6 @@ export interface CreateAgreementSignatoryRequest {
   enabled?: boolean
   deleted?: boolean
 }
-
 export interface UpdateAgreementSignatoryRequest {
   partyReferenceNumber?: string
   partyCustomerReferenceNumber?: string
@@ -89,7 +83,6 @@ export interface UpdateAgreementSignatoryRequest {
   enabled?: boolean
   deleted?: boolean
 }
-
 export interface AgreementSignatoryFilters {
   status?:
     | 'PENDING'
@@ -101,7 +94,6 @@ export interface AgreementSignatoryFilters {
   name?: string
   partyReferenceNumber?: string
 }
-
 export interface AgreementSignatoryLabel {
   id: string
   key: string
@@ -109,8 +101,6 @@ export interface AgreementSignatoryLabel {
   language: string
   category: string
 }
-
-// Step-specific response types
 export interface StepSaveResponse {
   success: boolean
   message: string
@@ -118,14 +108,11 @@ export interface StepSaveResponse {
   nextStep?: number
   data?: unknown
 }
-
 export interface StepValidationResponse {
   isValid: boolean
   errors?: string[]
   warnings?: string[]
 }
-
-// Agreement Signatory form data types
 export interface AgreementSignatoryDetailsData {
   partyReferenceNumber?: string | undefined
   partyCustomerReferenceNumber?: string | undefined
@@ -147,7 +134,6 @@ export interface AgreementSignatoryDetailsData {
   enabled?: boolean | undefined
   deleted?: boolean | undefined
 }
-
 export interface AgreementSignatoryReviewData {
   reviewData: unknown
   termsAccepted: boolean
@@ -205,21 +191,20 @@ export const mapAgreementSignatoryToUIData = (
     associationType: apiData.associationType || 'N/A',
     isEnabled: apiData.isEnabled || false,
     localeNames: apiData.partyFullName || '---',
-    status: 'INITIATED', // Default status, can be enhanced with taskStatusDTO if available
+    status: 'INITIATED', 
   }
 }
 
 export class AgreementSignatoryService {
+
   async getAgreementSignatories(
     page = 0,
     size = 20,
     filters?: AgreementSignatoryFilters
   ): Promise<PaginatedResponse<AgreementSignatory>> {
-    // Map UI filter names to API field names
     const apiFilters: Record<string, string> = {}
     if (filters) {
       if (filters.status) {
-        // Map UI status values to API status values
         const statusMapping: Record<string, string> = {
           Approved: 'CLEAR',
           'In Review': 'PENDING',
@@ -256,9 +241,7 @@ export class AgreementSignatoryService {
   async getAgreementSignatory(id: string): Promise<AgreementSignatory> {
     try {
       const url = buildApiUrl(API_ENDPOINTS.AGREEMENT_SIGNATORY.GET_BY_ID(id))
-
       const result = await apiClient.get<AgreementSignatory>(url)
-
       return result
     } catch (error) {
       throw error
@@ -269,13 +252,10 @@ export class AgreementSignatoryService {
     referenceNumber: string
   ): Promise<AgreementSignatory> {
     try {
-      // GET_ALL already has query params, so we append with &
       const baseUrl = buildApiUrl(API_ENDPOINTS.AGREEMENT_SIGNATORY.GET_ALL)
       const params = new URLSearchParams({ partyReferenceNumber: referenceNumber })
       const url = `${baseUrl}&${params.toString()}`
-
       const result = await apiClient.get<PaginatedResponse<AgreementSignatory>>(url)
-
       if (result?.content && result.content.length > 0) {
         const agreementSignatory = result.content[0]
         if (agreementSignatory) {
@@ -292,19 +272,16 @@ export class AgreementSignatoryService {
     data: CreateAgreementSignatoryRequest
   ): Promise<AgreementSignatory> {
     try {
-      // Ensure enabled=true and deleted=false for new agreement signatories
       const requestData: CreateAgreementSignatoryRequest = {
         ...data,
         enabled: data.enabled !== undefined ? data.enabled : true,
         deleted: data.deleted !== undefined ? data.deleted : false,
         isEnabled: data.isEnabled !== undefined ? data.isEnabled : true,
       }
-      
       const result = await apiClient.post<AgreementSignatory>(
         buildApiUrl(API_ENDPOINTS.AGREEMENT_SIGNATORY.SAVE),
         requestData
       )
-
       return result
     } catch (error) {
       throw error
@@ -320,7 +297,6 @@ export class AgreementSignatoryService {
         buildApiUrl(API_ENDPOINTS.AGREEMENT_SIGNATORY.UPDATE(id)),
         updates
       )
-
       return result
     } catch (error) {
       throw error
@@ -338,8 +314,6 @@ export class AgreementSignatoryService {
   }
 
   async getAgreementSignatoryLabels(): Promise<AgreementSignatoryLabel[]> {
-    // Use the same endpoint pattern as agreement, but for agreement-signatory
-    // This may need to be updated based on actual API endpoint
     return apiClient.get<AgreementSignatoryLabel[]>(
       buildApiUrl(API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.ESCROW_AGREEMENT)
     )
@@ -352,12 +326,10 @@ export class AgreementSignatoryService {
     agreementSignatoryId?: string
   ): Promise<AgreementSignatory | StepSaveResponse> {
     if (isEditing && agreementSignatoryId) {
-      // Use PUT for editing existing details
       const url = buildApiUrl(API_ENDPOINTS.AGREEMENT_SIGNATORY.UPDATE(agreementSignatoryId))
       const requestData = {
         ...data,
         id: parseInt(agreementSignatoryId),
-        // Ensure enabled and deleted are set for updates
         enabled: data.enabled !== undefined ? data.enabled : true,
         deleted: data.deleted !== undefined ? data.deleted : false,
         isEnabled: data.isEnabled !== undefined ? data.isEnabled : true,
@@ -366,11 +338,9 @@ export class AgreementSignatoryService {
       const response = await apiClient.put<AgreementSignatory>(url, requestData)
       return response
     } else {
-      // Use POST for creating new agreement signatory
       const url = buildApiUrl(API_ENDPOINTS.AGREEMENT_SIGNATORY.SAVE)
       const requestData = {
         ...data,
-        // Ensure enabled=true and deleted=false for new agreement signatories
         enabled: data.enabled !== undefined ? data.enabled : true,
         deleted: data.deleted !== undefined ? data.deleted : false,
         isEnabled: data.isEnabled !== undefined ? data.isEnabled : true,
@@ -382,7 +352,7 @@ export class AgreementSignatoryService {
   }
 
   async saveAgreementSignatoryReview(
-    data: AgreementSignatoryReviewData
+    _data: AgreementSignatoryReviewData
   ): Promise<StepSaveResponse> {
     // Implementation for review step if needed
     return {
@@ -398,7 +368,6 @@ export class AgreementSignatoryService {
     size: number = 20
   ): Promise<PaginatedDocumentResponse> {
     try {
-      // Build URL with query parameters to filter by module and recordId, plus pagination
       const params = new URLSearchParams({
         'module.equals': module,
         'recordId.equals': entityId,
@@ -408,8 +377,6 @@ export class AgreementSignatoryService {
       const url = `${buildApiUrl(API_ENDPOINTS.REAL_ESTATE_DOCUMENT.GET_ALL)}?${params.toString()}`
 
       const result = await apiClient.get<PaginatedDocumentResponse>(url)
-
-      // Return the full paginated response
       return (
         result || {
           content: [],
@@ -422,6 +389,23 @@ export class AgreementSignatoryService {
         }
       )
     } catch (error) {
+      // For 500 errors on documents endpoint, return empty result instead of throwing
+      // Documents are optional and shouldn't block the UI
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return {
+            content: [],
+            page: {
+              size: size,
+              number: page,
+              totalElements: 0,
+              totalPages: 0,
+            },
+          }
+        }
+      }
+      // For other errors, still throw to allow proper error handling
       throw error
     }
   }
@@ -435,28 +419,21 @@ export class AgreementSignatoryService {
     try {
       const formData = new FormData()
       formData.append('file', file)
-
-      // Build URL with query parameters following the API specification
       const params = new URLSearchParams({
         module: module,
         recordId: entityId,
         storageType: 'LOCAL',
       })
-
-      // Add document type if provided
       if (documentType) {
         params.append('documentType', documentType)
       }
-
       const url = `${buildApiUrl(API_ENDPOINTS.REAL_ESTATE_DOCUMENT.UPLOAD)}?${params.toString()}`
 
-      // Override Content-Type header to let browser set it automatically for FormData
       const config = {
         headers: {
           'Content-Type': 'multipart/form-data' as const,
         },
       }
-
       const result = await apiClient.post<ApiDocumentResponse>(
         url,
         formData,
@@ -473,10 +450,7 @@ export class AgreementSignatoryService {
     if (!agreementSignatoryId) {
       return {}
     }
-
-    const agreementSignatory = await this.getAgreementSignatory(agreementSignatoryId)
-    
-    // Return step-specific data based on step number
+    const agreementSignatory = await this.getAgreementSignatory(agreementSignatoryId)    
     return {
       partyReferenceNumber: agreementSignatory.partyReferenceNumber,
       partyCustomerReferenceNumber: agreementSignatory.partyCustomerReferenceNumber,
@@ -495,10 +469,7 @@ export class AgreementSignatoryService {
     }
   }
 
-  async validateStep(
-    _step: number,
-    _data: unknown
-  ): Promise<StepValidationResponse> {
+  async validateStep(): Promise<StepValidationResponse> {
     // Basic validation - can be enhanced with server-side validation
     return {
       isValid: true,

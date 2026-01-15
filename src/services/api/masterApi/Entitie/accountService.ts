@@ -8,9 +8,8 @@ import type { PaginatedResponse } from '@/types'
 import type {
   ApiDocumentResponse,
   PaginatedDocumentResponse,
-} from '@/components/organisms/DeveloperStepper/developerTypes'
+} from '@/components/organisms/Master/PartyStepper/partyTypes'
 
-// Task Status DTO interface
 export interface TaskStatusDTO {
   id: number
   code: string
@@ -21,127 +20,104 @@ export interface TaskStatusDTO {
   deleted: boolean
   enabled: boolean
 }
-
-// Account types - Updated to match API response structure
-
 export type Account = AccountDTO
-
 export interface AccountDTO {
-    id: number;
-    accountNumber: string;
-    productCode: string;
-    accountDisplayName: string;
-    ibanNumber: string;
-    officialAccountTitle: string;
-    virtualAccountNumber: string;
-    accountTypeCode: string;
-    assignmentStatus: string;
-    assignedToReference: string;
-    accountOpenDateTime: string;
-    referenceField1: string;
-    referenceField2: string;
-    active: boolean;
-  
-    taxPaymentDTO: unknown | null;
-    currencyDTO: unknown | null;
-    accountPurposeDTO: unknown | null;
-    accountCategoryDTO: unknown | null;
-    primaryAccountDTO: unknown | null;
-    bulkUploadProcessingDTO: unknown | null;
-    unitaryPaymentDTO: unknown | null;
-    accountTypeDTO: unknown | null;
-    accountTypeCategoryDTO: unknown | null;
-    escrowAgreementDTO: unknown | null;
-    taskStatusDTO: TaskStatusDTO | null;
-  
-    enabled: boolean;
-    deleted: boolean;
-    uuid: string;
-  }
-  
-  
-  export interface CreateAccountRequest {
-    accountNumber: string;
-    productCode: string;
-    accountDisplayName: string;
-    ibanNumber: string;
-    officialAccountTitle: string;
-    virtualAccountNumber: string;
-    accountTypeCode: string;
-    assignmentStatus: string;
-    assignedToReference: string;
-    accountOpenDateTime: string;
-  
-    referenceField1?: string;
-    referenceField2?: string;
-    active?: boolean;
-  
-    taxPaymentDTO?: unknown | null;
-    currencyDTO?: unknown | null;
-    accountPurposeDTO?: unknown | null;
-    accountCategoryDTO?: unknown | null;
-    primaryAccountDTO?: unknown | null;
-    bulkUploadProcessingDTO?: unknown | null;
-    unitaryPaymentDTO?: unknown | null;
-    accountTypeDTO?: unknown | null;
-    accountTypeCategoryDTO?: unknown | null;
-    escrowAgreementDTO?: unknown | null;
-  
-    enabled?: boolean;
-    deleted?: boolean;
-    uuid?: string;
-  }
-  
-
-
-  
-
-  export interface UpdateAccountRequest {
-    accountNumber?: string;
-    productCode?: string;
-    accountDisplayName?: string;
-    ibanNumber?: string;
-    officialAccountTitle?: string;
-    virtualAccountNumber?: string;
-    accountTypeCode?: string;
-    assignmentStatus?: string;
-    assignedToReference?: string;
-    accountOpenDateTime?: string;
-  
-    referenceField1?: string;
-    referenceField2?: string;
-    active?: boolean;
-  
-    taxPaymentDTO?: unknown | null;
-    currencyDTO?: unknown | null;
-    accountPurposeDTO?: unknown | null;
-    accountCategoryDTO?: unknown | null;
-    primaryAccountDTO?: unknown | null;
-    bulkUploadProcessingDTO?: unknown | null;
-    unitaryPaymentDTO?: unknown | null;
-    accountTypeDTO?: unknown | null;
-    accountTypeCategoryDTO?: unknown | null;
-    escrowAgreementDTO?: unknown | null;
-  
-    enabled?: boolean;
-    deleted?: boolean;
-    uuid?: string;
-  }
-  
-  
-
+  id: number;
+  accountNumber: string;
+  productCode: string;
+  accountDisplayName: string;
+  ibanNumber: string;
+  officialAccountTitle: string;
+  virtualAccountNumber: string;
+  accountTypeCode: string;
+  assignmentStatus: string;
+  assignedToReference: string;
+  accountOpenDateTime: string;
+  referenceField1: string;
+  referenceField2: string;
+  active: boolean;
+  taxPaymentDTO: unknown | null;
+  currencyDTO: unknown | null;
+  accountPurposeDTO: unknown | null;
+  accountCategoryDTO: unknown | null;
+  primaryAccountDTO: unknown | null;
+  bulkUploadProcessingDTO: unknown | null;
+  unitaryPaymentDTO: unknown | null;
+  accountTypeDTO: unknown | null;
+  accountTypeCategoryDTO: unknown | null;
+  escrowAgreementDTO: unknown | null;
+  taskStatusDTO: TaskStatusDTO | null;
+  enabled: boolean;
+  deleted: boolean;
+  uuid: string;
+}
+export interface CreateAccountRequest {
+  accountNumber: string;
+  productCode: string;
+  accountDisplayName: string;
+  ibanNumber: string;
+  officialAccountTitle: string;
+  virtualAccountNumber: string;
+  accountTypeCode: string;
+  assignmentStatus: string;
+  assignedToReference: string;
+  accountOpenDateTime: string;
+  referenceField1?: string;
+  referenceField2?: string;
+  active?: boolean;
+  taxPaymentDTO?: unknown | null;
+  currencyDTO?: unknown | null;
+  accountPurposeDTO?: unknown | null;
+  accountCategoryDTO?: unknown | null;
+  primaryAccountDTO?: unknown | null;
+  bulkUploadProcessingDTO?: unknown | null;
+  unitaryPaymentDTO?: unknown | null;
+  accountTypeDTO?: unknown | null;
+  accountTypeCategoryDTO?: unknown | null;
+  escrowAgreementDTO?: unknown | null;
+  enabled?: boolean;
+  deleted?: boolean;
+  uuid?: string;
+}
+export interface UpdateAccountRequest {
+  accountNumber?: string;
+  productCode?: string;
+  accountDisplayName?: string;
+  ibanNumber?: string;
+  officialAccountTitle?: string;
+  virtualAccountNumber?: string;
+  accountTypeCode?: string;
+  assignmentStatus?: string;
+  assignedToReference?: string;
+  accountOpenDateTime?: string;
+  referenceField1?: string;
+  referenceField2?: string;
+  active?: boolean;
+  taxPaymentDTO?: unknown | null;
+  currencyDTO?: unknown | null;
+  accountPurposeDTO?: unknown | null;
+  accountCategoryDTO?: unknown | null;
+  primaryAccountDTO?: unknown | null;
+  bulkUploadProcessingDTO?: unknown | null;
+  unitaryPaymentDTO?: unknown | null;
+  accountTypeDTO?: unknown | null;
+  accountTypeCategoryDTO?: unknown | null;
+  escrowAgreementDTO?: unknown | null;
+  enabled?: boolean;
+  deleted?: boolean;
+  uuid?: string;
+}
 export interface AccountFilters {
   status?:
-    | 'PENDING'
-    | 'APPROVED'
-    | 'REJECTED'
-    | 'IN_PROGRESS'
-    | 'DRAFT'
-    | 'INITIATED'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'IN_PROGRESS'
+  | 'DRAFT'
+  | 'INITIATED'
   name?: string
   developerId?: string
 }
-
 export interface AccountLabel {
   id: string
   key: string
@@ -149,8 +125,6 @@ export interface AccountLabel {
   language: string
   category: string
 }
-
-// Step-specific response types
 export interface StepSaveResponse {
   success: boolean
   message: string
@@ -158,41 +132,38 @@ export interface StepSaveResponse {
   nextStep?: number
   data?: unknown
 }
-
 export interface StepValidationResponse {
   isValid: boolean
   errors?: string[]
   warnings?: string[]
 }
-
-// Account form data types
 export interface AccountDetailsData {
-    id?: number;
-    accountNumber: string;
-    productCode: string;
-    accountDisplayName: string;
-    ibanNumber: string;
-    officialAccountTitle: string;
-    virtualAccountNumber?: string | undefined;
-    accountTypeCode: string;
-    assignmentStatus: string;
-    assignedToReference?: string | undefined;
-    accountOpenDateTime: string;
-    referenceField1?: string | undefined;
-    referenceField2?: string | undefined;
-    active?: boolean | undefined;
-    taxPaymentDTO?: { id: number } | number | null | undefined;
-    currencyDTO?: { id: number } | number | null | undefined;
-    accountPurposeDTO?: { id: number } | number | null | undefined;
-    accountCategoryDTO?: { id: number } | number | null | undefined;
-    primaryAccountDTO?: { id: number } | number | null | undefined;
-    bulkUploadProcessingDTO?: { id: number } | number | null | undefined;
-    unitaryPaymentDTO?: { id: number } | number | null | undefined;
-    accountTypeDTO?: { id: number } | number | null | undefined;
-    accountTypeCategoryDTO?: { id: number } | number | null | undefined;
-    escrowAgreementDTO?: { id: number } | number | null | undefined;
-    enabled?: boolean | undefined;
-    deleted?: boolean | undefined;
+  id?: number;
+  accountNumber: string;
+  productCode: string;
+  accountDisplayName: string;
+  ibanNumber: string;
+  officialAccountTitle: string;
+  virtualAccountNumber?: string | undefined;
+  accountTypeCode: string;
+  assignmentStatus: string;
+  assignedToReference?: string | undefined;
+  accountOpenDateTime: string;
+  referenceField1?: string | undefined;
+  referenceField2?: string | undefined;
+  active?: boolean | undefined;
+  taxPaymentDTO?: { id: number } | number | null | undefined;
+  currencyDTO?: { id: number } | number | null | undefined;
+  accountPurposeDTO?: { id: number } | number | null | undefined;
+  accountCategoryDTO?: { id: number } | number | null | undefined;
+  primaryAccountDTO?: { id: number } | number | null | undefined;
+  bulkUploadProcessingDTO?: { id: number } | number | null | undefined;
+  unitaryPaymentDTO?: { id: number } | number | null | undefined;
+  accountTypeDTO?: { id: number } | number | null | undefined;
+  accountTypeCategoryDTO?: { id: number } | number | null | undefined;
+  escrowAgreementDTO?: { id: number } | number | null | undefined;
+  enabled?: boolean | undefined;
+  deleted?: boolean | undefined;
 }
 
 export interface AccountReviewData {
@@ -201,49 +172,48 @@ export interface AccountReviewData {
 }
 
 // UI-friendly BuildPartner interface for table display
-    export interface AccountUIData {
-    id: number;
-    accountNumber: string;
-    productCode: string;
-    accountDisplayName: string;
-    ibanNumber: string;
-    officialAccountTitle: string;
-    virtualAccountNumber: string;
-    accountTypeCode: string;
-    assignmentStatus: string;
-    assignedToReference: string;
-    accountOpenDateTime: string;
-    referenceField1: string;
-    referenceField2: string;
-    active: boolean;
-    taxPaymentDTO: unknown | null;
-    currencyDTO: unknown | null;
-    accountPurposeDTO: unknown | null;
-    accountCategoryDTO: unknown | null;
-    primaryAccountDTO: unknown | null;
-    bulkUploadProcessingDTO: unknown | null;
-    unitaryPaymentDTO: unknown | null;
-    accountTypeDTO: unknown | null;
-    accountTypeCategoryDTO: unknown | null;
-    escrowAgreementDTO: unknown | null;
-    status: string;
-    localeNames?: string;
-    registrationDate?: string | undefined;
-    lastUpdated?: string | undefined;
-    documents?:
-        | Array<{
-            name: string
-            type: string
-            url: string
-        }>
-        | undefined
+export interface AccountUIData {
+  id: number;
+  accountNumber: string;
+  productCode: string;
+  accountDisplayName: string;
+  ibanNumber: string;
+  officialAccountTitle: string;
+  virtualAccountNumber: string;
+  accountTypeCode: string;
+  assignmentStatus: string;
+  assignedToReference: string;
+  accountOpenDateTime: string;
+  referenceField1: string;
+  referenceField2: string;
+  active: boolean;
+  taxPaymentDTO: unknown | null;
+  currencyDTO: unknown | null;
+  accountPurposeDTO: unknown | null;
+  accountCategoryDTO: unknown | null;
+  primaryAccountDTO: unknown | null;
+  bulkUploadProcessingDTO: unknown | null;
+  unitaryPaymentDTO: unknown | null;
+  accountTypeDTO: unknown | null;
+  accountTypeCategoryDTO: unknown | null;
+  escrowAgreementDTO: unknown | null;
+  status: string;
+  localeNames?: string;
+  registrationDate?: string | undefined;
+  lastUpdated?: string | undefined;
+  documents?:
+  | Array<{
+    name: string
+    type: string
+    url: string
+  }>
+  | undefined
 }
 
-// Utility function to map API BuildPartner to UI BuildPartnerUIData
 export const mapAccountToUIData = (
   apiData: Account
 ): AccountUIData => {
-  return {  
+  return {
     id: apiData.id,
     accountNumber: apiData.accountNumber || 'N/A',
     productCode: apiData.productCode || 'N/A',
@@ -268,13 +238,9 @@ export const mapAccountToUIData = (
     accountTypeCategoryDTO: apiData.accountTypeCategoryDTO || null,
     escrowAgreementDTO: apiData.escrowAgreementDTO || null,
     active: apiData.active || false,
-    status: apiData.taskStatusDTO?.code || 'INITIATED', // Use taskStatusDTO.code if available
+    status: apiData.taskStatusDTO?.code || 'INITIATED',
   }
 }
-
-
-
-// Customer Details API Response Types
 export interface CustomerDetailsResponse {
   customerId: string
   cif: string
@@ -296,18 +262,15 @@ export interface CustomerDetailsResponse {
     }
   }
 }
-
 export class AccountService {
   async getAccounts(
     page = 0,
     size = 20,
-            filters?: AccountFilters
+    filters?: AccountFilters
   ): Promise<PaginatedResponse<Account>> {
-    // Map UI filter names to API field names
     const apiFilters: Record<string, string> = {}
     if (filters) {
       if (filters.status) {
-        // Map UI status values to API status values
         const statusMapping: Record<string, string> = {
           Approved: 'CLEAR',
           'In Review': 'PENDING',
@@ -331,10 +294,8 @@ export class AccountService {
     }
     const queryString = new URLSearchParams(params).toString()
     const url = `${buildApiUrl(API_ENDPOINTS.ESCROW_ACCOUNT.GET_ALL)}&${queryString}`
-
     try {
       const result = await apiClient.get<PaginatedResponse<Account>>(url)
-
       return result
     } catch (error) {
       throw error
@@ -344,28 +305,19 @@ export class AccountService {
   async getAccount(id: string): Promise<Account> {
     try {
       const url = buildApiUrl(API_ENDPOINTS.ESCROW_ACCOUNT.GET_BY_ID(id))
-
       const result = await apiClient.get<Account>(url)
-
       return result
     } catch (error) {
       throw error
     }
   }
 
-
-
-
-
   async getAccountByAccountNumber(accountNumber: string): Promise<Account> {
     try {
-      // GET_ALL already has query params, so we append with &
       const baseUrl = buildApiUrl(API_ENDPOINTS.ESCROW_ACCOUNT.GET_ALL)
       const params = new URLSearchParams({ 'accountNumber.equals': accountNumber })
       const url = `${baseUrl}&${params.toString()}`
-
       const result = await apiClient.get<PaginatedResponse<Account>>(url)
-
       if (result?.content && result.content.length > 0) {
         const account = result.content[0]
         if (account) {
@@ -378,12 +330,10 @@ export class AccountService {
     }
   }
 
-  // Alias for backward compatibility
   async getAccountByCif(cif: string): Promise<Account> {
     return this.getAccountByAccountNumber(cif)
   }
 
-  // Get customer details by CIF from core bank API
   async getCustomerDetailsByCif(cif: string): Promise<CustomerDetailsResponse> {
     try {
       const url = buildApiUrl(API_ENDPOINTS.CUSTOMER_DETAILS.GET_BY_CIF(cif))
@@ -423,7 +373,6 @@ export class AccountService {
         buildApiUrl(API_ENDPOINTS.ESCROW_ACCOUNT.UPDATE(id)),
         updates
       )
-
       return result
     } catch (error) {
       throw error
@@ -440,7 +389,7 @@ export class AccountService {
     }
   }
 
-        async getAccountLabels(): Promise<AccountLabel[]> {
+  async getAccountLabels(): Promise<AccountLabel[]> {
     return apiClient.get<AccountLabel[]>(
       buildApiUrl(API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.ESCROW_ACCOUNT)
     )
@@ -463,16 +412,14 @@ export class AccountService {
       const response = await apiClient.put<Account>(url, requestData)
       return response
     } else {
-      // Use POST for creating new details
       const url = buildApiUrl(API_ENDPOINTS.ESCROW_ACCOUNT.SAVE)
-
       const response = await apiClient.post<Account>(url, data)
       return response
     }
   }
 
   async saveAccountReview(
-        data: AccountReviewData
+    data: AccountReviewData
   ): Promise<StepSaveResponse> {
     const url = buildApiUrl(API_ENDPOINTS.PARTY_CREATE.REVIEW_SAVE)
     return apiClient.post<StepSaveResponse>(url, data)
@@ -486,18 +433,16 @@ export class AccountService {
     size: number = 20
   ): Promise<PaginatedDocumentResponse> {
     try {
-      // Build URL with query parameters to filter by module and recordId, plus pagination
       const params = new URLSearchParams({
         'module.equals': module,
         'recordId.equals': entityId,
         page: page.toString(),
         size: size.toString(),
       })
-        const url = `${buildApiUrl(API_ENDPOINTS.REAL_ESTATE_DOCUMENT.GET_ALL)}?${params.toString()}`
+      const url = `${buildApiUrl(API_ENDPOINTS.REAL_ESTATE_DOCUMENT.GET_ALL)}?${params.toString()}`
 
       const result = await apiClient.get<PaginatedDocumentResponse>(url)
 
-      // Return the full paginated response
       return (
         result || {
           content: [],
@@ -514,7 +459,6 @@ export class AccountService {
     }
   }
 
-  // Document upload method with configurable module
   async uploadAccountDocument(
     file: File,
     entityId: string,
@@ -525,21 +469,18 @@ export class AccountService {
       const formData = new FormData()
       formData.append('file', file)
 
-      // Build URL with query parameters following the API specification
       const params = new URLSearchParams({
         module: module,
         recordId: entityId,
         storageType: 'LOCAL',
       })
 
-      // Add document type if provided
       if (documentType) {
         params.append('documentType', documentType)
       }
 
       const url = `${buildApiUrl(API_ENDPOINTS.REAL_ESTATE_DOCUMENT.UPLOAD)}?${params.toString()}`
 
-      // Override Content-Type header to let browser set it automatically for FormData
       const config = {
         headers: {
           'Content-Type': 'multipart/form-data' as const,
@@ -558,13 +499,11 @@ export class AccountService {
     }
   }
 
-  // Step data retrieval and validation methods
   async getStepData(step: number, agreementId?: string): Promise<unknown> {
     let url = buildApiUrl(
       API_ENDPOINTS.PARTY_CREATE.GET_STEP_DATA(step)
     )
 
-    // Add developer ID as query parameter if provided
     if (agreementId) {
       url += `?agreementId=${encodeURIComponent(agreementId)}`
     }
@@ -582,7 +521,6 @@ export class AccountService {
     return apiClient.post<StepValidationResponse>(url, data)
   }
 
-  // Utility method to transform API response to UI-friendly format
   transformToUIData(
     apiResponse: PaginatedResponse<Account>
   ): PaginatedResponse<AccountUIData> {
@@ -592,7 +530,6 @@ export class AccountService {
     }
   }
 
-  // Utility method to get UI-friendly data directly
   async getAccountsUIData(
     page = 0,
     size = 20,
@@ -602,10 +539,7 @@ export class AccountService {
     return this.transformToUIData(apiResponse)
   }
 
-  /**
-   * Search agreements by name with pagination
-   * Used for autocomplete functionality
-   */
+
   async searchAccounts(
     query: string,
     page = 0,
@@ -624,18 +558,14 @@ export class AccountService {
       }
       const url = `${buildApiUrl(API_ENDPOINTS.ESCROW_ACCOUNT.GET_ALL)}&${new URLSearchParams(params).toString()}`
       const response = await apiClient.get(url)
-      // Handle both single object and paginated response formats
       let accounts: Account[] = []
 
       if (Array.isArray(response)) {
-        // Direct array response
         accounts = response
       } else if (response && typeof response === 'object') {
         if ('content' in response && Array.isArray(response.content)) {
-          // Paginated response format
-            accounts = response.content
+          accounts = response.content
         } else if ('id' in response || 'accountNumber' in response) {
-          // Single object response - wrap in array
           accounts = [response as Account]
         }
       }

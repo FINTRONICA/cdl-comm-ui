@@ -90,17 +90,7 @@ export {
   authQueryKeys,
 } from './useAuthQuery'
 
-// Build Partner hooks (React Query)
-export {
-  useBuildPartners,
-  useBuildPartner,
-  useCreateBuildPartner,
-  useUpdateBuildPartner,
-  useDeleteBuildPartner,
-  useBuildPartnerLabels,
-  useRefreshBuildPartners,
-  BUILD_PARTNERS_QUERY_KEY,
-} from './useBuildPartners'
+// Build Partner hooks removed - module deleted
 
 // Pending Transaction hooks (React Query)
 export {
@@ -115,45 +105,13 @@ export {
   PENDING_TRANSACTIONS_QUERY_KEY,
 } from './usePendingTransactions'
 
-// Discarded Transaction hooks (React Query)
-export {
-  useDiscardedTransactions,
-  useDiscardedTransactionsUI,
-  useDiscardedTransaction,
-  useCreateDiscardedTransaction,
-  useUpdateDiscardedTransaction,
-  useDeleteDiscardedTransaction,
-  useDiscardedTransactionLabels,
-  useRefreshDiscardedTransactions,
-  DISCARDED_TRANSACTIONS_QUERY_KEY,
-} from './useDiscardedTransactions'
-
-// Cache hooks for labels
-export { useDiscardedTransactionLabelsWithCache } from './useDiscardedTransactionLabelsWithCache'
+// Discarded Transaction hooks removed - module deleted
 export { useProcessedTransactionLabelsWithCache } from './useProcessedTransactionLabelsWithCache'
 
 // Processed Transaction hooks
 export { useProcessedTransactions } from './useProcessedTransactions'
 
-// Build Partner Step hooks (React Query)
-export {
-  useSaveBuildPartnerDetails,
-  useSaveBuildPartnerContact,
-  useSaveBuildPartnerFees,
-  useSaveBuildPartnerBeneficiary,
-  useBuildPartnerContacts,
-  useBuildPartnerFees,
-  useBuildPartnerBeneficiaries,
-  useBuildPartnerBeneficiaryById,
-  useUpdateBuildPartnerBeneficiary,
-  useDeleteBuildPartnerBeneficiary,
-  useSoftDeleteBuildPartnerBeneficiary,
-  useSaveBuildPartnerReview,
-  useBuildPartnerStepData,
-  useValidateBuildPartnerStep,
-  useBuildPartnerStepManager,
-  useBuildPartnerStepStatus,
-} from './useBuildPartners'
+// Build Partner Step hooks removed - module deleted
 
 // Validation hooks
 export {
@@ -271,6 +229,8 @@ export {
   useValidateAgreementStep,
   useAgreementStepManager,
   useAgreementStepStatus,
+  useCustomerDetailsByCif,
+  useAgreementDocuments,
 } from './master/EntitieHook/useAgreement'
 
 // Agreement Labels hooks
@@ -291,6 +251,8 @@ export {
   useValidateAccountStep,
   useAccountStepManager,
   useAccountStepStatus,
+  useAccountDocuments,
+  useUploadAccountDocument,
 } from './master/EntitieHook/useAccount'
 
 // Account Labels hooks
@@ -300,6 +262,7 @@ export { useAccountLabelsWithCache } from './master/EntitieHook/useAccountLabels
 export {
   useAgreementSignatories,
   useAgreementSignatory,
+  useAgreementSignatoryDocuments,
   useCreateAgreementSignatory,
   useUpdateAgreementSignatory,
   useDeleteAgreementSignatory,

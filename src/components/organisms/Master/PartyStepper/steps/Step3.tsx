@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useMemo, useCallback, useState, useEffect } from 'react'
 import {
   Box,
   Grid,
@@ -21,7 +21,6 @@ import {
 import EditIcon from '@mui/icons-material/Edit'
 import { useParams } from 'next/navigation'
 import {
-  partyService,
   type Party,
   type PartyAuthorizedSignatoryResponse,
 } from '@/services/api/masterApi/Customer/partyService'
@@ -30,6 +29,7 @@ import { GlobalLoading } from '@/components/atoms'
 import { usePartyLabelsWithCache } from '@/hooks/master/CustomerHook/usePartyLabelsWithCache'
 import { getPartyLabel } from '@/constants/mappings/master/partyMapping'
 import { useAppStore } from '@/store'
+import { usePartyStepStatus } from '@/hooks/master/CustomerHook/useParty'
 import { AuthorizedSignatoryData } from '../partyTypes'
 
 // Hook to detect dark mode
@@ -101,12 +101,61 @@ const Step3 = ({ partyId: propPartyId, onEditStep, isReadOnly = false }: Step3Pr
   const partyId = propPartyId || (params.id as string)
   const isDarkMode = useIsDarkMode()
 
-  const [partyDetails, setPartyDetails] = useState<Party | null>(null)
-  const [authorizedSignatoryData, setAuthorizedSignatoryData] = useState<AuthorizedSignatoryData[]>([])
-  const [documentData, setDocumentData] = useState<DocumentData[]>([])
+  // Use React Query hook instead of direct API calls
+  const { data: stepStatus, isLoading: loading, error: queryError } = usePartyStepStatus(partyId || '')
 
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const partyDetails = stepStatus?.stepData?.step1 as Party | null
+  const authorizedSignatoryData = useMemo(() => {
+    const step2Data = stepStatus?.stepData?.step2
+    if (Array.isArray(step2Data)) {
+      return step2Data.map((as: PartyAuthorizedSignatoryResponse) => ({
+        id: as.id,
+        customerCifNumber: as.customerCifNumber,
+        signatoryFullName: as.signatoryFullName,
+        addressLine1: as.addressLine1,
+        addressLine2: as.addressLine2,
+        addressLine3: as.addressLine3,
+        telephoneNumber: as.telephoneNumber,
+        mobileNumber: as.mobileNumber,
+        emailAddress: as.emailAddress,
+        notificationContactName: as.notificationContactName,
+        signatoryCifNumber: as.signatoryCifNumber,
+        notificationEmailAddress: as.notificationEmailAddress,
+        notificationSignatureFile: as.notificationSignatureFile,
+        notificationSignatureMimeType: as.notificationSignatureMimeType,
+        active: as.active,
+        cifExistsDTO: as.cifExistsDTO,
+        partyDTO: as.partyDTO,
+        notificationSignatureDTO: as.notificationSignatureDTO,
+        enabled: as.enabled ?? null,
+        deleted: as.deleted ?? null,
+        authorizedSignatoryStatusDate: null,
+      } as AuthorizedSignatoryData))
+    }
+    return []
+  }, [stepStatus?.stepData?.step2])
+
+  const documentData = useMemo(() => {
+    const documentsResult = stepStatus?.stepData?.documents
+    if (documentsResult && typeof documentsResult === 'object' && 'content' in documentsResult) {
+      const docs = documentsResult as { content: unknown[] }
+      if (Array.isArray(docs.content)) {
+        return docs.content.map((doc: unknown) => {
+          const docObj = doc as { id?: number | string; documentName?: string; documentTypeDTO?: { languageTranslationId?: { configValue?: string } }; uploadDate?: string; documentSize?: string }
+          return {
+            id: docObj.id?.toString() || '',
+            fileName: docObj.documentName || '',
+            documentType: docObj.documentTypeDTO?.languageTranslationId?.configValue || '',
+            uploadDate: docObj.uploadDate || '',
+            fileSize: parseInt(docObj.documentSize || '0'),
+          }
+        })
+      }
+    }
+    return []
+  }, [stepStatus?.stepData?.documents])
+
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch data') : null
 
   // Dynamic labels helper
   const { data: partyLabels, getLabel } = usePartyLabelsWithCache()
@@ -132,92 +181,6 @@ const Step3 = ({ partyId: propPartyId, onEditStep, isReadOnly = false }: Step3Pr
     [isDarkMode]
   )
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      // Try to get partyId from multiple sources
-      const effectivePartyId = propPartyId || (params.id as string) || partyId
-      
-      if (!effectivePartyId || effectivePartyId === 'undefined' || effectivePartyId === 'null') {
-        setError('Party ID is required')
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Fetch all data in parallel
-        const [details, authorizedSignatories, documents] = await Promise.allSettled([
-          partyService.getParty(effectivePartyId),
-          partyService.getPartyAuthorizedSignatory(effectivePartyId),
-          partyService.getPartyDocuments(effectivePartyId, 'PARTY', 0, 20),
-        ])
-
-        // Extract values from Promise.allSettled results
-        const detailsResult = details.status === 'fulfilled' ? details.value : null
-        const authorizedSignatoriesResult = authorizedSignatories.status === 'fulfilled' ? authorizedSignatories.value : null
-        const documentsResult = documents.status === 'fulfilled' ? documents.value : null
-
-        setPartyDetails(detailsResult as Party)
-
-        // Handle authorized signatories
-        let signatoryArray: AuthorizedSignatoryData[] = []
-        if (Array.isArray(authorizedSignatoriesResult)) {
-          signatoryArray = authorizedSignatoriesResult.map((as: PartyAuthorizedSignatoryResponse) => ({
-            id: as.id,
-            customerCifNumber: as.customerCifNumber,
-            signatoryFullName: as.signatoryFullName,
-            addressLine1: as.addressLine1,
-            addressLine2: as.addressLine2,
-            addressLine3: as.addressLine3,
-            telephoneNumber: as.telephoneNumber,
-            mobileNumber: as.mobileNumber,
-            emailAddress: as.emailAddress,
-            notificationContactName: as.notificationContactName,
-            signatoryCifNumber: as.signatoryCifNumber,
-            notificationEmailAddress: as.notificationEmailAddress,
-            notificationSignatureFile: as.notificationSignatureFile,
-            notificationSignatureMimeType: as.notificationSignatureMimeType,
-            active: as.active,
-            cifExistsDTO: as.cifExistsDTO,
-            partyDTO: as.partyDTO,
-            notificationSignatureDTO: as.notificationSignatureDTO,
-            enabled: as.enabled ?? null,
-            deleted: as.deleted ?? null,
-            authorizedSignatoryStatusDate: null, // Not available from API response
-          } as AuthorizedSignatoryData))
-        }
-        setAuthorizedSignatoryData(signatoryArray)
-
-        // Handle paginated responses for documents
-        let documentArray: DocumentData[] = []
-        if (documentsResult && typeof documentsResult === 'object' && 'content' in documentsResult) {
-          const docs = documentsResult as { content: unknown[] }
-          if (Array.isArray(docs.content)) {
-            documentArray = docs.content.map((doc: unknown) => {
-              const docObj = doc as { id?: number | string; documentName?: string; documentTypeDTO?: { languageTranslationId?: { configValue?: string } }; uploadDate?: string; documentSize?: string }
-              return {
-                id: docObj.id?.toString() || '',
-                fileName: docObj.documentName || '',
-                documentType: docObj.documentTypeDTO?.languageTranslationId?.configValue || '',
-                uploadDate: docObj.uploadDate || '',
-                fileSize: parseInt(docObj.documentSize || '0'),
-              }
-            })
-          }
-        }
-
-        setDocumentData(documentArray)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAllData()
-  }, [propPartyId, params.id, partyId])
 
   // Render authorized signatory fields
   const renderAuthorizedSignatoryFields = useCallback(
@@ -350,11 +313,28 @@ const Step3 = ({ partyId: propPartyId, onEditStep, isReadOnly = false }: Step3Pr
     )
   }
 
-  // No data state
+  // No data state - show error if there was an API error, otherwise show info
   if (!partyDetails) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="info">No party details found.</Alert>
+        <Alert severity={error ? 'error' : 'info'}>
+          {error || 'No party details found. Please complete Step 1 first.'}
+        </Alert>
+        {stepStatus?.errors?.step1 && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Error fetching party details: {String(stepStatus.errors.step1)}
+          </Alert>
+        )}
+        {stepStatus?.errors?.step2 && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Error fetching authorized signatories: {String(stepStatus.errors.step2)}
+          </Alert>
+        )}
+        {stepStatus?.errors?.documents && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Error fetching documents: {String(stepStatus.errors.documents)}
+          </Alert>
+        )}
       </Box>
     )
   }

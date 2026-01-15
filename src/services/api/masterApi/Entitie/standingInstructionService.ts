@@ -8,7 +8,7 @@ import type { PaginatedResponse } from '@/types'
 import type {
   ApiDocumentResponse,
   PaginatedDocumentResponse,
-} from '@/components/organisms/DeveloperStepper/developerTypes'
+} from '@/components/organisms/Master/PartyStepper/partyTypes'
 
 // Task Status DTO interface
 export interface TaskStatusDTO {

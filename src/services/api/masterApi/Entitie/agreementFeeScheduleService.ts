@@ -8,7 +8,7 @@ import type { PaginatedResponse } from '@/types'
 import type {
   ApiDocumentResponse,
   PaginatedDocumentResponse,
-} from '@/components/organisms/DeveloperStepper/developerTypes'
+} from '@/components/organisms/Master/PartyStepper/partyTypes'
 
 // Task Status DTO interface
 export interface TaskStatusDTO {
@@ -169,12 +169,12 @@ export interface UpdateAgreementFeeScheduleRequest {
 
 export interface AgreementFeeScheduleFilters {
   status?:
-    | 'PENDING'
-    | 'APPROVED'
-    | 'REJECTED'
-    | 'IN_PROGRESS'
-    | 'DRAFT'
-    | 'INITIATED'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'IN_PROGRESS'
+  | 'DRAFT'
+  | 'INITIATED'
   name?: string
   feeScheduleId?: string
 }
@@ -187,7 +187,6 @@ export interface AgreementFeeScheduleLabel {
   category: string
 }
 
-// Step-specific response types
 export interface StepSaveResponse {
   success: boolean
   message: string
@@ -202,7 +201,6 @@ export interface StepValidationResponse {
   warnings?: string[]
 }
 
-// Agreement Fee Schedule form data types
 export interface AgreementFeeScheduleDetailsData {
   id?: number
   effectiveStartDate: string
@@ -230,7 +228,6 @@ export interface AgreementFeeScheduleReviewData {
   termsAccepted: boolean
 }
 
-// UI-friendly AgreementFeeSchedule interface for table display
 export interface AgreementFeeScheduleUIData {
   id: number
   effectiveStartDate: string
@@ -246,12 +243,12 @@ export interface AgreementFeeScheduleUIData {
   registrationDate?: string | undefined
   lastUpdated?: string | undefined
   documents?:
-    | Array<{
-        name: string
-        type: string
-        url: string
-      }>
-    | undefined
+  | Array<{
+    name: string
+    type: string
+    url: string
+  }>
+  | undefined
 }
 
 // Utility function to map API AgreementFeeSchedule to UI AgreementFeeScheduleUIData
@@ -284,7 +281,6 @@ export class AgreementFeeScheduleService {
     size = 20,
     filters?: AgreementFeeScheduleFilters
   ): Promise<PaginatedResponse<AgreementFeeSchedule>> {
-    // Map UI filter names to API field names
     const apiFilters: Record<string, string> = {}
     if (filters) {
       if (filters.status) {
@@ -297,14 +293,12 @@ export class AgreementFeeScheduleService {
         apiFilters.id = filters.feeScheduleId
       }
     }
-
     const params = {
       ...buildPaginationParams(page, size),
       ...apiFilters,
     }
     const queryString = new URLSearchParams(params).toString()
     const url = `${buildApiUrl(API_ENDPOINTS.AGREEMENT_FEE_SCHEDULE.GET_ALL)}&${queryString}`
-
     try {
       const result = await apiClient.get<PaginatedResponse<AgreementFeeSchedule>>(url)
 
@@ -317,9 +311,7 @@ export class AgreementFeeScheduleService {
   async getAgreementFeeSchedule(id: string): Promise<AgreementFeeSchedule> {
     try {
       const url = buildApiUrl(API_ENDPOINTS.AGREEMENT_FEE_SCHEDULE.GET_BY_ID(id))
-
       const result = await apiClient.get<AgreementFeeSchedule>(url)
-
       return result
     } catch (error) {
       throw error
@@ -335,7 +327,6 @@ export class AgreementFeeScheduleService {
         enabled: data.enabled !== undefined ? data.enabled : true,
         deleted: data.deleted !== undefined ? data.deleted : false,
       }
-      
       const result = await apiClient.post<AgreementFeeSchedule>(
         buildApiUrl(API_ENDPOINTS.AGREEMENT_FEE_SCHEDULE.SAVE),
         requestData
@@ -356,7 +347,6 @@ export class AgreementFeeScheduleService {
         buildApiUrl(API_ENDPOINTS.AGREEMENT_FEE_SCHEDULE.UPDATE(id)),
         updates
       )
-
       return result
     } catch (error) {
       throw error
@@ -394,19 +384,15 @@ export class AgreementFeeScheduleService {
         enabled: data.enabled !== undefined ? data.enabled : true,
         deleted: data.deleted !== undefined ? data.deleted : false,
       }
-
       const response = await apiClient.put<AgreementFeeSchedule>(url, requestData)
       return response
     } else {
-      // Use POST for creating new details
       const url = buildApiUrl(API_ENDPOINTS.AGREEMENT_FEE_SCHEDULE.SAVE)
-      
       const requestData = {
         ...data,
         enabled: true,
         deleted: false,
       }
-
       const response = await apiClient.post<AgreementFeeSchedule>(url, requestData)
       return response
     }
@@ -434,9 +420,7 @@ export class AgreementFeeScheduleService {
         size: size.toString(),
       })
       const url = `${buildApiUrl(API_ENDPOINTS.REAL_ESTATE_DOCUMENT.GET_ALL)}?${params.toString()}`
-
       const result = await apiClient.get<PaginatedDocumentResponse>(url)
-
       return (
         result || {
           content: [],
@@ -449,6 +433,23 @@ export class AgreementFeeScheduleService {
         }
       )
     } catch (error) {
+      // For 500 errors on documents endpoint, return empty result instead of throwing
+      // Documents are optional and shouldn't block the UI
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return {
+            content: [],
+            page: {
+              size: size,
+              number: page,
+              totalElements: 0,
+              totalPages: 0,
+            },
+          }
+        }
+      }
+      // For other errors, still throw to allow proper error handling
       throw error
     }
   }
@@ -463,31 +464,25 @@ export class AgreementFeeScheduleService {
     try {
       const formData = new FormData()
       formData.append('file', file)
-
       const params = new URLSearchParams({
         module: module,
         recordId: entityId,
         storageType: 'LOCAL',
       })
-
       if (documentType) {
         params.append('documentType', documentType)
       }
-
       const url = `${buildApiUrl(API_ENDPOINTS.REAL_ESTATE_DOCUMENT.UPLOAD)}?${params.toString()}`
-
       const config = {
         headers: {
           'Content-Type': 'multipart/form-data' as const,
         },
       }
-
       const result = await apiClient.post<ApiDocumentResponse>(
         url,
         formData,
         config
       )
-
       return result
     } catch (error) {
       throw error
@@ -537,10 +532,7 @@ export class AgreementFeeScheduleService {
     return this.transformToUIData(apiResponse)
   }
 
-  /**
-   * Search agreement fee schedules by name with pagination
-   * Used for autocomplete functionality
-   */
+
   async searchAgreementFeeSchedules(
     query: string,
     page = 0,
@@ -550,7 +542,6 @@ export class AgreementFeeScheduleService {
       if (!query || query.trim().length === 0) {
         return []
       }
-
       const params = {
         ...buildPaginationParams(page, size),
         'operatingLocation.contains': query.trim(),
@@ -559,7 +550,7 @@ export class AgreementFeeScheduleService {
       }
       const url = `${buildApiUrl(API_ENDPOINTS.AGREEMENT_FEE_SCHEDULE.GET_ALL)}&${new URLSearchParams(params).toString()}`
       const response = await apiClient.get(url)
-      
+
       let feeSchedules: AgreementFeeSchedule[] = []
 
       if (Array.isArray(response)) {
@@ -571,7 +562,6 @@ export class AgreementFeeScheduleService {
           feeSchedules = [response as AgreementFeeSchedule]
         }
       }
-
       return feeSchedules
     } catch {
       throw new Error('Failed to search agreement fee schedules')
@@ -580,5 +570,3 @@ export class AgreementFeeScheduleService {
 }
 
 export const agreementFeeScheduleService = new AgreementFeeScheduleService()
-
-

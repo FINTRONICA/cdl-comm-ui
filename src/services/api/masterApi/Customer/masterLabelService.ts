@@ -1,6 +1,5 @@
 import { buildApiUrl, API_ENDPOINTS } from '@/constants/apiEndpoints'
 import { apiClient } from '@/lib/apiClient'
-
 export interface MasterLabel {
   id: number
   configId: string
@@ -98,7 +97,7 @@ export class MasterLabelService {
    */
   async getMasterLabelsWithCache(category: string): Promise<MasterLabel[]> {
     const now = Date.now()
-    
+
     // Return cached data if still valid
     if (
       MasterLabelService.cache[category] &&
@@ -110,11 +109,11 @@ export class MasterLabelService {
 
     // Fetch fresh data
     const labels = await this.getMasterLabels(category)
-    
+
     // Update cache
     MasterLabelService.cache[category] = labels
     MasterLabelService.cacheTimestamps[category] = now
-    
+
     return labels
   }
 
@@ -155,5 +154,3 @@ export class MasterLabelService {
 }
 
 export const masterLabelService = new MasterLabelService()
-
-

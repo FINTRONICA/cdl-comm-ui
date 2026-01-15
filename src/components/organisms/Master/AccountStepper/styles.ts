@@ -13,9 +13,8 @@ import {
   buttonContainerSx as projectButtonContainerSx,
   backButtonSx as projectBackButtonSx,
   nextButtonSx as projectNextButtonSx,
-  primaryButtonSx as projectPrimaryButtonSx,
-  
-} from '@/components/organisms/ProjectStepper/styles'
+  primaryButtonSx as projectPrimaryButtonSx
+} from '../styles'
 
 export const commonFieldStyles = projectCommonFieldStyles
 
@@ -100,5 +99,3 @@ export const neutralBorder = (theme: Theme) =>
 
 export const neutralBorderHover = (theme: Theme) =>
   theme.palette.mode === 'dark' ? alpha('#FFFFFF', 0.5) : '#CAD5E2'
-
-

@@ -1,95 +1,91 @@
-import { useCallback } from 'react'
-import { validateAgreementStepData } from '@/lib/validation/masterValidation/agreementSchemasSchemas'
-import { ValidationResult } from '../../PartyStepper/types'
+import { useCallback } from "react";
+import { validateAgreementStepData } from "@/lib/validation/masterValidation/agreementSchemas";
+import { ValidationResult } from '@/components/organisms/Master/PartyStepper/types'
 
-/**
- * Custom hook for managing step validation logic for Agreement Stepper
- * Validates only the current step's fields using Agreement schemas
- */
 export const useStepValidation = () => {
-  const validateStepData = useCallback(async (step: number, data: unknown): Promise<ValidationResult> => {
-    try {
-      // Skip validation for step 2 (documents) if needed
-      if (step === 1) {
-        return { isValid: true, errors: [], source: 'skipped' }
-      }
-
-      // Use the agreement validation helper that validates only step-specific fields
-      const result = validateAgreementStepData(step, data)
-
-      if (result.success) {
-        return {
-          isValid: true,
-          errors: [],
-          source: 'client',
+  const validateStepData = useCallback(
+    async (step: number, data: unknown): Promise<ValidationResult> => {
+      try {
+        if (step === 1) {
+          return { isValid: true, errors: [], source: "skipped" };
         }
-      } else {
-        // Extract detailed error messages with field names
-        const errorMessages = 'error' in result && result.error?.issues
-          ? result.error.issues.map((issue: any) => {
-            const fieldPath = issue.path.join('.');
-            return fieldPath ? `${fieldPath}: ${issue.message}` : issue.message;
-          })
-          : ['Validation failed'];
+        const result = validateAgreementStepData(step, data);
+        if (result.success) {
+          return {
+            isValid: true,
+            errors: [],
+            source: "client",
+          };
+        } else {
+          const errorMessages =
+            "error" in result && result.error?.issues
+              ? result.error.issues.map((issue) => {
+                  const fieldPath = issue.path.map(String).join(".");
+                  return fieldPath
+                    ? `${fieldPath}: ${issue.message}`
+                    : issue.message;
+                })
+              : ["Validation failed"];
 
-        return {
-          isValid: false,
-          errors: errorMessages,
-          source: 'client',
+          return {
+            isValid: false,
+            errors: errorMessages,
+            source: "client",
+          };
         }
-      }
-    } catch (error) {
-      return {
-        isValid: false,
-        errors: ['Validation failed'],
-        source: 'client',
-      }
-    }
-  }, [])
-
-  const validateStepDataSync = useCallback((step: number, data: unknown): ValidationResult => {
-    try {
-      // Skip validation for step 2 (documents) if needed
-      if (step === 1) {
-        return { isValid: true, errors: [], source: 'skipped' }
-      }
-
-      // Use synchronous validation
-      const result = validateAgreementStepData(step, data)
-
-      if (result.success) {
-        return {
-          isValid: true,
-          errors: [],
-          source: 'client',
-        }
-      } else {
-        // Extract detailed error messages with field names
-        const errorMessages = 'error' in result && result.error?.issues
-          ? result.error.issues.map((issue: any) => {
-            const fieldPath = issue.path.join('.');
-            return fieldPath ? `${fieldPath}: ${issue.message}` : issue.message;
-          })
-          : ['Validation failed'];
-
+      } catch {
         return {
           isValid: false,
-          errors: errorMessages,
-          source: 'client',
-        }
+          errors: ["Validation failed"],
+          source: "client",
+        };
       }
-    } catch (error) {
-      return {
-        isValid: false,
-        errors: ['Validation failed'],
-        source: 'client',
-      }
-    }
-  }, [])
+    },
+    []
+  );
 
+  const validateStepDataSync = useCallback(
+    (step: number, data: unknown): ValidationResult => {
+      try {
+        if (step === 1) {
+          return { isValid: true, errors: [], source: "skipped" };
+        }
+        const result = validateAgreementStepData(step, data);
+        if (result.success) {
+          return {
+            isValid: true,
+            errors: [],
+            source: "client",
+          };
+        } else {
+          const errorMessages =
+            "error" in result && result.error?.issues
+              ? result.error.issues.map((issue) => {
+                  const fieldPath = issue.path.map(String).join(".");
+                  return fieldPath
+                    ? `${fieldPath}: ${issue.message}`
+                    : issue.message;
+                })
+              : ["Validation failed"];
+
+          return {
+            isValid: false,
+            errors: errorMessages,
+            source: "client",
+          };
+        }
+      } catch {
+        return {
+          isValid: false,
+          errors: ["Validation failed"],
+          source: "client",
+        };
+      }
+    },
+    []
+  );
   return {
     validateStepData,
     validateStepDataSync,
-  }
-}
-
+  };
+};

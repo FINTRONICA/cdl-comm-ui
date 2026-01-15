@@ -295,12 +295,6 @@ const PartiesPageImpl: React.FC = () => {
             setIsDeleting(true)
             await deleteMutation.mutateAsync(row.id)
           } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : 'Unknown error occurred'
-            if (process.env.NODE_ENV === 'development') {
-              console.error(`Failed to delete party: ${errorMessage}`)
-            }
-
             throw error
           } finally {
             setIsDeleting(false)
@@ -438,4 +432,3 @@ const PartiesPage: React.FC = () => {
 }
 
 export default PartiesPage
-

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { validateAgreementParameterStepData } from '@/lib/validation/masterValidation/agreementParameterSchemasSchemas'
-import { ValidationResult } from '../../PartyStepper/types'
+import { ValidationResult } from '@/components/organisms/Master/PartyStepper/types'
 
 /**
  * Custom hook for managing step validation logic for Agreement Parameter Stepper
@@ -92,5 +92,3 @@ export const useStepValidation = () => {
     validateStepDataSync,
   }
 }
-
-

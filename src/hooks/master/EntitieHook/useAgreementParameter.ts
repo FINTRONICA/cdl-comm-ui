@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useMemo, useEffect } from 'react'
 import {
   agreementParameterService,
   type AgreementParameterFilters,
@@ -26,32 +26,65 @@ export function useAgreementParameters(
     totalPages: 1,
   })
 
+  // Memoize filters to prevent unnecessary re-renders
+  // Use deep comparison instead of JSON.stringify for better performance
+  const stableFilters = useMemo(() => {
+    if (!filters) return undefined
+    // Return filters as-is if it's already stable, otherwise create a stable copy
+    return filters
+  }, [
+    filters?.status,
+    filters?.name,
+    filters?.agreementId,
+  ])
+
   const query = useQuery({
     queryKey: [
       AGREEMENT_PARAMETERS_QUERY_KEY,
-      { page: pagination.page, size: pagination.size, filters },
+      pagination.page,
+      pagination.size,
+      stableFilters,
     ],
     queryFn: () =>
       agreementParameterService.getAgreementParameters(
         pagination.page,
         pagination.size,
-        filters
+        stableFilters
       ),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes cache
     refetchOnWindowFocus: false,
-    retry: 3,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      // Disable retry on 500 errors to prevent retry storms
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 2
+    },
   })
 
-  // Update API pagination when data changes
-  if (query.data?.page) {
-    const newApiPagination = {
-      totalElements: query.data.page.totalElements,
-      totalPages: query.data.page.totalPages,
+  // Update API pagination when data changes - moved to useEffect to prevent render-time updates
+  useEffect(() => {
+    if (query.data?.page) {
+      const newApiPagination = {
+        totalElements: query.data.page.totalElements,
+        totalPages: query.data.page.totalPages,
+      }
+      setApiPagination((prev) => {
+        if (
+          prev.totalElements !== newApiPagination.totalElements ||
+          prev.totalPages !== newApiPagination.totalPages
+        ) {
+          return newApiPagination
+        }
+        return prev
+      })
     }
-    if (JSON.stringify(newApiPagination) !== JSON.stringify(apiPagination)) {
-      setApiPagination(newApiPagination)
-    }
-  }
+  }, [query.data?.page])
 
   const updatePagination = useCallback((newPage: number, newSize?: number) => {
     setPagination((prev) => ({
@@ -76,7 +109,18 @@ export function useAgreementParameter(id: string) {
     queryFn: () => agreementParameterService.getAgreementParameter(id),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 2
+    },
   })
 }
 
@@ -153,9 +197,18 @@ export function useAgreementParameterLabels() {
       )
     },
     enabled: !!isAuthenticated,
-    staleTime: 24 * 60 * 60 * 1000,
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours cache
     refetchOnWindowFocus: false,
-    retry: 3,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -242,7 +295,16 @@ export function useAgreementParameterStepData(step: number) {
     queryFn: () => agreementParameterService.getStepData(step),
     enabled: step > 0 && step <= 5,
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    gcTime: 10 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -306,8 +368,18 @@ export function useAgreementParameterStepStatus(agreementParameterId: string) {
       return stepStatus
     },
     enabled: !!agreementParameterId && agreementParameterId.trim() !== '',
-    staleTime: 0, // Always refetch when navigating back
-    retry: 1,
+    staleTime: 30 * 1000, // 30 seconds - short cache for step status
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 

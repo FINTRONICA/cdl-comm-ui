@@ -1,53 +1,58 @@
 import { useCallback } from 'react'
-import { useAgreementFeeScheduleLabels } from './useAgreementFeeSchedule'
+import { useLabels, useLabelsLoadingState } from '@/store'
 import { AgreementFeeScheduleLabelsService } from '@/services/api/masterApi/Entitie/agreementFeeScheduleLabelsService'
-import type { ProcessedAgreementFeeScheduleLabels } from '@/services/api/masterApi/Entitie/agreementFeeScheduleLabelsService'
 
 export function useAgreementFeeScheduleLabelsWithCache() {
-    // Use React Query hook to fetch labels
-    const query = useAgreementFeeScheduleLabels()
-    
-    // Process the labels data to match the expected format
-    const agreementFeeScheduleLabels = query.data as ProcessedAgreementFeeScheduleLabels | undefined
+  // 🏦 BANKING COMPLIANCE: Now using Zustand store instead of localStorage
+  // API remains identical for backward compatibility
+  const { agreementFeeScheduleLabels } = useLabels()
+  const { agreementFeeScheduleLabelsLoading } = useLabelsLoadingState()
 
-    const getLabel = useCallback(
-        (configId: string, language: string, fallback: string) => {
-            if (agreementFeeScheduleLabels) {
-                return AgreementFeeScheduleLabelsService.getLabel(agreementFeeScheduleLabels, configId, language, fallback)
-            }
-            return fallback
-        },
-        [agreementFeeScheduleLabels]
-    )
+  // Note: We no longer use the old React Query hook since Zustand is the source of truth
+  // Labels are loaded by the compliance loader service on app initialization
 
-    const hasLabels = useCallback(() => {
-        return AgreementFeeScheduleLabelsService.hasLabels(agreementFeeScheduleLabels || {})
-    }, [agreementFeeScheduleLabels])
+  const getLabel = useCallback(
+    (configId: string, language: string, fallback: string) => {
+      // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+      if (agreementFeeScheduleLabels) {
+        return AgreementFeeScheduleLabelsService.getLabel(agreementFeeScheduleLabels, configId, language, fallback)
+      }
+      return fallback
+    },
+    [agreementFeeScheduleLabels]
+  )
 
-    const getAvailableLanguages = useCallback(() => {
-        return AgreementFeeScheduleLabelsService.getAvailableLanguages(agreementFeeScheduleLabels || {})
-    }, [agreementFeeScheduleLabels])
+  const hasLabels = useCallback(() => {
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return AgreementFeeScheduleLabelsService.hasLabels(agreementFeeScheduleLabels || {})
+  }, [agreementFeeScheduleLabels])
 
-    // Return identical API structure for backward compatibility
-    return {
-        // React Query-like structure for compatibility
-        data: agreementFeeScheduleLabels,
-        isLoading: query.isLoading,
-        error: query.error,
-        isError: query.isError,
-        isFetching: query.isFetching,
-        isSuccess: query.isSuccess,
-        refetch: query.refetch,
+  const getAvailableLanguages = useCallback(() => {
+    // 🏦 COMPLIANCE: Using Zustand store data instead of localStorage
+    return AgreementFeeScheduleLabelsService.getAvailableLanguages(agreementFeeScheduleLabels || {})
+  }, [agreementFeeScheduleLabels])
 
-        // Original hook API functions (unchanged signatures)
-        getLabel,
-        hasLabels,
-        getAvailableLanguages,
+  // 🏦 COMPLIANCE: Return identical API structure for backward compatibility
+  return {
+    // Simulated React Query-like structure for compatibility
+    data: agreementFeeScheduleLabels,
+    isLoading: agreementFeeScheduleLabelsLoading,
+    error: null, // Error handling is managed by the compliance loader
+    isError: false,
+    isFetching: agreementFeeScheduleLabelsLoading,
+    isSuccess: !!agreementFeeScheduleLabels,
+    refetch: () => {
 
-        // Compatibility properties (maintained for existing UI components)
-        hasCache: !!agreementFeeScheduleLabels,
-        cacheStatus: agreementFeeScheduleLabels ? 'cached' : query.isLoading ? 'Loading...' : 'fresh',
-    }
+      return Promise.resolve({ data: agreementFeeScheduleLabels })
+    },
+
+    // Original hook API functions (unchanged signatures)
+    getLabel,
+    hasLabels,
+    getAvailableLanguages,
+
+    // Compatibility properties (maintained for existing UI components)
+    hasCache: !!agreementFeeScheduleLabels, // Now represents Zustand store state
+    cacheStatus: agreementFeeScheduleLabels ? 'cached' : agreementFeeScheduleLabelsLoading ? 'Loading...' : 'fresh',
+  }
 }
-
-

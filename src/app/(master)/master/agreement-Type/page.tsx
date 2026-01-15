@@ -1,62 +1,64 @@
-'use client'
+"use client";
 
-import React, { useCallback, useState, useMemo } from 'react'
-import dynamic from 'next/dynamic'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { GlobalLoading } from '@/components/atoms'
-import { RightSlideAgreementTypePanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideAgreementTypePanel'
+import React, { useCallback, useState, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import { getLabelByConfigId as getMasterLabel } from "@/constants/mappings/master/masterMapping";
+import { GlobalLoading } from "@/components/atoms";
+import { RightSlideAgreementTypePanel } from "@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideAgreementTypePanel";
 import {
   useAgreementTypes,
   useDeleteAgreementType,
   useRefreshAgreementTypes,
-} from '@/hooks/master/CustomerHook/useAgreementType'
-import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
-import { UploadDialog } from '@/components/molecules/UploadDialog'
-import { AgreementType } from '@/services/api/masterApi/Customer/agreementTypeService'
+} from "@/hooks/master/CustomerHook/useAgreementType";
+import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
+import { UploadDialog } from "@/components/molecules/UploadDialog";
+import { AgreementType } from "@/services/api/masterApi/Customer/agreementTypeService";
 import {
   useDeleteConfirmation,
   useApproveConfirmation,
-} from '@/store/confirmationDialogStore'
-import { useCreateWorkflowRequest } from '@/hooks/workflow'
+} from "@/store/confirmationDialogStore";
+import { useCreateWorkflowRequest } from "@/hooks/workflow";
 
 interface AgreementTypeData extends Record<string, unknown> {
-  id: number
-  agreementTypeId?: string
-  uuid?: string
-  agreementTypeName: string
-  agreementTypeDescription: string
-  active?: boolean
-  enabled?: boolean
-  deleted?: boolean
+  id: number;
+  agreementTypeId?: string;
+  uuid?: string;
+  agreementTypeName: string;
+  agreementTypeDescription: string;
+  active?: boolean;
+  enabled?: boolean;
+  deleted?: boolean;
 }
 
 const STATUS_OPTIONS = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
-const DEFAULT_PAGE_SIZE = 20
-const INITIAL_PAGE = 1
+const DEFAULT_PAGE_SIZE = 20;
+const INITIAL_PAGE = 1;
 
 const AgreementTypePageImpl: React.FC = () => {
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
-  const [editingItem, setEditingItem] = useState<AgreementTypeData | null>(null)
-  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
+  const [editingItem, setEditingItem] = useState<AgreementTypeData | null>(
+    null
+  );
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
   // API-driven pagination state
-  const [currentApiPage, setCurrentApiPage] = useState(INITIAL_PAGE)
-  const [currentApiSize, setCurrentApiSize] = useState(DEFAULT_PAGE_SIZE)
-  const [searchFilters] = useState<{ name?: string }>({})
+  const [currentApiPage, setCurrentApiPage] = useState(INITIAL_PAGE);
+  const [currentApiSize, setCurrentApiSize] = useState(DEFAULT_PAGE_SIZE);
+  const [searchFilters] = useState<{ name?: string }>({});
 
   // API hooks
   const {
@@ -69,86 +71,86 @@ const AgreementTypePageImpl: React.FC = () => {
     Math.max(0, currentApiPage - 1),
     currentApiSize,
     searchFilters
-  )
+  );
 
-  const deleteAgreementTypeMutation = useDeleteAgreementType()
-  const confirmDelete = useDeleteConfirmation()
-  const confirmApprove = useApproveConfirmation()
-  const createWorkflowRequest = useCreateWorkflowRequest()
-  const refreshAgreementTypes = useRefreshAgreementTypes()
-  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
+  const deleteAgreementTypeMutation = useDeleteAgreementType();
+  const confirmDelete = useDeleteConfirmation();
+  const confirmApprove = useApproveConfirmation();
+  const createWorkflowRequest = useCreateWorkflowRequest();
+  const refreshAgreementTypes = useRefreshAgreementTypes();
+  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
 
   // Transform API data to table format
   const agreementTypeData = useMemo(() => {
     if (!agreementTypesResponse) {
-      return []
+      return [];
     }
 
     // Handle both paginated and non-paginated responses
     const content = Array.isArray(agreementTypesResponse)
       ? agreementTypesResponse
-      : agreementTypesResponse.content || []
+      : agreementTypesResponse.content || [];
 
     if (!Array.isArray(content) || content.length === 0) {
-      return []
+      return [];
     }
 
     return content.map((agreementType: AgreementType) => ({
       id: agreementType.id,
       agreementTypeId: agreementType.uuid || `MAT-${agreementType.id}`,
       uuid: agreementType.uuid,
-      agreementTypeName: agreementType.agreementTypeName || '',
-      agreementTypeDescription: agreementType.agreementTypeDescription || '',
+      agreementTypeName: agreementType.agreementTypeName || "",
+      agreementTypeDescription: agreementType.agreementTypeDescription || "",
       active: agreementType.active ?? true,
       enabled: agreementType.enabled ?? true,
       deleted: agreementType.deleted ?? false,
-    })) as AgreementTypeData[]
-  }, [agreementTypesResponse])
+    })) as AgreementTypeData[];
+  }, [agreementTypesResponse]);
 
   const getAgreementTypeLabel = useCallback(
     (configId: string): string => getMasterLabel(configId),
     []
-  )
+  );
 
   const tableColumns = useMemo(
     () => [
       {
-        key: 'agreementTypeId',
-        label: getAgreementTypeLabel('CDL_MAT_ID'),
-        type: 'text' as const,
-        width: 'w-48',
+        key: "agreementTypeId",
+        label: getAgreementTypeLabel("CDL_MAT_ID"),
+        type: "text" as const,
+        width: "w-48",
         sortable: true,
       },
       {
-        key: 'agreementTypeName',
-        label: getAgreementTypeLabel('CDL_MAT_NAME'),
-        type: 'text' as const,
-        width: 'w-64',
+        key: "agreementTypeName",
+        label: getAgreementTypeLabel("CDL_MAT_NAME"),
+        type: "text" as const,
+        width: "w-64",
         sortable: true,
       },
       {
-        key: 'agreementTypeDescription',
-        label: getAgreementTypeLabel('CDL_MAT_DESCRIPTION'),
-        type: 'text' as const,
-        width: 'w-96',
+        key: "agreementTypeDescription",
+        label: getAgreementTypeLabel("CDL_MAT_DESCRIPTION"),
+        type: "text" as const,
+        width: "w-96",
         sortable: true,
       },
       {
-        key: 'status',
-        label: getAgreementTypeLabel('CDL_MAT_STATUS'),
-        type: 'status' as const,
-        width: 'w-32',
+        key: "status",
+        label: getAgreementTypeLabel("CDL_MAT_STATUS"),
+        type: "status" as const,
+        width: "w-32",
         sortable: true,
       },
       {
-        key: 'actions',
-        label: 'Actions',
-        type: 'actions' as const,
-        width: 'w-20',
+        key: "actions",
+        label: "Actions",
+        type: "actions" as const,
+        width: "w-20",
       },
     ],
     [getAgreementTypeLabel]
-  )
+  );
 
   const {
     search,
@@ -170,56 +172,60 @@ const AgreementTypePageImpl: React.FC = () => {
     handleSort,
   } = useTableState({
     data: agreementTypeData,
-    searchFields: ['agreementTypeId', 'agreementTypeName', 'agreementTypeDescription'],
+    searchFields: [
+      "agreementTypeId",
+      "agreementTypeName",
+      "agreementTypeDescription",
+    ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const hasActiveSearch = useMemo(
-    () => Object.values(search).some((value) => value.trim() !== ''),
+    () => Object.values(search).some((value) => value.trim() !== ""),
     [search]
-  )
+  );
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const handlePageChange = useCallback(
     (newPage: number) => {
       if (hasActiveSearch) {
-        localHandlePageChange(newPage)
+        localHandlePageChange(newPage);
       } else {
-        setCurrentApiPage(newPage)
-        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+        setCurrentApiPage(newPage);
+        updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
     [hasActiveSearch, localHandlePageChange, currentApiSize, updatePagination]
-  )
+  );
 
   const handleRowsPerPageChange = useCallback(
     (newRowsPerPage: number) => {
-      setCurrentApiSize(newRowsPerPage)
-      setCurrentApiPage(INITIAL_PAGE)
-      updatePagination(0, newRowsPerPage)
-      localHandleRowsPerPageChange(newRowsPerPage)
+      setCurrentApiSize(newRowsPerPage);
+      setCurrentApiPage(INITIAL_PAGE);
+      updatePagination(0, newRowsPerPage);
+      localHandleRowsPerPageChange(newRowsPerPage);
     },
     [localHandleRowsPerPageChange, updatePagination]
-  )
+  );
 
   const handleRowDelete = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: AgreementTypeData, _index: number) => {
       if (isDeleting) {
-        return
+        return;
       }
 
       confirmDelete({
@@ -227,63 +233,72 @@ const AgreementTypePageImpl: React.FC = () => {
         itemId: String(row.id),
         onConfirm: async () => {
           try {
-            setIsDeleting(true)
-            await deleteAgreementTypeMutation.mutateAsync(String(row.id))
-            refreshAgreementTypes()
+            setIsDeleting(true);
+            await deleteAgreementTypeMutation.mutateAsync(String(row.id));
+            refreshAgreementTypes();
           } catch (error) {
-            throw error
+            throw error;
           } finally {
-            setIsDeleting(false)
+            setIsDeleting(false);
           }
         },
-      })
+      });
     },
-    [deleteAgreementTypeMutation, confirmDelete, isDeleting, refreshAgreementTypes]
-  )
+    [
+      deleteAgreementTypeMutation,
+      confirmDelete,
+      isDeleting,
+      refreshAgreementTypes,
+    ]
+  );
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: AgreementTypeData, _index: number) => {
-      const dataIndex = agreementTypeData.findIndex((item) => item.id === row.id)
-      setEditingItem(row)
-      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
-      setPanelMode('edit')
-      setIsPanelOpen(true)
+      const dataIndex = agreementTypeData.findIndex(
+        (item) => item.id === row.id
+      );
+      setEditingItem(row);
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
+      setPanelMode("edit");
+      setIsPanelOpen(true);
     },
     [agreementTypeData]
-  )
+  );
 
   const handleAddNew = useCallback(() => {
-    setEditingItem(null)
-    setEditingItemIndex(null)
-    setPanelMode('add')
-    setIsPanelOpen(true)
-  }, [])
+    setEditingItem(null);
+    setEditingItemIndex(null);
+    setPanelMode("add");
+    setIsPanelOpen(true);
+  }, []);
 
   const handleClosePanel = useCallback(() => {
-    setIsPanelOpen(false)
-    setEditingItem(null)
-    setEditingItemIndex(null)
-  }, [])
+    setIsPanelOpen(false);
+    setEditingItem(null);
+    setEditingItemIndex(null);
+  }, []);
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      await downloadTemplate('AgreementTypeTemplate.xlsx')
+      await downloadTemplate("AgreementTypeTemplate.xlsx");
     } catch {
       // Error handling is done by the hook
     }
-  }, [downloadTemplate])
+  }, [downloadTemplate]);
 
   const handleUploadSuccess = useCallback(() => {
-    refreshAgreementTypes()
-    setIsUploadDialogOpen(false)
-  }, [refreshAgreementTypes])
+    refreshAgreementTypes();
+    setIsUploadDialogOpen(false);
+  }, [refreshAgreementTypes]);
 
   const handleUploadError = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_error: string) => {
-    // Error is handled by UploadDialog component
-  }, [])
+      // Error is handled by UploadDialog component
+    },
+    []
+  );
 
   const handleRowApprove = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -295,30 +310,30 @@ const AgreementTypePageImpl: React.FC = () => {
           try {
             await createWorkflowRequest.mutateAsync({
               referenceId: String(row.id),
-              referenceType: 'AGREEMENT_TYPE',
-              moduleName: 'AGREEMENT_TYPE',
-              actionKey: 'APPROVE',
+              referenceType: "AGREEMENT_TYPE",
+              moduleName: "AGREEMENT_TYPE",
+              actionKey: "APPROVE",
               payloadJson: row as Record<string, unknown>,
-            })
-            refreshAgreementTypes()
+            });
+            refreshAgreementTypes();
           } catch (error) {
-            throw error
+            throw error;
           }
         },
-      })
+      });
     },
     [confirmApprove, createWorkflowRequest, refreshAgreementTypes]
-  )
+  );
 
   const handleAgreementTypeAdded = useCallback(() => {
-    refreshAgreementTypes()
-    handleClosePanel()
-  }, [handleClosePanel, refreshAgreementTypes])
+    refreshAgreementTypes();
+    handleClosePanel();
+  }, [handleClosePanel, refreshAgreementTypes]);
 
   const handleAgreementTypeUpdated = useCallback(() => {
-    refreshAgreementTypes()
-    handleClosePanel()
-  }, [handleClosePanel, refreshAgreementTypes])
+    refreshAgreementTypes();
+    handleClosePanel();
+  }, [handleClosePanel, refreshAgreementTypes]);
 
   const renderExpandedContent = useCallback(
     (row: AgreementTypeData) => (
@@ -330,26 +345,26 @@ const AgreementTypePageImpl: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600 dark:text-gray-400">
-                {getAgreementTypeLabel('CDL_MAT_ID')}:
+                {getAgreementTypeLabel("CDL_MAT_ID")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.agreementTypeId || '-'}
+                {row.agreementTypeId || "-"}
               </span>
             </div>
             <div className="col-span-2">
               <span className="text-gray-600 dark:text-gray-400">
-                {getAgreementTypeLabel('CDL_MAT_NAME')}:
+                {getAgreementTypeLabel("CDL_MAT_NAME")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.agreementTypeName || '-'}
+                {row.agreementTypeName || "-"}
               </span>
             </div>
             <div className="col-span-2">
               <span className="text-gray-600 dark:text-gray-400">
-                {getAgreementTypeLabel('CDL_MAT_DESCRIPTION')}:
+                {getAgreementTypeLabel("CDL_MAT_DESCRIPTION")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.agreementTypeDescription || '-'}
+                {row.agreementTypeDescription || "-"}
               </span>
             </div>
           </div>
@@ -357,7 +372,7 @@ const AgreementTypePageImpl: React.FC = () => {
       </div>
     ),
     [getAgreementTypeLabel]
-  )
+  );
 
   return (
     <>
@@ -385,16 +400,18 @@ const AgreementTypePageImpl: React.FC = () => {
           ) : agreementTypesError ? (
             <div className="flex items-center justify-center flex-1 p-4">
               <div className="text-red-600 dark:text-red-400">
-                <div className="font-semibold mb-2">Error loading agreement types.</div>
+                <div className="mb-2 font-semibold">
+                  Error loading agreement types.
+                </div>
                 <div className="text-sm">
                   {agreementTypesError instanceof Error
                     ? agreementTypesError.message
-                    : 'Please try again.'}
+                    : "Please try again."}
                 </div>
-                {process.env.NODE_ENV === 'development' && (
+                {process.env.NODE_ENV === "development" && (
                   <details className="mt-2 text-xs">
                     <summary className="cursor-pointer">Error Details</summary>
-                    <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded overflow-auto">
+                    <pre className="p-2 mt-2 overflow-auto bg-gray-100 rounded dark:bg-gray-800">
                       {JSON.stringify(agreementTypesError, null, 2)}
                     </pre>
                   </details>
@@ -434,12 +451,12 @@ const AgreementTypePageImpl: React.FC = () => {
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
                 // deletePermissions={['agreement_type_delete']}
-                deletePermissions={['*']}
+                deletePermissions={["*"]}
                 // editPermissions={['agreement_type_update']}
-                editPermissions={['*']}
+                editPermissions={["*"]}
                 // approvePermissions={['agreement_type_approve']}
-                approvePermissions={['*']}
-                updatePermissions={['agreement_type_update']}
+                approvePermissions={["*"]}
+                updatePermissions={["agreement_type_update"]}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -448,14 +465,13 @@ const AgreementTypePageImpl: React.FC = () => {
         </div>
       </div>
 
-
       {isPanelOpen && (
         <RightSlideAgreementTypePanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onAgreementTypeAdded={handleAgreementTypeAdded}
           onAgreementTypeUpdated={handleAgreementTypeUpdated}
-          mode={panelMode === 'approve' ? 'edit' : panelMode}
+          mode={panelMode === "approve" ? "edit" : panelMode}
           actionData={editingItem as AgreementType | null}
           {...(editingItemIndex !== null && {
             agreementTypeIndex: editingItemIndex,
@@ -474,18 +490,18 @@ const AgreementTypePageImpl: React.FC = () => {
         />
       )}
     </>
-  )
-}
+  );
+};
 
 export const AgreementTypePageClient = dynamic(
   () => Promise.resolve(AgreementTypePageImpl),
   {
     ssr: false,
   }
-)
+);
 
 const AgreementTypePage: React.FC = () => {
-  return <AgreementTypePageClient />
-}
+  return <AgreementTypePageClient />;
+};
 
-export default AgreementTypePage
+export default AgreementTypePage;

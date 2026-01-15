@@ -3,8 +3,8 @@ import React from 'react'
 import {
   DocumentItem,
   ApiDocumentResponse,
-} from '../../DeveloperStepper/developerTypes'
-import { EscrowAccountService } from '@/services/api/masterApi/Customer/escrowAccountService'
+} from "../../../Master/PartyStepper/partyTypes";
+import { escrowAccountService } from '@/services/api/masterApi/Customer/escrowAccountService'
 import {
   DocumentUploadConfig,
   DocumentService,
@@ -166,7 +166,7 @@ export const escrowAccountActions: DocumentAction<DocumentItem>[] = [
     requiresConfirmation: true,
     confirmationMessage:
       'Are you sure you want to delete this document? This action cannot be undone.',
-    onClick: async (document: DocumentItem) => {
+    onClick: async (_document: DocumentItem) => {
       // Note: This would need to be implemented in the parent component
       // as it requires updating the local state
     },

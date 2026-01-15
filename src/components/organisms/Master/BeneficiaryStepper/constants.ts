@@ -22,5 +22,3 @@ export const DEFAULT_FORM_VALUES: Partial<MasterBeneficiaryData> = {
 export const RESET_FORM_STEPS = [1, 2, 3] as const
 
 export const SKIP_VALIDATION_STEPS = [2] as const // Document step is optional
-
-

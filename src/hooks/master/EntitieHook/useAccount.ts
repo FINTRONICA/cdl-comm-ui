@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect, useMemo } from 'react'
 import {
   accountService,
   type AccountFilters,
@@ -26,32 +26,53 @@ export function useAccounts(
     totalPages: 1,
   })
 
+  // Stabilize filters object to prevent unnecessary re-renders
+  const stableFilters = useMemo(() => filters, [JSON.stringify(filters)])
+
   const query = useQuery({
     queryKey: [
       ACCOUNTS_QUERY_KEY,
-      { page: pagination.page, size: pagination.size, filters },
+      { page: pagination.page, size: pagination.size, filters: stableFilters },
     ],
     queryFn: () =>
       accountService.getAccounts(
         pagination.page,
         pagination.size,
-        filters
+        stableFilters
       ),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-    retry: 3,
+    refetchOnMount: false, // Prevent double calls on tab navigation
+    retry: (failureCount, error) => {
+      // Prevent retry storms on 500 errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1 // Only retry once for 500 errors
+        }
+      }
+      return failureCount < 2 // Max 2 retries for other errors
+    },
   })
 
-  // Update API pagination when data changes
-  if (query.data?.page) {
-    const newApiPagination = {
-      totalElements: query.data.page.totalElements,
-      totalPages: query.data.page.totalPages,
+  // FIXED: Move pagination state update to useEffect to prevent render-time updates
+  useEffect(() => {
+    if (query.data?.page) {
+      const newApiPagination = {
+        totalElements: query.data.page.totalElements,
+        totalPages: query.data.page.totalPages,
+      }
+      setApiPagination((prev) => {
+        if (
+          prev.totalElements !== newApiPagination.totalElements ||
+          prev.totalPages !== newApiPagination.totalPages
+        ) {
+          return newApiPagination
+        }
+        return prev
+      })
     }
-    if (JSON.stringify(newApiPagination) !== JSON.stringify(apiPagination)) {
-      setApiPagination(newApiPagination)
-    }
-  }
+  }, [query.data?.page])
 
   const updatePagination = useCallback((newPage: number, newSize?: number) => {
     setPagination((prev) => ({
@@ -74,9 +95,19 @@ export function useAccount(id: string) {
   return useQuery({
     queryKey: [ACCOUNTS_QUERY_KEY, id],
     queryFn: () => accountService.getAccount(id),
-    enabled: !!id,
+    enabled: !!id && id.trim() !== '',
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 2
+    },
   })
 }
 
@@ -89,7 +120,15 @@ export function useAccount(id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [ACCOUNTS_QUERY_KEY] })
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -109,8 +148,19 @@ export function useUpdateAccount() {
       queryClient.invalidateQueries({
         queryKey: [ACCOUNTS_QUERY_KEY, id],
       })
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNTS_QUERY_KEY, 'stepStatus', id],
+      })
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -122,7 +172,7 @@ export function useDeleteAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [ACCOUNTS_QUERY_KEY] })
     },
-    retry: 0, // Disable retry to prevent multiple calls
+    retry: 0, // Disable retry for delete operations
   })
 }
 
@@ -153,9 +203,18 @@ export function useAccountLabels() {
       )
     },
     enabled: !!isAuthenticated,
-    staleTime: 24 * 60 * 60 * 1000,
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours - labels rarely change
     refetchOnWindowFocus: false,
-    retry: 3,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 2
+    },
   })
 }
 
@@ -211,11 +270,159 @@ export function useAccountLabelsWithUtils() {
         })
       }
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 1 // Only retry once for mutations
+    },
   })
 }
 
+// Hook for fetching account documents with pagination
+export function useAccountDocuments(
+  accountId?: string,
+  module: string = 'ACCOUNT',
+  page = 0,
+  size = 20
+) {
+  const [pagination, setPagination] = useState({ page, size })
+  const [apiPagination, setApiPagination] = useState({
+    totalElements: 0,
+    totalPages: 1,
+  })
 
+  const query = useQuery({
+    queryKey: [
+      ACCOUNTS_QUERY_KEY,
+      'documents',
+      accountId,
+      module,
+      { page: pagination.page, size: pagination.size },
+    ],
+    queryFn: async () => {
+      try {
+        return await accountService.getAccountDocuments(
+          accountId!,
+          module,
+          pagination.page,
+          pagination.size
+        )
+      } catch (error) {
+        // For documents, return empty result instead of throwing
+        // Documents are optional, so we don't want to block the UI
+        if (error && typeof error === 'object' && 'response' in error) {
+          const httpError = error as { response?: { status?: number } }
+          if (httpError.response?.status === 500 || httpError.response?.status === 404) {
+            // Return empty paginated response for 500/404 errors
+            return {
+              content: [],
+              page: {
+                size: pagination.size,
+                number: pagination.page,
+                totalElements: 0,
+                totalPages: 0,
+              },
+            }
+          }
+        }
+        // Re-throw other errors
+        throw error
+      }
+    },
+    enabled: !!accountId && accountId.trim() !== '',
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      // Don't retry on 500/404 for documents - they're optional
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500 || httpError.response?.status === 404) {
+          return false
+        }
+      }
+      return failureCount < 1 // Only retry once for other errors
+    },
+  })
+
+  // FIXED: Move pagination state update to useEffect
+  useEffect(() => {
+    if (query.data?.page) {
+      const newApiPagination = {
+        totalElements: query.data.page.totalElements,
+        totalPages: query.data.page.totalPages,
+      }
+      setApiPagination((prev) => {
+        if (
+          prev.totalElements !== newApiPagination.totalElements ||
+          prev.totalPages !== newApiPagination.totalPages
+        ) {
+          return newApiPagination
+        }
+        return prev
+      })
+    }
+  }, [query.data?.page])
+
+  const updatePagination = useCallback((newPage: number, newSize?: number) => {
+    setPagination((prev) => ({
+      page: newPage,
+      size: newSize !== undefined ? newSize : prev.size,
+    }))
+  }, [])
+
+  return {
+    ...query,
+    updatePagination,
+    apiPagination,
+  } as typeof query & {
+    updatePagination: typeof updatePagination
+    apiPagination: typeof apiPagination
+  }
+}
+
+// Hook for uploading account documents
+export function useUploadAccountDocument() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      file,
+      entityId,
+      module,
+      documentType,
+    }: {
+      file: File
+      entityId: string
+      module: string
+      documentType?: string
+    }) =>
+      accountService.uploadAccountDocument(
+        file,
+        entityId,
+        module,
+        documentType
+      ),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNTS_QUERY_KEY, 'documents', variables.entityId],
+      })
+    },
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 1
+    },
+  })
+}
 
 
 
@@ -228,7 +435,15 @@ export function useSaveAccountReview() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [ACCOUNTS_QUERY_KEY] })
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -238,7 +453,17 @@ export function useAccountStepData(step: number) {
     queryFn: () => accountService.getStepData(step),
     enabled: step > 0 && step <= 5,
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 2
+    },
   })
 }
 
@@ -252,7 +477,7 @@ export function useValidateAccountStep() {
       data: unknown
     }): Promise<StepValidationResponse> =>
       accountService.validateStep(step, data),
-    retry: 1,
+    retry: 0, // No retry for validation - fail fast
   })
 }
 
@@ -296,8 +521,18 @@ export function useAccountStepStatus(accountId: string) {
       return stepStatus
     },
     enabled: !!accountId && accountId.trim() !== '',
-    staleTime: 0, // Always refetch when navigating back
-    retry: 1,
+    staleTime: 2 * 60 * 1000, // 2 minutes - balance between freshness and performance
+    refetchOnWindowFocus: false,
+    refetchOnMount: 'always', // Refetch when component mounts to get latest data
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return failureCount < 1
+        }
+      }
+      return failureCount < 1 // Only retry once
+    },
   })
 }
 

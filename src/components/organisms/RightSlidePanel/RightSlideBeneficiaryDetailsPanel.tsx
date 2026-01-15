@@ -25,15 +25,16 @@ import { FormError } from '../../atoms/FormError'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import {
-  useSaveBuildPartnerBeneficiary,
-  useBuildPartnerBeneficiaryById,
-} from '@/hooks/useBuildPartners'
+// Build Partner hooks and services removed - module deleted
+// import {
+//   useSaveBuildPartnerBeneficiary,
+//   useBuildPartnerBeneficiaryById,
+// } from '@/hooks/useBuildPartners'
 import { useValidationStatus } from '@/hooks/useValidation'
 import { validateAndSanitizeBeneficiaryData } from '@/lib/validation/beneficiarySchemas'
-import { DeveloperStep5Schema } from '@/lib/validation/developerSchemas'
-import { useBuildPartnerLabelsWithCache } from '@/hooks/useBuildPartnerLabelsWithCache'
-import { getBuildPartnerLabel } from '@/constants/mappings/buildPartnerMapping'
+// import { DeveloperStep5Schema } from '@/lib/validation/developerSchemas'
+// import { useBuildPartnerLabelsWithCache } from '@/hooks/useBuildPartnerLabelsWithCache'
+// import { getBuildPartnerLabel } from '@/constants/mappings/buildPartnerMapping'
 import { useAppStore } from '@/store'
 import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from './panelTheme'

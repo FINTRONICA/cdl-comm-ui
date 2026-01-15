@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-
-
-import { partyService, type PartyFilters, type CreatePartyRequest, type UpdatePartyRequest, type PartyDetailsData, type PartyAuthorizedSignatoryData, type PartyReviewData, type StepValidationResponse} from '@/services/api/masterApi/Customer/partyService'
+import { partyService, type PartyFilters, type CreatePartyRequest, type UpdatePartyRequest, type PartyDetailsData, type PartyAuthorizedSignatoryData, type PartyReviewData, type StepValidationResponse } from '@/services/api/masterApi/Customer/partyService'
 import { PartyLabelsService } from '@/services/api/masterApi/Customer/partyLabelsService'
 import { useIsAuthenticated } from '@/hooks/useAuthQuery'
 
@@ -182,14 +180,14 @@ export function useBuildPartnerLabelsWithUtils() {
 
     hasLabels: () => PartyLabelsService.hasLabels(query.data || {}),
     getLabel: (configId: string, language: string, fallback: string) =>
-        PartyLabelsService.getLabel(
+      PartyLabelsService.getLabel(
         query.data || {},
         configId,
         language,
         fallback
       ),
     getAvailableLanguages: () =>
-        PartyLabelsService.getAvailableLanguages(query.data || {}),
+      PartyLabelsService.getAvailableLanguages(query.data || {}),
   }
 }
 
@@ -207,29 +205,30 @@ export function useSaveBuildPartnerDetails() {
       pa?: string | undefined
     }) =>
       partyService.savePartyDetails(data, isEditing, pa),
-    onSuccess: (response, variables) => {
-      queryClient.invalidateQueries({ queryKey: [PARTIES_QUERY_KEY] })
-      // Get partyId from response or variables
-      const partyIdFromResponse = (response as { data?: { id?: string | number }; id?: string | number })?.data?.id || (response as { id?: string | number })?.id
-      const effectivePartyId = partyIdFromResponse?.toString() || variables.pa
-      
-      if (effectivePartyId) {
-        queryClient.invalidateQueries({
-          queryKey: [PARTIES_QUERY_KEY, effectivePartyId],
-        })
-        // Invalidate stepStatus query to ensure it refetches with new partyId
-        queryClient.invalidateQueries({
-          queryKey: [PARTIES_QUERY_KEY, 'stepStatus', effectivePartyId],
-        })
-      }
+    onSuccess: (_, variables) => {
+      // Invalidate specific queries instead of all parties queries
       if (variables.pa) {
-        queryClient.invalidateQueries({
-          queryKey: [PARTIES_QUERY_KEY, variables.pa],
-        })
+        // Invalidate step status for this specific party
         queryClient.invalidateQueries({
           queryKey: [PARTIES_QUERY_KEY, 'stepStatus', variables.pa],
         })
+        // Invalidate the specific party query
+        queryClient.invalidateQueries({
+          queryKey: [PARTIES_QUERY_KEY, variables.pa],
+        })
       }
+      // Invalidate parties list (for dropdowns and lists)
+      queryClient.invalidateQueries({
+        queryKey: [PARTIES_QUERY_KEY],
+        exact: false,
+        predicate: (query) => {
+          const key = query.queryKey
+          return (
+            key[0] === PARTIES_QUERY_KEY &&
+            (key[1] === 'dropdown' || Array.isArray(key[1]))
+          )
+        },
+      })
     },
     retry: 2,
   })
@@ -296,12 +295,6 @@ export function usePartyAuthorizedSignatoryById(partyAuthorizedSignatoryId: stri
   })
 }
 
-
-
-
-
-
-
 export function useSaveBuildPartnerReview() {
   const queryClient = useQueryClient()
 
@@ -309,7 +302,18 @@ export function useSaveBuildPartnerReview() {
     mutationFn: (data: PartyReviewData) =>
       partyService.savePartyReview(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [PARTIES_QUERY_KEY] })
+      // Only invalidate parties list, not step status (to prevent refetch loops)
+      queryClient.invalidateQueries({
+        queryKey: [PARTIES_QUERY_KEY],
+        exact: false,
+        predicate: (query) => {
+          const key = query.queryKey
+          return (
+            key[0] === PARTIES_QUERY_KEY &&
+            (key[1] === 'dropdown' || Array.isArray(key[1]))
+          )
+        },
+      })
     },
     retry: 2,
   })
@@ -344,14 +348,14 @@ export function useValidateBuildPartnerStep() {
 }
 
 export function usePartyStepStatus(partyId: string) {
-  // This is the correct implementation
   return useQuery({
     queryKey: [PARTIES_QUERY_KEY, 'stepStatus', partyId],
     queryFn: async () => {
-      const [step1Result, step2Result] =
+      const [step1Result, step2Result, documentsResult] =
         await Promise.allSettled([
           partyService.getParty(partyId),
           partyService.getPartyAuthorizedSignatory(partyId),
+          partyService.getPartyDocuments(partyId, 'PARTY', 0, 20),
         ])
 
       const stepStatus = {
@@ -361,10 +365,12 @@ export function usePartyStepStatus(partyId: string) {
         stepData: {
           step1: step1Result.status === 'fulfilled' ? step1Result.value : null,
           step2: step2Result.status === 'fulfilled' ? step2Result.value : null,
+          documents: documentsResult.status === 'fulfilled' ? documentsResult.value : null,
         },
         errors: {
           step1: step1Result.status === 'rejected' ? step1Result.reason : null,
           step2: step2Result.status === 'rejected' ? step2Result.reason : null,
+          documents: documentsResult.status === 'rejected' ? documentsResult.reason : null,
         },
       }
 
@@ -374,7 +380,10 @@ export function usePartyStepStatus(partyId: string) {
       return stepStatus
     },
     enabled: !!partyId,
-    staleTime: 0, // Always refetch when navigating back
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    refetchOnWindowFocus: false,
+    refetchOnMount: false, // Prevent refetch on mount if data is fresh
     retry: 1,
   })
 }
@@ -433,7 +442,7 @@ function useBuildPartnerStepManager() {
     error:
       saveDetails.error ||
       saveContact.error ||
-     
+
       saveReview.error,
   }
 }

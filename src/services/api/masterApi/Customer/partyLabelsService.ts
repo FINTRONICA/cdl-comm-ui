@@ -1,6 +1,6 @@
 // Temporarily commented out - Party labels imports
-// import { apiClient } from '@/lib/apiClient'
-// import { API_ENDPOINTS, buildApiUrl } from '@/constants/apiEndpoints'
+import { apiClient } from '@/lib/apiClient'
+import { API_ENDPOINTS, buildApiUrl } from '@/constants/apiEndpoints'
 import { getAuthCookies } from '@/utils/cookieUtils'
 
 export interface PartyLabelsResponse {
@@ -40,10 +40,10 @@ export class PartyLabelsService {
         throw new Error('Authentication token not found')
       }
       // Temporarily commented out - Party labels endpoint
-      // const url = buildApiUrl(API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.PARTY)
-      // const labels = await apiClient.get<PartyLabelsResponse[]>(url)
-      // return labels
-      
+      const url = buildApiUrl(API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.PARTY)
+      const labels = await apiClient.get<PartyLabelsResponse[]>(url)
+      return labels
+
       // Return empty array for now
       return []
     } catch {

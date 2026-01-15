@@ -82,4 +82,3 @@ export function getPublicAssetPath(assetPath: string): string {
   // Add base path prefix
   return `${BASE_PATH}${normalizedPath}`
 }
-

@@ -29,7 +29,6 @@ export { useBankAccounts, useBankAccount, useCreateBankAccount, useUpdateBankAcc
 export { feeService } from './feeService'
 export { complianceService } from './complianceService'
 export { SidebarLabelsService } from './sidebarLabelsService'
-export { buildPartnerService } from './buildPartnerService'
 export { labelConfigService, LabelConfigService } from './labelConfigService' 
 export { applicationSettingService, type PaymentExpenseType } from './applicationSettingService'
 export { pendingTransactionLabelService, PendingTransactionLabelService } from './pendingTransactionLabelService'

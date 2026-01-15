@@ -14,7 +14,6 @@ import { useIsAuthenticated } from '@/hooks'
 
 export const AGREEMENT_FEE_SCHEDULES_QUERY_KEY = 'agreementFeeSchedules'
 
-// Enhanced hook to fetch all agreement fee schedules with pagination and filters
 export function useAgreementFeeSchedules(
   page = 0,
   size = 20,
@@ -37,12 +36,21 @@ export function useAgreementFeeSchedules(
         pagination.size,
         filters
       ),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
-    retry: 3,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 
-  // Update API pagination when data changes
   if (query.data?.page) {
     const newApiPagination = {
       totalElements: query.data.page.totalElements,
@@ -74,9 +82,20 @@ export function useAgreementFeeSchedule(id: string) {
   return useQuery({
     queryKey: [AGREEMENT_FEE_SCHEDULES_QUERY_KEY, id],
     queryFn: () => agreementFeeScheduleService.getAgreementFeeSchedule(id),
-    enabled: !!id,
+    enabled: !!id && id.trim() !== '',
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -89,7 +108,15 @@ export function useCreateAgreementFeeSchedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [AGREEMENT_FEE_SCHEDULES_QUERY_KEY] })
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -110,7 +137,15 @@ export function useUpdateAgreementFeeSchedule() {
         queryKey: [AGREEMENT_FEE_SCHEDULES_QUERY_KEY, id],
       })
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -122,7 +157,7 @@ export function useDeleteAgreementFeeSchedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [AGREEMENT_FEE_SCHEDULES_QUERY_KEY] })
     },
-    retry: 0, // Disable retry to prevent multiple calls
+    retry: 0,
   })
 }
 
@@ -133,7 +168,6 @@ export function useAgreementFeeScheduleLabels() {
     queryKey: ['agreementFeeScheduleLabels'],
     queryFn: async () => {
       const rawLabels = await agreementFeeScheduleService.getAgreementFeeScheduleLabels()
-      // Process the raw API response into the expected format
       return rawLabels.reduce(
         (
           processed: Record<string, Record<string, string>>,
@@ -154,8 +188,18 @@ export function useAgreementFeeScheduleLabels() {
     },
     enabled: !!isAuthenticated,
     staleTime: 24 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
     refetchOnWindowFocus: false,
-    retry: 3,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -211,7 +255,15 @@ export function useSaveAgreementFeeScheduleDetails() {
         })
       }
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -224,7 +276,15 @@ export function useSaveAgreementFeeScheduleReview() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [AGREEMENT_FEE_SCHEDULES_QUERY_KEY] })
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -234,7 +294,18 @@ export function useAgreementFeeScheduleStepData(step: number) {
     queryFn: () => agreementFeeScheduleService.getStepData(step),
     enabled: step > 0 && step <= 3,
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -248,7 +319,15 @@ export function useValidateAgreementFeeScheduleStep() {
       data: unknown
     }): Promise<StepValidationResponse> =>
       agreementFeeScheduleService.validateStep(step, data),
-    retry: 1,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -256,7 +335,6 @@ export function useAgreementFeeScheduleStepStatus(agreementFeeScheduleId: string
   return useQuery({
     queryKey: [AGREEMENT_FEE_SCHEDULES_QUERY_KEY, 'stepStatus', agreementFeeScheduleId],
     queryFn: async () => {
-      // Only fetch if agreementFeeScheduleId is valid
       if (!agreementFeeScheduleId || agreementFeeScheduleId.trim() === '') {
         return {
           step1: false,
@@ -286,18 +364,27 @@ export function useAgreementFeeScheduleStepStatus(agreementFeeScheduleId: string
         },
       }
 
-      // Determine last completed step
       if (stepStatus.step1) stepStatus.lastCompletedStep = 1
-      
+
       return stepStatus
     },
     enabled: !!agreementFeeScheduleId && agreementFeeScheduleId.trim() !== '',
-    staleTime: 0, // Always refetch when navigating back
-    retry: 1,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const httpError = error as { response?: { status?: number } }
+        if (httpError.response?.status === 500) {
+          return false
+        }
+      }
+
+      return failureCount < 1
+    },
   })
 }
 
-// Unified step management hook
 export function useAgreementFeeScheduleStepManager() {
   const saveDetails = useSaveAgreementFeeScheduleDetails()
   const saveReview = useSaveAgreementFeeScheduleReview()
@@ -337,5 +424,3 @@ export function useAgreementFeeScheduleStepManager() {
       saveReview.error,
   }
 }
-
-

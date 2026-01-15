@@ -21,12 +21,11 @@ import {
 import EditIcon from '@mui/icons-material/Edit'
 import { useParams } from 'next/navigation'
 import {
-  agreementService,
   type Agreement,
 } from '@/services/api/masterApi/Entitie/agreementService'
 import { formatDate } from '@/utils'
 import { GlobalLoading } from '@/components/atoms'
-import { useAgreementLabelsWithCache } from '@/hooks'
+import { useAgreementLabelsWithCache, useAgreement, useAgreementDocuments } from '@/hooks'
 import { getAgreementLabel } from '@/constants/mappings/master/Entity/agreementMapping'
 import { useAppStore } from '@/store'
 
@@ -112,7 +111,7 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
   // Dynamic labels helper (same as other steps)
   const { data: agreementLabels, getLabel } = useAgreementLabelsWithCache()
   const currentLanguage = useAppStore((state) => state.language) || 'EN'
-  const getBuildPartnerLabelDynamic = useCallback(
+  const getAgreementLabelDynamic = useCallback(
     (configId: string): string => {
       const fallback = getAgreementLabel(configId)
       return agreementLabels
@@ -134,78 +133,76 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
   )
 
 
+  // CRITICAL FIX: Step2 should use stepStatus data from parent if available
+  // Only fetch independently if stepStatus is not provided
+  // This prevents duplicate API calls when parent already has the data
+  const { data: agreementDetailsData, isLoading: isLoadingDetails, error: detailsError } = useAgreement(
+    agreementId || ''
+  )
+  const { data: documentsResponse, isLoading: isLoadingDocuments, error: documentsError } = useAgreementDocuments(
+    agreementId || '', 
+    'AGREEMENT', 
+    0, 
+    20
+  )
+
+  // Update local state when React Query data changes
   useEffect(() => {
-    const fetchAllData = async () => {
-      if (!agreementId) {
-        setError('Agreement ID is required')
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Fetch all data in parallel
-
-        const [details, documents] = await Promise.allSettled([
-          agreementService.getAgreement(agreementId),
-
-          agreementService.getAgreementDocuments(agreementId, 'AGREEMENT'),
-        ])
-
-        // Extract values from Promise.allSettled results
-        const detailsResult =
-          details.status === 'fulfilled' ? details.value : null
-
-        const documentsResult =
-          documents.status === 'fulfilled' ? documents.value : null
-
-        setAgreementDetails(detailsResult as Agreement)
-
-        // Handle paginated responses for documents
-        let documentArray: unknown[] = []
-        if (Array.isArray(documentsResult)) {
-          documentArray = documentsResult
-        } else if (
-          documentsResult &&
-          typeof documentsResult === 'object' &&
-          'content' in documentsResult
-        ) {
-          const content = (documentsResult as { content?: unknown[] }).content
-          documentArray = Array.isArray(content) ? content : []
-        }
-
-        setDocumentData(
-          documentArray.map((doc) => {
-            const docObj = doc as {
-              id?: number | string
-              documentName?: string
-              documentTypeDTO?: {
-                languageTranslationId?: { configValue?: string }
-              }
-              uploadDate?: string
-              documentSize?: string
-            }
-            return {
-              id: docObj.id?.toString() || '',
-              fileName: docObj.documentName || '',
-              documentType:
-                docObj.documentTypeDTO?.languageTranslationId?.configValue || '',
-              uploadDate: docObj.uploadDate || '',
-              fileSize: parseInt(docObj.documentSize || '0'),
-            }
-          })
-        )
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch data')
-      } finally {
-        setLoading(false)
-      }
+    if (agreementDetailsData) {
+      setAgreementDetails(agreementDetailsData)
     }
+  }, [agreementDetailsData])
 
-    fetchAllData()
-  }, [agreementId])
+  useEffect(() => {
+    if (documentsResponse) {
+      // Handle paginated responses for documents
+      let documentArray: unknown[] = []
+      if (Array.isArray(documentsResponse)) {
+        documentArray = documentsResponse
+      } else if (
+        documentsResponse &&
+        typeof documentsResponse === 'object' &&
+        'content' in documentsResponse
+      ) {
+        const content = (documentsResponse as { content?: unknown[] }).content
+        documentArray = Array.isArray(content) ? content : []
+      }
+
+      setDocumentData(
+        documentArray.map((doc) => {
+          const docObj = doc as {
+            id?: number | string
+            documentName?: string
+            documentTypeDTO?: {
+              languageTranslationId?: { configValue?: string }
+            }
+            uploadDate?: string
+            documentSize?: string
+          }
+          return {
+            id: docObj.id?.toString() || '',
+            fileName: docObj.documentName || '',
+            documentType:
+              docObj.documentTypeDTO?.languageTranslationId?.configValue || '',
+            uploadDate: docObj.uploadDate || '',
+            fileSize: parseInt(docObj.documentSize || '0'),
+          }
+        })
+      )
+    }
+  }, [documentsResponse])
+
+  // Update loading and error states
+  useEffect(() => {
+    setLoading(isLoadingDetails || isLoadingDocuments)
+    setError(
+      detailsError 
+        ? (detailsError instanceof Error ? detailsError.message : 'Failed to fetch agreement details')
+        : documentsError
+          ? (documentsError instanceof Error ? documentsError.message : 'Failed to fetch documents')
+          : null
+    )
+  }, [isLoadingDetails, isLoadingDocuments, detailsError, documentsError])
 
   // Loading state
   if (loading) {
@@ -277,7 +274,7 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
                 color: isDarkMode ? '#F9FAFB' : '#1E2939',
               }}
             >
-              {getBuildPartnerLabelDynamic('CDL_AGREEMENT_DETAILS')}
+              {getAgreementLabelDynamic('CDL_AGREEMENT_DETAILS')}
             </Typography>
             {!isReadOnly && (
               <Button
@@ -315,61 +312,61 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_AGREEMENT_ID'),
+                getAgreementLabelDynamic('CDL_ESCROW_AGREEMENT_ID'),
                 agreementDetails.id?.toString() || '-'
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_CIF_NUMBER'),
+                getAgreementLabelDynamic('CDL_ESCROW_CIF_NUMBER'),
                 agreementDetails.primaryEscrowCifNumber
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_RM_NAME'),
+                getAgreementLabelDynamic('CDL_ESCROW_RM_NAME'),
                 agreementDetails.relationshipManagerName
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_OPERATING_LOCATION_CODE'),
+                getAgreementLabelDynamic('CDL_ESCROW_OPERATING_LOCATION_CODE'),
                 agreementDetails.operatingLocationCode
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_1'),
+                getAgreementLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_1'),
                 agreementDetails.customField1
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_2'),
+                getAgreementLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_2'),
                 agreementDetails.customField2
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_3'),
+                getAgreementLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_3'),
                 agreementDetails.customField3
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_4'),
+                getAgreementLabelDynamic('CDL_ESCROW_CUSTOM_FIELD_4'),
                 agreementDetails.customField4
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_PRODUCT_MANAGET_NAME'),
+                getAgreementLabelDynamic('CDL_ESCROW_PRODUCT_MANAGET_NAME'),
                 agreementDetails.productManagerName
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getBuildPartnerLabelDynamic('CDL_ESCROW_CLIENT_NAME'),
+                getAgreementLabelDynamic('CDL_ESCROW_CLIENT_NAME'),
                 agreementDetails.clientName
               )}
             </Grid>

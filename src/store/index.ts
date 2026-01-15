@@ -185,6 +185,16 @@ export const useLabels = () => {
   const workflowAmountRuleLabels = useAppStore((state) => state.workflowAmountRuleLabels)
   const workflowAmountStageOverrideLabels = useAppStore((state) => state.workflowAmountStageOverrideLabels)
   const workflowRequestedLabels = useAppStore((state) => state.workflowRequestedLabels)
+  // Entity labels
+  const accountLabels = useAppStore((state) => state.accountLabels)
+  const agreementLabels = useAppStore((state) => state.agreementLabels)
+  const agreementFeeScheduleLabels = useAppStore((state) => state.agreementFeeScheduleLabels)
+  const agreementParameterLabels = useAppStore((state) => state.agreementParameterLabels)
+  const agreementSignatoryLabels = useAppStore((state) => state.agreementSignatoryLabels)
+  const paymentInstructionLabels = useAppStore((state) => state.paymentInstructionLabels)
+  const standingInstructionLabels = useAppStore((state) => state.standingInstructionLabels)
+  const standingInstructionBeneficiaryLabels = useAppStore((state) => state.standingInstructionBeneficiaryLabels)
+  const beneficiaryLabels = useAppStore((state) => state.beneficiaryLabels)
   const allLabelsLoading = useAppStore((state) => state.allLabelsLoading)
   const allLabelsError = useAppStore((state) => state.allLabelsError)
 
@@ -201,11 +211,19 @@ export const useLabels = () => {
       workflowAmountRuleLabels,
       workflowAmountStageOverrideLabels,
       workflowRequestedLabels,
+      accountLabels,
+      agreementLabels,
+      agreementFeeScheduleLabels,
+      agreementParameterLabels,
+      agreementSignatoryLabels,
+      paymentInstructionLabels,
+      standingInstructionLabels,
+      standingInstructionBeneficiaryLabels,
+      beneficiaryLabels,
       allLabelsLoading,
       allLabelsError,
     }),
-    [sidebarLabels, partyLabels, buildPartnerLabels, capitalPartnerLabels, buildPartnerAssetLabels, workflowActionLabels, allLabelsLoading, allLabelsError, workflowDefinitionLabels, workflowStageTemplateLabels, workflowAmountRuleLabels, workflowAmountStageOverrideLabels, workflowRequestedLabels]
-
+    [sidebarLabels, partyLabels, buildPartnerLabels, capitalPartnerLabels, buildPartnerAssetLabels, workflowActionLabels, workflowDefinitionLabels, workflowStageTemplateLabels, workflowAmountRuleLabels, workflowAmountStageOverrideLabels, workflowRequestedLabels, accountLabels, agreementLabels, agreementFeeScheduleLabels, agreementParameterLabels, agreementSignatoryLabels, paymentInstructionLabels, standingInstructionLabels, standingInstructionBeneficiaryLabels, beneficiaryLabels, allLabelsLoading, allLabelsError]
   )
 }
 
@@ -221,6 +239,16 @@ export const useLabelsLoadingState = () => {
   const workflowAmountRuleLabelsLoading = useAppStore((state) => state.workflowAmountRuleLabelsLoading)
   const workflowAmountStageOverrideLabelsLoading = useAppStore((state) => state.workflowAmountStageOverrideLabelsLoading)
   const workflowRequestedLabelsLoading = useAppStore((state) => state.workflowRequestedLabelsLoading)
+  // Entity labels loading states
+  const accountLabelsLoading = useAppStore((state) => state.accountLabelsLoading)
+  const agreementLabelsLoading = useAppStore((state) => state.agreementLabelsLoading)
+  const agreementFeeScheduleLabelsLoading = useAppStore((state) => state.agreementFeeScheduleLabelsLoading)
+  const agreementParameterLabelsLoading = useAppStore((state) => state.agreementParameterLabelsLoading)
+  const agreementSignatoryLabelsLoading = useAppStore((state) => state.agreementSignatoryLabelsLoading)
+  const paymentInstructionLabelsLoading = useAppStore((state) => state.paymentInstructionLabelsLoading)
+  const standingInstructionLabelsLoading = useAppStore((state) => state.standingInstructionLabelsLoading)
+  const standingInstructionBeneficiaryLabelsLoading = useAppStore((state) => state.standingInstructionBeneficiaryLabelsLoading)
+  const beneficiaryLabelsLoading = useAppStore((state) => state.beneficiaryLabelsLoading)
 
   const getLoadingStatus = useAppStore((state) => state.getLoadingStatus)
 
@@ -237,11 +265,18 @@ export const useLabelsLoadingState = () => {
       workflowAmountRuleLabelsLoading,
       workflowAmountStageOverrideLabelsLoading,
       workflowRequestedLabelsLoading,
-
+      accountLabelsLoading,
+      agreementLabelsLoading,
+      agreementFeeScheduleLabelsLoading,
+      agreementParameterLabelsLoading,
+      agreementSignatoryLabelsLoading,
+      paymentInstructionLabelsLoading,
+      standingInstructionLabelsLoading,
+      standingInstructionBeneficiaryLabelsLoading,
+      beneficiaryLabelsLoading,
       getLoadingStatus,
     }),
-    [sidebarLabelsLoading, partyLabelsLoading, buildPartnerLabelsLoading, capitalPartnerLabelsLoading, buildPartnerAssetLabelsLoading, workflowActionLabelsLoading, workflowDefinitionLabelsLoading, workflowStageTemplateLabelsLoading, workflowAmountRuleLabelsLoading, workflowAmountStageOverrideLabelsLoading, workflowRequestedLabelsLoading, getLoadingStatus]
-
+    [sidebarLabelsLoading, partyLabelsLoading, buildPartnerLabelsLoading, capitalPartnerLabelsLoading, buildPartnerAssetLabelsLoading, workflowActionLabelsLoading, workflowDefinitionLabelsLoading, workflowStageTemplateLabelsLoading, workflowAmountRuleLabelsLoading, workflowAmountStageOverrideLabelsLoading, workflowRequestedLabelsLoading, accountLabelsLoading, agreementLabelsLoading, agreementFeeScheduleLabelsLoading, agreementParameterLabelsLoading, agreementSignatoryLabelsLoading, paymentInstructionLabelsLoading, standingInstructionLabelsLoading, standingInstructionBeneficiaryLabelsLoading, beneficiaryLabelsLoading, getLoadingStatus]
   )
 }
 
@@ -325,6 +360,43 @@ export const useLabelsActions = () => {
   const setWorkflowRequestedLabelsLoading = useAppStore((state) => state.setWorkflowRequestedLabelsLoading)
   const setWorkflowRequestedLabelsError = useAppStore((state) => state.setWorkflowRequestedLabelsError)
 
+  // Entity labels actions
+  const setAccountLabels = useAppStore((state) => state.setAccountLabels)
+  const setAccountLabelsLoading = useAppStore((state) => state.setAccountLabelsLoading)
+  const setAccountLabelsError = useAppStore((state) => state.setAccountLabelsError)
+
+  const setAgreementLabels = useAppStore((state) => state.setAgreementLabels)
+  const setAgreementLabelsLoading = useAppStore((state) => state.setAgreementLabelsLoading)
+  const setAgreementLabelsError = useAppStore((state) => state.setAgreementLabelsError)
+
+  const setAgreementFeeScheduleLabels = useAppStore((state) => state.setAgreementFeeScheduleLabels)
+  const setAgreementFeeScheduleLabelsLoading = useAppStore((state) => state.setAgreementFeeScheduleLabelsLoading)
+  const setAgreementFeeScheduleLabelsError = useAppStore((state) => state.setAgreementFeeScheduleLabelsError)
+
+  const setAgreementParameterLabels = useAppStore((state) => state.setAgreementParameterLabels)
+  const setAgreementParameterLabelsLoading = useAppStore((state) => state.setAgreementParameterLabelsLoading)
+  const setAgreementParameterLabelsError = useAppStore((state) => state.setAgreementParameterLabelsError)
+
+  const setAgreementSignatoryLabels = useAppStore((state) => state.setAgreementSignatoryLabels)
+  const setAgreementSignatoryLabelsLoading = useAppStore((state) => state.setAgreementSignatoryLabelsLoading)
+  const setAgreementSignatoryLabelsError = useAppStore((state) => state.setAgreementSignatoryLabelsError)
+
+  const setPaymentInstructionLabels = useAppStore((state) => state.setPaymentInstructionLabels)
+  const setPaymentInstructionLabelsLoading = useAppStore((state) => state.setPaymentInstructionLabelsLoading)
+  const setPaymentInstructionLabelsError = useAppStore((state) => state.setPaymentInstructionLabelsError)
+
+  const setStandingInstructionLabels = useAppStore((state) => state.setStandingInstructionLabels)
+  const setStandingInstructionLabelsLoading = useAppStore((state) => state.setStandingInstructionLabelsLoading)
+  const setStandingInstructionLabelsError = useAppStore((state) => state.setStandingInstructionLabelsError)
+
+  const setStandingInstructionBeneficiaryLabels = useAppStore((state) => state.setStandingInstructionBeneficiaryLabels)
+  const setStandingInstructionBeneficiaryLabelsLoading = useAppStore((state) => state.setStandingInstructionBeneficiaryLabelsLoading)
+  const setStandingInstructionBeneficiaryLabelsError = useAppStore((state) => state.setStandingInstructionBeneficiaryLabelsError)
+
+  const setBeneficiaryLabels = useAppStore((state) => state.setBeneficiaryLabels)
+  const setBeneficiaryLabelsLoading = useAppStore((state) => state.setBeneficiaryLabelsLoading)
+  const setBeneficiaryLabelsError = useAppStore((state) => state.setBeneficiaryLabelsError)
+
   // Global actions
   const setAllLabelsLoading = useAppStore((state) => state.setAllLabelsLoading)
   const setAllLabelsError = useAppStore((state) => state.setAllLabelsError)
@@ -397,6 +469,43 @@ export const useLabelsActions = () => {
       setWorkflowRequestedLabelsLoading,
       setWorkflowRequestedLabelsError,
 
+      // Entity labels
+      setAccountLabels,
+      setAccountLabelsLoading,
+      setAccountLabelsError,
+
+      setAgreementLabels,
+      setAgreementLabelsLoading,
+      setAgreementLabelsError,
+
+      setAgreementFeeScheduleLabels,
+      setAgreementFeeScheduleLabelsLoading,
+      setAgreementFeeScheduleLabelsError,
+
+      setAgreementParameterLabels,
+      setAgreementParameterLabelsLoading,
+      setAgreementParameterLabelsError,
+
+      setAgreementSignatoryLabels,
+      setAgreementSignatoryLabelsLoading,
+      setAgreementSignatoryLabelsError,
+
+      setPaymentInstructionLabels,
+      setPaymentInstructionLabelsLoading,
+      setPaymentInstructionLabelsError,
+
+      setStandingInstructionLabels,
+      setStandingInstructionLabelsLoading,
+      setStandingInstructionLabelsError,
+
+      setStandingInstructionBeneficiaryLabels,
+      setStandingInstructionBeneficiaryLabelsLoading,
+      setStandingInstructionBeneficiaryLabelsError,
+
+      setBeneficiaryLabels,
+      setBeneficiaryLabelsLoading,
+      setBeneficiaryLabelsError,
+
       // Global
       setAllLabelsLoading,
       setAllLabelsError,
@@ -432,6 +541,16 @@ export const useLabelsActions = () => {
       setWorkflowAmountStageOverrideLabels, setWorkflowAmountStageOverrideLabelsLoading, setWorkflowAmountStageOverrideLabelsError,
       // Workflow Requested
       setWorkflowRequestedLabels, setWorkflowRequestedLabelsLoading, setWorkflowRequestedLabelsError,
+      // Entity labels
+      setAccountLabels, setAccountLabelsLoading, setAccountLabelsError,
+      setAgreementLabels, setAgreementLabelsLoading, setAgreementLabelsError,
+      setAgreementFeeScheduleLabels, setAgreementFeeScheduleLabelsLoading, setAgreementFeeScheduleLabelsError,
+      setAgreementParameterLabels, setAgreementParameterLabelsLoading, setAgreementParameterLabelsError,
+      setAgreementSignatoryLabels, setAgreementSignatoryLabelsLoading, setAgreementSignatoryLabelsError,
+      setPaymentInstructionLabels, setPaymentInstructionLabelsLoading, setPaymentInstructionLabelsError,
+      setStandingInstructionLabels, setStandingInstructionLabelsLoading, setStandingInstructionLabelsError,
+      setStandingInstructionBeneficiaryLabels, setStandingInstructionBeneficiaryLabelsLoading, setStandingInstructionBeneficiaryLabelsError,
+      setBeneficiaryLabels, setBeneficiaryLabelsLoading, setBeneficiaryLabelsError,
       // Global & utilities
       setAllLabelsLoading, setAllLabelsError,
       clearAllLabels, getLabel, hasLabels, getAvailableLanguages,

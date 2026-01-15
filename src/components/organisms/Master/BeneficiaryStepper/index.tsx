@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   Stepper,
   Step,
@@ -12,13 +12,12 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
-} from '@mui/material'
-import type { Theme } from '@mui/material/styles'
-import { FormProvider, useForm } from 'react-hook-form'
-import Step1, { type Step1Ref } from './steps/Step1'
-import Step2 from './steps/Step2'
-import Step3 from './steps/Step3'
-import DocumentUploadFactory from '../../DocumentUpload/DocumentUploadFactory'
+} from "@mui/material";
+import type { Theme } from "@mui/material/styles";
+import { FormProvider, useForm } from "react-hook-form";
+import Step1, { type Step1Ref } from "./steps/Step1";
+import Step2 from "./steps/Step2";
+import DocumentUploadFactory from "../../DocumentUpload/DocumentUploadFactory";
 import {
   outerContainerSx,
   formSectionSx,
@@ -27,31 +26,27 @@ import {
   backButtonSx,
   nextButtonSx,
   cancelButtonSx,
-} from './styles'
-import { useBeneficiaryLabelsWithCache } from '@/hooks/master/CustomerHook/useBeneficiaryLabelsWithCache'
-import { useAppStore } from '@/store'
-import { BeneficiaryFormData } from './types'
-import { DEFAULT_FORM_VALUES } from './constants'
+} from "./styles";
+import { useBeneficiaryLabelsWithCache } from "@/hooks/master/CustomerHook/useBeneficiaryLabelsWithCache";
+import { useAppStore } from "@/store";
+import { BeneficiaryFormData } from "./types";
+import { DEFAULT_FORM_VALUES } from "./constants";
 
 // Step configuration with config IDs for dynamic labels
 const stepConfigs = [
-  { key: 'details', configId: 'BENEFICIARY_DETAILS' },
-  { key: 'documents', configId: 'DOCUMENTS' },
-  { key: 'review', configId: 'REVIEW' },
-]
+  { key: "details", configId: "BENEFICIARY_DETAILS" },
+  { key: "documents", configId: "DOCUMENTS" },
+  { key: "review", configId: "REVIEW" },
+];
 
 // Fallback step labels
-const fallbackSteps = [
-  'Beneficiary Details',
-  'Documents (Optional)',
-  'Review',
-]
+const fallbackSteps = ["Beneficiary Details", "Documents (Optional)", "Review"];
 
 interface BeneficiaryStepperWrapperProps {
-  beneficiaryId?: string
-  initialStep?: number
-  isViewMode?: boolean
-  isEditingMode?: boolean
+  beneficiaryId?: string;
+  initialStep?: number;
+  isViewMode?: boolean;
+  isEditingMode?: boolean;
 }
 
 export default function BeneficiaryStepperWrapper({
@@ -59,205 +54,173 @@ export default function BeneficiaryStepperWrapper({
   initialStep = 0,
   isViewMode = false,
 }: BeneficiaryStepperWrapperProps = {}) {
-  const router = useRouter()
-  const params = useParams()
-  const searchParams = useSearchParams()
+  const router = useRouter();
+  const params = useParams();
+  const searchParams = useSearchParams();
 
   // Get labels from API
-  const { getLabel } = useBeneficiaryLabelsWithCache()
-  const language = useAppStore((state) => state.language)
-  const currentLanguage = String(language || 'EN')
+  const { getLabel } = useBeneficiaryLabelsWithCache();
+  const language = useAppStore((state) => state.language);
+  const currentLanguage = String(language || "EN");
 
-  const [activeStep, setActiveStep] = useState(initialStep)
-  const [isSaving, setIsSaving] = useState(false)
-  const [currentBeneficiaryId, setCurrentBeneficiaryId] = useState<string | null>(
-    beneficiaryId || null
-  )
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [activeStep, setActiveStep] = useState(initialStep);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentBeneficiaryId, setCurrentBeneficiaryId] = useState<
+    string | null
+  >(beneficiaryId || null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Create dynamic step labels
   const steps = useMemo(() => {
-    const lang: string = String(currentLanguage || 'EN')
+    const lang: string = String(currentLanguage || "EN");
     return stepConfigs.map((config, index) =>
-      getLabel(config.configId, lang, fallbackSteps[index] || 'Step')
-    )
-  }, [getLabel, currentLanguage])
+      getLabel(config.configId, lang, fallbackSteps[index] || "Step")
+    );
+  }, [getLabel, currentLanguage]);
 
-  const isEditMode = Boolean(currentBeneficiaryId)
-  const step1Ref = useRef<Step1Ref>(null)
+  const isEditMode = Boolean(currentBeneficiaryId);
+  const step1Ref = useRef<Step1Ref>(null);
 
   const updateURL = useCallback(
     (step: number, id?: string | null) => {
       if (id && step >= 0) {
-        const queryParam = isViewMode ? '?mode=view' : '?editing=true'
-        router.push(`/master/beneficiary/${id}/step/${step + 1}${queryParam}`)
+        const queryParam = isViewMode ? "?mode=view" : "?editing=true";
+        router.push(`/master/beneficiary/${id}/step/${step + 1}${queryParam}`);
       } else if (step === 0) {
-        router.push('/master/beneficiary/new')
-      } else {
-        // If no ID but step > 0, go back to new page
-        router.push('/master/beneficiary/new')
+        router.push("/master/beneficiary/new");
       }
     },
     [isViewMode, router]
-  )
+  );
 
-  // Sync step from URL params - check both URL path and query params
+  // Sync step from URL params
   useEffect(() => {
-    // First check URL path for step number
-    const stepFromPath = params?.stepNumber as string | undefined
-    if (stepFromPath) {
-      const stepNumber = parseInt(stepFromPath, 10) - 1
-      if (
-        stepNumber !== activeStep &&
-        stepNumber >= 0 &&
-        stepNumber < steps.length
-      ) {
-        setActiveStep(stepNumber)
-        return
-      }
-    }
-    
-    // Fallback to query param
-    const stepFromUrl = searchParams.get('step')
+    const stepFromUrl = searchParams.get("step");
     if (stepFromUrl) {
-      const stepNumber = parseInt(stepFromUrl, 10) - 1
+      const stepNumber = parseInt(stepFromUrl, 10) - 1;
       if (
         stepNumber !== activeStep &&
         stepNumber >= 0 &&
         stepNumber < steps.length
       ) {
-        setActiveStep(stepNumber)
+        setActiveStep(stepNumber);
       }
     }
-  }, [params, searchParams, activeStep, steps.length])
+  }, [searchParams, activeStep, steps.length]);
 
   // Sync beneficiaryId from URL params
   useEffect(() => {
     if (params.id && !currentBeneficiaryId) {
-      setCurrentBeneficiaryId(params.id as string)
+      setCurrentBeneficiaryId(params.id as string);
     }
-  }, [params.id, currentBeneficiaryId])
+  }, [params.id, currentBeneficiaryId]);
 
   // Sync beneficiaryId prop with state
   useEffect(() => {
     if (beneficiaryId && beneficiaryId !== currentBeneficiaryId) {
-      setCurrentBeneficiaryId(beneficiaryId)
+      setCurrentBeneficiaryId(beneficiaryId);
     }
-  }, [beneficiaryId, currentBeneficiaryId])
+  }, [beneficiaryId, currentBeneficiaryId]);
 
   const methods = useForm<BeneficiaryFormData>({
-    mode: 'onChange',
+    mode: "onChange",
     defaultValues: DEFAULT_FORM_VALUES,
-  })
+  });
 
   const handleAsyncStep = useCallback(
     async (stepRef: { handleSaveAndNext: () => Promise<void> }) => {
       try {
-        setIsSaving(true)
-        setErrorMessage(null)
-        setSuccessMessage(null)
-        await stepRef.handleSaveAndNext()
-        return true
+        setIsSaving(true);
+        setErrorMessage(null);
+        setSuccessMessage(null);
+        await stepRef.handleSaveAndNext();
+        return true;
       } catch (error: unknown) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[BeneficiaryStepper] Error in handleAsyncStep:', error)
-        }
         const errorMsg =
           error instanceof Error
             ? error.message
-            : 'Failed to save beneficiary. Please try again.'
-        setErrorMessage(errorMsg)
-        return false
+            : "Failed to save beneficiary. Please try again.";
+        setErrorMessage(errorMsg);
+        return false;
       } finally {
-        setIsSaving(false)
+        setIsSaving(false);
       }
     },
     []
-  )
+  );
 
   const navigateToNextStep = useCallback(() => {
-    const nextStep = activeStep + 1
+    const nextStep = activeStep + 1;
     if (nextStep < steps.length) {
-      setActiveStep(nextStep)
-      updateURL(nextStep, currentBeneficiaryId)
+      setActiveStep(nextStep);
+      updateURL(nextStep, currentBeneficiaryId);
     }
-  }, [activeStep, steps.length, currentBeneficiaryId, updateURL])
+  }, [activeStep, steps.length, currentBeneficiaryId, updateURL]);
 
   const handleNext = useCallback(async () => {
     if (isViewMode) {
-      navigateToNextStep()
-      return
+      navigateToNextStep();
+      return;
     }
 
     if (activeStep === 0 && step1Ref.current) {
-      const success = await handleAsyncStep(step1Ref.current)
-      if (success) {
-        // Step1 will handle navigation via onSaveAndNext callback
-        return
-      }
-      // If save failed, don't navigate
-      return
+      await handleAsyncStep(step1Ref.current);
+      return;
     }
 
     if (activeStep === 1) {
       // Documents step - just navigate
-      navigateToNextStep()
-      return
+      navigateToNextStep();
+      return;
     }
 
-    if (activeStep === 2) {
-      // Review step - complete and go back to list
-      router.push('/master/beneficiary')
-      return
-    }
-
-    navigateToNextStep()
-  }, [isViewMode, activeStep, handleAsyncStep, navigateToNextStep, router])
+    navigateToNextStep();
+  }, [isViewMode, activeStep, handleAsyncStep, navigateToNextStep]);
 
   const handleBack = useCallback(() => {
-    const prevStep = activeStep - 1
+    const prevStep = activeStep - 1;
     if (prevStep >= 0) {
-      setActiveStep(prevStep)
-      updateURL(prevStep, currentBeneficiaryId)
+      setActiveStep(prevStep);
+      updateURL(prevStep, currentBeneficiaryId);
     }
-  }, [activeStep, currentBeneficiaryId, updateURL])
+  }, [activeStep, currentBeneficiaryId, updateURL]);
 
   const handleReset = useCallback(() => {
-    setActiveStep(0)
-    setCurrentBeneficiaryId(null)
-    setIsSaving(false)
-    setErrorMessage(null)
-    setSuccessMessage(null)
-    methods.reset()
-    router.push('/master/beneficiary')
-  }, [methods, router])
+    setActiveStep(0);
+    setCurrentBeneficiaryId(null);
+    setIsSaving(false);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    methods.reset();
+    router.push("/master/beneficiary");
+  }, [methods, router]);
 
   const handleStep1SaveAndNext = useCallback(
     (data: { id: number | string }) => {
       if (data && data.id) {
-        const nextStep = activeStep + 1
-        const idString = String(data.id)
-        setCurrentBeneficiaryId(idString)
-        setActiveStep(nextStep)
-        updateURL(nextStep, idString)
+        const nextStep = activeStep + 1;
+        const idString = String(data.id);
+        setCurrentBeneficiaryId(idString);
+        setActiveStep(nextStep);
+        updateURL(nextStep, idString);
       }
     },
     [activeStep, updateURL]
-  )
+  );
 
   const handleEditStep = useCallback(
     (stepNumber: number) => {
-      setActiveStep(stepNumber)
+      setActiveStep(stepNumber);
       if (currentBeneficiaryId) {
-        const queryParam = isViewMode ? '?mode=view' : '?editing=true'
+        const queryParam = isViewMode ? "?mode=view" : "?editing=true";
         router.push(
           `/master/beneficiary/${currentBeneficiaryId}/step/${stepNumber + 1}${queryParam}`
-        )
+        );
       }
     },
     [currentBeneficiaryId, isViewMode, router]
-  )
+  );
 
   const getStepContent = useCallback(
     (step: number) => {
@@ -272,14 +235,14 @@ export default function BeneficiaryStepperWrapper({
               isViewMode={isViewMode}
               isReadOnly={isViewMode}
             />
-          )
+          );
         case 1:
           if (!currentBeneficiaryId) {
             return (
-              <Box sx={{ py: 4, textAlign: 'center' }}>
+              <Box sx={{ py: 4, textAlign: "center" }}>
                 Please complete Step 1 to proceed with document upload.
               </Box>
-            )
+            );
           }
           return (
             <DocumentUploadFactory
@@ -289,20 +252,20 @@ export default function BeneficiaryStepperWrapper({
               formFieldName="documents"
               isReadOnly={isViewMode}
               onDocumentsChange={(documents) => {
-                methods.setValue('documents', documents)
+                methods.setValue("documents", documents);
               }}
             />
-          )
+          );
         case 2:
           return (
-            <Step3
+            <Step2
               beneficiaryId={currentBeneficiaryId ?? undefined}
               isReadOnly={isViewMode}
               onEditStep={handleEditStep}
             />
-          )
+          );
         default:
-          return null
+          return null;
       }
     },
     [
@@ -313,7 +276,7 @@ export default function BeneficiaryStepperWrapper({
       handleStep1SaveAndNext,
       handleEditStep,
     ]
-  )
+  );
 
   return (
     <FormProvider {...methods}>
@@ -336,8 +299,16 @@ export default function BeneficiaryStepperWrapper({
         >
           {getStepContent(activeStep)}
 
-          <Box display="flex" justifyContent="space-between" sx={buttonContainerSx}>
-            <Button onClick={handleReset} variant="outlined" sx={cancelButtonSx}>
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            sx={buttonContainerSx}
+          >
+            <Button
+              onClick={handleReset}
+              variant="outlined"
+              sx={cancelButtonSx}
+            >
               Cancel
             </Button>
             <Box>
@@ -346,9 +317,13 @@ export default function BeneficiaryStepperWrapper({
                   onClick={handleBack}
                   sx={(theme) =>
                     ({
-                      ...(backButtonSx as (theme: Theme) => Record<string, unknown>)(theme),
+                      ...(
+                        backButtonSx as (
+                          theme: Theme
+                        ) => Record<string, unknown>
+                      )(theme),
                       mr: 2,
-                    } as Record<string, unknown>)
+                    }) as Record<string, unknown>
                   }
                   variant="outlined"
                 >
@@ -358,7 +333,7 @@ export default function BeneficiaryStepperWrapper({
               <Button
                 onClick={
                   activeStep === steps.length - 1
-                    ? () => router.push('/master/beneficiary')
+                    ? () => router.push("/master/beneficiary")
                     : handleNext
                 }
                 variant="contained"
@@ -372,15 +347,15 @@ export default function BeneficiaryStepperWrapper({
               >
                 {isSaving
                   ? activeStep === steps.length - 1
-                    ? 'Submitting...'
-                    : 'Saving...'
+                    ? "Submitting..."
+                    : "Saving..."
                   : activeStep === steps.length - 1
                     ? isViewMode
-                      ? 'Close'
-                      : 'Complete'
+                      ? "Close"
+                      : "Complete"
                     : isViewMode
-                      ? 'Next'
-                      : 'Save and Next'}
+                      ? "Next"
+                      : "Save & Next"}
               </Button>
             </Box>
           </Box>
@@ -390,12 +365,12 @@ export default function BeneficiaryStepperWrapper({
             open={!!errorMessage}
             autoHideDuration={6000}
             onClose={() => setErrorMessage(null)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            anchorOrigin={{ vertical: "top", horizontal: "center" }}
           >
             <Alert
               onClose={() => setErrorMessage(null)}
               severity="error"
-              sx={{ width: '100%' }}
+              sx={{ width: "100%" }}
             >
               {errorMessage}
             </Alert>
@@ -405,12 +380,12 @@ export default function BeneficiaryStepperWrapper({
             open={!!successMessage}
             autoHideDuration={3000}
             onClose={() => setSuccessMessage(null)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            anchorOrigin={{ vertical: "top", horizontal: "center" }}
           >
             <Alert
               onClose={() => setSuccessMessage(null)}
               severity="success"
-              sx={{ width: '100%' }}
+              sx={{ width: "100%" }}
             >
               {successMessage}
             </Alert>
@@ -418,5 +393,5 @@ export default function BeneficiaryStepperWrapper({
         </Box>
       </Box>
     </FormProvider>
-  )
+  );
 }

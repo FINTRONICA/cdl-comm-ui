@@ -13,9 +13,8 @@ import {
   buttonContainerSx as projectButtonContainerSx,
   backButtonSx as projectBackButtonSx,
   nextButtonSx as projectNextButtonSx,
-  primaryButtonSx as projectPrimaryButtonSx,
-  
-} from '@/components/organisms/ProjectStepper/styles'
+  primaryButtonSx as projectPrimaryButtonSx
+} from '@/components/organisms/Master/styles'
 
 export const commonFieldStyles = projectCommonFieldStyles
 

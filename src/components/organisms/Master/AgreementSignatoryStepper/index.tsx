@@ -37,11 +37,11 @@ import {
   useStepNotifications,
   useStepDataProcessing,
   useStepForm,
-} from '../PartyStepper/hooks'
+} from "../PartyStepper/hooks";
 import { useStepValidation } from './hooks/useStepValidation'
-import { Step1, Step3 } from './steps'
+import { Step1, Step2 } from './steps'
 import DocumentUploadFactory from '../../DocumentUpload/DocumentUploadFactory'
-import { DocumentItem } from '../PartyStepper/partyTypes'
+import { DocumentItem } from "../PartyStepper/partyTypes";
 
 // Hook to detect dark mode
 const useIsDarkMode = () => {
@@ -137,10 +137,16 @@ export default function AgreementSignatoryStepperWrapper({
   )
 
   // Only fetch step status if we have a valid agreementSignatoryId
+  const effectiveAgreementSignatoryId = useMemo(
+    () =>
+      agreementSignatoryId && agreementSignatoryId.trim() !== ''
+        ? agreementSignatoryId
+        : '',
+    [agreementSignatoryId]
+  )
+
   const { data: stepStatus } = useAgreementSignatoryStepStatus(
-    agreementSignatoryId && agreementSignatoryId.trim() !== ''
-      ? agreementSignatoryId
-      : ''
+    effectiveAgreementSignatoryId
   )
 
   // Handle documents change callback
@@ -151,51 +157,48 @@ export default function AgreementSignatoryStepperWrapper({
     [methods]
   )
 
-  // Step content renderer
-  const getStepContent = useCallback(
-    (step: number) => {
-      switch (step) {
-        case 0:
-          return (
-            <Step1
-              isReadOnly={isViewMode}
-              agreementSignatoryId={agreementSignatoryId}
-            />
-          )
-        case 1:
-          // Documents step - use DocumentUploadFactory
-          return (
-            <DocumentUploadFactory
-              type="AGREEMENT_SIGNATORY"
-              entityId={agreementSignatoryId || ''}
-              isOptional={true}
-              onDocumentsChange={handleDocumentsChange}
-              formFieldName="documents"
-              isReadOnly={isViewMode}
-            />
-          )
-        case 2:
-          // Review step
-          return (
-            <Step3
-              key={`review-${agreementSignatoryId}-${activeStep}`}
-              agreementSignatoryId={agreementSignatoryId}
-              onEditStep={handleEditStep}
-              isReadOnly={isViewMode}
-            />
-          )
-        default:
-          return null
-      }
-    },
-    [
-      agreementSignatoryId,
-      isViewMode,
-      handleEditStep,
-      handleDocumentsChange,
-      activeStep,
-    ]
-  )
+  // Step content renderer - memoized to prevent unnecessary re-renders
+  const stepContent = useMemo(() => {
+    switch (activeStep) {
+      case 0:
+        return (
+          <Step1
+            isReadOnly={isViewMode}
+            agreementSignatoryId={effectiveAgreementSignatoryId}
+          />
+        )
+      case 1:
+        // Documents step - use DocumentUploadFactory
+        return (
+          <DocumentUploadFactory
+            type="AGREEMENT_SIGNATORY"
+            entityId={effectiveAgreementSignatoryId}
+            isOptional={true}
+            onDocumentsChange={handleDocumentsChange}
+            formFieldName="documents"
+            isReadOnly={isViewMode}
+          />
+        )
+      case 2:
+        // Review step
+        return (
+          <Step2
+            key={`review-${effectiveAgreementSignatoryId}-${activeStep}`}
+            agreementSignatoryId={effectiveAgreementSignatoryId}
+            onEditStep={handleEditStep}
+            isReadOnly={isViewMode}
+          />
+        )
+      default:
+        return null
+    }
+  }, [
+    activeStep,
+    effectiveAgreementSignatoryId,
+    isViewMode,
+    handleEditStep,
+    handleDocumentsChange,
+  ])
 
   // Set editing mode based on URL parameter or agreementSignatoryId
   useEffect(() => {
@@ -236,7 +239,7 @@ export default function AgreementSignatoryStepperWrapper({
         })
         methods.reset(processedData)
         setShouldResetForm(false)
-      } catch (error) {
+      } catch {
         // Don't throw - allow component to continue rendering
       }
     }
@@ -261,7 +264,7 @@ export default function AgreementSignatoryStepperWrapper({
         if (nextStep < steps.length) {
           const nextUrlStep = nextStep + 1
           router.push(
-            `/agreement-signatory/${agreementSignatoryId}/step/${nextUrlStep}?mode=view`
+            `/agreement-signatory/${effectiveAgreementSignatoryId}/step/${nextUrlStep}?mode=view`
           )
         } else {
           router.push('/agreement-signatory')
@@ -276,7 +279,7 @@ export default function AgreementSignatoryStepperWrapper({
           const nextUrlStep = nextStep + 1
           const modeParam = getModeParam()
 
-          if (!agreementSignatoryId) {
+          if (!effectiveAgreementSignatoryId) {
             notifications.showError(
               'Agreement Signatory ID is required to proceed to Review step.'
             )
@@ -284,7 +287,7 @@ export default function AgreementSignatoryStepperWrapper({
             return
           }
 
-          const nextUrl = `/agreement-signatory/${agreementSignatoryId}/step/${nextUrlStep}${modeParam}`
+          const nextUrl = `/agreement-signatory/${effectiveAgreementSignatoryId}/step/${nextUrlStep}${modeParam}`
           router.push(nextUrl)
           setActiveStep(nextStep)
         } else {
@@ -302,37 +305,37 @@ export default function AgreementSignatoryStepperWrapper({
           return
         }
 
-        try {
-          const agreementSignatoryIdFromStatus =
-            stepStatus?.stepData?.step1?.id?.toString()
-          const finalAgreementSignatoryId =
-            agreementSignatoryId || agreementSignatoryIdFromStatus
+      try {
+        const agreementSignatoryIdFromStatus =
+          stepStatus?.stepData?.step1?.id?.toString()
+        const finalAgreementSignatoryId =
+          effectiveAgreementSignatoryId || agreementSignatoryIdFromStatus
 
-          if (!finalAgreementSignatoryId) {
-            notifications.showError(
-              'Agreement Signatory ID not found. Please complete Step 1 first.'
-            )
-            setIsSaving(false)
-            return
-          }
+        if (!finalAgreementSignatoryId) {
+          notifications.showError(
+            'Agreement Signatory ID not found. Please complete Step 1 first.'
+          )
+          setIsSaving(false)
+          return
+        }
 
-          const step1Data = stepStatus?.stepData?.step1
+        const step1Data = stepStatus?.stepData?.step1
 
-          if (!step1Data) {
-            notifications.showError(
-              'Agreement Signatory data not found. Please complete Step 1 first.'
-            )
-            setIsSaving(false)
-            return
-          }
+        if (!step1Data) {
+          notifications.showError(
+            'Agreement Signatory data not found. Please complete Step 1 first.'
+          )
+          setIsSaving(false)
+          return
+        }
 
-          await createWorkflowRequest.mutateAsync({
-            referenceId: finalAgreementSignatoryId,
-            referenceType: 'AGREEMENT_SIGNATORY',
-            moduleName: 'AGREEMENT_SIGNATORY',
-            actionKey: 'APPROVE',
-            payloadJson: step1Data as unknown as Record<string, unknown>,
-          })
+        await createWorkflowRequest.mutateAsync({
+          referenceId: finalAgreementSignatoryId,
+          referenceType: 'AGREEMENT_SIGNATORY',
+          moduleName: 'AGREEMENT_SIGNATORY',
+          actionKey: 'APPROVE',
+          payloadJson: step1Data as unknown as Record<string, unknown>,
+        })
 
           notifications.showSuccess(
             'Agreement Signatory registration submitted successfully! Workflow request created.'
@@ -504,16 +507,16 @@ export default function AgreementSignatoryStepperWrapper({
             const nextUrl = `/agreement-signatory/${savedAgreementSignatoryId}/step/2${getModeParam()}`
             router.push(nextUrl)
             setActiveStep(1)
-          } else if (agreementSignatoryId) {
-            const nextUrl = `/agreement-signatory/${agreementSignatoryId}/step/2${getModeParam()}`
+          } else if (effectiveAgreementSignatoryId) {
+            const nextUrl = `/agreement-signatory/${effectiveAgreementSignatoryId}/step/2${getModeParam()}`
             router.push(nextUrl)
             setActiveStep(1)
           } else {
             setActiveStep((prev: number) => prev + 1)
           }
-        } else if (agreementSignatoryId) {
+        } else if (effectiveAgreementSignatoryId) {
           const nextStep = activeStep + 1
-          const nextUrl = `/agreement-signatory/${agreementSignatoryId}/step/${nextStep + 1}${getModeParam()}`
+          const nextUrl = `/agreement-signatory/${effectiveAgreementSignatoryId}/step/${nextStep + 1}${getModeParam()}`
           router.push(nextUrl)
           setActiveStep(nextStep)
         } else {
@@ -540,15 +543,15 @@ export default function AgreementSignatoryStepperWrapper({
     }
   }
 
-  const handleBack = () => {
-    if (activeStep > 0 && agreementSignatoryId) {
+  const handleBack = useCallback(() => {
+    if (activeStep > 0 && effectiveAgreementSignatoryId) {
       const previousStep = activeStep - 1
       setActiveStep(previousStep)
       router.push(
-        `/agreement-signatory/${agreementSignatoryId}/step/${previousStep + 1}${getModeParam()}`
+        `/agreement-signatory/${effectiveAgreementSignatoryId}/step/${previousStep + 1}${getModeParam()}`
       )
     }
-  }
+  }, [activeStep, effectiveAgreementSignatoryId, router, getModeParam])
 
   return (
     <FormProvider {...methods}>
@@ -596,7 +599,7 @@ export default function AgreementSignatoryStepperWrapper({
             boxShadow: 'none',
           }}
         >
-          {getStepContent(activeStep)}
+          {stepContent}
 
           <Box
             sx={{
@@ -711,7 +714,7 @@ export default function AgreementSignatoryStepperWrapper({
                       : 'Next'
                     : activeStep === steps.length - 1
                       ? 'Complete'
-                      : 'Save and Next'}
+                      : 'Save & Next'}
               </Button>
             </Box>
           </Box>

@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { ArrowLeft, Download, RefreshCw } from 'lucide-react'
 import { useProjects } from '@/hooks/useProjects'
-import { useBuildPartners } from '@/hooks/useBuildPartners'
+import { useAgreements } from '@/hooks/master/EntitieHook/useAgreement'
 import { ReportFormFields } from '@/components/organisms/ReportFormFields'
 import { ReportResultsTable } from '@/components/organisms/ReportResultsTable'
 import { Button } from '@/components/atoms/Button'
@@ -37,7 +37,7 @@ const ReportDetailPage = () => {
   const { data: projectsData } = useProjects(0, 1000)
 
   // Fetch real developer data (build partners)
-  const { data: developersData } = useBuildPartners(0, 1000)
+  const { data: developersData } = useAgreements(0, 1000)
 
   const projectOptions = useMemo(() => {
     if (!projectsData?.content) return []
@@ -455,12 +455,12 @@ const ReportDetailPage = () => {
     <DashboardLayout title={businessReportTitle}>
       <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+        <div className="px-4 py-3 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 onClick={handleBack}
-                className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 group"
+                className="flex items-center justify-center w-8 h-8 transition-colors duration-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 group"
                 aria-label="Go back"
               >
                 <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
@@ -476,7 +476,7 @@ const ReportDetailPage = () => {
                 size="sm"
                 onClick={handleDownloadTemplate}
                 disabled={isDownloading}
-                className="flex items-center gap-1 px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+                className="flex items-center gap-1 px-3 py-1 text-xs text-gray-700 transition-all duration-200 border border-gray-300 dark:border-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 {isDownloading ? (
                   <RefreshCw className="w-3 h-3 animate-spin" />
@@ -493,7 +493,7 @@ const ReportDetailPage = () => {
                   size="sm"
                   onClick={handleGenerateReport}
                   disabled={isGenerating}
-                  className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-400 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-all duration-200"
+                  className="flex items-center gap-1 px-3 py-1 text-xs text-white transition-all duration-200 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-400 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
                   {isGenerating ? (
                     <RefreshCw className="w-3 h-3 animate-spin" />
@@ -510,7 +510,7 @@ const ReportDetailPage = () => {
         {/* Content */}
         <div className="flex-1 p-4 space-y-4">
           {/* Form Section */}
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+          <div className="p-4 bg-white border border-gray-100 rounded-lg shadow-sm dark:bg-gray-900 dark:border-gray-700">
             <ReportFormFields
               fields={reportConfig.fields}
               values={formData}
