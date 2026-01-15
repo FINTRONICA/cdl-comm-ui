@@ -63,7 +63,7 @@ export {
 } from './workflowAmountRuleService'
 
 export {
-  WorkflowAmountLabelsService,
+  WorkflowAmountRuleLabelsService,
   type WorkflowAmountRuleLabelResponse,
   type ProcessedWorkflowAmountRuleLabels,
 } from './workflowAmountRuleLabelsService'
