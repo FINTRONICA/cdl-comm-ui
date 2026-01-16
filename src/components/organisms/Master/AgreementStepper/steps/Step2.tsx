@@ -26,6 +26,7 @@ import {
 import { formatDate } from '@/utils'
 import { GlobalLoading } from '@/components/atoms'
 import { useAgreementLabelsWithCache, useAgreement, useAgreementDocuments } from '@/hooks'
+import { useApplicationSettings } from '@/hooks/useApplicationSettings'
 import { getAgreementLabel } from '@/constants/mappings/master/Entity/agreementMapping'
 import { useAppStore } from '@/store'
 
@@ -80,7 +81,6 @@ const fieldBoxSx = {
 }
 
 // Data interfaces
-
 interface DocumentData {
   id: string
   fileName: string
@@ -91,11 +91,21 @@ interface DocumentData {
 
 interface Step2Props {
   agreementId?: string | undefined
+  stepStatus?: {
+    step1?: boolean
+    lastCompletedStep?: number
+    stepData?: {
+      step1?: Agreement | null
+    }
+    errors?: {
+      step1?: unknown
+    }
+  } | null | undefined
   onEditStep?: ((stepNumber: number) => void) | undefined
   isReadOnly?: boolean
 }
 
-const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }: Step2Props) => {
+const Step2 = ({ agreementId: propAgreementId, stepStatus, onEditStep, isReadOnly = false }: Step2Props) => {
   const params = useParams()
   const agreementId = propAgreementId || (params.id as string)
   const isDarkMode = useIsDarkMode()
@@ -108,7 +118,11 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Dynamic labels helper (same as other steps)
+  // Dropdown labels for review display
+  const { data: feesOptions = [] } = useApplicationSettings('FEE')
+  const { data: dealPriorityOptions = [] } = useApplicationSettings('DEAL_PRIORITY')
+
+  // Dynamic labels helper
   const { data: agreementLabels, getLabel } = useAgreementLabelsWithCache()
   const currentLanguage = useAppStore((state) => state.language) || 'EN'
   const getAgreementLabelDynamic = useCallback(
@@ -132,13 +146,35 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
     [isDarkMode]
   )
 
+  const getDropdownLabelById = useCallback(
+    (options: Array<{ id: number; displayName?: string; settingValue?: string }>, value: unknown) => {
+      const rawId =
+        typeof value === 'number'
+          ? value
+          : typeof value === 'object' && value !== null && 'id' in value
+            ? Number((value as { id?: number | string }).id)
+            : undefined
 
-  // CRITICAL FIX: Step2 should use stepStatus data from parent if available
-  // Only fetch independently if stepStatus is not provided
-  // This prevents duplicate API calls when parent already has the data
-  const { data: agreementDetailsData, isLoading: isLoadingDetails, error: detailsError } = useAgreement(
-    agreementId || ''
+      if (!rawId || Number.isNaN(rawId)) {
+        return '-'
+      }
+
+      const match = options.find((option) => option.id === rawId)
+      return match?.displayName || match?.settingValue || '-'
+    },
+    []
   )
+
+  // Use stepStatus data first (from parent), fallback to API call only if not available
+  const step1Data = stepStatus?.stepData?.step1
+  const shouldFetchAgreement = !step1Data && !!agreementId && agreementId.trim() !== ''
+  
+  // Only fetch if stepStatus doesn't have the data
+  const { data: agreementDetailsData, isLoading: isLoadingDetails, error: detailsError } = useAgreement(
+    shouldFetchAgreement ? agreementId : ''
+  )
+  
+  // Always fetch documents (not available in stepStatus)
   const { data: documentsResponse, isLoading: isLoadingDocuments, error: documentsError } = useAgreementDocuments(
     agreementId || '', 
     'AGREEMENT', 
@@ -146,12 +182,15 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
     20
   )
 
-  // Update local state when React Query data changes
+  // Update local state from stepStatus or API response
   useEffect(() => {
-    if (agreementDetailsData) {
+    if (step1Data) {
+      setAgreementDetails(step1Data)
+      setLoading(false)
+    } else if (agreementDetailsData) {
       setAgreementDetails(agreementDetailsData)
     }
-  }, [agreementDetailsData])
+  }, [step1Data, agreementDetailsData])
 
   useEffect(() => {
     if (documentsResponse) {
@@ -194,15 +233,32 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
 
   // Update loading and error states
   useEffect(() => {
-    setLoading(isLoadingDetails || isLoadingDocuments)
-    setError(
-      detailsError 
-        ? (detailsError instanceof Error ? detailsError.message : 'Failed to fetch agreement details')
-        : documentsError
-          ? (documentsError instanceof Error ? documentsError.message : 'Failed to fetch documents')
-          : null
-    )
-  }, [isLoadingDetails, isLoadingDocuments, detailsError, documentsError])
+    // If we have stepStatus data, we're not loading
+    if (step1Data) {
+      setLoading(isLoadingDocuments)
+    } else {
+      setLoading(isLoadingDetails || isLoadingDocuments)
+    }
+    
+    // CRITICAL FIX: Only show critical errors, not optional operations like documents
+    // Documents are optional, so don't show error for document fetch failures
+    // Only show error if agreement details fail (and we don't have stepStatus data)
+    if (step1Data) {
+      // We have agreement data from stepStatus, so don't show errors
+      setError(null)
+    } else if (detailsError) {
+      // Format error message to be user-friendly
+      const errorMessage = detailsError instanceof Error 
+        ? detailsError.message.includes('status code')
+          ? 'Failed to load agreement details. Please try refreshing the page.'
+          : detailsError.message
+        : 'Failed to fetch agreement details'
+      setError(errorMessage)
+    } else {
+      // Don't show document errors - documents are optional
+      setError(null)
+    }
+  }, [step1Data, isLoadingDetails, isLoadingDocuments, detailsError, documentsError])
 
   // Loading state
   if (loading) {
@@ -324,6 +380,18 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
+                getAgreementLabelDynamic('CDL_ESCROW_PRODUCT_MANAGET_NAME'),
+                agreementDetails.productManagerName
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAgreementLabelDynamic('CDL_ESCROW_CLIENT_NAME'),
+                agreementDetails.clientName
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
                 getAgreementLabelDynamic('CDL_ESCROW_RM_NAME'),
                 agreementDetails.relationshipManagerName
               )}
@@ -360,68 +428,16 @@ const Step2 = ({ agreementId: propAgreementId, onEditStep, isReadOnly = false }:
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getAgreementLabelDynamic('CDL_ESCROW_PRODUCT_MANAGET_NAME'),
-                agreementDetails.productManagerName
+                getAgreementLabelDynamic('CDL_ESCROW_FEES_DTO'),
+                getDropdownLabelById(feesOptions, agreementDetails.feesDTO)
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getAgreementLabelDynamic('CDL_ESCROW_CLIENT_NAME'),
-                agreementDetails.clientName
+                getAgreementLabelDynamic('CDL_ESCROW_DEAL_PRIORITY_DTO'),
+                getDropdownLabelById(dealPriorityOptions, agreementDetails.dealPriorityDTO)
               )}
             </Grid>
-            {/* <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getAgreementLabel('CDL_ESCROW_AGREEMENT_PARAMETERS_DTO'),
-                agreementDetails.agreementParametersDTO.name
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getAgreementLabel('CDL_ESCROW_AGREEMENT_FEE_SCHEDULE_DTO'),
-                agreementDetails.agreementFeeScheduleDTO.name
-              )}
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getAgreementLabel('CDL_ESCROW_DEAL_STATUS_DTO'),
-                agreementDetails.dealStatusDTO.name
-              )}
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getAgreementLabel('CDL_ESCROW_DEAL_TYPE_DTO'),
-                agreementDetails.dealTypeDTO.name
-              )}
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getAgreementLabel('CDL_ESCROW_DEAL_SUB_TYPE_DTO'),
-                agreementDetails.dealSubTypeDTO.name
-              )}
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getAgreementLabel('CDL_ESCROW_PRODUCT_PROGRAM_DTO'),
-                agreementDetails.productProgramDTO.name
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getAgreementLabel('CDL_ESCROW_AGREEMENT_STATUS'),
-                agreementDetails.agreementStatusDTO.name
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getAgreementLabel('CDL_ESCROW_DEAL_PRIORITY_DTO'),
-                agreementDetails.dealPriorityDTO.name
-              )}
-            </Grid> */}
           </Grid>
         </CardContent>
       </Card>

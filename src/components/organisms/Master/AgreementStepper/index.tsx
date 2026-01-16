@@ -37,7 +37,7 @@ import {
   useStepForm,
 } from "../PartyStepper/hooks";
 import { useStepValidation } from "./hooks/useStepValidation";
-import { Step1, Step3 } from "./steps";
+import { Step1, Step2 } from "./steps";
 import DocumentUploadFactory from "../../DocumentUpload/DocumentUploadFactory";
 import { DocumentItem } from "../PartyStepper/partyTypes";
 
@@ -170,7 +170,7 @@ export default function AgreementStepperWrapper({
           // Review step - show agreement details and documents
           // Pass stepStatus data to avoid duplicate API calls
           return (
-            <Step3
+            <Step2
               key={`review-${agreementId}`}
               agreementId={agreementId}
               stepStatus={stepStatus}
