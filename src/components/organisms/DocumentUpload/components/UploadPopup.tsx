@@ -72,8 +72,7 @@ export const UploadPopup: React.FC<UploadPopupProps> = ({
     if (open && documentTypes && documentTypes.length > 0) {
       // Auto-select first option if none selected
       if (!selectedDocumentType && documentTypes[0]) {
-        // Use settingValue (value) instead of id for API compatibility
-        setSelectedDocumentType(documentTypes[0].value)
+        setSelectedDocumentType(documentTypes[0].id.toString())
       }
     } else if (open && (!documentTypes || documentTypes.length === 0)) {
       // Reset if no document types available
@@ -447,7 +446,7 @@ export const UploadPopup: React.FC<UploadPopupProps> = ({
               documentTypes.map((docType) => (
                 <MenuItem
                   key={docType.id}
-                  value={docType.value}
+                  value={docType.id.toString()}
                   sx={{
                     fontFamily: 'Outfit',
                     fontSize: '14px',

@@ -43,6 +43,7 @@ import {
 import { apiClient } from '../../../lib/apiClient'
 import { API_ENDPOINTS } from '../../../constants/apiEndpoints'
 import { UploadPopup } from './components/UploadPopup'
+import { PARTIES_QUERY_KEY } from '@/hooks/master/CustomerHook/useParty'
 
 interface DocumentUploadProps<
   T extends BaseDocument = BaseDocument,
@@ -151,6 +152,78 @@ const DocumentUpload = <
   const mapApiToDocumentMemo = useMemo(
     () => config.mapApiToDocument,
     [config.mapApiToDocument]
+  )
+
+  const normalizeApiDocument = useCallback((doc: any) => {
+    if (!doc || typeof doc !== 'object') {
+      return doc
+    }
+    if (!doc.documentTypeDTO && doc.documentType?.settingValue) {
+      return {
+        ...doc,
+        documentTypeDTO: {
+          settingValue: doc.documentType.settingValue,
+          languageTranslationId: {
+            configValue: doc.documentType.settingValue,
+          },
+        },
+      }
+    }
+    return doc
+  }, [])
+
+  const syncPartyDocumentsToStepStatus = useCallback(
+    (
+      newDocuments: any[],
+      options?: { removeId?: string | number; replace?: boolean }
+    ) => {
+      if (config.entityType !== 'PARTY' || !config.entityId) return
+
+      queryClient.setQueryData(
+        [PARTIES_QUERY_KEY, 'stepStatus', config.entityId],
+        (prev: unknown) => {
+          const existing = prev as {
+            stepData?: Record<string, any>
+          } | null
+          const existingDocs =
+            existing?.stepData?.documents?.content || []
+
+          const normalizedNew = newDocuments.map(normalizeApiDocument)
+          const baseDocs = options?.replace ? [] : existingDocs
+          const merged = baseDocs.filter((doc: any) => {
+            if (options?.removeId === undefined) return true
+            return String(doc?.id) !== String(options.removeId)
+          })
+
+          normalizedNew.forEach((doc) => {
+            const exists = merged.some(
+              (existingDoc: any) =>
+                String(existingDoc?.id) === String(doc?.id)
+            )
+            if (!exists) {
+              merged.push(doc)
+            }
+          })
+
+          return {
+            ...(existing || {}),
+            stepData: {
+              ...(existing?.stepData || {}),
+              documents: {
+                content: merged,
+                page: {
+                  size: merged.length,
+                  number: 0,
+                  totalElements: merged.length,
+                  totalPages: 1,
+                },
+              },
+            },
+          }
+        }
+      )
+    },
+    [config.entityId, config.entityType, normalizeApiDocument, queryClient]
   )
 
   // Update local state from React Query response - single source of truth
@@ -367,6 +440,7 @@ const DocumentUpload = <
 
         let successfulUploads = 0
         const successfullyUploadedDocs: T[] = []
+        const successfulUploadResponses: ApiResponse[] = []
 
         for (const document of newDocuments) {
           try {
@@ -384,6 +458,7 @@ const DocumentUpload = <
               return updated
             })
             successfullyUploadedDocs.push(updatedDocument)
+            successfulUploadResponses.push(response)
             successfulUploads++
           } catch (error) {
             setUploadedDocuments((prev) => {
@@ -405,6 +480,11 @@ const DocumentUpload = <
 
           // Invalidate queries - this will automatically trigger refetch
           queryClient.invalidateQueries({ queryKey })
+
+          // Sync uploaded docs into stepStatus cache for Party review/back flow
+          if (successfulUploadResponses.length > 0) {
+            syncPartyDocumentsToStepStatus(successfulUploadResponses)
+          }
 
           // Call success callback with successfully uploaded documents
           // Use the documents we just uploaded, not the full state
@@ -511,6 +591,9 @@ const DocumentUpload = <
                 setValue(formFieldName, filtered, { shouldDirty: false })
                 return filtered
               })
+
+              // Keep stepStatus documents in sync for Party review/back flow
+              syncPartyDocumentsToStepStatus([], { removeId: document.id })
 
               // Call the original action handler if it exists
               if (action.onClick) {
