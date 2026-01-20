@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { validateAgreementParameterStepData } from '@/lib/validation/masterValidation/agreementParameterSchemasSchemas'
+import { validateAgreementParameterStepData } from '@/lib/validation/masterValidation/agreementParameterSchemas'
 import { ValidationResult } from '@/components/organisms/Master/PartyStepper/types'
 
 /**

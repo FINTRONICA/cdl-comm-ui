@@ -131,6 +131,14 @@ const Step2 = ({ agreementParameterId: propAgreementParameterId, onEditStep, isR
     ),
     [isDarkMode]
   )
+  const getSettingDisplayValue = useCallback(
+    (setting: {
+      languageTranslationId?: { configValue?: string }
+      settingValue?: string
+    } | null | undefined) =>
+      setting?.languageTranslationId?.configValue || setting?.settingValue || '-',
+    []
+  )
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -312,7 +320,9 @@ const Step2 = ({ agreementParameterId: propAgreementParameterId, onEditStep, isR
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_REF_NO'),
-                agreementParameterDetails.id?.toString() || '-'
+                agreementParameterDetails.parametersRefNo ||
+                  agreementParameterDetails.id?.toString() ||
+                  '-'
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -340,31 +350,28 @@ const Step2 = ({ agreementParameterId: propAgreementParameterId, onEditStep, isR
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_PERMITTED_INVESTMENT_ALLOWED'),
-                agreementParameterDetails.permittedInvestmentAllowedDTO?.languageTranslationId?.configValue ||
-                agreementParameterDetails.permittedInvestmentAllowedDTO?.settingValue ||
-                '-'
+                getSettingDisplayValue(agreementParameterDetails.permittedInvestmentAllowedDTO)
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_AMENDMENT_ALLOWED'),
-                agreementParameterDetails.amendmentAllowedDTO?.languageTranslationId?.configValue ||
-                agreementParameterDetails.amendmentAllowedDTO?.settingValue ||
-                '-'
+                getSettingDisplayValue(agreementParameterDetails.amendmentAllowedDTO)
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_DEAL_CLOSURE_BASIS'),
-                agreementParameterDetails.dealClosureBasisDTO?.languageTranslationId?.configValue ||
-                agreementParameterDetails.dealClosureBasisDTO?.settingValue ||
-                '-'
+                getSettingDisplayValue(agreementParameterDetails.dealClosureBasisDTO)
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
-                getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_ESCROW_AGREEMENT'),
-                agreementParameterDetails.escrowAgreementDTO || '-'
+                getAgreementParameterLabelDynamic('CDL_AGREEMENT_PARAMETER_PERMITTED_INVESTMENT'),
+                getSettingDisplayValue(
+                  agreementParameterDetails.permittedInvestmentADTO ||
+                    (agreementParameterDetails as { escrowAgreementDTO?: { languageTranslationId?: { configValue?: string }; settingValue?: string } }).escrowAgreementDTO
+                )
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>

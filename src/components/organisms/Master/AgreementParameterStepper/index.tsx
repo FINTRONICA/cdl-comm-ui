@@ -404,18 +404,19 @@ export default function AgreementParameterStepperWrapper({
           return String(dateValue)
         }
 
-        // Helper to extract DTO ID (handle both object and number formats)
-        const getDtoId = (dto: unknown): number | null | undefined => {
+        // Helper to extract DTO ID and format as { id }
+        const getDtoObject = (dto: unknown): { id: number } | null => {
           if (!dto || dto === null || dto === undefined) return null
-          if (typeof dto === 'number') return dto
+          if (typeof dto === 'number') return { id: dto }
           if (typeof dto === 'object' && 'id' in dto) {
             const id = (dto as { id: number }).id
-            return typeof id === 'number' ? id : null
+            return typeof id === 'number' ? { id } : null
           }
           return null
         }
 
         const step1Data: AgreementParameterDetailsData = {
+          parametersRefNo: currentFormData.parametersRefNo as string | undefined || undefined,
           agreementEffectiveDate: getDateValue(currentFormData.agreementEffectiveDate),
           agreementExpiryDate: getDateValue(currentFormData.agreementExpiryDate),
           agreementRemarks: currentFormData.agreementRemarks as string | undefined || undefined,
@@ -424,11 +425,10 @@ export default function AgreementParameterStepperWrapper({
                 ? currentFormData.active 
                 : currentFormData.active === 'true' || currentFormData.active === true)
             : true, // Default to true if not provided
-          permittedInvestmentAllowedDTO: getDtoId(currentFormData.permittedInvestmentAllowedDTO),
-          amendmentAllowedDTO: getDtoId(currentFormData.amendmentAllowedDTO),
-          dealClosureBasisDTO: getDtoId(currentFormData.dealClosureBasisDTO),
-          // Always pass null for escrowAgreementDTO - never pass string values
-          escrowAgreementDTO: null,
+          permittedInvestmentAllowedDTO: getDtoObject(currentFormData.permittedInvestmentAllowedDTO),
+          permittedInvestmentADTO: getDtoObject(currentFormData.permittedInvestmentADTO),
+          amendmentAllowedDTO: getDtoObject(currentFormData.amendmentAllowedDTO),
+          dealClosureBasisDTO: getDtoObject(currentFormData.dealClosureBasisDTO),
         }
         
         // Always include enabled and deleted fields

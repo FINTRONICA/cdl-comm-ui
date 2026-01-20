@@ -193,7 +193,7 @@ const AgreementFeeSchedulesPageImpl: React.FC = () => {
       },
       {
         key: 'transactionRateAmount',
-        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_AMOUNT_RATE_PER_TRANSACTION'),
+        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_TRANSACTION_RATE_AMOUNT'),
         type: 'text' as const,
         width: 'w-48',
         sortable: true,

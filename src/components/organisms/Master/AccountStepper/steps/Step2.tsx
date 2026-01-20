@@ -23,8 +23,13 @@ import { useParams } from 'next/navigation'
 import { formatDate } from '@/utils'
 import { GlobalLoading } from '@/components/atoms'
 import { useAccountLabelsWithCache, useAccount, useAccountDocuments } from '@/hooks'
-import { getAccountLabel } from '@/constants/mappings/master/Entity/accountMapping'
+import {
+  ACCOUNT_DTO_SETTING_KEYS,
+  getAccountLabel,
+} from '@/constants/mappings/master/Entity/accountMapping'
 import { useAppStore } from '@/store'
+import { useApplicationSettings } from '@/hooks/useApplicationSettings'
+import { useFormContext } from 'react-hook-form'
 
 // Hook to detect dark mode
 const useIsDarkMode = () => {
@@ -86,6 +91,7 @@ const Step2 = ({ accountId: propAccountId, onEditStep, isReadOnly = false }: Ste
   const params = useParams()
   const accountId = propAccountId || (params.id as string)
   const isDarkMode = useIsDarkMode()
+  const { getValues } = useFormContext()
 
   // FIXED: Use React Query hooks instead of useEffect
   const {
@@ -146,6 +152,102 @@ const Step2 = ({ accountId: propAccountId, onEditStep, isReadOnly = false }: Ste
   const documentsErrorMsg = documentsError
     ? (documentsError instanceof Error ? documentsError.message : 'Failed to load documents')
     : null
+
+  const { data: accountCategorySettings = [] } = useApplicationSettings(
+    ACCOUNT_DTO_SETTING_KEYS.accountTypeDTO
+  )
+  const { data: taxPaymentSettings = [] } = useApplicationSettings(
+    ACCOUNT_DTO_SETTING_KEYS.taxPaymentDTO
+  )
+  const { data: primaryAccountSettings = [] } = useApplicationSettings(
+    ACCOUNT_DTO_SETTING_KEYS.primaryAccountDTO
+  )
+  const { data: bulkUploadProcessingSettings = [] } = useApplicationSettings(
+    ACCOUNT_DTO_SETTING_KEYS.bulkUploadProcessingDTO
+  )
+  const { data: unitaryPaymentSettings = [] } = useApplicationSettings(
+    ACCOUNT_DTO_SETTING_KEYS.unitaryPaymentDTO
+  )
+
+  const accountCategoryOptions = useMemo(
+    () =>
+      accountCategorySettings.map((item) => ({
+        id: item.id,
+        label: item.displayName || item.settingValue,
+      })),
+    [accountCategorySettings]
+  )
+  const taxPaymentOptions = useMemo(
+    () =>
+      taxPaymentSettings.map((item) => ({
+        id: item.id,
+        label: item.displayName || item.settingValue,
+      })),
+    [taxPaymentSettings]
+  )
+  const primaryAccountOptions = useMemo(
+    () =>
+      primaryAccountSettings.map((item) => ({
+        id: item.id,
+        label: item.displayName || item.settingValue,
+      })),
+    [primaryAccountSettings]
+  )
+  const bulkUploadProcessingOptions = useMemo(
+    () =>
+      bulkUploadProcessingSettings.map((item) => ({
+        id: item.id,
+        label: item.displayName || item.settingValue,
+      })),
+    [bulkUploadProcessingSettings]
+  )
+  const unitaryPaymentOptions = useMemo(
+    () =>
+      unitaryPaymentSettings.map((item) => ({
+        id: item.id,
+        label: item.displayName || item.settingValue,
+      })),
+    [unitaryPaymentSettings]
+  )
+
+  const getDtoLabel = useCallback(
+    (value: unknown, options: Array<{ id: number; label: string }>) => {
+      if (value && typeof value === 'object') {
+        const valueObj = value as {
+          id?: number | string
+          displayName?: string
+          settingValue?: string
+          name?: string
+          languageTranslationId?: { configValue?: string }
+        }
+        const directLabel =
+          valueObj.languageTranslationId?.configValue ||
+          valueObj.displayName ||
+          valueObj.settingValue ||
+          valueObj.name
+        if (directLabel) return directLabel
+        if (valueObj.id !== undefined) {
+          const option = options.find((item) => item.id === Number(valueObj.id))
+          return option?.label || '-'
+        }
+      }
+      if (typeof value === 'number' || typeof value === 'string') {
+        const option = options.find((item) => item.id === Number(value))
+        return option?.label || '-'
+      }
+      return '-'
+    },
+    []
+  )
+
+  const formValues = getValues()
+  const hasFormData =
+    !!formValues?.accountNumber ||
+    !!formValues?.productCode ||
+    !!formValues?.accountDisplayName
+  const displayAccountDetails =
+    accountDetails ||
+    (hasFormData ? (formValues as unknown as typeof accountDetails) : null)
 
   // Dynamic labels helper
   const { data: accountLabels, getLabel } = useAccountLabelsWithCache()
@@ -208,10 +310,10 @@ const Step2 = ({ accountId: propAccountId, onEditStep, isReadOnly = false }: Ste
   }
 
   // Show warning if documents failed but account details loaded successfully
-  const showDocumentsWarning = documentsErrorMsg && !error && accountDetails
+  const showDocumentsWarning = documentsErrorMsg && !error && displayAccountDetails
 
   // No data state
-  if (!accountDetails) {
+  if (!displayAccountDetails) {
     if (!accountId || accountId.trim() === '') {
       return (
         <Box sx={{ p: 3 }}>
@@ -305,81 +407,123 @@ const Step2 = ({ accountId: propAccountId, onEditStep, isReadOnly = false }: Ste
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_ID'),
-                accountDetails.id?.toString() || '-'
+                displayAccountDetails.id?.toString() || '-'
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_NO'),
-                accountDetails.accountNumber
+                displayAccountDetails.accountNumber
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_PRODUCT_CODE'),
-                accountDetails.productCode
+                displayAccountDetails.productCode
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_DISPLAY_NAME'),
-                accountDetails.accountDisplayName
+                displayAccountDetails.accountDisplayName
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_IBAN_NUMBER'),
-                accountDetails.ibanNumber
+                displayAccountDetails.ibanNumber
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_OFFICIAL_ACCOUNT_TITLE'),
-                accountDetails.officialAccountTitle
+                displayAccountDetails.officialAccountTitle
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_VIRTUAL_ACCOUNT'),
-                accountDetails.virtualAccountNumber
+                displayAccountDetails.virtualAccountNumber
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_TYPE'),
-                accountDetails.accountTypeCode
+                displayAccountDetails.accountTypeCode
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_TYPE_DTO'),
+                getDtoLabel(
+                  displayAccountDetails.accountTypeDTO,
+                  accountCategoryOptions
+                )
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAccountLabelDynamic('CDL_ESCROW_TAX_PAYMENT_DTO'),
+                getDtoLabel(displayAccountDetails.taxPaymentDTO, taxPaymentOptions)
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAccountLabelDynamic('CDL_ESCROW_PRIMARY_ACCOUNT_DTO'),
+                getDtoLabel(
+                  displayAccountDetails.primaryAccountDTO,
+                  primaryAccountOptions
+                )
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAccountLabelDynamic('CDL_ESCROW_BULK_UPLOAD_PROCESSING_DTO'),
+                getDtoLabel(
+                  displayAccountDetails.bulkUploadProcessingDTO,
+                  bulkUploadProcessingOptions
+                )
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAccountLabelDynamic('CDL_ESCROW_UNITARY_PAYMENT_DTO'),
+                getDtoLabel(
+                  displayAccountDetails.unitaryPaymentDTO,
+                  unitaryPaymentOptions
+                )
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_ASSIGNMENT_STATUS'),
-                accountDetails.assignmentStatus
+                displayAccountDetails.assignmentStatus
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_ASSIGNED'),
-                accountDetails.assignedToReference
+                displayAccountDetails.assignedToReference
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_OPENING_DATE'),
-                accountDetails.accountOpenDateTime
-                  ? formatDate(accountDetails.accountOpenDateTime, 'DD/MM/YYYY')
+                displayAccountDetails.accountOpenDateTime
+                  ? formatDate(displayAccountDetails.accountOpenDateTime, 'DD/MM/YYYY')
                   : '-'
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_LOOKUP_FIELD_1'),
-                accountDetails.referenceField1
+                displayAccountDetails.referenceField1
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getAccountLabelDynamic('CDL_ESCROW_ACCOUNT_LOOKUP_FIELD_2'),
-                accountDetails.referenceField2
+                displayAccountDetails.referenceField2
               )}
             </Grid>
           </Grid>

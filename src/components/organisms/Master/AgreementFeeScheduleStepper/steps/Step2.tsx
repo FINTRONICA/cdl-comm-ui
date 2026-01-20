@@ -25,8 +25,13 @@ import { agreementFeeScheduleService } from '@/services/api/masterApi/Entitie/ag
 import { formatDate } from '@/utils'
 import { GlobalLoading } from '@/components/atoms'
 import { useAgreementFeeScheduleLabelsWithCache, useAgreementFeeSchedule } from '@/hooks'
-import { getAgreementFeeScheduleLabel } from '@/constants/mappings/master/Entity/agreementFeeScheduleMapping'
+import {
+  AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS,
+  getAgreementFeeScheduleLabel,
+} from '@/constants/mappings/master/Entity/agreementFeeScheduleMapping'
 import { useAppStore } from '@/store'
+import { useApplicationSettings } from '@/hooks/useApplicationSettings'
+import { useFeeCategories } from '@/hooks/useFeeDropdowns'
 
 // Hook to detect dark mode
 const useIsDarkMode = () => {
@@ -147,6 +152,62 @@ const Step2 = ({ agreementFeeScheduleId: propAgreementFeeScheduleId, onEditStep,
         : fallback
     },
     [agreementFeeScheduleLabels, currentLanguage, getLabel]
+  )
+
+  const { data: feeSettings = [] } = useApplicationSettings(
+    AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS.feeDTO
+  )
+  const { data: feeTypeSettings = [] } = useApplicationSettings(
+    AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS.feeTypeDTO
+  )
+  const { data: feesFrequencySettings = [] } = useApplicationSettings(
+    AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS.feesFrequencyDTO
+  )
+  const { data: frequencyBasisSettings = [] } = useApplicationSettings(
+    AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS.frequencyBasisDTO
+  )
+  const { data: feeCategories = [] } = useFeeCategories()
+
+  const getSettingValueById = useCallback(
+    (
+      settings: Array<{ id: number; displayName: string; settingValue?: string }>,
+      id?: number | string | null
+    ) => {
+      if (id === null || id === undefined || id === '') return '-'
+      const idString = String(id)
+      const found = settings.find((item) => String(item.id) === idString)
+      return found?.displayName || found?.settingValue || '-'
+    },
+    []
+  )
+
+  const getFeeCategoryById = useCallback(
+    (
+      categories: Array<{ id: number; configValue?: string; settingValue?: string }>,
+      id?: number | string | null
+    ) => {
+      if (id === null || id === undefined || id === '') return '-'
+      const idString = String(id)
+      const found = categories.find((item) => String(item.id) === idString)
+      return found?.configValue || found?.settingValue || '-'
+    },
+    []
+  )
+
+  const getSettingDisplayValue = useCallback(
+    (setting?: {
+      settingValue?: string
+      languageTranslationId?: { configValue?: string }
+      id?: number
+    } | null) => {
+      if (!setting) return '-'
+      return (
+        setting.languageTranslationId?.configValue ||
+        setting.settingValue ||
+        '-'
+      )
+    },
+    []
   )
 
   // Render helper functions with dark mode support
@@ -379,6 +440,48 @@ const Step2 = ({ agreementFeeScheduleId: propAgreementFeeScheduleId, onEditStep,
               {renderDisplayField(
                 getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_CREDIT_TO_ACCOUNT'),
                 agreementFeeScheduleDetails.creditAccountNumber
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEE'),
+                getSettingDisplayValue(agreementFeeScheduleDetails.feeDTO) !== '-'
+                  ? getSettingDisplayValue(agreementFeeScheduleDetails.feeDTO)
+                  : getSettingValueById(feeSettings, agreementFeeScheduleDetails.feeDTO?.id) !== '-'
+                    ? getSettingValueById(feeSettings, agreementFeeScheduleDetails.feeDTO?.id)
+                    : getFeeCategoryById(feeCategories, agreementFeeScheduleDetails.feeDTO?.id)
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEE_TYPE'),
+                getSettingDisplayValue(agreementFeeScheduleDetails.feeTypeDTO) !== '-'
+                  ? getSettingDisplayValue(agreementFeeScheduleDetails.feeTypeDTO)
+                  : getSettingValueById(feeTypeSettings, agreementFeeScheduleDetails.feeTypeDTO?.id) !== '-'
+                    ? getSettingValueById(feeTypeSettings, agreementFeeScheduleDetails.feeTypeDTO?.id)
+                    : getFeeCategoryById(feeCategories, agreementFeeScheduleDetails.feeTypeDTO?.id)
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEES_FREQUENCY'),
+                getSettingDisplayValue(agreementFeeScheduleDetails.feesFrequencyDTO) !== '-'
+                  ? getSettingDisplayValue(agreementFeeScheduleDetails.feesFrequencyDTO)
+                  : getSettingValueById(
+                      feesFrequencySettings,
+                      agreementFeeScheduleDetails.feesFrequencyDTO?.id
+                    )
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FREQUENCY_BASIS'),
+                getSettingDisplayValue(agreementFeeScheduleDetails.frequencyBasisDTO) !== '-'
+                  ? getSettingDisplayValue(agreementFeeScheduleDetails.frequencyBasisDTO)
+                  : getSettingValueById(
+                      frequencyBasisSettings,
+                      agreementFeeScheduleDetails.frequencyBasisDTO?.id
+                    )
               )}
             </Grid>
           </Grid>

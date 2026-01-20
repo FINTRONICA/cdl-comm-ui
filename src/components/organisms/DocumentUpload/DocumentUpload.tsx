@@ -232,7 +232,7 @@ const DocumentUpload = <
       const mappedDocuments: T[] = documentsResponse.content.map(
         mapApiToDocumentMemo
       )
-      setUploadedDocuments(mappedDocuments)
+        setUploadedDocuments(mappedDocuments)
       setTotalPages(documentsResponse.page.totalPages)
       setTotalDocuments(documentsResponse.page.totalElements)
       // Only update form if documents actually changed to prevent circular updates
@@ -257,7 +257,7 @@ const DocumentUpload = <
     if (documentsError) {
       // Only show error if documents are required (not optional)
       // For optional documents, errors are non-critical and shouldn't block UI
-      if (!config.isOptional) {
+        if (!config.isOptional) {
         const errorMessage = documentsError instanceof Error
           ? documentsError.message
           : 'Failed to load existing documents'
@@ -294,7 +294,7 @@ const DocumentUpload = <
   useEffect(() => {
     onDocumentsChangeRef.current = config.onDocumentsChange
   }, [config.onDocumentsChange])
-  
+
   useEffect(() => {
     // Only update form if documents changed from user actions (not from React Query fetch)
     const successfulDocuments = uploadedDocuments.filter(
@@ -324,22 +324,43 @@ const DocumentUpload = <
     [config.documentTypeSettingKey]
   )
 
-  // Use React Query for document types
+  // Use React Query for document types - enabled when popup opens
   const { data: documentTypes = [], isLoading: isLoadingDocumentTypes } = useQuery({
     queryKey: documentTypesQueryKey,
     queryFn: async () => {
       const settingKey = config.documentTypeSettingKey || 'INVESTOR_ID_TYPE'
-      return await applicationSettingService.getDropdownOptionsByKey(settingKey)
+      try {
+        const options = await applicationSettingService.getDropdownOptionsByKey(settingKey)
+        // If no options found, try fallback
+        if (!options || options.length === 0) {
+          if (settingKey !== 'INVESTOR_ID_TYPE') {
+            const fallbackOptions = await applicationSettingService.getDropdownOptionsByKey('INVESTOR_ID_TYPE')
+            return fallbackOptions || []
+          }
+        }
+        return options || []
+      } catch (fetchError) {
+        // If primary key fails, try fallback
+        if (settingKey !== 'INVESTOR_ID_TYPE') {
+          try {
+            return await applicationSettingService.getDropdownOptionsByKey('INVESTOR_ID_TYPE')
+          } catch (fallbackError) {
+            return []
+          }
+        }
+        return []
+      }
     },
-    enabled: false, // Only fetch when popup opens
+    enabled: uploadPopup.open, // Fetch when popup opens
     staleTime: 10 * 60 * 1000, // 10 minutes - document types rarely change
     gcTime: 30 * 60 * 1000, // 30 minutes cache
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
     retry: (failureCount, error) => {
-      // Disable retry on 500 errors
+      // Disable retry on 500/404 errors
       if (error && typeof error === 'object' && 'response' in error) {
         const httpError = error as { response?: { status?: number } }
-        if (httpError.response?.status === 500) {
+        if (httpError.response?.status === 500 || httpError.response?.status === 404) {
           return false
         }
       }
@@ -347,37 +368,20 @@ const DocumentUpload = <
     },
   })
 
-  const handleUploadClick = useCallback(async () => {
+  const handleUploadClick = useCallback(() => {
+    // Open popup - React Query will automatically fetch when enabled becomes true
     setUploadPopup((prev) => ({
       ...prev,
       open: true,
       loading: true,
     }))
+  }, [])
 
-    // Fetch document types using React Query
-    try {
-      await queryClient.fetchQuery({
-        queryKey: documentTypesQueryKey,
-        queryFn: async () => {
-          const settingKey = config.documentTypeSettingKey || 'INVESTOR_ID_TYPE'
-          return await applicationSettingService.getDropdownOptionsByKey(settingKey)
-        },
-      })
-    } catch (error) {
-      // Error handled by query
-    } finally {
-      setUploadPopup((prev) => ({
-        ...prev,
-        loading: false,
-      }))
-    }
-  }, [queryClient, documentTypesQueryKey, config.documentTypeSettingKey])
-
-  // Update popup state when document types load - only when popup is open
+  // Update popup state when document types load from React Query
   useEffect(() => {
     if (uploadPopup.open) {
-      setUploadPopup((prev) => ({
-        ...prev,
+        setUploadPopup((prev) => ({
+          ...prev,
         documentTypes: documentTypes || [],
         loading: isLoadingDocumentTypes,
       }))

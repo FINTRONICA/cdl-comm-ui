@@ -14,7 +14,11 @@ import {
 } from '@mui/material'
 import { FormProvider } from 'react-hook-form'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
-import { useAgreementFeeScheduleStepStatus, useAgreementFeeScheduleStepManager } from '@/hooks'
+import {
+  useAgreementFeeSchedule,
+  useAgreementFeeScheduleStepStatus,
+  useAgreementFeeScheduleStepManager,
+} from '@/hooks'
 import { useCreateWorkflowRequest } from '@/hooks/workflow'
 import { useAgreementFeeScheduleLabelsWithCache } from '@/hooks'
 import { getAgreementFeeScheduleLabel } from '@/constants/mappings/master/Entity/agreementFeeScheduleMapping'
@@ -26,11 +30,7 @@ interface StepperProps {
   initialStep?: number
   isViewMode?: boolean
 }
-import {
-  useStepNotifications,
-  useStepDataProcessing,
-  useStepForm,
-} from "../PartyStepper/hooks";
+import { useStepNotifications, useStepForm } from "../PartyStepper/hooks";
 import { useStepValidation } from './hooks/useStepValidation'
 import { Step1, Step2 } from './steps'
 import DocumentUploadFactory from '../../DocumentUpload/DocumentUploadFactory'
@@ -85,12 +85,14 @@ export default function AgreementFeeScheduleStepperWrapper({
     propIsViewMode !== undefined ? propIsViewMode : mode === 'view'
 
   const notifications = useStepNotifications()
-  const dataProcessing = useStepDataProcessing()
   const { methods, formState, setShouldResetForm } = useStepForm(
     agreementFeeScheduleId,
     activeStep
   )
   const stepManager = useAgreementFeeScheduleStepManager()
+  const { data: agreementFeeScheduleDetails } = useAgreementFeeSchedule(
+    agreementFeeScheduleId && agreementFeeScheduleId.trim() !== '' ? agreementFeeScheduleId : ''
+  )
   const validation = useStepValidation()
   const createWorkflowRequest = useCreateWorkflowRequest()
 
@@ -205,30 +207,30 @@ export default function AgreementFeeScheduleStepperWrapper({
   }, [isViewMode, isEditingMode])
 
   useEffect(() => {
-    // Only process step data if we have agreementFeeScheduleId and stepStatus
-    // Skip processing for Review step (Step 3) as it loads its own data
     if (
-      activeStep !== 2 && // Don't process data for Review step
-      agreementFeeScheduleId &&
-      agreementFeeScheduleId.trim() !== '' &&
-      dataProcessing.shouldProcessStepData(
-        stepStatus,
-        agreementFeeScheduleId,
-        formState.shouldResetForm
-      )
+      activeStep !== 0 ||
+      !agreementFeeScheduleDetails ||
+      !agreementFeeScheduleId ||
+      agreementFeeScheduleId.trim() === '' ||
+      !formState.shouldResetForm
     ) {
-      try {
-        const processedData = dataProcessing.processStepDataForForm({
-          activeStep,
-          stepStatus,
-        })
-        methods.reset(processedData)
-        setShouldResetForm(false)
-      } catch {
-        // Don't throw - allow component to continue rendering
-      }
+      return
     }
-  }, [activeStep, stepStatus, agreementFeeScheduleId, setShouldResetForm, dataProcessing, formState.shouldResetForm, methods])
+
+    try {
+      methods.reset(agreementFeeScheduleDetails as Record<string, unknown>)
+      setShouldResetForm(false)
+    } catch {
+      // Don't throw - allow component to continue rendering
+    }
+  }, [
+    activeStep,
+    agreementFeeScheduleDetails,
+    agreementFeeScheduleId,
+    formState.shouldResetForm,
+    methods,
+    setShouldResetForm,
+  ])
 
   const handleSaveAndNext = async () => {
     try {
@@ -402,6 +404,7 @@ export default function AgreementFeeScheduleStepperWrapper({
       // For step 1, extract only the relevant fields
       if (activeStep === 0) {
         const step1Data: AgreementFeeScheduleDetailsData = {
+          regulatoryRefNo: currentFormData.regulatoryRefNo as string | null | undefined,
           effectiveStartDate: currentFormData.effectiveStartDate as string,
           effectiveEndDate: currentFormData.effectiveEndDate as string,
           operatingLocation: currentFormData.operatingLocation as string,

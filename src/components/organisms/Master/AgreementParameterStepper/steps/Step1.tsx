@@ -8,16 +8,18 @@ import {
   Grid,
   InputLabel,
   MenuItem,
-  OutlinedInput,
   Select,
   TextField,
   Typography,
   useTheme,
-  SxProps,
-  Theme,
   alpha,
+  Button,
+  InputAdornment,
 } from "@mui/material";
-import { KeyboardArrowDown as KeyboardArrowDownIcon } from "@mui/icons-material";
+import {
+  Refresh as RefreshIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+} from '@mui/icons-material'
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -26,7 +28,8 @@ import { getAgreementParameterLabel } from "@/constants/mappings/master/Entity/a
 import { useAgreementParameterLabelsWithCache } from "@/hooks";
 import { useAppStore } from "@/store";
 import { agreementParameterService } from "@/services/api/masterApi/Entitie/agreementParameterService";
-import { validateAgreementParameterField } from "@/lib/validation/masterValidation/agreementParameterSchemasSchemas";
+import { validateAgreementParameterField } from "@/lib/validation/masterValidation/agreementParameterSchemas";
+import { useApplicationSettings } from "@/hooks/useApplicationSettings";
 import {
   commonFieldStyles as sharedCommonFieldStyles,
   selectStyles as sharedSelectStyles,
@@ -56,6 +59,8 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
     }
     return sharedCommonFieldStyles;
   }, [theme]);
+  const [generatedId, setGeneratedId] = useState<string>("");
+  const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false);
 
   const selectFieldStyles = React.useMemo(() => {
     if (typeof sharedSelectStyles === "function") {
@@ -131,6 +136,108 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
     [agreementParameterLabels, currentLanguage, getLabel]
   );
 
+  const resolveSx = (styles: unknown) => {
+    if (typeof styles === "function") {
+      return styles(theme) as Record<string, unknown>;
+    }
+    if (Array.isArray(styles)) {
+      return Object.assign({}, ...styles) as Record<string, unknown>;
+    }
+    if (styles && typeof styles === "object") {
+      return styles as Record<string, unknown>;
+    }
+    return {};
+  };
+
+  const getDtoId = (value: unknown): number | undefined => {
+    if (value && typeof value === "object" && "id" in value) {
+      const idValue = (value as { id?: number | string }).id;
+      return idValue !== undefined && idValue !== null ? Number(idValue) : undefined;
+    }
+    if (typeof value === "number") {
+      return value;
+    }
+    if (
+      typeof value === "string" &&
+      value.trim() !== "" &&
+      !Number.isNaN(Number(value))
+    ) {
+      return Number(value);
+    }
+    return undefined;
+  };
+
+  // Initialize agreement parameter ref no from form value
+  useEffect(() => {
+    const subscription = watch((value) => {
+      if (value.parametersRefNo) {
+        setGeneratedId(String(value.parametersRefNo));
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  const {
+    data: permittedInvestmentAllowedSettings = [],
+    loading: permittedInvestmentAllowedLoading,
+    error: permittedInvestmentAllowedError,
+  } = useApplicationSettings("PERMITTED_INVESTMENT_ALLOWED");
+  const {
+    data: amendmentAllowedSettings = [],
+    loading: amendmentAllowedLoading,
+    error: amendmentAllowedError,
+  } = useApplicationSettings("AMENDMENT_ALLOWED");
+  const {
+    data: dealClosureBasisSettings = [],
+    loading: dealClosureBasisLoading,
+    error: dealClosureBasisError,
+  } = useApplicationSettings("DEAL_CLOSURE_BASIS");
+  const {
+    data: permittedInvestmentASettings = [],
+    loading: permittedInvestmentALoading,
+    error: permittedInvestmentAError,
+  } = useApplicationSettings("PERMITTED_INVESTMENT");
+
+  const permittedInvestmentAllowedOptions = React.useMemo(
+    () =>
+      permittedInvestmentAllowedSettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [permittedInvestmentAllowedSettings]
+  );
+
+  const amendmentAllowedOptions = React.useMemo(
+    () =>
+      amendmentAllowedSettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [amendmentAllowedSettings]
+  );
+
+  const dealClosureBasisOptions = React.useMemo(
+    () =>
+      dealClosureBasisSettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [dealClosureBasisSettings]
+  );
+
+  const permittedInvestmentAOptions = React.useMemo(
+    () =>
+      permittedInvestmentASettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [permittedInvestmentASettings]
+  );
+
   // Populate fields when agreement parameter data is loaded (for edit mode)
   useEffect(() => {
     if (!agreementParameterId || !isEditMode) {
@@ -138,8 +245,6 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
     }
 
     let isPopulating = false;
-    let timeoutId: NodeJS.Timeout | null = null;
-
     const populateFields = async () => {
       if (isPopulating) return;
       isPopulating = true;
@@ -155,6 +260,16 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
           );
 
         // Populate fields if they exist in API response and form fields are empty
+        if (agreementParameter?.parametersRefNo !== undefined && agreementParameter?.parametersRefNo !== null) {
+          const currentRefNo = watch("parametersRefNo");
+          if (!currentRefNo) {
+            setValue("parametersRefNo", String(agreementParameter.parametersRefNo), {
+              shouldValidate: true,
+              shouldDirty: false,
+            });
+          }
+        }
+
         if (agreementParameter?.agreementEffectiveDate) {
           const currentEffectiveDate = watch("agreementEffectiveDate");
           if (!currentEffectiveDate) {
@@ -183,84 +298,63 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
           }
         }
 
-        if (agreementParameter?.agreementRemarks) {
+        if (agreementParameter?.agreementRemarks !== undefined && agreementParameter?.agreementRemarks !== null) {
           const currentRemarks = watch("agreementRemarks");
           if (!currentRemarks || currentRemarks.trim() === "") {
-            setValue("agreementRemarks", agreementParameter.agreementRemarks, {
+            setValue("agreementRemarks", String(agreementParameter.agreementRemarks), {
               shouldValidate: true,
               shouldDirty: false,
             });
           }
         }
 
-        if (agreementParameter?.permittedInvestmentAllowedDTO) {
+        const permittedInvestmentAllowedId = getDtoId(
+          agreementParameter?.permittedInvestmentAllowedDTO
+        );
+        if (permittedInvestmentAllowedId !== undefined) {
           const currentPermittedInvestment = watch(
             "permittedInvestmentAllowedDTO"
           );
           if (!currentPermittedInvestment) {
-            const dtoId =
-              typeof agreementParameter.permittedInvestmentAllowedDTO ===
-              "object"
-                ? agreementParameter.permittedInvestmentAllowedDTO.id
-                : agreementParameter.permittedInvestmentAllowedDTO;
-            setValue(
-              "permittedInvestmentAllowedDTO",
-              { id: dtoId },
-              {
-                shouldValidate: true,
-                shouldDirty: false,
-              }
-            );
+            setValue("permittedInvestmentAllowedDTO", { id: permittedInvestmentAllowedId }, {
+              shouldValidate: false,
+              shouldDirty: false,
+            });
           }
         }
 
-        if (agreementParameter?.amendmentAllowedDTO) {
+        const amendmentAllowedId = getDtoId(agreementParameter?.amendmentAllowedDTO);
+        if (amendmentAllowedId !== undefined) {
           const currentAmendment = watch("amendmentAllowedDTO");
           if (!currentAmendment) {
-            const dtoId =
-              typeof agreementParameter.amendmentAllowedDTO === "object"
-                ? agreementParameter.amendmentAllowedDTO.id
-                : agreementParameter.amendmentAllowedDTO;
-            setValue(
-              "amendmentAllowedDTO",
-              { id: dtoId },
-              {
-                shouldValidate: true,
-                shouldDirty: false,
-              }
-            );
+            setValue("amendmentAllowedDTO", { id: amendmentAllowedId }, {
+              shouldValidate: false,
+              shouldDirty: false,
+            });
           }
         }
 
-        if (agreementParameter?.dealClosureBasisDTO) {
+        const dealClosureBasisId = getDtoId(agreementParameter?.dealClosureBasisDTO);
+        if (dealClosureBasisId !== undefined) {
           const currentClosureBasis = watch("dealClosureBasisDTO");
           if (!currentClosureBasis) {
-            const dtoId =
-              typeof agreementParameter.dealClosureBasisDTO === "object"
-                ? agreementParameter.dealClosureBasisDTO.id
-                : agreementParameter.dealClosureBasisDTO;
-            setValue(
-              "dealClosureBasisDTO",
-              { id: dtoId },
-              {
-                shouldValidate: true,
-                shouldDirty: false,
-              }
-            );
+            setValue("dealClosureBasisDTO", { id: dealClosureBasisId }, {
+              shouldValidate: false,
+              shouldDirty: false,
+            });
           }
         }
 
-        if (agreementParameter?.escrowAgreementDTO) {
-          const currentEscrowAgreement = watch("escrowAgreementDTO");
-          if (!currentEscrowAgreement) {
-            setValue(
-              "escrowAgreementDTO",
-              agreementParameter.escrowAgreementDTO,
-              {
-                shouldValidate: true,
-                shouldDirty: false,
-              }
-            );
+        const permittedInvestmentAId = getDtoId(
+          agreementParameter?.permittedInvestmentADTO
+        );
+        if (permittedInvestmentAId !== undefined) {
+          const currentPermittedInvestmentA = watch("permittedInvestmentADTO");
+          if (!currentPermittedInvestmentA) {
+            setValue("permittedInvestmentADTO", { id: permittedInvestmentAId }, {
+              shouldValidate: false,
+              shouldDirty: false,
+            });
           }
         }
 
@@ -277,19 +371,12 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
         // Error handled silently - form will remain empty
       } finally {
         isPopulating = false;
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
       }
     };
 
     populateFields();
 
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
+    return () => {};
   }, [agreementParameterId, isEditMode, watch, setValue]);
 
   // Watch for effective date changes and validate expiry date
@@ -301,32 +388,78 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
     }
   }, [effectiveDate, trigger]);
 
-  // Placeholder for dropdown data - to be implemented
-  const getDisplayLabel = (option: unknown, fallback: string) => {
-    if (option && typeof option === "object" && "settingValue" in option) {
-      return String((option as { settingValue: string }).settingValue);
-    }
+  const dropdownsErrorMessage =
+    permittedInvestmentAllowedError ||
+    amendmentAllowedError ||
+    dealClosureBasisError ||
+    permittedInvestmentAError;
+  const dropdownsError = dropdownsErrorMessage
+    ? new Error(dropdownsErrorMessage)
+    : null;
+
+  const permittedInvestmentAllowedSelection = useWatch({
+    control,
+    name: "permittedInvestmentAllowedDTO",
+  });
+  const isPermittedInvestmentAllowed = React.useMemo(() => {
+    const isYesValue = (value: unknown) => {
+      const normalized = String(value || "")
+        .trim()
+        .toUpperCase();
+      if (!normalized) return false;
+      if (["NO", "N", "FALSE", "0", "CDL_NO"].includes(normalized)) return false;
+      if (["YES", "Y", "TRUE", "1", "CDL_YES"].includes(normalized)) return true;
+      if (normalized.includes("YES")) return true;
+      return false;
+    };
+
     if (
-      option &&
-      typeof option === "object" &&
-      "languageTranslationId" in option
+      typeof permittedInvestmentAllowedSelection === "string" ||
+      typeof permittedInvestmentAllowedSelection === "number" ||
+      typeof permittedInvestmentAllowedSelection === "boolean"
     ) {
-      const translation = (
-        option as { languageTranslationId?: { configValue?: string } }
-      ).languageTranslationId;
-      return translation?.configValue || fallback;
+      return isYesValue(permittedInvestmentAllowedSelection);
     }
-    return fallback;
-  };
 
-  // Placeholder for dropdown error state - to be implemented when dropdown hooks are added
-  const dropdownsError: Error | null = null;
-  const dropdownsLoading = false;
+    if (
+      permittedInvestmentAllowedSelection &&
+      typeof permittedInvestmentAllowedSelection === "object"
+    ) {
+      if ("settingValue" in permittedInvestmentAllowedSelection) {
+        return isYesValue(
+          (permittedInvestmentAllowedSelection as { settingValue?: string })
+            .settingValue
+        );
+      }
+      if ("displayName" in permittedInvestmentAllowedSelection) {
+        return isYesValue(
+          (permittedInvestmentAllowedSelection as { displayName?: string })
+            .displayName
+        );
+      }
 
-  // Placeholder dropdown options - these should be fetched from API
-  const permittedInvestmentAllowedOptions: unknown[] = [];
-  const amendmentAllowedOptions: unknown[] = [];
-  const dealClosureBasisOptions: unknown[] = [];
+      const allowedId = getDtoId(permittedInvestmentAllowedSelection);
+      if (allowedId === undefined) return false;
+      const option = permittedInvestmentAllowedOptions.find(
+        (item) => item.id === allowedId
+      );
+      if (!option) {
+        return false;
+      }
+      return isYesValue(option?.settingValue || option?.displayName || "");
+    }
+
+    return false;
+  }, [permittedInvestmentAllowedSelection, permittedInvestmentAllowedOptions]);
+
+  useEffect(() => {
+    if (!isPermittedInvestmentAllowed) {
+      setValue("permittedInvestmentADTO", null, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }, [isPermittedInvestmentAllowed, setValue]);
 
   const renderTextField = (
     name: string,
@@ -441,6 +574,7 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
     const isExpiryDate = name === "agreementExpiryDate";
     const minDate =
       isExpiryDate && effectiveDate ? effectiveDate.add(1, "day") : null;
+    const minDateProps = minDate ? { minDate } : {};
 
     return (
       <Grid key={`field-${name}`} size={{ xs: 12, md: gridSize }}>
@@ -512,6 +646,7 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
                 // But skip validation for dropdown fields (they don't need field-level validation)
                 if (
                   name === "permittedInvestmentAllowedDTO" ||
+                  name === "permittedInvestmentADTO" ||
                   name === "amendmentAllowedDTO" ||
                   name === "dealClosureBasisDTO"
                 ) {
@@ -544,7 +679,7 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
                     trigger("agreementExpiryDate");
                   }
                 }}
-                minDate={minDate || undefined}
+                {...minDateProps}
                 disabled={isReadOnly}
                 slotProps={{
                   textField: {
@@ -601,11 +736,120 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
       </Grid>
     );
   };
+  const handleGenerateNewId = async () => {
+    try {
+      setIsGeneratingId(true);
+      // Generate a simple ID - can be replaced with actual service call
+      const newId = `AGR-${Date.now()}`;
+      setGeneratedId(newId);
+      setValue("parametersRefNo", newId, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    } catch {
+      // Handle error silently
+    } finally {
+      setIsGeneratingId(false);
+    }
+  };
+  const renderAgreementParameterRefNoField = (
+    name: string,
+    label: string,
+    gridSize: number = 6,
+    required = false
+  ) => (
+    <Grid key={`field-${name}`} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        defaultValue=""
+        rules={{
+          required: required ? `${label} is required` : false,
+        }}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            fullWidth
+            label={label}
+            required={required}
+            value={field.value || generatedId}
+            error={!!errors[name]}
+            helperText={errors[name]?.message?.toString()}
+            onChange={(e) => {
+              setGeneratedId(e.target.value)
+              field.onChange(e)
+            }}
+            disabled={isReadOnly || isEditMode}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end" sx={{ mr: 0 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={handleGenerateNewId}
+                    disabled={isGeneratingId || isReadOnly || isEditMode}
+                    sx={{
+                      color: theme.palette.primary.contrastText,
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      background: theme.palette.primary.main,
+                      '&:hover': {
+                        background: theme.palette.primary.dark,
+                      },
+                      minWidth: '100px',
+                      height: '32px',
+                      fontFamily: 'Outfit, sans-serif',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '11px',
+                      lineHeight: '14px',
+                      letterSpacing: '0.3px',
+                      px: 1,
+                    }}
+                  >
+                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                  </Button>
+                </InputAdornment>
+              ),
+              sx: valueStyles,
+            }}
+            InputLabelProps={{
+              sx: {
+                ...labelStyles,
+                ...(!!errors[name] && {
+                  color: theme.palette.error.main,
+                  '&.Mui-focused': { color: theme.palette.error.main },
+                  '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                }),
+              },
+            }}
+            sx={{
+              ...fieldStyles,
+              ...((isReadOnly || isEditMode) && {
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: viewModeStyles.backgroundColor,
+                  color: textSecondary,
+                  '& fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                },
+              }),
+            }}
+          />
+        )}
+      />
+    </Grid>
+  )
+
 
   const renderApiSelectField = (
     name: string,
     label: string,
-    options: unknown[],
+    options: { id: number; displayName: string; settingValue: string }[],
     gridSize: number = 6,
     loading = false,
     required = false
@@ -621,15 +865,10 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
           }}
           defaultValue=""
           render={({ field, fieldState: { error } }) => {
-            // Handle both object and number values
             const fieldValue =
-              typeof field.value === "object" &&
-              field.value !== null &&
-              "id" in field.value
-                ? String(field.value.id)
-                : field.value
-                  ? String(field.value)
-                  : "";
+              typeof field.value === "object" && field.value?.id
+                ? options.find((opt) => opt.id === field.value.id)?.settingValue || ""
+                : field.value || "";
 
             return (
               <FormControl fullWidth error={!!error} required={required}>
@@ -638,75 +877,82 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
                 </InputLabel>
                 <Select
                   {...field}
-                  value={fieldValue}
-                  onChange={(e) => {
-                    const selectedValue = e.target.value;
-                    // Store as object with id
-                    field.onChange({ id: Number(selectedValue) });
+                  label={loading ? "Loading..." : label}
+                  required={required}
+                  sx={{
+                    ...resolveSx(selectFieldStyles),
+                    ...resolveSx(valueStyles),
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: `1px solid ${neutralBorderColor}`,
+                      borderRadius: "6px",
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      border: `1px solid ${neutralBorderHoverColor}`,
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      border: `2px solid ${focusBorder}`,
+                    },
+                    ...(isReadOnly && {
+                      "& .MuiOutlinedInput-root": {
+                        backgroundColor: viewModeStyles.backgroundColor,
+                        "& fieldset": {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                        "&:hover fieldset": {
+                          borderColor: viewModeStyles.borderColor,
+                        },
+                      },
+                      "& .MuiSelect-select": {
+                        color: viewModeStyles.textColor,
+                      },
+                    }),
+                    ...(!!errors[name] &&
+                      !isReadOnly && {
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          border: `1px solid ${theme.palette.error.main}`,
+                        },
+                        "&:hover .MuiOutlinedInput-notchedOutline": {
+                          border: `1px solid ${theme.palette.error.main}`,
+                        },
+                        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                          border: `1px solid ${theme.palette.error.main}`,
+                        },
+                      }),
                   }}
-                  input={
-                    <OutlinedInput label={loading ? `Loading...` : label} />
-                  }
-                  label={loading ? `Loading...` : label}
                   IconComponent={KeyboardArrowDownIcon}
                   disabled={loading || isReadOnly}
-                  sx={
-                    typeof selectFieldStyles === "object" &&
-                    typeof valueStyles === "object"
-                      ? ({
-                          ...selectFieldStyles,
-                          ...valueStyles,
-                          ...(isReadOnly && {
-                            backgroundColor: viewModeStyles.backgroundColor,
-                            color: textSecondary,
-                          }),
-                          "& .MuiOutlinedInput-notchedOutline": {
-                            border: `1px solid ${neutralBorderColor}`,
-                          },
-                          "&:hover .MuiOutlinedInput-notchedOutline": {
-                            border: `1px solid ${neutralBorderHoverColor}`,
-                          },
-                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                            border: `2px solid ${focusBorder}`,
-                          },
-                        } as SxProps<Theme>)
-                      : ({
-                          ...(isReadOnly && {
-                            backgroundColor: viewModeStyles.backgroundColor,
-                            color: textSecondary,
-                          }),
-                          "& .MuiOutlinedInput-notchedOutline": {
-                            border: `1px solid ${neutralBorderColor}`,
-                          },
-                          "&:hover .MuiOutlinedInput-notchedOutline": {
-                            border: `1px solid ${neutralBorderHoverColor}`,
-                          },
-                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                            border: `2px solid ${focusBorder}`,
-                          },
-                        } as SxProps<Theme>)
-                  }
-                >
-                  {options.map((option, index) => {
-                    const optionObj = option as {
-                      id?: string | number;
-                      settingValue?: string;
-                      languageTranslationId?: { configValue?: string };
-                    };
-                    return (
-                      <MenuItem
-                        key={optionObj.id || index}
-                        value={String(optionObj.id || "")}
-                      >
-                        {getDisplayLabel(
-                          option,
-                          optionObj.settingValue ||
-                            optionObj.languageTranslationId?.configValue ||
-                            "Option"
-                        )}
-                      </MenuItem>
+                  value={fieldValue}
+                  onChange={(e) => {
+                    const selectedValue = e.target.value as string;
+                    const selectedOption = options.find(
+                      (opt) => opt.settingValue === selectedValue
                     );
-                  })}
+                    if (selectedOption) {
+                      const nextValue =
+                        name === "permittedInvestmentAllowedDTO"
+                          ? {
+                              id: selectedOption.id,
+                              settingValue: selectedOption.settingValue,
+                              displayName: selectedOption.displayName,
+                            }
+                          : { id: selectedOption.id };
+                      setValue(name, nextValue, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    } else {
+                      setValue(name, null, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    }
+                  }}
+                >
+                  {options.map((option) => (
+                    <MenuItem key={option.id} value={option.settingValue}>
+                      {option.displayName}
+                    </MenuItem>
+                  ))}
                 </Select>
                 {error && (
                   <FormHelperText
@@ -760,6 +1006,22 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
           )}
 
           <Grid container rowSpacing={4} columnSpacing={2}>
+          {renderAgreementParameterRefNoField(
+            "parametersRefNo",
+            getAgreementParameterLabelDynamic("CDL_AGREEMENT_PARAMETER_REF_NO"),
+            6,
+            false
+          )}
+          {renderTextField(
+              "agreementRemarks",
+              getAgreementParameterLabelDynamic(
+                "CDL_AGREEMENT_PARAMETER_REMARKS"
+              ),
+              "",
+              6,
+              false,
+              false
+            )}
             {renderDatePicker(
               "agreementEffectiveDate",
               getAgreementParameterLabelDynamic(
@@ -783,7 +1045,7 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
               ),
               permittedInvestmentAllowedOptions,
               6,
-              dropdownsLoading,
+              permittedInvestmentAllowedLoading,
               false
             )}
             {renderApiSelectField(
@@ -793,7 +1055,7 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
               ),
               amendmentAllowedOptions,
               6,
-              dropdownsLoading,
+              amendmentAllowedLoading,
               false
             )}
             {renderApiSelectField(
@@ -803,29 +1065,21 @@ const Step1 = ({ isReadOnly = false, agreementParameterId }: Step1Props) => {
               ),
               dealClosureBasisOptions,
               6,
-              dropdownsLoading,
+              dealClosureBasisLoading,
               false
             )}
-            {renderTextField(
-              "agreementRemarks",
-              getAgreementParameterLabelDynamic(
-                "CDL_AGREEMENT_PARAMETER_REMARKS"
-              ),
-              "",
-              6,
-              false,
-              false
-            )}
-            {renderTextField(
-              "escrowAgreementDTO",
-              getAgreementParameterLabelDynamic(
-                "CDL_AGREEMENT_PARAMETER_ESCROW_AGREEMENT"
-              ),
-              "",
-              6,
-              false,
-              false
-            )}
+
+            {isPermittedInvestmentAllowed &&
+              renderApiSelectField(
+                "permittedInvestmentADTO",
+                getAgreementParameterLabelDynamic(
+                  "CDL_AGREEMENT_PARAMETER_PERMITTED_INVESTMENT"
+                ),
+                permittedInvestmentAOptions,
+                6,
+                permittedInvestmentALoading,
+                false
+              )}
           </Grid>
         </CardContent>
       </Card>

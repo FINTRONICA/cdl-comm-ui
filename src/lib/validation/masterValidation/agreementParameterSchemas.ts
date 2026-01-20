@@ -2,6 +2,13 @@ import { z } from 'zod'
 
 // Agreement Parameter Step 1: Basic Details Schema
 export const AgreementParameterStep1Schema = z.object({
+  // Agreement Parameter Reference Number - optional
+  parametersRefNo: z
+    .string()
+    .max(100, 'Agreement Parameter Ref No must be 100 characters or less')
+    .optional()
+    .or(z.literal('')),
+
   // Agreement Effective Date - mandatory field
   agreementEffectiveDate: z
     .string()
@@ -84,8 +91,11 @@ export const AgreementParameterStep1Schema = z.object({
     .optional()
     .nullable(),
 
-  escrowAgreementDTO: z
-    .string()
+  permittedInvestmentADTO: z
+    .union([
+      z.object({ id: z.number().min(1) }),
+      z.number().min(1),
+    ])
     .optional()
     .nullable(),
 
@@ -141,7 +151,6 @@ export const getAgreementParameterStepSchema = (stepNumber: number) => {
   const stepKeys = ['step1', 'step2', 'step3'] as const
   
   if (stepIndex < 0 || stepIndex >= stepKeys.length) {
-    console.warn(`[Validation] Invalid step number: ${stepNumber}, expected 1-3`)
     return null
   }
   
@@ -156,11 +165,8 @@ export const validateAgreementParameterStepData = (
   data: unknown
 ) => {
   try {
-    console.log(`[Validation] Validating step ${stepNumber} with data:`, data)
-    
     const schema = getAgreementParameterStepSchema(stepNumber)
     if (!schema) {
-      console.warn(`[Validation] No schema found for step ${stepNumber}`)
       return { success: true, data, errors: [] }
     }
 
@@ -175,20 +181,11 @@ export const validateAgreementParameterStepData = (
       }
     })
 
-    console.log(`[Validation] Extracted step data for step ${stepNumber}:`, stepData)
-
     // Validate only the step-specific data
     const result = schema.safeParse(stepData)
 
-    if (!result.success) {
-      console.error(`[Validation] Step ${stepNumber} validation failed:`, result.error.issues)
-    } else {
-      console.log(`[Validation] Step ${stepNumber} validation passed`)
-    }
-
     return result
   } catch (error) {
-    console.error(`[Validation] Exception during step ${stepNumber} validation:`, error)
     return {
       success: false,
       error: {
@@ -265,16 +262,10 @@ export const validateAgreementParameterField = (
       if (!result.success) {
         const error = result.error.issues[0]
         const errorMessage = error?.message || 'Invalid value'
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[Validation] ${fieldName} failed:`, errorMessage, 'Value:', value)
-        }
         return errorMessage
       }
       return true
     } catch (parseError) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error(`[Validation Parse Error] ${fieldName}:`, parseError, 'Value:', value)
-      }
       // Try to extract a meaningful error message
       if (parseError instanceof Error) {
         return parseError.message
@@ -282,9 +273,6 @@ export const validateAgreementParameterField = (
       return `Invalid ${fieldName}`
     }
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error(`[Validation Error] ${fieldName}:`, error, 'Value type:', typeof value, 'Value:', value)
-    }
     // Return a more specific error message based on the field name
     if (fieldName.includes('Date')) {
       return `${fieldName} must be a valid date`

@@ -39,15 +39,10 @@ export class ApplicationSettingService {
       
       const url = `${buildApiUrl(API_ENDPOINTS.APPLICATION_SETTING.GET_ALL)}?${params.toString()}`
       
-      console.log('[ApplicationSettingService] Fetching from URL:', url)
-      
       const result = await apiClient.get<ApplicationSetting[]>(url)
-      
-      console.log('[ApplicationSettingService] API response:', result)
       
       return result || []
     } catch (error) {
-      console.error('[ApplicationSettingService] Error in getApplicationSettingsByKey:', error)
       throw error
     }
   }
@@ -59,25 +54,9 @@ export class ApplicationSettingService {
     try {
       const settings = await this.getApplicationSettingsByKey(settingKey)
       
-      console.log('[ApplicationSettingService] Raw settings for key:', settingKey, 'Count:', settings?.length || 0)
-      console.log('[ApplicationSettingService] Raw settings data:', settings)
-      
       if (!settings || settings.length === 0) {
-        console.warn('[ApplicationSettingService] No settings returned from API for key:', settingKey)
         return []
       }
-      
-      // Log filtering details
-      const enabledCount = settings.filter(s => s.enabled).length
-      const notDeletedCount = settings.filter(s => !s.deleted).length
-      const bothCount = settings.filter(s => s.enabled && !s.deleted).length
-      
-      console.log('[ApplicationSettingService] Filtering stats:', {
-        total: settings.length,
-        enabled: enabledCount,
-        notDeleted: notDeletedCount,
-        enabledAndNotDeleted: bothCount
-      })
       
       // Map settings to dropdown options
       const options: DropdownOption[] = settings
@@ -95,11 +74,8 @@ export class ApplicationSettingService {
           }
         })
       
-      console.log('[ApplicationSettingService] Mapped options:', options.length, options)
-      
       return options
     } catch (err) {
-      console.error('[ApplicationSettingService] Error fetching dropdown options for key:', settingKey, err)
       throw err // Re-throw to let caller handle
     }
   }
@@ -171,7 +147,6 @@ export class ApplicationSettingService {
       const options = await this.getDropdownOptionsByKey(settingKey)
       return options.length > 0 ? options : fallbackOptions
     } catch (err) {
-      console.error('[ApplicationSettingService] Error in getDropdownWithFallback:', err)
       return fallbackOptions
     }
   }

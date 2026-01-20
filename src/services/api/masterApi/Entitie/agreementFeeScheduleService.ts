@@ -102,6 +102,7 @@ export type AgreementFeeSchedule = AgreementFeeScheduleDTO
 
 export interface AgreementFeeScheduleDTO {
   id: number
+  regulatoryRefNo?: string | null
   effectiveStartDate: string
   effectiveEndDate: string
   operatingLocation: string
@@ -124,6 +125,7 @@ export interface AgreementFeeScheduleDTO {
 }
 
 export interface CreateAgreementFeeScheduleRequest {
+  regulatoryRefNo?: string | null
   effectiveStartDate: string
   effectiveEndDate: string
   operatingLocation: string
@@ -146,6 +148,7 @@ export interface CreateAgreementFeeScheduleRequest {
 }
 
 export interface UpdateAgreementFeeScheduleRequest {
+  regulatoryRefNo?: string | null
   effectiveStartDate?: string
   effectiveEndDate?: string
   operatingLocation?: string
@@ -203,6 +206,7 @@ export interface StepValidationResponse {
 
 export interface AgreementFeeScheduleDetailsData {
   id?: number
+  regulatoryRefNo?: string | null | undefined
   effectiveStartDate: string
   effectiveEndDate: string
   operatingLocation: string

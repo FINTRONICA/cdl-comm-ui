@@ -16,6 +16,7 @@ export const AGREEMENTPARAMETERLABEL = {
   'CDL_AGREEMENT_PARAMETER_ESCROW_AGREEMENT': ' Escrow Agreement', // Reference - maps to escrowAgreementDTO
   'CDL_AGREEMENT_PARAMETER_ACTIVE': ' Active', // Boolean - maps to active
   'CDL_AGREEMENT_PARAMETER_STATUS': ' Status', // Status field
+  'CDL_AGREEMENT_PARAMETER_REF_NO': ' Parameter Ref No', // Auto
   'CDL_AGREEMENT_PARAMETER_DOC_ACTION': ' Action', // Action column
 
   // Common UI labels

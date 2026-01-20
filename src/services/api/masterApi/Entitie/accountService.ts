@@ -401,19 +401,76 @@ export class AccountService {
     isEditing = false,
     accountId?: string
   ): Promise<Account | StepSaveResponse> {
+    const normalizeDto = (value: unknown): { id: number } | undefined => {
+      if (value === null || value === undefined) return undefined
+      if (typeof value === 'object' && value && 'id' in value) {
+        const idValue = (value as { id?: number | string }).id
+        if (idValue === null || idValue === undefined) return undefined
+        return { id: Number(idValue) }
+      }
+      if (typeof value === 'number') {
+        return { id: value }
+      }
+      if (typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value))) {
+        return { id: Number(value) }
+      }
+      return undefined
+    }
+
+    const normalizeAccountPayload = (payload: AccountDetailsData) => {
+      const cleanedData: Record<string, unknown> = { ...payload }
+      const dtoFields = [
+        'taxPaymentDTO',
+        'currencyDTO',
+        'accountPurposeDTO',
+        'accountCategoryDTO',
+        'primaryAccountDTO',
+        'bulkUploadProcessingDTO',
+        'unitaryPaymentDTO',
+        'accountTypeDTO',
+        'accountTypeCategoryDTO',
+        'escrowAgreementDTO',
+      ] as const
+
+      dtoFields.forEach((field) => {
+        const normalized = normalizeDto(cleanedData[field])
+        if (normalized) {
+          cleanedData[field] = normalized
+        } else {
+          delete cleanedData[field]
+        }
+      })
+
+      return cleanedData
+    }
+
     if (isEditing && accountId) {
       // Use PUT for editing existing details
       const url = buildApiUrl(API_ENDPOINTS.ESCROW_ACCOUNT.UPDATE(accountId))
-      const requestData = {
+      const requestData = normalizeAccountPayload({
         ...data,
         id: parseInt(accountId),
+      })
+
+      if ('enabled' in requestData) {
+        delete requestData.enabled
+      }
+      if ('deleted' in requestData) {
+        delete requestData.deleted
       }
 
       const response = await apiClient.put<Account>(url, requestData)
       return response
     } else {
       const url = buildApiUrl(API_ENDPOINTS.ESCROW_ACCOUNT.SAVE)
-      const response = await apiClient.post<Account>(url, data)
+      const requestData = normalizeAccountPayload(data)
+      if ('id' in requestData) {
+        delete requestData.id
+      }
+      requestData.enabled = data.enabled ?? true
+      requestData.deleted = data.deleted ?? false
+
+      const response = await apiClient.post<Account>(url, requestData)
       return response
     }
   }

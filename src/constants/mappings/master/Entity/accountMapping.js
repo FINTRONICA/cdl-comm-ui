@@ -26,6 +26,12 @@ export const ACCOUNTLABEL = {
   'CDL_ESCROW_ACCOUNT_DISPLAY_NAME': ' Account Display Name', // Text Field
   'CDL_ESCROW_ACCOUNT_ASSIGNMENT_STATUS': ' Assignment Status', // Text Field
   'CDL_ESCROW_STATUS': ' Status', // Drop Down
+  'CDL_ESCROW_ACCOUNT_TYPE_DTO': ' Account Type', // Drop Down
+  'CDL_ESCROW_TAX_PAYMENT_DTO': ' Tax Payment', // Drop Down
+  'CDL_ESCROW_PRIMARY_ACCOUNT_DTO': ' Primary Account', // Drop Down
+  'CDL_ESCROW_BULK_UPLOAD_PROCESSING_DTO': ' Bulk Upload Processing', // Drop Down
+  'CDL_ESCROW_UNITARY_PAYMENT_DTO': ' Unitary Payment', // Drop Down
+ 
   // 'CDL_ESCROW_DOC_ACTION': 'Action',
 
   // Common UI labels
@@ -49,6 +55,14 @@ export const ACCOUNTLABEL = {
     export const getAccountLabel = (configId) => {
     return ACCOUNTLABEL[configId] || configId
     }
+
+export const ACCOUNT_DTO_SETTING_KEYS = {
+  accountTypeDTO: 'ACCOUNT_CATEGORY',
+  taxPaymentDTO: 'GST_PAYMENT',
+  primaryAccountDTO: 'YES_NO',
+  bulkUploadProcessingDTO: 'PERMITTANCE',
+  unitaryPaymentDTO: 'UNITARY_PAYMENT_OPTION',
+}
     
 
     

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -7,29 +7,30 @@ import {
   Grid,
   InputLabel,
   MenuItem,
-  OutlinedInput,
   Select,
   TextField,
   useTheme,
-  SxProps,
-  Theme,
+  Button,
+  InputAdornment,
 } from '@mui/material'
 import {
+  Refresh as RefreshIcon,
   KeyboardArrowDown as KeyboardArrowDownIcon,
 } from '@mui/icons-material'
+
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers'
 import { Controller, useFormContext } from 'react-hook-form'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs, { Dayjs } from 'dayjs'
-import { getAgreementFeeScheduleLabel } from '@/constants/mappings/master/Entity/agreementFeeScheduleMapping'
+import {
+  AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS,
+  getAgreementFeeScheduleLabel,
+} from '@/constants/mappings/master/Entity/agreementFeeScheduleMapping'
 import { useAgreementFeeScheduleLabelsWithCache } from '@/hooks'
 import { useAppStore } from '@/store'
 import { agreementFeeScheduleService } from '@/services/api/masterApi/Entitie/agreementFeeScheduleService'
 import { validateAgreementFeeScheduleField } from '@/lib/validation/masterValidation/agreementFeeScheduleSchemas'
-import { useFeeCategories, useFeeFrequencies } from '@/hooks/useFeeDropdowns'
-import { useAllAgreementTypes } from '@/hooks/master/CustomerHook/useAgreementType'
-import { useAgreementSubTypes } from '@/hooks/master/CustomerHook/useAgreementSubType'
-import { useAllProductPrograms } from '@/hooks/master/CustomerHook/useProductProgram'
+import { useApplicationSettings } from '@/hooks/useApplicationSettings'
 import {
   commonFieldStyles as sharedCommonFieldStyles,
   selectStyles as sharedSelectStyles,
@@ -98,6 +99,10 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
     formState: { errors },
   } = useFormContext()
 
+  // State for regulatory reference generation
+  const [generatedId, setGeneratedId] = useState<string>('')
+  const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false)
+
   // Dynamic label support
   const { data: agreementFeeScheduleLabels, getLabel } = useAgreementFeeScheduleLabelsWithCache()
   const currentLanguage = useAppStore((state) => state.language) || 'EN'
@@ -115,33 +120,92 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
   )
 
   // Fetch dropdown options
-  const { data: feeCategories = [], isLoading: feeCategoriesLoading } = useFeeCategories()
-  const { data: feeFrequencies = [], isLoading: feeFrequenciesLoading } = useFeeFrequencies()
-  const { data: agreementTypes = [], isLoading: agreementTypesLoading } = useAllAgreementTypes()
-  const { data: agreementSubTypesResponse, isLoading: agreementSubTypesLoading } = useAgreementSubTypes(0, 1000)
-  const { data: productPrograms = [], isLoading: productProgramsLoading } = useAllProductPrograms()
+  const { data: feeSettings = [], loading: feeLoading } = useApplicationSettings(
+    AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS.feeDTO
+  )
+  const { data: feeTypeSettings = [], loading: feeTypeLoading } = useApplicationSettings(
+    AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS.feeTypeDTO
+  )
+  const { data: feesFrequencySettings = [], loading: feesFrequencyLoading } =
+    useApplicationSettings(AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS.feesFrequencyDTO)
+  const { data: frequencyBasisSettings = [], loading: frequencyBasisLoading } =
+    useApplicationSettings(AGREEMENT_FEE_SCHEDULE_DTO_SETTING_KEYS.frequencyBasisDTO)
+  const feeOptions = React.useMemo(
+    () =>
+      feeSettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [feeSettings]
+  )
 
-  const agreementSubTypes = agreementSubTypesResponse?.content || []
+  const feeTypeOptions = React.useMemo(
+    () =>
+      feeTypeSettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [feeTypeSettings]
+  )
 
-  // Helper to get display label for dropdown options
-  const getDisplayLabel = useCallback((option: {
-    settingValue?: string
-    agreementTypeName?: string
-    subTypeName?: string
-    programName?: string
-    configValue?: string
-    name?: string
-    id?: number | string
-  } | null | undefined, fallback?: string): string => {
-    if (!option) return fallback || ''
-    if (option.settingValue) return option.settingValue
-    if (option.agreementTypeName) return option.agreementTypeName
-    if (option.subTypeName) return option.subTypeName
-    if (option.programName) return option.programName
-    if (option.configValue) return option.configValue
-    if (option.name) return option.name
-    return fallback || String(option.id || '')
-  }, [])
+  const feesFrequencyOptions = React.useMemo(
+    () =>
+      feesFrequencySettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [feesFrequencySettings]
+  )
+
+  const frequencyBasisOptions = React.useMemo(
+    () =>
+      frequencyBasisSettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [frequencyBasisSettings]
+  )
+
+  const resolveSx = (styles: unknown) => {
+    if (typeof styles === 'function') {
+      return styles(theme) as Record<string, unknown>
+    }
+    if (Array.isArray(styles)) {
+      return Object.assign({}, ...styles) as Record<string, unknown>
+    }
+    if (styles && typeof styles === 'object') {
+      return styles as Record<string, unknown>
+    }
+    return {}
+  }
+
+  const getDtoId = (value: unknown): number | undefined => {
+    if (value && typeof value === 'object' && 'id' in value) {
+      const idValue = (value as { id?: number | string }).id
+      return idValue !== undefined && idValue !== null ? Number(idValue) : undefined
+    }
+    if (typeof value === 'number') {
+      return value
+    }
+    if (typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value))) {
+      return Number(value)
+    }
+    return undefined
+  }
+
+  // Initialize regulatory reference from form value
+  useEffect(() => {
+    const subscription = watch((value) => {
+      if (value.regulatoryRefNo) {
+        setGeneratedId(String(value.regulatoryRefNo))
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [watch])
 
   // Populate fields when agreement fee schedule data is loaded (for edit mode)
   useEffect(() => {
@@ -166,6 +230,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
         // Populate all fields from agreement fee schedule data
         if (agreementFeeSchedule) {
           const fieldsToPopulate = [
+            'regulatoryRefNo',
             'operatingLocation',
             'priorityLevel',
             'transactionRateAmount',
@@ -208,45 +273,52 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
           }
 
           // Handle DTO fields - extract ID from DTO objects
-          if (agreementFeeSchedule.feeDTO?.id) {
-            setValue('feeDTO', agreementFeeSchedule.feeDTO.id, {
-              shouldValidate: true,
+          const feeId = getDtoId(agreementFeeSchedule.feeDTO)
+          if (feeId !== undefined) {
+            setValue('feeDTO', { id: feeId }, {
+              shouldValidate: false,
               shouldDirty: false,
             })
           }
-          if (agreementFeeSchedule.feeTypeDTO?.id) {
-            setValue('feeTypeDTO', agreementFeeSchedule.feeTypeDTO.id, {
-              shouldValidate: true,
+          const feeTypeId = getDtoId(agreementFeeSchedule.feeTypeDTO)
+          if (feeTypeId !== undefined) {
+            setValue('feeTypeDTO', { id: feeTypeId }, {
+              shouldValidate: false,
               shouldDirty: false,
             })
           }
-          if (agreementFeeSchedule.feesFrequencyDTO?.id) {
-            setValue('feesFrequencyDTO', agreementFeeSchedule.feesFrequencyDTO.id, {
-              shouldValidate: true,
+          const feesFrequencyId = getDtoId(agreementFeeSchedule.feesFrequencyDTO)
+          if (feesFrequencyId !== undefined) {
+            setValue('feesFrequencyDTO', { id: feesFrequencyId }, {
+              shouldValidate: false,
               shouldDirty: false,
             })
           }
-          if (agreementFeeSchedule.frequencyBasisDTO?.id) {
-            setValue('frequencyBasisDTO', agreementFeeSchedule.frequencyBasisDTO.id, {
-              shouldValidate: true,
+          const frequencyBasisId = getDtoId(agreementFeeSchedule.frequencyBasisDTO)
+          if (frequencyBasisId !== undefined) {
+            setValue('frequencyBasisDTO', { id: frequencyBasisId }, {
+              shouldValidate: false,
               shouldDirty: false,
             })
           }
-          if (agreementFeeSchedule.agreementTypeDTO?.id) {
-            setValue('agreementTypeDTO', agreementFeeSchedule.agreementTypeDTO.id, {
-              shouldValidate: true,
+          const agreementTypeId = getDtoId(agreementFeeSchedule.agreementTypeDTO)
+          if (agreementTypeId !== undefined) {
+            setValue('agreementTypeDTO', { id: agreementTypeId }, {
+              shouldValidate: false,
               shouldDirty: false,
             })
           }
-          if (agreementFeeSchedule.agreementSubTypeDTO?.id) {
-            setValue('agreementSubTypeDTO', agreementFeeSchedule.agreementSubTypeDTO.id, {
-              shouldValidate: true,
+          const agreementSubTypeId = getDtoId(agreementFeeSchedule.agreementSubTypeDTO)
+          if (agreementSubTypeId !== undefined) {
+            setValue('agreementSubTypeDTO', { id: agreementSubTypeId }, {
+              shouldValidate: false,
               shouldDirty: false,
             })
           }
-          if (agreementFeeSchedule.productProgramDTO?.id) {
-            setValue('productProgramDTO', agreementFeeSchedule.productProgramDTO.id, {
-              shouldValidate: true,
+          const productProgramId = getDtoId(agreementFeeSchedule.productProgramDTO)
+          if (productProgramId !== undefined) {
+            setValue('productProgramDTO', { id: productProgramId }, {
+              shouldValidate: false,
               shouldDirty: false,
             })
           }
@@ -284,7 +356,114 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agreementFeeScheduleId, isEditMode])
-
+  const handleGenerateNewId = async () => {
+    try {
+      setIsGeneratingId(true)
+      // Generate a simple ID - can be replaced with actual service call
+      const newId = `AGR-${Date.now()}`
+      setGeneratedId(newId)
+      setValue('regulatoryRefNo', newId, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+    } catch {
+      // Handle error silently
+    } finally {
+      setIsGeneratingId(false)
+    }
+  }
+  const renderAgreementFeeScheduleRegulatoryRefNoField = (
+    name: string,
+    label: string,
+    gridSize: number = 6,
+    required = false
+  ) => (
+    <Grid key={`field-${name}`} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        defaultValue=""
+        rules={{
+          required: required ? `${label} is required` : false,
+        }}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            fullWidth
+            label={label}
+            required={required}
+            value={field.value || generatedId}
+            error={!!errors[name]}
+            helperText={errors[name]?.message?.toString()}
+            onChange={(e) => {
+              setGeneratedId(e.target.value)
+              field.onChange(e)
+            }}
+            disabled={isReadOnly || isEditMode}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end" sx={{ mr: 0 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={handleGenerateNewId}
+                    disabled={isGeneratingId || isReadOnly || isEditMode}
+                    sx={{
+                      color: theme.palette.primary.contrastText,
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      background: theme.palette.primary.main,
+                      '&:hover': {
+                        background: theme.palette.primary.dark,
+                      },
+                      minWidth: '100px',
+                      height: '32px',
+                      fontFamily: 'Outfit, sans-serif',
+                      fontWeight: 500,
+                      fontStyle: 'normal',
+                      fontSize: '11px',
+                      lineHeight: '14px',
+                      letterSpacing: '0.3px',
+                      px: 1,
+                    }}
+                  >
+                    {isGeneratingId ? 'Generating...' : 'Generate ID'}
+                  </Button>
+                </InputAdornment>
+              ),
+              sx: valueStyles,
+            }}
+            InputLabelProps={{
+              sx: {
+                ...labelStyles,
+                ...(!!errors[name] && {
+                  color: theme.palette.error.main,
+                  '&.Mui-focused': { color: theme.palette.error.main },
+                  '&.MuiFormLabel-filled': { color: theme.palette.error.main },
+                }),
+              },
+            }}
+            sx={{
+              ...fieldStyles,
+              ...((isReadOnly || isEditMode) && {
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: viewModeStyles.backgroundColor,
+                  color: textSecondary,
+                  '& fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                },
+              }),
+            }}
+          />
+        )}
+      />
+    </Grid>
+  )
   const renderTextField = (
     name: string,
     label: string,
@@ -423,83 +602,123 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
     </Grid>
   )
 
-  const renderSelectField = (
+  const renderAgreementFeeScheduleSelectField = (
     name: string,
-    label: string,
-    options: unknown[],
-    gridSize: number = 6,
-    loading = false,
-    required = false
-  ) => (
-    <Grid key={`field-${name}`} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        rules={{
-          required: required ? `${label} is required` : false,
-          validate: (value: unknown) => validateAgreementFeeScheduleField(0, name, value),
-        }}
-        defaultValue=""
-        render={({ field, fieldState: { error } }) => (
-          <FormControl fullWidth error={!!error} required={required}>
-            <InputLabel sx={labelStyles}>
-              {loading ? `Loading...` : label}
-            </InputLabel>
-            <Select
-              {...field}
-              value={field.value || ''}
-              input={<OutlinedInput label={loading ? `Loading...` : label} />}
-              label={loading ? `Loading...` : label}
-              IconComponent={KeyboardArrowDownIcon}
-              disabled={loading || isReadOnly}
-              sx={{
-                ...(typeof selectFieldStyles === 'object' ? selectFieldStyles : {}),
-                ...(typeof valueStyles === 'object' ? valueStyles : {}),
-                ...(isReadOnly && {
-                  backgroundColor: viewModeStyles.backgroundColor,
-                  color: textSecondary,
-                }),
-                '& .MuiOutlinedInput-notchedOutline': {
-                  border: `1px solid ${neutralBorderColor}`,
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  border: `1px solid ${neutralBorderHoverColor}`,
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  border: `2px solid ${focusBorder}`,
-                },
-              } as SxProps<Theme>}
-            >
-              {options.map((option, index) => {
-                const optionObj = option as Record<string, unknown>
-                const optionId = (optionObj.id as number | string | undefined) || (optionObj.uuid as string | undefined) || index
-                const optionValue = String((optionObj.id as number | string | undefined) || (optionObj.uuid as string | undefined) || '')
-                return (
-                  <MenuItem key={String(optionId)} value={optionValue}>
-                    {getDisplayLabel(optionObj as Parameters<typeof getDisplayLabel>[0], optionValue)}
-                  </MenuItem>
-                )
-              })}
-            </Select>
-            {error && (
-              <FormHelperText
-                error
+    configId: string,
+    fallbackLabel: string,
+    options: { id: number; displayName: string; settingValue: string }[],
+    gridMd: number = 6,
+    required = false,
+    loading = false
+  ) => {
+    const label = getAgreementFeeScheduleLabelDynamic(configId) || fallbackLabel
+    return (
+      <Grid size={{ xs: 12, md: gridMd }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={required ? { required: `${label} is required` } : {}}
+          defaultValue={''}
+          render={({ field }) => (
+            <FormControl fullWidth error={!!errors[name]} required={required}>
+              <InputLabel sx={labelStyles} required={required}>
+                {loading ? 'Loading...' : label}
+              </InputLabel>
+              <Select
+                {...field}
+                label={loading ? 'Loading...' : label}
+                required={required}
                 sx={{
-                  fontFamily: 'Outfit, sans-serif',
-                  fontSize: '12px',
-                  marginLeft: '14px',
-                  marginRight: '14px',
-                  marginTop: '4px',
+                  ...resolveSx(selectFieldStyles),
+                  ...resolveSx(valueStyles),
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: `1px solid ${neutralBorderColor}`,
+                    borderRadius: '6px',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    border: `1px solid ${neutralBorderHoverColor}`,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    border: `2px solid ${focusBorder}`,
+                  },
+                  ...(isReadOnly && {
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      '& fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                    '& .MuiSelect-select': {
+                      color: viewModeStyles.textColor,
+                    },
+                  }),
+                  ...(!!errors[name] &&
+                    !isReadOnly && {
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        border: `1px solid ${theme.palette.error.main}`,
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        border: `1px solid ${theme.palette.error.main}`,
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        border: `1px solid ${theme.palette.error.main}`,
+                      },
+                    }),
+                }}
+                IconComponent={KeyboardArrowDownIcon}
+                disabled={loading || isReadOnly}
+                value={
+                  typeof field.value === 'object' && field.value?.id
+                    ? options.find((opt) => opt.id === field.value.id)?.settingValue || ''
+                    : field.value || ''
+                }
+                onChange={(e) => {
+                  const selectedValue = e.target.value as string
+                  const selectedOption = options.find(
+                    (opt) => opt.settingValue === selectedValue
+                  )
+                  if (selectedOption) {
+                    setValue(name, { id: selectedOption.id }, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  } else {
+                    setValue(name, null, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  }
                 }}
               >
-                {error?.message?.toString()}
-              </FormHelperText>
-            )}
-          </FormControl>
-        )}
-      />
-    </Grid>
-  )
+                {options.map((option) => (
+                  <MenuItem key={option.id} value={option.settingValue}>
+                    {option.displayName}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors[name] && (
+                <FormHelperText
+                  error
+                  sx={{
+                    fontFamily: 'Outfit, sans-serif',
+                    fontSize: '12px',
+                    marginLeft: '14px',
+                    marginRight: '14px',
+                    marginTop: '4px',
+                  }}
+                >
+                  {errors[name]?.message?.toString()}
+                </FormHelperText>
+              )}
+            </FormControl>
+          )}
+        />
+      </Grid>
+    )
+  }
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -512,6 +731,22 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
       >
         <CardContent sx={{ color: textPrimary }}>
           <Grid container rowSpacing={4} columnSpacing={2}>
+            
+            {renderAgreementFeeScheduleRegulatoryRefNoField(
+              'regulatoryRefNo',
+              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_REGULATORY_REF_NO'),
+              6,
+              false
+            )}
+             {renderTextField(
+              'operatingLocation',
+              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_LOCATION'),
+              '',
+              6,
+              false,
+              true
+            )}
+            
             {renderDateField(
               'effectiveStartDate',
               getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_START_DATE'),
@@ -524,81 +759,21 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
               6,
               true
             )}
-            {renderSelectField(
-              'feeDTO',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEE'),
-              feeCategories as unknown[],
-              6,
-              feeCategoriesLoading,
-              false
-            )}
-            {renderSelectField(
-              'feeTypeDTO',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEE_TYPE'),
-              feeCategories as unknown[], // Using feeCategories as placeholder - TODO: Add specific hook/service
-              6,
-              feeCategoriesLoading,
-              false
-            )}
-            {renderSelectField(
-              'feesFrequencyDTO',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FEES_FREQUENCY'),
-              feeFrequencies as unknown[],
-              6,
-              feeFrequenciesLoading,
-              false
-            )}
-            {renderSelectField(
-              'frequencyBasisDTO',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_FREQUENCY_BASIS'),
-              feeFrequencies as unknown[], // Using feeFrequencies as placeholder - TODO: Add specific hook/service
-              6,
-              feeFrequenciesLoading,
-              false
-            )}
-            {renderTextField(
-              'operatingLocation',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_LOCATION'),
-              '',
-              6,
-              false,
-              true
-            )}
-            {renderSelectField(
-              'agreementTypeDTO',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEAL_TYPE'),
-              agreementTypes as unknown[],
-              6,
-              agreementTypesLoading,
-              false
-            )}
-            {renderSelectField(
-              'agreementSubTypeDTO',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEAL_SUB_TYPE'),
-              agreementSubTypes as unknown[],
-              6,
-              agreementSubTypesLoading,
-              false
-            )}
-            {renderSelectField(
-              'productProgramDTO',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_PRODUCT_PROGRAMME'),
-              productPrograms as unknown[],
-              6,
-              productProgramsLoading,
-              false
-            )}
+            
+
             {renderTextField(
               'priorityLevel',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEAL_PRIORITY'),
+              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_PRIORITY_LEVEL'),
               '',
               6,
               false,
               true
             )}
+
+
             {renderTextField(
               'transactionRateAmount',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_AMOUNT_RATE_PER_TRANSACTION'),
+              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_TRANSACTION_RATE_AMOUNT'),
               '',
               6,
               false,
@@ -606,7 +781,7 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             )}
             {renderTextField(
               'debitAccountNumber',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEBIT_ACCOUNT'),
+              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_DEBIT_ACCOUNT_NUMBER'),
               '',
               6,
               false,
@@ -614,20 +789,50 @@ const Step1 = ({ isReadOnly = false, agreementFeeScheduleId }: Step1Props) => {
             )}
             {renderTextField(
               'creditAccountNumber',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_CREDIT_TO_ACCOUNT'),
+              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_CREDIT_ACCOUNT_NUMBER'),
               '',
               6,
               false,
               true
             )}
-            {renderTextField(
-              'escrowAgreementDTO',
-              getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_ESCROW_AGREEMENT'),
-              '',
+
+            {renderAgreementFeeScheduleSelectField(
+              'feeDTO',
+              'CDL_AGREEMENT_FEE_SCHEDULE_FEE',
+              'Fee',
+              feeOptions,
               6,
               false,
-              false
+              feeLoading
             )}
+            {renderAgreementFeeScheduleSelectField(
+              'feeTypeDTO',
+              'CDL_AGREEMENT_FEE_SCHEDULE_FEE_TYPE',
+              'Fee Type',
+              feeTypeOptions,
+              6,
+              false,
+              feeTypeLoading
+            )}
+            {renderAgreementFeeScheduleSelectField(
+              'feesFrequencyDTO',
+              'CDL_AGREEMENT_FEE_SCHEDULE_FEES_FREQUENCY',
+              'Fees Frequency',
+              feesFrequencyOptions,
+              6,
+              false,
+              feesFrequencyLoading
+            )}
+            {renderAgreementFeeScheduleSelectField(
+              'frequencyBasisDTO',
+              'CDL_AGREEMENT_FEE_SCHEDULE_FREQUENCY_BASIS',
+              'Frequency Basis',
+              frequencyBasisOptions,
+              6,
+              false,
+              frequencyBasisLoading
+            )}
+          
           </Grid>
         </CardContent>
       </Card>
