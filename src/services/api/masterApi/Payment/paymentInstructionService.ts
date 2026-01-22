@@ -25,6 +25,7 @@ export interface TaskStatusDTO {
 // Payment Instruction types - Based on API response structure (standing-instruction)
 export interface PaymentInstruction {
   id: number
+  ruleRefNo?: string | null
   standingInstructionReferenceNumber: string
   clientFullName: string
   debitAmountCap: number
@@ -62,6 +63,7 @@ export interface PaymentInstruction {
 }
 
 export interface CreatePaymentInstructionRequest {
+  ruleRefNo?: string | null
   standingInstructionReferenceNumber: string
   clientFullName: string
   debitAmountCap: number
@@ -99,6 +101,7 @@ export interface CreatePaymentInstructionRequest {
 }
 
 export interface UpdatePaymentInstructionRequest {
+  ruleRefNo?: string | null
   standingInstructionReferenceNumber?: string
   clientFullName?: string
   debitAmountCap?: number
@@ -166,6 +169,7 @@ export interface StepValidationResponse {
 
 // Payment Instruction form data types
 export interface PaymentInstructionDetailsData {
+  ruleRefNo?: string | null
   standingInstructionReferenceNumber: string
   clientFullName: string
   debitAmountCap: number

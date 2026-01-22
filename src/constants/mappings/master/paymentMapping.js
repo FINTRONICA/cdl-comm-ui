@@ -1,4 +1,5 @@
 export const PAYMENT_BENEFICIARY_MAPPING = {
+    'CDL_RULE_REF_NO': 'Rule Reference No',
     'CDL_PAYMENT_BENEFICIARY_ACCOUNT_NUMBER': 'Beneficiary AccountNumber',
     'CDL_PAYMENT_BENEFICIARY_IFSC_CODE': 'Beneficiary Bank Ifsc Code',  
     'CDL_PAYMENT_CREDIT_AMOUNT_CAP': 'Credit AmountCap',
@@ -12,6 +13,7 @@ export const PAYMENT_BENEFICIARY_MAPPING = {
     'CDL_PAYMENT_CURRENCY_DTO': 'Currency',
     'CDL_PAYMENT_STANDING_INSTRUCTION_DTO': 'Standing Instruction',
     'CDL_PAYMENT_BENEFICIARY': 'Payment Beneficiary',
+
     'CDL_PAYMENT_INSTRUCTION': 'Payment Instruction',
     // Common UI labels
     'CDL_COMMON_ACTION': 'Action',

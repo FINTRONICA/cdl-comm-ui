@@ -2,6 +2,13 @@ import { z } from 'zod'
 
 // Standing Instruction Step 1: Basic Details Schema
 export const StandingInstructionStep1Schema = z.object({
+  // Rule Reference Number - optional
+  ruleRefNo: z
+    .string()
+    .max(100, 'Rule Reference Number must be 100 characters or less')
+    .optional()
+    .or(z.literal('')),
+
   // Standing Instruction Reference Number - mandatory field
   standingInstructionReferenceNumber: z
     .string()

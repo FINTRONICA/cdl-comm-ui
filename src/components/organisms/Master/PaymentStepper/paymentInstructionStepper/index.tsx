@@ -439,6 +439,9 @@ export default function PaymentInstructionStepperWrapper({
         );
 
         const step1Data: PaymentInstructionDetailsData = {
+          ...(currentFormData.ruleRefNo !== undefined && {
+            ruleRefNo: currentFormData.ruleRefNo as string,
+          }),
           standingInstructionReferenceNumber:
             currentFormData.standingInstructionReferenceNumber as string,
           clientFullName: currentFormData.clientFullName as string,

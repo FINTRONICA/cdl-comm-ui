@@ -1,31 +1,48 @@
-import React, { useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
   Grid,
   TextField,
   useTheme,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
   FormControlLabel,
   Checkbox,
+  Button,
+  InputAdornment,
   type Theme,
 } from "@mui/material";
+import {
+  Refresh as RefreshIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+} from '@mui/icons-material'
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { Controller, useFormContext } from "react-hook-form";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import dayjs, { type Dayjs } from "dayjs";
-import { getPaymentInstructionLabel } from "@/constants/mappings/master/paymentMapping";
+import {
+  getPaymentInstructionLabel,
+  getPaymentLabel,
+} from "@/constants/mappings/master/paymentMapping";
 import { usePaymentInstructionLabelsWithCache } from "@/hooks/master/PaymentHook";
 import { useAppStore } from "@/store";
 import { validateStandingInstructionField } from "@/lib/validation/masterValidation/paymentInstructionSchemas";
+import { useApplicationSettings } from "@/hooks/useApplicationSettings";
 import {
   commonFieldStyles as sharedCommonFieldStyles,
+  selectStyles as sharedSelectStyles,
   labelSx as sharedLabelSx,
   valueSx as sharedValueSx,
   cardStyles as sharedCardStyles,
   datePickerStyles as sharedDatePickerStyles,
   viewModeInputStyles,
   neutralBorder,
+  neutralBorderHover,
 } from "../styles";
 
 interface Step1Props {
@@ -33,8 +50,12 @@ interface Step1Props {
   paymentInstructionId?: string | undefined;
 }
 
-const Step1 = ({ isReadOnly = false }: Step1Props) => {
+const Step1 = ({ isReadOnly = false, paymentInstructionId }: Step1Props) => {
   const theme = useTheme();
+  const [generatedId, setGeneratedId] = useState<string>("");
+  const [isGeneratingId, setIsGeneratingId] = useState<boolean>(false);
+  const isEditMode = !!paymentInstructionId;
+
   const isDark = theme.palette.mode === "dark";
   const textPrimary = isDark ? "#FFFFFF" : "#1E2939";
   const textSecondary = isDark ? "#CBD5E1" : "#6B7280";
@@ -59,6 +80,13 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
         : sharedLabelSx,
     [theme]
   );
+  const selectFieldStyles = React.useMemo(
+    () =>
+      typeof sharedSelectStyles === "function"
+        ? sharedSelectStyles(theme)
+        : sharedSelectStyles,
+    [theme]
+  );
   const valueStyles = React.useMemo(
     () =>
       typeof sharedValueSx === "function"
@@ -75,9 +103,12 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
   );
   const viewModeStyles = viewModeInputStyles(theme);
   const neutralBorderColor = neutralBorder(theme);
+  const neutralBorderHoverColor = neutralBorderHover(theme);
 
   const {
     control,
+    watch,
+    setValue,
     formState: { errors },
   } = useFormContext();
 
@@ -97,6 +128,92 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
     },
     [paymentInstructionLabels, currentLanguage, getLabel]
   );
+
+  const ruleRefNoLabel = useCallback((): string => {
+    const fallback = getPaymentLabel("CDL_RULE_REF_NO");
+    if (paymentInstructionLabels) {
+      return getLabel("CDL_RULE_REF_NO", currentLanguage, fallback);
+    }
+    return fallback;
+  }, [paymentInstructionLabels, currentLanguage, getLabel]);
+
+  const { data: transferTypeSettings = [], loading: transferTypeLoading } =
+    useApplicationSettings("TRANSFER_TYPE");
+  const { data: occurrenceSettings = [], loading: occurrenceLoading } =
+    useApplicationSettings("OCCURENCE");
+  const {
+    data: recurringFrequencySettings = [],
+    loading: recurringFrequencyLoading,
+  } = useApplicationSettings("RECURRING_FREQUENCY");
+
+  const transferTypeOptions = React.useMemo(
+    () =>
+      transferTypeSettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [transferTypeSettings]
+  );
+
+  const occurrenceOptions = React.useMemo(
+    () =>
+      occurrenceSettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [occurrenceSettings]
+  );
+
+  const recurringFrequencyOptions = React.useMemo(
+    () =>
+      recurringFrequencySettings.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [recurringFrequencySettings]
+  );
+
+  useEffect(() => {
+    const subscription = watch((value) => {
+      const ruleRefNo = (value as Record<string, unknown>)?.ruleRefNo;
+      if (ruleRefNo) {
+        setGeneratedId(String(ruleRefNo));
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  const resolveSx = (styles: unknown) => {
+    if (typeof styles === "function") {
+      return styles(theme) as Record<string, unknown>;
+    }
+    if (Array.isArray(styles)) {
+      return Object.assign({}, ...styles) as Record<string, unknown>;
+    }
+    if (styles && typeof styles === "object") {
+      return styles as Record<string, unknown>;
+    }
+    return {};
+  };
+
+  const handleGenerateNewId = async () => {
+    try {
+      setIsGeneratingId(true);
+      const newId = `RULE-${Date.now()}`;
+      setGeneratedId(newId);
+      setValue("ruleRefNo", newId, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    } catch {
+      // Handle error silently
+    } finally {
+      setIsGeneratingId(false);
+    }
+  };
 
   const renderTextField = (
     name: string,
@@ -161,18 +278,111 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
               }),
               ...(!!errors[name] &&
                 !isReadOnly && {
-                  "& .MuiOutlinedInput-root": {
-                    "& fieldset": {
-                      borderColor: theme.palette.error.main,
-                    },
-                    "&:hover fieldset": {
-                      borderColor: theme.palette.error.main,
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: theme.palette.error.main,
-                    },
+                "& .MuiOutlinedInput-root": {
+                  "& fieldset": {
+                    borderColor: theme.palette.error.main,
                   },
+                  "&:hover fieldset": {
+                    borderColor: theme.palette.error.main,
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: theme.palette.error.main,
+                  },
+                },
+              }),
+            }}
+          />
+        )}
+      />
+    </Grid>
+  );
+
+  const renderRuleRefNoField = (
+    name: string,
+    label: string,
+    gridSize: number = 6,
+    required = false
+  ) => (
+    <Grid key={`field-${name}`} size={{ xs: 12, md: gridSize }}>
+      <Controller
+        name={name}
+        control={control}
+        defaultValue=""
+        rules={{
+          required: required ? `${label} is required` : false,
+        }}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            fullWidth
+            label={label}
+            required={required}
+            value={field.value || generatedId}
+            error={!!errors[name]}
+            helperText={errors[name]?.message?.toString()}
+            onChange={(e) => {
+              setGeneratedId(e.target.value);
+              field.onChange(e);
+            }}
+            disabled={isReadOnly || isEditMode}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end" sx={{ mr: 0 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={handleGenerateNewId}
+                    disabled={isGeneratingId || isReadOnly || isEditMode}
+                    sx={{
+                      color: theme.palette.primary.contrastText,
+                      borderRadius: "8px",
+                      textTransform: "none",
+                      background: theme.palette.primary.main,
+                      "&:hover": {
+                        background: theme.palette.primary.dark,
+                      },
+                      minWidth: "100px",
+                      height: "32px",
+                      fontFamily: "Outfit, sans-serif",
+                      fontWeight: 500,
+                      fontStyle: "normal",
+                      fontSize: "11px",
+                      lineHeight: "14px",
+                      letterSpacing: "0.3px",
+                      px: 1,
+                    }}
+                  >
+                    {isGeneratingId ? "Generating..." : "Generate ID"}
+                  </Button>
+                </InputAdornment>
+              ),
+              sx: valueStyles,
+            }}
+            InputLabelProps={{
+              sx: {
+                ...labelStyles,
+                ...(!!errors[name] && {
+                  color: theme.palette.error.main,
+                  "&.Mui-focused": { color: theme.palette.error.main },
+                  "&.MuiFormLabel-filled": { color: theme.palette.error.main },
                 }),
+              },
+            }}
+            sx={{
+              ...fieldStyles,
+              ...((isReadOnly || isEditMode) && {
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: viewModeStyles.backgroundColor,
+                  color: textSecondary,
+                  "& fieldset": {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                  "&:hover fieldset": {
+                    borderColor: viewModeStyles.borderColor,
+                  },
+                },
+              }),
             }}
           />
         )}
@@ -286,6 +496,129 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
     </Grid>
   );
 
+  const renderSelectField = (
+    name: string,
+    configId: string,
+    fallbackLabel: string,
+    options: { id: number; displayName: string; settingValue: string }[],
+    gridMd: number = 6,
+    required = false,
+    loading = false
+  ) => {
+    const label = getPaymentInstructionLabelDynamic(configId) || fallbackLabel;
+    return (
+      <Grid size={{ xs: 12, md: gridMd }}>
+        <Controller
+          name={name}
+          control={control}
+          rules={required ? { required: `${label} is required` } : {}}
+          defaultValue={""}
+          render={({ field }) => (
+            <FormControl fullWidth error={!!errors[name]} required={required}>
+              <InputLabel sx={labelStyles} required={required}>
+                {loading ? "Loading..." : label}
+              </InputLabel>
+              <Select
+                {...field}
+                label={loading ? "Loading..." : label}
+                required={required}
+                sx={{
+                  ...resolveSx(selectFieldStyles),
+                  ...resolveSx(valueStyles),
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    border: `1px solid ${neutralBorderColor}`,
+                    borderRadius: "6px",
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    border: `1px solid ${neutralBorderHoverColor}`,
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    border: `2px solid ${theme.palette.primary.main}`,
+                  },
+                  ...(isReadOnly && {
+                    "& .MuiOutlinedInput-root": {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      "& fieldset": {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      "&:hover fieldset": {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                    "& .MuiSelect-select": {
+                      color: viewModeStyles.textColor,
+                    },
+                  }),
+                  ...(!!errors[name] &&
+                    !isReadOnly && {
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: `1px solid ${theme.palette.error.main}`,
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      border: `1px solid ${theme.palette.error.main}`,
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      border: `1px solid ${theme.palette.error.main}`,
+                    },
+                  }),
+                }}
+                IconComponent={KeyboardArrowDownIcon}
+                disabled={loading || isReadOnly}
+                value={
+                  typeof field.value === "object" && field.value?.id
+                    ? options.find((opt) => opt.id === field.value.id)
+                      ?.settingValue || ""
+                    : field.value || ""
+                }
+                onChange={(e) => {
+                  const selectedValue = e.target.value as string;
+                  const selectedOption = options.find(
+                    (opt) => opt.settingValue === selectedValue
+                  );
+                  if (selectedOption) {
+                    setValue(
+                      name,
+                      { id: selectedOption.id },
+                      {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      }
+                    );
+                  } else {
+                    setValue(name, null, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                  }
+                }}
+              >
+                {options.map((option) => (
+                  <MenuItem key={option.id} value={option.settingValue}>
+                    {option.displayName}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors[name] && (
+                <FormHelperText
+                  error
+                  sx={{
+                    fontFamily: "Outfit, sans-serif",
+                    fontSize: "12px",
+                    marginLeft: "14px",
+                    marginRight: "14px",
+                    marginTop: "4px",
+                  }}
+                >
+                  {errors[name]?.message?.toString()}
+                </FormHelperText>
+              )}
+            </FormControl>
+          )}
+        />
+      </Grid>
+    );
+  };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Card
@@ -297,6 +630,12 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
       >
         <CardContent sx={{ color: textPrimary }}>
           <Grid container rowSpacing={4} columnSpacing={2}>
+            {renderRuleRefNoField(
+              "ruleRefNo",
+              ruleRefNoLabel(),
+              6,
+              false
+            )}
             {renderTextField(
               "standingInstructionReferenceNumber",
               getPaymentInstructionLabelDynamic(
@@ -361,22 +700,6 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
               true,
               "number"
             )}
-            {renderDateTimeField(
-              "firstTransactionDateTime",
-              getPaymentInstructionLabelDynamic(
-                "CDL_PAYMENT_STANDING_INSTRUCTION_FIRST_TRANSACTION_DATETIME"
-              ),
-              6,
-              true
-            )}
-            {renderDateTimeField(
-              "instructionExpiryDateTime",
-              getPaymentInstructionLabelDynamic(
-                "CDL_PAYMENT_STANDING_INSTRUCTION_EXPIRY_DATETIME"
-              ),
-              6,
-              true
-            )}
             {renderTextField(
               "retryIntervalDays",
               getPaymentInstructionLabelDynamic(
@@ -388,15 +711,8 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
               true,
               "number"
             )}
+            
 
-            {renderDateTimeField(
-              "nextExecutionDateTime",
-              getPaymentInstructionLabelDynamic(
-                "CDL_PAYMENT_STANDING_INSTRUCTION_NEXT_EXECUTION_DATETIME"
-              ),
-              6,
-              false
-            )}
             {renderTextField(
               "swiftCode",
               getPaymentInstructionLabelDynamic(
@@ -461,13 +777,69 @@ const Step1 = ({ isReadOnly = false }: Step1Props) => {
               false,
               false
             )}
+            {renderDateTimeField(
+              "firstTransactionDateTime",
+              getPaymentInstructionLabelDynamic(
+                "CDL_PAYMENT_STANDING_INSTRUCTION_FIRST_TRANSACTION_DATETIME"
+              ),
+              4,
+              true
+            )}
+            
+
+            {renderDateTimeField(
+              "nextExecutionDateTime",
+              getPaymentInstructionLabelDynamic(
+                "CDL_PAYMENT_STANDING_INSTRUCTION_NEXT_EXECUTION_DATETIME"
+              ),
+              4,
+              false
+            )}
+            {renderDateTimeField(
+              "instructionExpiryDateTime",
+              getPaymentInstructionLabelDynamic(
+                "CDL_PAYMENT_STANDING_INSTRUCTION_EXPIRY_DATETIME"
+              ),
+              4,
+              true
+            )}
+
+            {renderSelectField(
+              "transferTypeDTO",
+              "CDL_PAYMENT_STANDING_INSTRUCTION_TRANSFER_TYPE_DTO",
+              "Transfer Type",
+              transferTypeOptions,
+              4,
+              false,
+              transferTypeLoading
+            )}
+            {renderSelectField(
+              "occurrenceDTO",
+              "CDL_PAYMENT_STANDING_INSTRUCTION_OCCURRENCE_DTO",
+              "Occurrence",
+              occurrenceOptions,
+              4,
+              false,
+              occurrenceLoading
+            )}
+            {renderSelectField(
+              "recurringFrequencyDTO",
+              "CDL_PAYMENT_STANDING_INSTRUCTION_RECURRING_FREQUENCY_DTO",
+              "Recurring Frequency",
+              recurringFrequencyOptions,
+              4,
+              false,
+              recurringFrequencyLoading
+            )}
             {renderCheckboxField(
               "retryUntilMonthEndFlag",
               getPaymentInstructionLabelDynamic(
                 "CDL_PAYMENT_STANDING_INSTRUCTION_RETRY_UNTIL_MONTH_END_FLAG"
               ),
-              6
+              12
             )}
+
+            
           </Grid>
         </CardContent>
       </Card>

@@ -218,7 +218,7 @@ export default function AgreementFeeScheduleStepperWrapper({
     }
 
     try {
-      methods.reset(agreementFeeScheduleDetails as Record<string, unknown>)
+      methods.reset(agreementFeeScheduleDetails as unknown as Record<string, unknown>)
       setShouldResetForm(false)
     } catch {
       // Don't throw - allow component to continue rendering
