@@ -28,6 +28,7 @@ import { Controller, useFormContext } from 'react-hook-form'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { getAgreementLabel } from '@/constants/mappings/master/Entity/agreementMapping'
 import { useAgreementLabelsWithCache, useAgreement, useCustomerDetailsByCif } from '@/hooks'
+import { useApplicationSettings } from '@/hooks/useApplicationSettings'
 import { useAppStore } from '@/store'
 import { validateAgreementField } from '@/lib/validation/masterValidation/agreementSchemas'
 import {
@@ -170,6 +171,7 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
       }, 500)
       return () => clearTimeout(timer)
     }
+    return undefined
   }, [isEditMode, cifValue, debouncedCif])
   
   // Only fetch customer details when CIF is debounced and valid
@@ -357,17 +359,34 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
     }
   }
 
-  // Placeholder for dropdown data - to be implemented
+  // Dropdown data (Fees + Deal Priority)
+  const {
+    data: feesOptions = [],
+    loading: feesLoading,
+    error: feesError,
+  } = useApplicationSettings('FEE')
+  const {
+    data: dealPriorityOptions = [],
+    loading: dealPriorityLoading,
+    error: dealPriorityError,
+  } = useApplicationSettings('DEAL_PRIORITY')
+  const dropdownsLoading = feesLoading || dealPriorityLoading
+
+  // Display label resolution for dropdowns
   const getDisplayLabel = (option: unknown, fallback: string) => {
+    if (option && typeof option === 'object' && 'displayName' in option) {
+      return String((option as { displayName: string }).displayName)
+    }
     if (option && typeof option === 'object' && 'settingValue' in option) {
       return String((option as { settingValue: string }).settingValue)
     }
     return fallback
   }
 
-  // Placeholder for dropdown error state - to be implemented when dropdown hooks are added
-  // This will be populated from dropdown hooks similar to useDeveloperDropdownLabels
-  const dropdownsError: Error | null = null
+  const dropdownsError: Error | null =
+    feesError || dealPriorityError
+      ? new Error('Failed to load dropdown options')
+      : null
 
   const renderTextField = (
     name: string,
@@ -449,7 +468,6 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
   )
 
   // New render function for API-driven dropdowns (for future use)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const renderApiSelectField = (
     name: string,
     label: string,
@@ -484,6 +502,10 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
           }}
           defaultValue=""
           render={({ field, fieldState: { error } }) => {
+            const normalizedValue =
+              field.value !== undefined && field.value !== null
+                ? String(field.value)
+                : ''
             return (
             <FormControl fullWidth error={!!error} required={required}>
               <InputLabel sx={labelStyles}>
@@ -491,7 +513,7 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
               </InputLabel>
               <Select
                 {...field}
-                value={field.value || ''}
+                value={normalizedValue}
                 input={<OutlinedInput label={loading ? `Loading...` : label} />}
                 label={loading ? `Loading...` : label}
                 IconComponent={KeyboardArrowDownIcon}
@@ -531,6 +553,15 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
                           },
                         } as SxProps<Theme>)
                   }
+                onChange={(event) => {
+                  const selectedValue = event.target.value as string
+                  const selectedId = Number(selectedValue)
+                  if (!selectedValue || Number.isNaN(selectedId)) {
+                    field.onChange('')
+                    return
+                  }
+                  field.onChange(selectedId)
+                }}
               >
                   {options.map((option, index) => {
                     const optionObj = option as { id?: string | number; settingValue?: string; configId?: string }
@@ -934,9 +965,9 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
               6,
               dropdownsLoading,
               true
-            )} */}
+            )}
           
-            {/* {renderApiSelectField(
+           {renderApiSelectField(
                 'agreementParametersDTO.id',
                 getAgreementLabelDynamic('CDL_ESCROW_AGREEMENT_PARAMETERS_DTO'),
                 agreementRegulatoryAuthoritiesOptions,
@@ -983,16 +1014,9 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
                 6,
                 dropdownsLoading,
                 true
-              )}
-              {renderApiSelectField(
-                'feesDTO.id',
-                getAgreementLabelDynamic('CDL_ESCROW_FEES_DTO'),
-                feesOptions,
-                6,
-                dropdownsLoading,
-                true
-              )}
-              {renderApiSelectField(
+              )} */}
+              
+              {/* {renderApiSelectField(
                 'dealTypeDTO.id',
                 getAgreementLabelDynamic('CDL_ESCROW_DEAL_TYPE_DTO'),
                 dealTypeOptions,
@@ -1015,6 +1039,14 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
                 6,
                 dropdownsLoading,
                 true
+              )} */}
+              {renderApiSelectField(
+                'feesDTO.id',
+                getAgreementLabelDynamic('CDL_ESCROW_FEES_DTO'),
+                feesOptions,
+                6,
+                dropdownsLoading,
+                true
               )}
               {renderApiSelectField(
                 'dealPriorityDTO.id',
@@ -1023,7 +1055,7 @@ const Step1 = ({ isReadOnly = false, agreementId }: Step1Props) => {
                 6,
                 dropdownsLoading,
                 true
-              )} */}
+              )} 
             
           </Grid>
         </CardContent>

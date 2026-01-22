@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Grid,
@@ -29,6 +29,7 @@ import { GlobalLoading } from "@/components/atoms";
 import { usePaymentInstructionLabelsWithCache } from "@/hooks/master/PaymentHook";
 import { getPaymentInstructionLabel } from "@/constants/mappings/master/paymentMapping";
 import { useAppStore } from "@/store";
+import { useApplicationSettings } from "@/hooks/useApplicationSettings";
 
 // Hook to detect dark mode
 const useIsDarkMode = () => {
@@ -126,6 +127,76 @@ const Step2 = ({
     [paymentInstructionLabels, currentLanguage, getLabel]
   );
 
+  const { data: transferTypeSettings = [] } =
+    useApplicationSettings("TRANSFER_TYPE");
+  const { data: occurrenceSettings = [] } =
+    useApplicationSettings("OCCURENCE");
+  const { data: recurringFrequencySettings = [] } =
+    useApplicationSettings("RECURRING_FREQUENCY");
+
+  const transferTypeOptions = useMemo(
+    () =>
+      transferTypeSettings.map((item) => ({
+        id: item.id,
+        displayName: item.displayName,
+      })),
+    [transferTypeSettings]
+  );
+
+  const occurrenceOptions = useMemo(
+    () =>
+      occurrenceSettings.map((item) => ({
+        id: item.id,
+        displayName: item.displayName,
+      })),
+    [occurrenceSettings]
+  );
+
+  const recurringFrequencyOptions = useMemo(
+    () =>
+      recurringFrequencySettings.map((item) => ({
+        id: item.id,
+        displayName: item.displayName,
+      })),
+    [recurringFrequencySettings]
+  );
+
+  const getDtoId = (value: unknown): number | undefined => {
+    if (value && typeof value === "object" && "id" in value) {
+      const idValue = (value as { id?: number | string }).id;
+      return idValue !== undefined && idValue !== null ? Number(idValue) : undefined;
+    }
+    if (typeof value === "number") {
+      return value;
+    }
+    if (
+      typeof value === "string" &&
+      value.trim() !== "" &&
+      !Number.isNaN(Number(value))
+    ) {
+      return Number(value);
+    }
+    return undefined;
+  };
+
+  const getOptionLabel = (
+    value: unknown,
+    options: Array<{ id: number; displayName: string }>
+  ): string => {
+    const id = getDtoId(value);
+    if (id !== undefined) {
+      const match = options.find((option) => option.id === id)?.displayName;
+      if (match) return match;
+    }
+    if (value && typeof value === "object") {
+      const dto = value as { settingValue?: string | null };
+      if (dto.settingValue && dto.settingValue.trim() !== "") {
+        return dto.settingValue;
+      }
+    }
+    return "-";
+  };
+
   // Render helper functions with dark mode support
   const renderDisplayField = useCallback(
     (label: string, value: string | number | null = "-") => (
@@ -140,10 +211,6 @@ const Step2 = ({
   useEffect(() => {
     const fetchAllData = async () => {
       if (!paymentInstructionId || paymentInstructionId.trim() === "") {
-        console.warn(
-          "[Step2] Payment Instruction ID is missing or empty:",
-          paymentInstructionId
-        );
         setError("Payment Instruction ID is required to load review data");
         setLoading(false);
         return;
@@ -374,32 +441,7 @@ const Step2 = ({
                 paymentInstructionDetails.thresholdAmount
               )}
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getPaymentInstructionLabelDynamic(
-                  "CDL_PAYMENT_STANDING_INSTRUCTION_FIRST_TRANSACTION_DATETIME"
-                ),
-                paymentInstructionDetails.firstTransactionDateTime
-                  ? formatDate(
-                      paymentInstructionDetails.firstTransactionDateTime,
-                      "DD/MM/YYYY"
-                    )
-                  : "-"
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getPaymentInstructionLabelDynamic(
-                  "CDL_PAYMENT_STANDING_INSTRUCTION_EXPIRY_DATETIME"
-                ),
-                paymentInstructionDetails.instructionExpiryDateTime
-                  ? formatDate(
-                      paymentInstructionDetails.instructionExpiryDateTime,
-                      "DD/MM/YYYY"
-                    )
-                  : "-"
-              )}
-            </Grid>
+
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getPaymentInstructionLabelDynamic(
@@ -408,19 +450,8 @@ const Step2 = ({
                 paymentInstructionDetails.retryIntervalDays
               )}
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {renderDisplayField(
-                getPaymentInstructionLabelDynamic(
-                  "CDL_PAYMENT_STANDING_INSTRUCTION_NEXT_EXECUTION_DATETIME"
-                ),
-                paymentInstructionDetails.nextExecutionDateTime
-                  ? formatDate(
-                      paymentInstructionDetails.nextExecutionDateTime,
-                      "DD/MM/YYYY"
-                    )
-                  : "-"
-              )}
-            </Grid>
+
+
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
                 getPaymentInstructionLabelDynamic(
@@ -484,7 +515,7 @@ const Step2 = ({
                 </Grid>
               )}
             {paymentInstructionDetails.instructionRemarks && (
-              <Grid size={{ xs: 12, md: 12 }}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 {renderDisplayField(
                   getPaymentInstructionLabelDynamic(
                     "CDL_PAYMENT_STANDING_INSTRUCTION_REMARKS"
@@ -493,6 +524,83 @@ const Step2 = ({
                 )}
               </Grid>
             )}
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getPaymentInstructionLabelDynamic(
+                  "CDL_PAYMENT_STANDING_INSTRUCTION_TRANSFER_TYPE_DTO"
+                ),
+                getOptionLabel(
+                  paymentInstructionDetails.transferTypeDTO,
+                  transferTypeOptions
+                )
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getPaymentInstructionLabelDynamic(
+                  "CDL_PAYMENT_STANDING_INSTRUCTION_OCCURRENCE_DTO"
+                ),
+                getOptionLabel(
+                  paymentInstructionDetails.occurrenceDTO,
+                  occurrenceOptions
+                )
+              )}
+            </Grid>
+
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getPaymentInstructionLabelDynamic(
+                  "CDL_PAYMENT_STANDING_INSTRUCTION_FIRST_TRANSACTION_DATETIME"
+                ),
+                paymentInstructionDetails.firstTransactionDateTime
+                  ? formatDate(
+                    paymentInstructionDetails.firstTransactionDateTime,
+                    "DD/MM/YYYY"
+                  )
+                  : "-"
+              )}
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getPaymentInstructionLabelDynamic(
+                  "CDL_PAYMENT_STANDING_INSTRUCTION_NEXT_EXECUTION_DATETIME"
+                ),
+                paymentInstructionDetails.nextExecutionDateTime
+                  ? formatDate(
+                    paymentInstructionDetails.nextExecutionDateTime,
+                    "DD/MM/YYYY"
+                  )
+                  : "-"
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getPaymentInstructionLabelDynamic(
+                  "CDL_PAYMENT_STANDING_INSTRUCTION_EXPIRY_DATETIME"
+                ),
+                paymentInstructionDetails.instructionExpiryDateTime
+                  ? formatDate(
+                    paymentInstructionDetails.instructionExpiryDateTime,
+                    "DD/MM/YYYY"
+                  )
+                  : "-"
+              )}
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getPaymentInstructionLabelDynamic(
+                  "CDL_PAYMENT_STANDING_INSTRUCTION_RECURRING_FREQUENCY_DTO"
+                ),
+                getOptionLabel(
+                  paymentInstructionDetails.recurringFrequencyDTO,
+                  recurringFrequencyOptions
+                )
+              )}
+            </Grid>
           </Grid>
         </CardContent>
       </Card>

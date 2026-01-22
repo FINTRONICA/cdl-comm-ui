@@ -37,7 +37,7 @@ export class AgreementParameterLabelsService {
         throw new Error('Authentication token not found')
       }
       const labels = await apiClient.get<AgreementParameterLabelResponse[]>(
-        API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.BUILD_PARTNER_ASSET,
+        API_ENDPOINTS.APP_LANGUAGE_TRANSLATION.AGREEMENT_PARAMETER,
         {
           headers: {
             Authorization: `Bearer ${token}`

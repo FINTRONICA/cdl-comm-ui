@@ -2,6 +2,12 @@ import { z } from 'zod'
 
 // Agreement Fee Schedule Step 1: Basic Details Schema
 export const AgreementFeeScheduleStep1Schema = z.object({
+  // Regulatory Ref No - optional (auto-generated)
+  regulatoryRefNo: z
+    .string()
+    .optional()
+    .nullable(),
+
   // Effective Start Date - mandatory field
   effectiveStartDate: z
     .string()

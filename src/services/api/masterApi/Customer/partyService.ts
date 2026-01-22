@@ -660,13 +660,18 @@ export class PartyService {
     partyId?: string,
     authorizedSignatoryId?: string | number
   ): Promise<StepSaveResponse> {
+    const normalizedData: PartyAuthorizedSignatoryData = {
+      ...data,
+      enabled: data.enabled ?? true,
+      deleted: data.deleted ?? false,
+    }
     if (isEditing && authorizedSignatoryId) {
       // Use PUT for editing existing authorized signatory
       const url = buildApiUrl(API_ENDPOINTS.PARTY_AUTHORIZED_SIGNATORY.UPDATE(authorizedSignatoryId.toString()))
       const requestData = {
-        ...data,
+        ...normalizedData,
         id: typeof authorizedSignatoryId === 'string' ? parseInt(authorizedSignatoryId) : authorizedSignatoryId,
-        partyDTO: partyId ? { id: parseInt(partyId) } : data.partyDTO,
+        partyDTO: partyId ? { id: parseInt(partyId) } : normalizedData.partyDTO,
       }
       const response = await apiClient.put<StepSaveResponse>(url, requestData)
       return response
@@ -674,7 +679,7 @@ export class PartyService {
       // Use POST for creating new authorized signatory
       const url = buildApiUrl(API_ENDPOINTS.PARTY_AUTHORIZED_SIGNATORY.SAVE)
       const requestData = {
-        ...data,
+        ...normalizedData,
         partyDTO: partyId ? { id: parseInt(partyId) } : undefined,
       }
       const response = await apiClient.post<StepSaveResponse>(url, requestData)

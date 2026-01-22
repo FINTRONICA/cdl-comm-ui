@@ -194,7 +194,7 @@ export const createAccountDocumentConfig = (
     entityType: "ACCOUNT",
     documentService: accountDocumentService,
     mapApiToDocument: mapApiToAccountDocumentItem,
-    documentTypeSettingKey: "ACCOUNT_DOCUMENT_TYPE",
+    documentTypeSettingKey: "ESCROW_ACCOUNT_ID_TYPE", // Use ESCROW_ACCOUNT_ID_TYPE as it's the standard for account-related documents
     title: options?.title || "Account Documents",
     description:
       options?.description ||

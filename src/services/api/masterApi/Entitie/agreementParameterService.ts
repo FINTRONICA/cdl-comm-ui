@@ -58,40 +58,43 @@ export interface SettingDTO {
 }
 export interface AgreementParameter {
   id: number;
+  parametersRefNo?: string | null;
   agreementEffectiveDate: string;
   agreementExpiryDate: string;
   agreementRemarks?: string | null;
   active: boolean;
   permittedInvestmentAllowedDTO?: SettingDTO | null;
+  permittedInvestmentADTO?: SettingDTO | null;
   amendmentAllowedDTO?: SettingDTO | null;
   dealClosureBasisDTO?: SettingDTO | null;
-  escrowAgreementDTO?: string | null;
   enabled: boolean;
   deleted: boolean;
   uuid: string;
 }
 export interface CreateAgreementParameterRequest {
+  parametersRefNo?: string | null;
   agreementEffectiveDate: string;
   agreementExpiryDate: string;
   agreementRemarks?: string | null;
   active?: boolean;
   permittedInvestmentAllowedDTO?: { id: number } | number | null;
+  permittedInvestmentADTO?: { id: number } | number | null;
   amendmentAllowedDTO?: { id: number } | number | null;
   dealClosureBasisDTO?: { id: number } | number | null;
-  escrowAgreementDTO?: string | null;
   enabled?: boolean;
   deleted?: boolean;
   uuid?: string;
 }
 export interface UpdateAgreementParameterRequest {
+  parametersRefNo?: string | null;
   agreementEffectiveDate?: string;
   agreementExpiryDate?: string;
   agreementRemarks?: string | null;
   active?: boolean;
   permittedInvestmentAllowedDTO?: { id: number } | number | null;
+  permittedInvestmentADTO?: { id: number } | number | null;
   amendmentAllowedDTO?: { id: number } | number | null;
   dealClosureBasisDTO?: { id: number } | number | null;
-  escrowAgreementDTO?: string | null;
   enabled?: boolean;
   deleted?: boolean;
   uuid?: string;
@@ -127,14 +130,15 @@ export interface StepValidationResponse {
   warnings?: string[];
 }
 export interface AgreementParameterDetailsData {
+  parametersRefNo?: string | null | undefined;
   agreementEffectiveDate: string;
   agreementExpiryDate: string;
   agreementRemarks?: string | undefined;
   active?: boolean | undefined;
   permittedInvestmentAllowedDTO?: { id: number } | number | null | undefined;
+  permittedInvestmentADTO?: { id: number } | number | null | undefined;
   amendmentAllowedDTO?: { id: number } | number | null | undefined;
   dealClosureBasisDTO?: { id: number } | number | null | undefined;
-  escrowAgreementDTO?: string | null | undefined;
   enabled?: boolean | undefined;
   deleted?: boolean | undefined;
 }
@@ -144,6 +148,7 @@ export interface AgreementParameterReviewData {
 }
 export interface AgreementParameterUIData {
   id: string;
+  parametersRefNo: string;
   agreementEffectiveDate: string;
   agreementExpiryDate: string;
   agreementRemarks: string;
@@ -172,6 +177,7 @@ export const mapAgreementParameterToUIData = (
 
   return {
     id: apiData.id.toString(),
+    parametersRefNo: apiData.parametersRefNo || "N/A",
     agreementEffectiveDate: apiData.agreementEffectiveDate || "N/A",
     agreementExpiryDate: apiData.agreementExpiryDate || "N/A",
     agreementRemarks: apiData.agreementRemarks || "N/A",

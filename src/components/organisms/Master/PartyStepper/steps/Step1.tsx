@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Button,
   Card,
   CardContent,
-  Checkbox,
   FormControl,
-  FormControlLabel,
   FormHelperText,
   Grid,
   InputAdornment,
   InputLabel,
   MenuItem,
-  OutlinedInput,
   Select,
   TextField,
   useTheme,
@@ -21,19 +18,19 @@ import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
+import { LocalizationProvider } from '@mui/x-date-pickers'
 import { Controller, useFormContext } from 'react-hook-form'
-import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { getPartyLabel } from '@/constants/mappings/master/partyMapping'
 import { usePartyLabelsWithCache } from '@/hooks/master/CustomerHook/usePartyLabelsWithCache'
 import { useAppStore } from '@/store'
 import { usePartyStepStatus } from '@/hooks/master/CustomerHook/useParty'
+import { useApplicationSettings } from '@/hooks/useApplicationSettings'
+import { useRoles } from '@/hooks/useRoles'
 import { partyService } from '@/services/api/masterApi/Customer/partyService'
 import {
   commonFieldStyles as sharedCommonFieldStyles,
   selectStyles as sharedSelectStyles,
-  datePickerStyles as sharedDatePickerStyles,
   labelSx as sharedLabelSx,
   valueSx as sharedValueSx,
   cardStyles as sharedCardStyles,
@@ -58,10 +55,6 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
   )
   const selectFieldStyles = React.useMemo(
     () => (sharedSelectStyles as (theme: Theme) => Record<string, unknown>)(theme),
-    [theme]
-  )
-  const dateFieldStyles = React.useMemo(
-    () => (sharedDatePickerStyles as (theme: Theme) => Record<string, unknown>)(theme),
     [theme]
   )
   const labelStyles = React.useMemo(
@@ -96,6 +89,30 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
   // Dynamic label support (Phase 1: foundation)
   const { data: partyLabels, getLabel } = usePartyLabelsWithCache()
   const currentLanguage = useAppStore((state) => state.language) || 'EN'
+
+  // Dropdown data (matching Beneficiary Step1 pattern)
+  const { data: partyConstituents = [], loading: partyConstituentsLoading } =
+    useApplicationSettings('PARTY_CONSTITUENT')
+  const { data: rolesData, isLoading: rolesLoading } = useRoles(0, 999)
+
+  const partyConstituentOptions = useMemo(
+    () =>
+      partyConstituents.map((item) => ({
+        id: item.id,
+        settingValue: item.settingValue,
+        displayName: item.displayName,
+      })),
+    [partyConstituents]
+  )
+
+  const roleOptions = useMemo(() => {
+    if (!rolesData || !Array.isArray(rolesData)) return []
+    return rolesData.map((role) => ({
+      id: role.id,
+      settingValue: String(role.id),
+      displayName: role.name || `Role ${role.id}`,
+    }))
+  }, [rolesData])
 
   const getPartyLabelDynamic = useCallback(
     (configId: string): string => {
@@ -163,11 +180,11 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
     const details = stepStatus?.stepData?.step1
     if (!details) return
 
-    // Load partyConstituentDTO if available (matching DeveloperStepper pattern)
+    // Load partyConstituentDTO if available (matching Beneficiary Step1 pattern)
     if (details.partyConstituentDTO && typeof details.partyConstituentDTO === 'object' && 'id' in details.partyConstituentDTO) {
       const constituentId = (details.partyConstituentDTO as { id?: number }).id
       if (constituentId) {
-        setValue('partyConstituentDTO.id', constituentId, {
+        setValue('partyConstituentDTO', { id: constituentId }, {
           shouldValidate: true,
           shouldDirty: false,
         })
@@ -177,7 +194,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
     if (details.roleDTO && typeof details.roleDTO === 'object' && 'id' in details.roleDTO) {
       const roleId = (details.roleDTO as { id?: number }).id
       if (roleId) {
-        setValue('roleDTO.id', roleId, {
+        setValue('roleDTO', { id: roleId }, {
           shouldValidate: true,
           shouldDirty: false,
         })
@@ -277,82 +294,109 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
     </Grid>
   )
 
-  // Note: renderApiSelectField, renderCheckboxField, and renderDatePickerField are defined but not used in Step1
-  // They are kept for potential future use or consistency with other steps
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const renderApiSelectField = (
     name: string,
-    label: string,
-    options: unknown[],
-    gridSize: number = 6,
-    loading = false,
-    required = false
+    configId: string,
+    fallbackLabel: string,
+    options: { id: string | number; displayName: string; settingValue: string }[],
+    gridMd: number = 6,
+    required = false,
+    loading = false
   ) => {
+    const label = getPartyLabelDynamic(configId) || fallbackLabel
     return (
-      <Grid key={name} size={{ xs: 12, md: gridSize }}>
+      <Grid key={name} size={{ xs: 12, md: gridMd }}>
         <Controller
           name={name}
           control={control}
-          rules={{
-            required: required ? `${label} is required` : false,
-            validate: (value: unknown) => {
-              // First check if required and empty
-              if (
-                required &&
-                (!value ||
-                  value === '' ||
-                  value === null ||
-                  value === undefined)
-              ) {
-                return `${label} is required`
-              }
-              return true
-            },
-          }}
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <FormControl fullWidth error={!!error} required={required}>
-              <InputLabel sx={labelStyles}>
+          rules={required ? { required: `${label} is required` } : {}}
+          defaultValue={''}
+          render={({ field }) => (
+            <FormControl fullWidth error={!!errors[name]} required={required}>
+              <InputLabel sx={labelStyles} required={required}>
                 {loading ? `Loading...` : label}
               </InputLabel>
               <Select
                 {...field}
-                value={field.value || ''}
-                input={<OutlinedInput label={loading ? `Loading...` : label} />}
                 label={loading ? `Loading...` : label}
+                required={required}
+                sx={[
+                  selectFieldStyles,
+                  valueStyles,
+                  {
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      border: `1px solid ${neutralBorderColor}`,
+                      borderRadius: '6px',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      border: `1px solid ${neutralBorderHoverColor}`,
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      border: `2px solid ${focusBorder}`,
+                    },
+                  },
+                  isReadOnly && {
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: viewModeStyles.backgroundColor,
+                      '& fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: viewModeStyles.borderColor,
+                      },
+                    },
+                    '& .MuiSelect-select': {
+                      color: viewModeStyles.textColor,
+                    },
+                  },
+                  !!errors[name] && !isReadOnly
+                    ? {
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          border: `1px solid ${theme.palette.error.main}`,
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          border: `1px solid ${theme.palette.error.main}`,
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          border: `1px solid ${theme.palette.error.main}`,
+                        },
+                      }
+                    : null,
+                ]}
                 IconComponent={KeyboardArrowDownIcon}
                 disabled={loading || isReadOnly}
-                sx={{
-                  ...(selectFieldStyles as Record<string, unknown>),
-                  ...(valueStyles as Record<string, unknown>),
-                  ...(isReadOnly && {
-                    backgroundColor: viewModeStyles.backgroundColor,
-                    color: textSecondary,
-                  }),
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    border: `1px solid ${neutralBorderColor}`,
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    border: `1px solid ${neutralBorderHoverColor}`,
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    border: `2px solid ${focusBorder}`,
-                  },
-                } as Record<string, unknown>}
+                value={
+                  typeof field.value === 'object' && field.value?.id !== undefined
+                    ? options.find(
+                        (opt) => String(opt.id) === String(field.value.id)
+                      )?.settingValue || ''
+                    : field.value || ''
+                }
+                onChange={(e) => {
+                  const selectedValue = e.target.value as string
+                  const selectedOption = options.find(
+                    (opt) => opt.settingValue === selectedValue
+                  )
+                  if (selectedOption) {
+                    setValue(name, { id: selectedOption.id }, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  } else {
+                    setValue(name, null, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  }
+                }}
               >
                 {options.map((option) => (
-                  <MenuItem
-                    key={(option as { configId?: string }).configId}
-                    value={(option as { id?: string }).id}
-                  >
-                    {(option as { name?: string; label?: string }).name || 
-                     (option as { label?: string }).label || 
-                     (option as { id?: string }).id || 
-                     'Unknown'}
+                  <MenuItem key={option.id} value={option.settingValue}>
+                    {option.displayName}
                   </MenuItem>
                 ))}
               </Select>
-              {error && (
+              {errors[name] && (
                 <FormHelperText
                   error
                   sx={{
@@ -363,7 +407,7 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
                     marginTop: '4px',
                   }}
                 >
-                  {error?.message?.toString()}
+                  {errors[name]?.message?.toString()}
                 </FormHelperText>
               )}
             </FormControl>
@@ -373,99 +417,6 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
     )
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const renderCheckboxField = (
-    name: string,
-    label?: string,
-    gridSize: number = 6
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue={false}
-        render={({ field }) => (
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={field.value === true}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.checked)}
-                disabled={isReadOnly}
-                sx={{
-                  color: neutralBorderColor,
-                  '&.Mui-checked': {
-                    color: theme.palette.primary.main,
-                  },
-                }}
-              />
-            }
-            label={
-              label ??
-              name
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, (str) => str.toUpperCase())
-            }
-            sx={{
-              '& .MuiFormControlLabel-label': {
-                fontFamily: 'Outfit, sans-serif',
-                fontStyle: 'normal',
-                fontSize: '14px',
-                lineHeight: '24px',
-                letterSpacing: '0.5px',
-                verticalAlign: 'middle',
-                color: textPrimary,
-              },
-            }}
-          />
-        )}
-      />
-    </Grid>
-  )
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const renderDatePickerField = (
-    name: string,
-    label: string,
-    gridSize: number = 6,
-    required = false
-  ) => (
-    <Grid key={name} size={{ xs: 12, md: gridSize }}>
-      <Controller
-        name={name}
-        control={control}
-        defaultValue={null}
-        rules={{
-          required: required ? `${label} is required` : false,
-        }}
-        render={({ field }) => (
-          <DatePicker
-            label={label}
-            value={field.value}
-            onChange={field.onChange}
-            format="DD/MM/YYYY"
-            disabled={isReadOnly}
-            slots={{
-              openPickerIcon: CalendarTodayOutlinedIcon,
-            }}
-            slotProps={{
-              textField: {
-                fullWidth: true,
-                required: required,
-                error: !!errors[name],
-                helperText: errors[name]?.message?.toString(),
-                sx: dateFieldStyles,
-                InputLabelProps: { sx: labelStyles },
-                InputProps: {
-                  sx: valueStyles,
-                  style: { height: '46px' },
-                },
-              },
-            }}
-          />
-        )}
-      />
-    </Grid>
-  )
 
   const renderTextFieldWithButton = (
     name: string,
@@ -708,6 +659,24 @@ const Step1 = ({ isReadOnly = false, partyId }: Step1Props) => {
               6,
               false,
               false
+            )}
+            {renderApiSelectField(
+              'partyConstituentDTO',
+              'CDL_MP_PARTY_CONSTITUENT_DTO',
+              getPartyLabel('CDL_MP_PARTY_CONSTITUENT_DTO'),
+              partyConstituentOptions,
+              6,
+              false,
+              partyConstituentsLoading
+            )}
+            {renderApiSelectField(
+              'roleDTO',
+              'CDL_MP_PARTY_ROLE_DTO',
+              getPartyLabel('CDL_MP_PARTY_ROLE_DTO'),
+              roleOptions,
+              6,
+              false,
+              rolesLoading
             )}
             {renderTextField(
               'addressLine1',

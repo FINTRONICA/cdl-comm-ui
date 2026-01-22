@@ -164,7 +164,7 @@ const AgreementParametersPageImpl: React.FC = () => {
 
   const tableColumns = [
     {
-      key: "id",
+      key: "parametersRefNo",
       label: getAgreementParameterLabelDynamic(
         "CDL_AGREEMENT_PARAMETER_REF_NO"
       ),
@@ -239,6 +239,7 @@ const AgreementParametersPageImpl: React.FC = () => {
   } = useTableState({
     data: agreementParametersData,
     searchFields: [
+      "parametersRefNo",
       "id",
       "agreementEffectiveDate",
       "agreementExpiryDate",
