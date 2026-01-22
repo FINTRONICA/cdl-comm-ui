@@ -29,6 +29,7 @@ import { GlobalLoading } from "@/components/atoms";
 import { usePaymentBeneficiaryLabelsWithCache } from "@/hooks/master/PaymentHook";
 import { getPaymentBeneficiaryLabel } from "@/constants/mappings/master/paymentMapping";
 import { useAppStore } from "@/store";
+import { useCurrencies, usePaymentModes } from "@/hooks/useApplicationSettings";
 
 // Hook to detect dark mode
 const useIsDarkMode = () => {
@@ -124,6 +125,42 @@ const Step2 = ({
         : fallback;
     },
     [paymentBeneficiaryLabels, currentLanguage, getLabel]
+  );
+  const { data: paymentModeSettings = [] } = usePaymentModes();
+  const { data: currencySettings = [] } = useCurrencies();
+
+  const getDtoId = useCallback((value: unknown): number | undefined => {
+    if (value && typeof value === "object" && "id" in value) {
+      const idValue = (value as { id?: number | string }).id;
+      return idValue !== undefined && idValue !== null
+        ? Number(idValue)
+        : undefined;
+    }
+    if (typeof value === "number") {
+      return value;
+    }
+    if (
+      typeof value === "string" &&
+      value.trim() !== "" &&
+      !Number.isNaN(Number(value))
+    ) {
+      return Number(value);
+    }
+    return undefined;
+  }, []);
+
+  const getSettingDisplayName = useCallback(
+    (
+      settings: { id: number; displayName: string; settingValue: string }[],
+      dtoValue: unknown,
+      fallback: string
+    ) => {
+      const id = getDtoId(dtoValue);
+      if (id === undefined) return fallback;
+      const match = settings.find((item) => item.id === id);
+      return match?.displayName || match?.settingValue || fallback;
+    },
+    [getDtoId]
   );
 
   // Render helper functions with dark mode support
@@ -378,10 +415,32 @@ const Step2 = ({
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               {renderDisplayField(
+                getPaymentBeneficiaryLabelDynamic("CDL_PAYMENT_CURRENCY_DTO"),
+                getSettingDisplayName(
+                  currencySettings,
+                  paymentBeneficiaryDetails.currencyDTO,
+                  "-"
+                )
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
                 getPaymentBeneficiaryLabelDynamic(
                   "CDL_PAYMENT_PAYMENT_MODE_CODE"
                 ),
                 paymentBeneficiaryDetails.paymentModeCode
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {renderDisplayField(
+                getPaymentBeneficiaryLabelDynamic(
+                  "CDL_PAYMENT_PAYMENT_MODE_DTO"
+                ),
+                getSettingDisplayName(
+                  paymentModeSettings,
+                  paymentBeneficiaryDetails.paymentModeDTO,
+                  "-"
+                )
               )}
             </Grid>
           </Grid>
