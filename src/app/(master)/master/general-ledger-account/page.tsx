@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -17,6 +18,7 @@ import {
   useGeneralLedgerAccounts,
   useDeleteGeneralLedgerAccount,
   useRefreshGeneralLedgerAccounts,
+  GENERAL_LEDGER_ACCOUNTS_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useGeneralLedgerAccount";
 import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
 import { UploadDialog } from "@/components/molecules/UploadDialog";
@@ -61,6 +63,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
   const [editingItem, setEditingItem] =
     useState<GeneralLedgerAccountData | null>(null);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -86,6 +89,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest();
   const refreshGeneralLedgerAccounts = useRefreshGeneralLedgerAccounts();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   const generalLedgerAccountData = useMemo(() => {
     if (!generalLedgerAccountsResponse?.content) return [];
@@ -243,7 +247,12 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
             await deleteGeneralLedgerAccountMutation.mutateAsync(
               String(row.id)
             );
-            refreshGeneralLedgerAccounts();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [GENERAL_LEDGER_ACCOUNTS_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -256,7 +265,10 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
       deleteGeneralLedgerAccountMutation,
       confirmDelete,
       isDeleting,
-      refreshGeneralLedgerAccounts,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
     ]
   );
 
@@ -434,6 +446,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<GeneralLedgerAccountData>
+                key={`general-ledger-accounts-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -457,13 +470,14 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
                 onRowApprove={handleRowApprove}
                 onRowDelete={handleRowDelete}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['general_ledger_account_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['general_ledger_account_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['general_ledger_account_approve']}
-                approvePermissions={["*"]}
-                updatePermissions={["general_ledger_account_update"]}
+                deletePermissions={["master_general_account_delete"]}
+                editPermissions={["master_general_account_update"]}
+                approvePermissions={["master_general_account_approve"]}
+                updatePermissions={["master_general_account_update"]}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

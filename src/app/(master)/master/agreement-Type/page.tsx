@@ -2,6 +2,7 @@
 
 import React, { useCallback, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -12,6 +13,7 @@ import {
   useAgreementTypes,
   useDeleteAgreementType,
   useRefreshAgreementTypes,
+  AGREEMENT_TYPES_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useAgreementType";
 import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
 import { UploadDialog } from "@/components/molecules/UploadDialog";
@@ -52,6 +54,7 @@ const AgreementTypePageImpl: React.FC = () => {
     null
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -79,6 +82,7 @@ const AgreementTypePageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest();
   const refreshAgreementTypes = useRefreshAgreementTypes();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const agreementTypeData = useMemo(() => {
@@ -235,7 +239,12 @@ const AgreementTypePageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteAgreementTypeMutation.mutateAsync(String(row.id));
-            refreshAgreementTypes();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [AGREEMENT_TYPES_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -248,7 +257,10 @@ const AgreementTypePageImpl: React.FC = () => {
       deleteAgreementTypeMutation,
       confirmDelete,
       isDeleting,
-      refreshAgreementTypes,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
     ]
   );
 
@@ -427,6 +439,7 @@ const AgreementTypePageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<AgreementTypeData>
+                key={`agreement-types-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -450,13 +463,14 @@ const AgreementTypePageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['agreement_type_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['agreement_type_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['agreement_type_approve']}
-                approvePermissions={["*"]}
-                updatePermissions={["agreement_type_update"]}
+                deletePermissions={["master_agreement_type_delete"]}
+                editPermissions={["master_agreement_type_update"]}
+                approvePermissions={["master_agreement_type_approve"]}
+                updatePermissions={["master_agreement_type_update"]}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

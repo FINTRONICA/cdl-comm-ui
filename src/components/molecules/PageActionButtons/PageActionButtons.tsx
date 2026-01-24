@@ -276,7 +276,7 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
       uploadPermission: ['bulk_upload'], // Unified upload permission
     },
     productProgram: {
-      label: 'Add New Product Program',
+      label: 'Add New Product',
       route: '/master/product/new',
       permissions: ['*'], // Temporarily set to allow all users
       downloadPermission: ['data_export'], // Unified download permission
