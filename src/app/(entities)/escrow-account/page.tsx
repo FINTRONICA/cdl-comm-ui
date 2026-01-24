@@ -13,6 +13,7 @@ const AccountsPageClient = dynamic(() => Promise.resolve(AccountsPageImpl), {
 });
 
 import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/templates/DashboardLayout";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
@@ -32,6 +33,7 @@ import type { AccountFilters } from "@/services/api/masterApi/Entitie/accountSer
 import { useSidebarConfig } from "@/hooks/useSidebarConfig";
 import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
 import { useRouter } from "next/navigation";
+import { ACCOUNTS_QUERY_KEY } from "@/hooks/master/EntitieHook/useAccount";
 
 interface AccountData extends AccountUIData, Record<string, unknown> {}
 
@@ -102,6 +104,8 @@ const AccountsPageImpl: React.FC = () => {
   const router = useRouter();
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [tableKey, setTableKey] = useState(0);
+  const queryClient = useQueryClient();
 
   const currentLanguage = useAppStore((state) => state.language);
 
@@ -283,6 +287,12 @@ const AccountsPageImpl: React.FC = () => {
         try {
           setIsDeleting(true);
           await deleteMutation.mutateAsync(String(row.id));
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await queryClient.invalidateQueries({
+            queryKey: [ACCOUNTS_QUERY_KEY],
+          });
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+          setTableKey((prev) => prev + 1);
         } catch (error) {
           throw error;
         } finally {
@@ -347,7 +357,7 @@ const AccountsPageImpl: React.FC = () => {
             <>
               <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
                 <PageActionButtons
-                  entityType="escrowAccount"
+                  entityType="agreementAccount"
                   customActionButtons={actionButtons}
                   onDownloadTemplate={handleDownloadTemplate}
                   isDownloading={isDownloading}
@@ -362,6 +372,7 @@ const AccountsPageImpl: React.FC = () => {
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex-1 overflow-auto">
                   <PermissionAwareDataTable<AccountData>
+                    key={`accounts-table-${tableKey}`}
                     data={paginated}
                     columns={tableColumns}
                     searchState={search}
@@ -385,16 +396,13 @@ const AccountsPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={[
-                      "escrow_account_delete",
-                      "nav_menu_all",
-                    ]}
-                    viewPermissions={["escrow_account_view", "nav_menu_all"]}
-                    editPermissions={["escrow_account_update", "nav_menu_all"]}
-                    updatePermissions={[
-                      "escrow_account_update",
-                      "nav_menu_all",
-                    ]}
+                    deletePermissions={['agreement_account_delete']}
+                    viewPermissions={['agreement_account_view']}
+                    editPermissions={['agreement_account_update']}
+                    updatePermissions={['agreement_account_update']}
+                    showDeleteAction={true}
+                    showViewAction={true}
+                    showEditAction={true}
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />

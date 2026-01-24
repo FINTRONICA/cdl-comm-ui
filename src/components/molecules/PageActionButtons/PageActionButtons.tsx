@@ -36,9 +36,9 @@ export type EntityType =
   | 'country'
   | 'currency'
   | 'agreement'
-  | 'agreement-parameter'
-  | 'agreement-fee-schedule'
-  | 'escrowAccount' 
+  | 'agreementParameter'
+  | 'agreementFeeSchedule'
+  | 'agreementAccount' 
   | 'escrowAgreementSignatory'
   | 'paymentBeneficiary'
   | 'paymentInstruction'
@@ -325,22 +325,22 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
       downloadPermission: ['data_export'], // Unified download permission
       uploadPermission: ['bulk_upload'], // Unified upload permission
     },
-    'agreement-parameter': {
+    'agreementParameter': {
       label: 'Add New Agreement Parameter',
       route: '/agreement-parameter/new',
       permissions: ['*'], // Temporarily set to allow all users
       downloadPermission: ['data_export'], // Unified download permission
       uploadPermission: ['bulk_upload'], // Unified upload permission
     },
-    'agreement-fee-schedule': {
+    'agreementFeeSchedule': {
       label: 'Add New Agreement Fee Schedule',
       route: '/agreement-fee-schedule/new',
       permissions: ['*'], // Temporarily set to allow all users
       downloadPermission: ['data_export'], // Unified download permission
       uploadPermission: ['bulk_upload'], // Unified upload permission
     },
-    escrowAccount: {
-      label: 'Add New Escrow Account',
+    agreementAccount: {
+      label: 'Add New Agreement Account',
       route: '/escrow-account/new',
       permissions: ['*'], // Temporarily set to allow all users
       downloadPermission: ['data_export'], // Unified download permission
