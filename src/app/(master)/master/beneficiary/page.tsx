@@ -12,6 +12,7 @@ const BeneficiariesPageClient = dynamic(
 )
 
 import { useCallback, useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
@@ -22,6 +23,7 @@ import { GlobalLoading } from '@/components/atoms'
 import {
   useBeneficiaries,
   useDeleteBeneficiary,
+  BENEFICIARIES_QUERY_KEY,
 } from '@/hooks/master/CustomerHook/useBeneficiary'
 import {
   mapBeneficiaryToUIData,
@@ -34,7 +36,7 @@ import { TEMPLATE_FILES } from '@/constants'
 import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 import { useRouter } from 'next/navigation'
 
-interface BeneficiaryData extends BeneficiaryUIData, Record<string, unknown> {}
+interface BeneficiaryData extends BeneficiaryUIData, Record<string, unknown> { }
 
 const statusOptions = [
   'PENDING',
@@ -104,8 +106,10 @@ const BeneficiariesPageImpl: React.FC = () => {
   const router = useRouter()
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [tableKey, setTableKey] = useState(0)
 
   const currentLanguage = useAppStore((state) => state.language)
+  const queryClient = useQueryClient()
 
   const {
     downloadTemplate,
@@ -288,6 +292,12 @@ const BeneficiariesPageImpl: React.FC = () => {
           try {
             setIsDeleting(true)
             await deleteMutation.mutateAsync(row.id)
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            await queryClient.invalidateQueries({
+              queryKey: [BENEFICIARIES_QUERY_KEY],
+            })
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
+            setTableKey((prev) => prev + 1)
           } catch (error) {
             throw error
           } finally {
@@ -296,7 +306,15 @@ const BeneficiariesPageImpl: React.FC = () => {
         },
       })
     },
-    [isDeleting, confirmDelete, deleteMutation]
+    [
+      isDeleting,
+      confirmDelete,
+      deleteMutation,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
+    ]
   )
 
   const handleRowView = useCallback(
@@ -388,6 +406,7 @@ const BeneficiariesPageImpl: React.FC = () => {
             <div className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 overflow-auto">
                 <PermissionAwareDataTable<BeneficiaryData>
+                  key={`beneficiaries-table-${tableKey}`}
                   data={paginated}
                   columns={tableColumns}
                   searchState={search}
@@ -411,10 +430,13 @@ const BeneficiariesPageImpl: React.FC = () => {
                   onRowDelete={handleRowDelete}
                   onRowView={handleRowView}
                   onRowEdit={handleRowEdit}
-                  deletePermissions={['*']}
-                  viewPermissions={['*']}
-                  editPermissions={['*']}
-                  updatePermissions={['*']}
+                  deletePermissions={['master_beneficiary_delete']}
+                  viewPermissions={['master_beneficiary_view']}
+                  editPermissions={['master_beneficiary_update']}
+                  updatePermissions={['master_beneficiary_update']}
+                  showDeleteAction={true}
+                  showViewAction={true}
+                  showEditAction={true}
                   sortConfig={sortConfig}
                   onSort={handleSort}
                 />
