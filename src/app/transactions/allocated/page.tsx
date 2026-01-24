@@ -1,12 +1,5 @@
 'use client'
 
-/**
- * Allocated Transactions Page
- *
- * Displays allocated/processed transactions with dynamic labels from the API.
- * Uses Label Configuration API service with fallback to static labels.
- */
-
 import React, { useState, useMemo } from 'react'
 import { DashboardLayout } from '../../../components/templates/DashboardLayout'
 import { PermissionAwareDataTable } from '../../../components/organisms/PermissionAwareDataTable'
@@ -525,4 +518,3 @@ const AllocatedTransactionPage: React.FC = () => {
 }
 
 export default AllocatedTransactionPage
-

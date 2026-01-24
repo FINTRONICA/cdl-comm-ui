@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import React from 'react'
 import { useCallback, useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
@@ -15,6 +16,7 @@ import { GlobalLoading } from '@/components/atoms'
 import {
   usePaymentInstructions,
   useDeletePaymentInstruction,
+  PAYMENT_INSTRUCTIONS_QUERY_KEY,
 } from '@/hooks/master/PaymentHook'
 import {
   mapPaymentInstructionToUIData,
@@ -97,8 +99,10 @@ const PaymentInstructionPageImpl: React.FC = () => {
   const router = useRouter()
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [tableKey, setTableKey] = useState(0)
 
   const currentLanguage = useAppStore((state) => state.language)
+  const queryClient = useQueryClient()
 
   const isDownloading = false
   const downloadError = null
@@ -295,6 +299,12 @@ const PaymentInstructionPageImpl: React.FC = () => {
         try {
           setIsDeleting(true)
           await deleteMutation.mutateAsync(row.id.toString())
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          await queryClient.invalidateQueries({
+            queryKey: [PAYMENT_INSTRUCTIONS_QUERY_KEY],
+          })
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
+          setTableKey((prev) => prev + 1)
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error occurred'
@@ -385,6 +395,7 @@ const PaymentInstructionPageImpl: React.FC = () => {
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex-1 overflow-auto">
                   <PermissionAwareDataTable<PaymentInstructionData>
+                    key={`payment-instructions-table-${tableKey}`}
                     data={paginated}
                     columns={tableColumns}
                     searchState={search}
@@ -408,10 +419,13 @@ const PaymentInstructionPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={['*']}
-                    viewPermissions={['*']}
-                    editPermissions={['*']}
-                    updatePermissions={['*']}
+                    deletePermissions={['payment_instruction_delete']}
+                    viewPermissions={['payment_instruction_view']}
+                    editPermissions={['payment_instruction_update']}
+                    updatePermissions={['payment_instruction_update']}
+                    showDeleteAction={true}
+                    showViewAction={true}
+                    showEditAction={true}
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
