@@ -96,7 +96,7 @@ export const createSidebarConfig = (
           label: getLabel(' Agreement', ' Agreement'),
           icon: Handshake,
           href: '/agreement',
-          permissions: ['*']
+          permissions: ['nav_menu_agreement', 'nav_menu_all']
         },
         {
           id: 'Agreement Signatory',
@@ -110,7 +110,7 @@ export const createSidebarConfig = (
           label: getLabel('Agreement Account', 'Agreement Account'),
           icon: Building,
           href: '/escrow-account',
-          permissions: ['nav_menu_escrow_account', 'nav_menu_all']
+          permissions: ['nav_menu_agreement_account', 'nav_menu_all']
         },
 
         {
@@ -128,34 +128,7 @@ export const createSidebarConfig = (
           href: '/agreement-fee-schedule',
           permissions: ['nav_menu_agreement_fee_schedule', 'nav_menu_all']
         },
-        // {
-        //   id: 'developers',
-        //   label: getLabel('developers', 'Developers'),
-        //   icon: SquareUserRound,
-        //   href: '/build-partner',
-        //   permissions: ['nav_menu_bp', 'nav_menu_all'],
-        // },
-        // {
-        //   id: 'projects',
-        //   label: getLabel('projects', 'Build Partner Assets'),
-        //   icon: BriefcaseBusiness,
-        //   href: '/build-partner-assets',
-        //   permissions: ['nav_menu_bpa', 'nav_menu_all'],
-        // },
-        // {
-        //   id: 'investors',
-        //   label: getLabel('investors', 'Investor'),
-        //   icon: CircleUserRound,
-        //   href: '/capital-partner',
-        //   permissions: ['nav_menu_cp', 'nav_menu_all'],
-        // },
-        // {
-        //   id: 'Agreement Beneficiary',
-        //   label: getLabel('Agreement Beneficiary', 'Agreement Beneficiary'),
-        //   icon: SquareUserRound,
-        //   href: '/agreement-beneficiary',
-        //   permissions: ['nav_menu_agreement_beneficiary', 'nav_menu_all']
-        // },
+        
       ],
     },
     {
@@ -169,7 +142,7 @@ export const createSidebarConfig = (
           label: getLabel('customer', 'Customer'),
           icon: SquareUserRound,
           href: '/master',
-          permissions: ['*'], // Temporarily set to allow all users
+          permissions: ['nav_menu_customer_master', 'nav_menu_all'], // Temporarily set to allow all users
         }
 
       ],
@@ -195,34 +168,7 @@ export const createSidebarConfig = (
           href: '/transactions/allocated',
           permissions: ['nav_menu_processed_tran', 'nav_menu_all'],
         },
-         // {
-        //   id: 'discarded',
-        //   label: getLabel('discarded', 'Discarded Transaction'),
-        //   icon: XCircle,
-        //   href: '/transactions/discarded',
-        //   permissions: ['nav_menu_discarded_tran', 'nav_menu_all'],
-        // },
-        // {
-        //   id: 'manual',
-        //   label: getLabel('manual', 'Manual Payment'),
-        //   icon: HandCoins,
-        //   href: '/transactions/manual',
-        //   permissions: ['nav_menu_manual_payment', 'nav_menu_all'],
-        // },
-        // {
-        //   id: 'tas',
-        //   label: getLabel('tas', 'TAS Payment'),
-        //   icon: FileText,
-        //   href: '/transactions/tas',
-        //   permissions: ['nav_menu_tas_payment', 'nav_menu_all'],
-        // },
-        // {
-        //   id: 'fee-reconciliation',
-        //   label: getLabel('fee-reconciliation', 'Fee Reconciliation'),
-        //   icon: TicketSlash,
-        //   href: '/transactions/fee-reconciliation',
-        //   permissions: ['nav_menu_fees', 'nav_menu_all'],
-        // },
+       
       ],
     },
     {
@@ -236,14 +182,14 @@ export const createSidebarConfig = (
           label: getLabel('payment-beneficiary', 'Payment Beneficiary'),
           icon: AlignJustify,
           href: '/payment-beneficiary',
-          permissions: ['*'],
+          permissions: ['nav_menu_payment_beneficiary', 'nav_menu_all'],
         },
         {
           id: 'payment-instruction',
           label: getLabel('payment-instruction', 'Payment Instruction'),
           icon: AlignJustify,
           href: '/payment-instruction',
-          permissions: ['*'],
+          permissions: ['nav_menu_payment_instruction', 'nav_menu_all'],
         },
       ],
     },
@@ -263,14 +209,7 @@ export const createSidebarConfig = (
         },
       ],
     },
-    // {
-    //   id: 'guarantee',
-    //   label: getLabel('guarantee', 'Guarantee'),
-    //   icon: ShieldCheckIcon,
-    //   href: '/surety_bond',
-    //   items: [],
-    //   permissions: ['nav_menu_surety_bond', 'nav_menu_all'],
-    // },
+   
 
     {
       id: 'system-admin',
@@ -451,20 +390,6 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
       },     
     ],
   },
-  // {
-  //   id: 'guarantee',
-  //   label: 'Guarantee',
-  //   icon: ShieldCheckIcon,
-  //   href: '/surety_bond',
-  //   items: [],
-  // },
-  // {
-  //   id: 'fee-reconciliation',
-  //   label: 'Fee Reconciliation',
-  //   icon: TicketSlash,
-  //   href: '/fee-reconciliation',
-  //   items: [],
-  // },
   {
     id: 'reports',
     label: 'REPORTS',
