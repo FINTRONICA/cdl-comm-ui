@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import React from "react";
 import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -14,6 +15,7 @@ import {
   useInvestments,
   useDeleteInvestment,
   useRefreshInvestments,
+  INVESTMENTS_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useInvestment";
 import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
 import { UploadDialog } from "@/components/molecules/UploadDialog";
@@ -56,6 +58,7 @@ const InvestmentPageImpl: React.FC = () => {
   const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
   const [editingItem, setEditingItem] = useState<InvestmentData | null>(null);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -83,6 +86,7 @@ const InvestmentPageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest();
   const refreshInvestments = useRefreshInvestments();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const investmentData = useMemo(() => {
@@ -212,7 +216,12 @@ const InvestmentPageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteInvestmentMutation.mutateAsync(String(row.id));
-            refreshInvestments();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [INVESTMENTS_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -221,7 +230,15 @@ const InvestmentPageImpl: React.FC = () => {
         },
       });
     },
-    [deleteInvestmentMutation, confirmDelete, isDeleting, refreshInvestments]
+    [
+      deleteInvestmentMutation,
+      confirmDelete,
+      isDeleting,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
+    ]
   );
 
   const handleRowEdit = useCallback(
@@ -371,6 +388,7 @@ const InvestmentPageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<InvestmentData>
+                key={`investments-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -394,13 +412,14 @@ const InvestmentPageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['investment_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['investment_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['investment_approve']}
-                approvePermissions={["*"]}
-                updatePermissions={["investment_update"]}
+                deletePermissions={["master_investment_delete"]}
+                editPermissions={["master_investment_update"]}
+                approvePermissions={["master_investment_approve"]}
+                updatePermissions={["master_investment_update"]}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

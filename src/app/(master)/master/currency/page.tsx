@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -12,6 +13,7 @@ import {
   useCurrencies,
   useDeleteCurrency,
   useRefreshCurrencies,
+  CURRENCIES_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useCurrency";
 import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
 import { UploadDialog } from "@/components/molecules/UploadDialog";
@@ -41,6 +43,7 @@ const CurrencyPageImpl: React.FC = () => {
     null
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -68,6 +71,7 @@ const CurrencyPageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest();
   const refreshCurrencies = useRefreshCurrencies();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const currencyData = useMemo(() => {
@@ -193,7 +197,12 @@ const CurrencyPageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteCurrencyMutation.mutateAsync(String(row.id));
-            refreshCurrencies();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [CURRENCIES_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -202,7 +211,15 @@ const CurrencyPageImpl: React.FC = () => {
         },
       });
     },
-    [deleteCurrencyMutation, confirmDelete, isDeleting, refreshCurrencies]
+    [
+      deleteCurrencyMutation,
+      confirmDelete,
+      isDeleting,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
+    ]
   );
 
   const handleRowEdit = useCallback(
@@ -349,6 +366,7 @@ const CurrencyPageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<CurrencyTableData>
+                key={`currencies-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -371,13 +389,14 @@ const CurrencyPageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['currency_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['currency_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['currency_approve']}
-                approvePermissions={["*"]}
-                updatePermissions={["currency_update"]}
+                deletePermissions={['currency_delete']}
+                editPermissions={['currency_update']}
+                approvePermissions={['currency_approve']}
+                updatePermissions={['currency_update']}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -11,6 +12,7 @@ import {
   useCountries,
   useDeleteCountry,
   useRefreshCountries,
+  COUNTRIES_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useCountry";
 import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
 import { UploadDialog } from "@/components/molecules/UploadDialog";
@@ -39,6 +41,7 @@ const CountryPageImpl: React.FC = () => {
   const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
   const [editingItem, setEditingItem] = useState<Country | null>(null);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -67,6 +70,7 @@ const CountryPageImpl: React.FC = () => {
   const refreshCountries = useRefreshCountries();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
   const { getCountryLabelDynamic } = useCountryLabelsWithCache();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const countryData = useMemo(() => {
@@ -179,7 +183,12 @@ const CountryPageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteCountryMutation.mutateAsync(String(row.id));
-            refreshCountries();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [COUNTRIES_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -188,7 +197,15 @@ const CountryPageImpl: React.FC = () => {
         },
       });
     },
-    [deleteCountryMutation, confirmDelete, isDeleting, refreshCountries]
+    [
+      deleteCountryMutation,
+      confirmDelete,
+      isDeleting,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
+    ]
   );
 
   const handleRowEdit = useCallback(
@@ -220,8 +237,7 @@ const CountryPageImpl: React.FC = () => {
     try {
       await downloadTemplate("CountryTemplate.xlsx");
     } catch {
-      // Error handling is done by the hook
-      // Could add toast notification here if needed
+      
     }
   }, [downloadTemplate]);
 
@@ -352,6 +368,7 @@ const CountryPageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<CountryTableData>
+                key={`countries-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -374,13 +391,14 @@ const CountryPageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['country_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['country_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['country_approve']}
-                approvePermissions={["*"]}
+                deletePermissions={["country_delete"]}
+                editPermissions={["country_update"]}
+                approvePermissions={["country_approve"]}
                 updatePermissions={["country_update"]}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

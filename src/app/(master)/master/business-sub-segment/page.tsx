@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import React from 'react'
 import { useCallback, useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
@@ -15,6 +16,7 @@ import {
   useBusinessSubSegments,
   useDeleteBusinessSubSegment,
   useRefreshBusinessSegments,
+  BUSINESS_SUB_SEGMENTS_QUERY_KEY,
 } from '@/hooks/master/CustomerHook/useBusinessSubSegment'
 import {
   useDeleteConfirmation,
@@ -56,6 +58,7 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
   const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<BusinessSubSegmentData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
+  const [tableKey, setTableKey] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
@@ -83,10 +86,11 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest()
   const refreshBusinessSubSegments = useRefreshBusinessSegments()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
+  const queryClient = useQueryClient()
 
   // Transform API data to table format
   const businessSubSegmentData = useMemo(() => {
-        if (!businessSubSegmentsResponse?.content) return []
+    if (!businessSubSegmentsResponse?.content) return []
     return businessSubSegmentsResponse.content.map((businessSubSegment) => ({
       id: businessSubSegment.id,
       businessSubSegmentId: businessSubSegment.uuid || `MBSS-${businessSubSegment.id}`,
@@ -223,7 +227,12 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
           try {
             setIsDeleting(true)
             await deleteBusinessSubSegmentMutation.mutateAsync(String(row.id))
-            refreshBusinessSubSegments()
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            await queryClient.invalidateQueries({
+              queryKey: [BUSINESS_SUB_SEGMENTS_QUERY_KEY],
+            })
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
+            setTableKey((prev) => prev + 1)
           } catch (error) {
             throw error
           } finally {
@@ -232,7 +241,15 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
         },
       })
     },
-    [deleteBusinessSubSegmentMutation, confirmDelete, isDeleting, refreshBusinessSubSegments]
+    [
+      deleteBusinessSubSegmentMutation,
+      confirmDelete,
+      isDeleting,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
+    ]
   )
 
   const handleRowEdit = useCallback(
@@ -276,8 +293,8 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
   const handleUploadError = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_error: string) => {
-    // Error is handled by UploadDialog component
-  }, [])
+      // Error is handled by UploadDialog component
+    }, [])
 
   const handleRowApprove = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -305,7 +322,7 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
   )
 
   const handleBusinessSubSegmentAdded = useCallback(() => {
-      refreshBusinessSubSegments()
+    refreshBusinessSubSegments()
     handleClosePanel()
   }, [handleClosePanel, refreshBusinessSubSegments])
 
@@ -361,7 +378,7 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
       <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
         <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
           <PageActionButtons
-              entityType="businessSubSegment"
+            entityType="businessSubSegment"
             onAddNew={handleAddNew}
             onDownloadTemplate={handleDownloadTemplate}
             onUploadDetails={() => setIsUploadDialogOpen(true)}
@@ -388,6 +405,7 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<BusinessSubSegmentData>
+                key={`business-sub-segments-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -411,13 +429,14 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['business_sub_segment_delete']}
-                deletePermissions={['*']}
-                // editPermissions={['business_sub_segment_update']}
-                editPermissions={['*']}
-                // approvePermissions={['business_sub_segment_approve']}
-                approvePermissions={['*']}
-                updatePermissions={['business_sub_segment_update']}
+                deletePermissions={['master_business_sub_segment_delete']}
+                editPermissions={['master_business_sub_segment_update']}
+                approvePermissions={['master_business_sub_segment_approve']}
+                updatePermissions={['master_business_sub_segment_update']}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

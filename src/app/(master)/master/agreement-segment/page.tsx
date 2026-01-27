@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -12,6 +13,7 @@ import {
   useAgreementSegments,
   useRefreshAgreementSegments,
   useDeleteAgreementSegment,
+  AGREEMENT_SEGMENTS_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useAgreementSegment";
 import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
 import { UploadDialog } from "@/components/molecules/UploadDialog";
@@ -45,6 +47,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
   const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
   const [editingItem, setEditingItem] = useState<AgreementSegment | null>(null);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -72,6 +75,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
   const confirmApprove = useApproveConfirmation();
   const createWorkflowRequest = useCreateWorkflowRequest();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const agreementSegmentData = useMemo(() => {
@@ -216,7 +220,12 @@ const AgreementSegmentPageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteAgreementSegmentMutation.mutateAsync(String(row.id));
-            refreshAgreementSegments();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [AGREEMENT_SEGMENTS_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -229,7 +238,10 @@ const AgreementSegmentPageImpl: React.FC = () => {
       deleteAgreementSegmentMutation,
       confirmDelete,
       isDeleting,
-      refreshAgreementSegments,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
     ]
   );
 
@@ -399,6 +411,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<AgreementSegmentData>
+                key={`agreement-segments-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -421,13 +434,14 @@ const AgreementSegmentPageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['agreement_segment_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['agreement_segment_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['agreement_segment_approve']}
-                approvePermissions={["*"]}
-                updatePermissions={["agreement_segment_update"]}
+                deletePermissions={["master_agreement_segment_delete"]}
+                editPermissions={["master_agreement_segment_update"]}
+                approvePermissions={["master_agreement_segment_approve"]}
+                updatePermissions={["master_agreement_segment_update"]}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

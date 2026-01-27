@@ -12,7 +12,7 @@ const PartiesPageClient = dynamic(
 )
 
 import { useCallback, useState, useMemo } from 'react'
-// DashboardLayout removed - using TablePageLayout from layout.tsx
+import { useQueryClient } from '@tanstack/react-query'
 import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
@@ -24,6 +24,7 @@ import { GlobalLoading } from '@/components/atoms'
 import {
   useParties,
   useDeleteParty,
+  PARTIES_QUERY_KEY,
 } from '@/hooks/master/CustomerHook/useParty'
 import {
   mapPartyToUIData,
@@ -36,7 +37,7 @@ import { TEMPLATE_FILES } from '@/constants'
 import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 import { useRouter } from 'next/navigation'
 
-interface PartyData extends PartyUIData, Record<string, unknown> {}
+interface PartyData extends PartyUIData, Record<string, unknown> { }
 
 const statusOptions = [
   'PENDING',
@@ -105,8 +106,10 @@ const PartiesPageImpl: React.FC = () => {
   const router = useRouter()
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [tableKey, setTableKey] = useState(0)
 
   const currentLanguage = useAppStore((state) => state.language)
+  const queryClient = useQueryClient()
 
   const {
     downloadTemplate,
@@ -294,6 +297,12 @@ const PartiesPageImpl: React.FC = () => {
           try {
             setIsDeleting(true)
             await deleteMutation.mutateAsync(row.id)
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            await queryClient.invalidateQueries({
+              queryKey: [PARTIES_QUERY_KEY],
+            })
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
+            setTableKey((prev) => prev + 1)
           } catch (error) {
             throw error
           } finally {
@@ -302,7 +311,15 @@ const PartiesPageImpl: React.FC = () => {
         },
       })
     },
-    [isDeleting, confirmDelete, deleteMutation]
+    [
+      isDeleting,
+      confirmDelete,
+      deleteMutation,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
+    ]
   )
 
   const handleRowView = useCallback(
@@ -388,6 +405,7 @@ const PartiesPageImpl: React.FC = () => {
             <div className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 overflow-auto">
                 <PermissionAwareDataTable<PartyData>
+                  key={`parties-table-${tableKey}`}
                   data={paginated}
                   columns={tableColumns}
                   searchState={search}
@@ -411,10 +429,13 @@ const PartiesPageImpl: React.FC = () => {
                   onRowDelete={handleRowDelete}
                   onRowView={handleRowView}
                   onRowEdit={handleRowEdit}
-                  deletePermissions={['*']}
-                  viewPermissions={['*']}
-                  editPermissions={['*']}
-                  updatePermissions={['*']}
+                  deletePermissions={['master_party_delete']}
+                  viewPermissions={['master_party_view']}
+                  editPermissions={['master_party_update']}
+                  updatePermissions={['master_party_update']}
+                  showDeleteAction={true}
+                  showViewAction={true}
+                  showEditAction={true}
                   sortConfig={sortConfig}
                   onSort={handleSort}
                 />

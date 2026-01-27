@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -12,6 +13,7 @@ import {
   useProductPrograms,
   useDeleteProductProgram,
   useRefreshProductPrograms,
+  PRODUCT_PROGRAMS_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useProductProgram";
 import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
 import { UploadDialog } from "@/components/molecules/UploadDialog";
@@ -66,6 +68,7 @@ const ProductProgramPageImpl: React.FC = () => {
     null
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
 
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -96,6 +99,7 @@ const ProductProgramPageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest();
   const refreshProductPrograms = useRefreshProductPrograms();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const productProgramData = useMemo(() => {
@@ -275,7 +279,12 @@ const ProductProgramPageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteProductProgramMutation.mutateAsync(String(row.id));
-            refreshProductPrograms();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [PRODUCT_PROGRAMS_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -288,7 +297,10 @@ const ProductProgramPageImpl: React.FC = () => {
       deleteProductProgramMutation,
       confirmDelete,
       isDeleting,
-      refreshProductPrograms,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
     ]
   );
 
@@ -422,6 +434,7 @@ const ProductProgramPageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<ProductProgramData>
+                key={`product-programs-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -445,13 +458,14 @@ const ProductProgramPageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['product_program_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['product_program_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['product_program_approve']}
-                approvePermissions={["*"]}
-                updatePermissions={["product_program_update"]}
+                deletePermissions={["master_product_delete"]}
+                editPermissions={["master_product_update"]}
+                approvePermissions={["master_product_approve"]}
+                updatePermissions={["master_product_update"]}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

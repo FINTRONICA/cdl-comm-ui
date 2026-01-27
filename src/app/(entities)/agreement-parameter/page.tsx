@@ -14,6 +14,7 @@ const AgreementParametersPageClient = dynamic(
 );
 
 import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/templates/DashboardLayout";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
@@ -24,6 +25,7 @@ import { getAgreementParameterLabel } from "@/constants/mappings/master/Entity/a
 import { useAppStore } from "@/store";
 import { GlobalLoading } from "@/components/atoms";
 import { useAgreementParameters, useDeleteAgreementParameter } from "@/hooks";
+import { AGREEMENT_PARAMETERS_QUERY_KEY } from "@/hooks/master/EntitieHook/useAgreementParameter";
 import {
   mapAgreementParameterToUIData,
   type AgreementParameterUIData,
@@ -105,6 +107,8 @@ const AgreementParametersPageImpl: React.FC = () => {
   const router = useRouter();
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [tableKey, setTableKey] = useState(0);
+  const queryClient = useQueryClient();
 
   const currentLanguage = useAppStore((state) => state.language);
 
@@ -304,6 +308,12 @@ const AgreementParametersPageImpl: React.FC = () => {
         try {
           setIsDeleting(true);
           await deleteMutation.mutateAsync(row.id);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await queryClient.invalidateQueries({
+            queryKey: [AGREEMENT_PARAMETERS_QUERY_KEY],
+          });
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+          setTableKey((prev) => prev + 1);
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error occurred";
@@ -377,7 +387,7 @@ const AgreementParametersPageImpl: React.FC = () => {
             <>
               <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
                 <PageActionButtons
-                  entityType="agreement-parameter"
+                  entityType="agreementParameter"
                   customActionButtons={actionButtons}
                   onDownloadTemplate={handleDownloadTemplate}
                   isDownloading={isDownloading}
@@ -392,6 +402,7 @@ const AgreementParametersPageImpl: React.FC = () => {
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex-1 overflow-auto">
                   <PermissionAwareDataTable<AgreementParameterData>
+                    key={`agreement-parameters-table-${tableKey}`}
                     data={paginated}
                     columns={tableColumns}
                     searchState={search}
@@ -415,10 +426,13 @@ const AgreementParametersPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={["bp_delete"]}
-                    viewPermissions={["bp_view"]}
-                    editPermissions={["bp_update"]}
-                    updatePermissions={["bp_update"]}
+                    deletePermissions={["agreement_parameter_delete"]}
+                    viewPermissions={["agreement_parameter_view"]}
+                    editPermissions={["agreement_parameter_update"]}
+                    updatePermissions={["agreement_parameter_update"]}
+                    showDeleteAction={true}
+                    showViewAction={true}
+                    showEditAction={true}
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />

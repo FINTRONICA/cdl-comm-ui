@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import React from "react";
 import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -13,6 +14,7 @@ import {
   useBusinessSegments,
   useDeleteBusinessSegment,
   useRefreshBusinessSegments,
+  BUSINESS_SEGMENTS_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useBusinessSegment";
 import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
 import { UploadDialog } from "@/components/molecules/UploadDialog";
@@ -58,6 +60,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
     null
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -85,6 +88,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest();
   const refreshBusinessSegments = useRefreshBusinessSegments();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const businessSegmentData = useMemo(() => {
@@ -223,7 +227,12 @@ const BusinessSegmentPageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteBusinessSegmentMutation.mutateAsync(String(row.id));
-            refreshBusinessSegments();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [BUSINESS_SEGMENTS_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -236,7 +245,10 @@ const BusinessSegmentPageImpl: React.FC = () => {
       deleteBusinessSegmentMutation,
       confirmDelete,
       isDeleting,
-      refreshBusinessSegments,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
     ]
   );
 
@@ -389,6 +401,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<BusinessSegmentData>
+                key={`business-segments-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -412,13 +425,14 @@ const BusinessSegmentPageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['business_segment_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['business_segment_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['business_segment_approve']}
-                approvePermissions={["*"]}
-                updatePermissions={["business_segment_update"]}
+                deletePermissions={["master_business_segment_delete"]}
+                editPermissions={["master_business_segment_update"]}
+                approvePermissions={["master_business_segment_approve"]}
+                updatePermissions={["master_business_segment_update"]}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />

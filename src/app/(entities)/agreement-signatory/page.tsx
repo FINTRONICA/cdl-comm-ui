@@ -16,6 +16,7 @@ const AgreementSignatoriesPageClient = dynamic(
 )
 
 import { useCallback, useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
@@ -29,6 +30,7 @@ import {
   useAgreementSignatories,
   useDeleteAgreementSignatory,
 } from '@/hooks'
+import { AGREEMENT_SIGNATORIES_QUERY_KEY } from '@/hooks/master/EntitieHook/useAgreementSignatory'
 import {
   mapAgreementSignatoryToUIData,
   type AgreementSignatoryUIData,
@@ -110,6 +112,8 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
   const router = useRouter()
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [tableKey, setTableKey] = useState(0)
+  const queryClient = useQueryClient()
 
   const currentLanguage = useAppStore((state) => state.language)
 
@@ -294,9 +298,16 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
         try {
           setIsDeleting(true)
           await deleteMutation.mutateAsync(row.id)
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          await queryClient.invalidateQueries({
+            queryKey: [AGREEMENT_SIGNATORIES_QUERY_KEY],
+          })
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
+          setTableKey((prev) => prev + 1)
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error occurred'
+          console.error(`Failed to delete agreement signatory: ${errorMessage}`)
 
           throw error
         } finally {
@@ -379,6 +390,7 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex-1 overflow-auto">
                   <PermissionAwareDataTable<AgreementSignatoryData>
+                    key={`agreement-signatories-table-${tableKey}`}
                     data={paginated}
                     columns={tableColumns}
                     searchState={search}
@@ -402,10 +414,13 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={['bp_delete']}
-                    viewPermissions={['bp_view']}
-                    editPermissions={['bp_update']}
-                    updatePermissions={['bp_update']}
+                    deletePermissions={['agreement_signatory_delete']}
+                    viewPermissions={['agreement_signatory_view']}
+                    editPermissions={['agreement_signatory_update']}
+                    updatePermissions={['agreement_signatory_update']}
+                    showDeleteAction={true}
+                    showViewAction={true}
+                    showEditAction={true}
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />

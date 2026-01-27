@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import React from "react";
 import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
 import { PageActionButtons } from "@/components/molecules/PageActionButtons";
@@ -15,6 +16,7 @@ import {
   useAgreementSubTypes,
   useDeleteAgreementSubType,
   useRefreshAgreementSubTypes,
+  AGREEMENT_SUB_TYPES_QUERY_KEY,
 } from "@/hooks/master/CustomerHook/useAgreementSubType";
 import {
   useDeleteConfirmation,
@@ -58,6 +60,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
     null
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -85,6 +88,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest();
   const refreshAgreementSubTypes = useRefreshAgreementSubTypes();
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const agreementSubTypeData = useMemo(() => {
@@ -233,7 +237,12 @@ const AgreementSubTypePageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteAgreementSubTypeMutation.mutateAsync(String(row.id));
-            refreshAgreementSubTypes();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await queryClient.invalidateQueries({
+              queryKey: [AGREEMENT_SUB_TYPES_QUERY_KEY],
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
             throw error;
           } finally {
@@ -246,7 +255,10 @@ const AgreementSubTypePageImpl: React.FC = () => {
       deleteAgreementSubTypeMutation,
       confirmDelete,
       isDeleting,
-      refreshAgreementSubTypes,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
     ]
   );
 
@@ -407,6 +419,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<AgreementSubTypeData>
+                key={`agreement-sub-types-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -430,13 +443,14 @@ const AgreementSubTypePageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['agreement_sub_type_delete']}
-                deletePermissions={["*"]}
-                // editPermissions={['agreement_sub_type_update']}
-                editPermissions={["*"]}
-                // approvePermissions={['agreement_sub_type_approve']}
-                approvePermissions={["*"]}
-                updatePermissions={["agreement_sub_type_update"]}
+                deletePermissions={["master_agreement_sub_type_delete"]}
+                editPermissions={["master_agreement_sub_type_update"]}
+                approvePermissions={["master_agreement_sub_type_approve"]}
+                updatePermissions={["master_agreement_sub_type_update"]}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -454,8 +468,8 @@ const AgreementSubTypePageImpl: React.FC = () => {
           mode={panelMode === "approve" ? "edit" : panelMode}
           actionData={
             editingItem as unknown as
-              | import("@/services/api/masterApi/Customer/agreementSubTypeService").AgreementSubType
-              | null
+            | import("@/services/api/masterApi/Customer/agreementSubTypeService").AgreementSubType
+            | null
           }
           {...(editingItemIndex !== null && {
             agreementSubTypeIndex: editingItemIndex,

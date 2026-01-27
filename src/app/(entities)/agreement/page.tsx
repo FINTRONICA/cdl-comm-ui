@@ -16,6 +16,7 @@ const AgreementsPageClient = dynamic(
 );
 
 import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/templates/DashboardLayout";
 import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
 import { useTableState } from "@/hooks/useTableState";
@@ -37,6 +38,7 @@ import { useSidebarConfig } from "@/hooks/useSidebarConfig";
 // import { TEMPLATE_FILES } from '@/constants' // TODO: Add when AGREEMENT template is available
 import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
 import { useRouter } from "next/navigation";
+import { AGREEMENTS_QUERY_KEY } from "@/hooks/master/EntitieHook/useAgreement";
 
 interface AgreementData extends AgreementUIData, Record<string, unknown> {}
 
@@ -107,6 +109,8 @@ const AgreementsPageImpl: React.FC = () => {
   const router = useRouter();
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [tableKey, setTableKey] = useState(0);
+  const queryClient = useQueryClient();
 
   const currentLanguage = useAppStore((state) => state.language);
 
@@ -227,6 +231,7 @@ const AgreementsPageImpl: React.FC = () => {
     handleRowSelectionChange,
     handleRowExpansionChange,
     handleSort,
+    
   } = useTableState({
     data: agreementsData,
     searchFields: [
@@ -294,6 +299,12 @@ const AgreementsPageImpl: React.FC = () => {
         try {
           setIsDeleting(true);
           await deleteMutation.mutateAsync(row.id);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await queryClient.invalidateQueries({
+            queryKey: [AGREEMENTS_QUERY_KEY],
+          });
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+          setTableKey((prev) => prev + 1);
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error occurred";
@@ -368,18 +379,19 @@ const AgreementsPageImpl: React.FC = () => {
                   customActionButtons={actionButtons}
                   onDownloadTemplate={handleDownloadTemplate}
                   isDownloading={isDownloading}
-                  showButtons={{
-                    downloadTemplate: true,
-                    uploadDetails: true,
-                    addNew: true,
-                  }}
+                  // showButtons={{
+                  //   downloadTemplate: true,
+                  //   uploadDetails: true,
+                  //   addNew: true,
+                  // }}
                 />
               </div>
 
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex-1 overflow-auto">
                   <PermissionAwareDataTable<AgreementData>
-                    data={paginated}
+                    key={`agreements-table-${tableKey}`}
+                    data={paginated as AgreementData[]}
                     columns={tableColumns}
                     searchState={search}
                     onSearchChange={handleSearchChange}
@@ -402,12 +414,15 @@ const AgreementsPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={["bp_delete"]}
-                    viewPermissions={["bp_view"]}
-                    editPermissions={["bp_update"]}
-                    updatePermissions={["bp_update"]}
+                    deletePermissions={["agreement_delete"]}
+                    viewPermissions={["agreement_view"]}
+                    editPermissions={["agreement_update"]}
+                    updatePermissions={["agreement_update"]}
+                    showDeleteAction={true}
+                    showViewAction={true}
+                    showEditAction={true}
+                    onSort={handleSort} 
                     sortConfig={sortConfig}
-                    onSort={handleSort}
                   />
                 </div>
               </div>

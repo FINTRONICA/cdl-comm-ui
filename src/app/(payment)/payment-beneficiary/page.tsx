@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import React from 'react'
 import { useCallback, useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '@/components/templates/DashboardLayout'
 import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
@@ -15,6 +16,7 @@ import { GlobalLoading } from '@/components/atoms'
 import {
   usePaymentBeneficiaries,
   useDeletePaymentBeneficiary,
+  PAYMENT_BENEFICIARIES_QUERY_KEY,
 } from '@/hooks/master/PaymentHook'
 import {
   mapPaymentBeneficiaryToUIData,
@@ -97,8 +99,10 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
   const router = useRouter()
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [tableKey, setTableKey] = useState(0)
 
   const currentLanguage = useAppStore((state) => state.language)
+  const queryClient = useQueryClient()
 
   const isDownloading = false
   const downloadError = null
@@ -287,6 +291,12 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
         try {
           setIsDeleting(true)
           await deleteMutation.mutateAsync(row.id.toString())
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          await queryClient.invalidateQueries({
+            queryKey: [PAYMENT_BENEFICIARIES_QUERY_KEY],
+          })
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
+          setTableKey((prev) => prev + 1)
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error occurred'
@@ -366,17 +376,18 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
                   customActionButtons={actionButtons}
                   onDownloadTemplate={handleDownloadTemplate}
                   isDownloading={isDownloading}
-                  showButtons={{
-                    downloadTemplate: true,
-                    uploadDetails: true,
-                    addNew: true,
-                  }}
+                  // showButtons={{
+                  //   downloadTemplate: true,
+                  //   uploadDetails: true,
+                  //   addNew: true,
+                  // }}
                 />
               </div>
 
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex-1 overflow-auto">
                   <PermissionAwareDataTable<PaymentBeneficiaryData>
+                    key={`payment-beneficiary-table-${tableKey}`}
                     data={paginated}
                     columns={tableColumns}
                     searchState={search}
@@ -400,10 +411,13 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={['*']}
-                    viewPermissions={['*']}
-                    editPermissions={['*']}
-                    updatePermissions={['*']}
+                    deletePermissions={['payment_beneficiary_delete']}
+                    viewPermissions={['payment_beneficiary_view']}
+                    editPermissions={['payment_beneficiary_update']}
+                    updatePermissions={['payment_beneficiary_update']}
+                    showDeleteAction={true}
+                    showViewAction={true}
+                    showEditAction={true}
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />

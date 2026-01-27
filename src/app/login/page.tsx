@@ -45,7 +45,7 @@ export default function LoginPage() {
     rememberMe: true,
   })
 
-  const [fieldErrors, setFieldErrors] = useState<{username?: string; password?: string}>({})
+  const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({})
 
   const {
     login,
@@ -78,9 +78,9 @@ export default function LoginPage() {
   const validateField = (name: 'username' | 'password', value: string) => {
     const partial = UserSchemas.login.pick({ [name]: true } as any)
     const result = partial.safeParse({ [name]: value })
-    setFieldErrors(prev => ({ 
-      ...prev, 
-      [name]: result.success ? undefined : result.error.issues[0]?.message 
+    setFieldErrors(prev => ({
+      ...prev,
+      [name]: result.success ? undefined : result.error.issues[0]?.message
     }))
   }
 
@@ -91,7 +91,7 @@ export default function LoginPage() {
         ...prev,
         [field]: value,
       }))
-      
+
       // Clear error for this field when user starts typing
       if (fieldErrors[field as keyof typeof fieldErrors]) {
         setFieldErrors(prev => ({ ...prev, [field]: undefined }))
@@ -116,7 +116,7 @@ export default function LoginPage() {
         username: formData.username,
         password: formData.password,
       })
-      
+
       if (!parsed.success) {
         const errs: Record<string, string> = {}
         parsed.error.issues.forEach(issue => {
@@ -127,7 +127,7 @@ export default function LoginPage() {
         setFieldErrors(errs)
         return
       }
-      
+
       // Clear errors and proceed with login
       setFieldErrors({})
       await login(
@@ -138,7 +138,7 @@ export default function LoginPage() {
         redirectTo // Pass redirect URL to login hook
       )
       // Navigation will happen automatically after all data is loaded
-    } catch (error: unknown) {}
+    } catch (error: unknown) { }
   }
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
@@ -147,7 +147,7 @@ export default function LoginPage() {
     }
   }
 
-  const handleForgotPassword = () => {}
+  const handleForgotPassword = () => { }
 
   const labelSx = {
     color: '#6A7282',
@@ -213,7 +213,7 @@ export default function LoginPage() {
             alignItems: 'stretch',
             justifyContent: 'space-between',
             boxShadow: 4,
-            
+
           }}
         >
           <Paper
@@ -312,7 +312,7 @@ export default function LoginPage() {
                   color: '#6A7282',
                 }}
               >
-                 Welcome back, please login to access your personal account
+                Welcome back, please login to access your personal account
               </Typography>
             </Box>
 
@@ -324,7 +324,7 @@ export default function LoginPage() {
             )}
 
             {/* Form */}
-            <Box mt={5}  onKeyPress={handleKeyPress}>
+            <Box mt={5} onKeyPress={handleKeyPress}>
               <TextField
                 fullWidth
                 placeholder="Enter your username"
@@ -370,8 +370,6 @@ export default function LoginPage() {
                 }}
                 sx={[commonFieldStyles, { mb: 2 }]}
               />
-
-           
 
               <Button
                 fullWidth

@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import React, { useCallback, useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
 import { useTableState } from '@/hooks/useTableState'
 import { PageActionButtons } from '@/components/molecules/PageActionButtons'
@@ -12,6 +13,7 @@ import {
   useAccountPurposes,
   useDeleteAccountPurpose,
   useRefreshAccountPurposes,
+  ACCOUNT_PURPOSES_QUERY_KEY,
 } from '@/hooks/master/CustomerHook/useAccountPurpose'
 import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
@@ -63,6 +65,7 @@ const AccountPurposePageImpl: React.FC = () => {
   const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
   const [editingItem, setEditingItem] = useState<AccountPurposeData | null>(null)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
+  const [tableKey, setTableKey] = useState(0)
 
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -93,6 +96,7 @@ const AccountPurposePageImpl: React.FC = () => {
   const createWorkflowRequest = useCreateWorkflowRequest()
   const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
   const refreshAccountPurposes = useRefreshAccountPurposes()
+  const queryClient = useQueryClient()
 
   // Transform API data to table format
   const accountPurposeData = useMemo(() => {
@@ -242,6 +246,12 @@ const AccountPurposePageImpl: React.FC = () => {
           try {
             setIsDeleting(true)
             await deleteAccountPurposeMutation.mutateAsync(String(row.id))
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            await queryClient.invalidateQueries({
+              queryKey: [ACCOUNT_PURPOSES_QUERY_KEY],
+            })
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
+            setTableKey((prev) => prev + 1)
           } catch (error) {
             throw error
           } finally {
@@ -250,7 +260,15 @@ const AccountPurposePageImpl: React.FC = () => {
         },
       })
     },
-    [deleteAccountPurposeMutation, confirmDelete, isDeleting]
+    [
+      deleteAccountPurposeMutation,
+      confirmDelete,
+      isDeleting,
+      queryClient,
+      updatePagination,
+      currentApiPage,
+      currentApiSize,
+    ]
   )
 
   // Edit handler
@@ -299,8 +317,8 @@ const AccountPurposePageImpl: React.FC = () => {
   const handleUploadError = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_error: string) => {
-    // Error is handled by UploadDialog component
-  }, [])
+      // Error is handled by UploadDialog component
+    }, [])
 
   // Account purpose added/updated handlers
   const handleAccountPurposeAdded = useCallback(() => {
@@ -432,6 +450,7 @@ const AccountPurposePageImpl: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<AccountPurposeData>
+                key={`account-purpose-table-${tableKey}`}
                 data={paginated}
                 columns={tableColumns}
                 searchState={search}
@@ -455,13 +474,14 @@ const AccountPurposePageImpl: React.FC = () => {
                 onRowApprove={handleRowApprove}
                 onRowDelete={handleRowDelete}
                 onRowEdit={handleRowEdit}
-                // deletePermissions={['account_purpose_delete']}
-                deletePermissions={['*']}
-                // editPermissions={['account_purpose_update']}
-                editPermissions={['*']}
-                // approvePermissions={['account_purpose_approve']}
-                approvePermissions={['*']}
-                updatePermissions={['account_purpose_update']}
+                deletePermissions={['master_account_purpose_delete']}
+                editPermissions={['master_account_purpose_update']}
+                approvePermissions={['master_account_purpose_approve']}
+                updatePermissions={['master_account_purpose_update']}
+                showDeleteAction={true}
+                showViewAction={true}
+                showEditAction={true}
+                showApproveAction={true}
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
