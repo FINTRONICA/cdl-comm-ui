@@ -259,6 +259,24 @@ export interface AgreementFeeScheduleUIData {
 export const mapAgreementFeeScheduleToUIData = (
   apiData: AgreementFeeSchedule
 ): AgreementFeeScheduleUIData => {
+  const formatDateOnly = (
+    dateString: string | null | undefined,
+    fallback: string
+  ): string => {
+    if (!dateString) return fallback
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return dateString
+      return date.toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })
+    } catch {
+      return dateString || fallback
+    }
+  }
+
   const mapApiStatus = (enabled: boolean, deleted: boolean): string => {
     if (deleted) return 'DELETED'
     if (!enabled) return 'DISABLED'
@@ -267,8 +285,8 @@ export const mapAgreementFeeScheduleToUIData = (
 
   return {
     id: apiData.id,
-    effectiveStartDate: apiData.effectiveStartDate || 'N/A',
-    effectiveEndDate: apiData.effectiveEndDate || 'N/A',
+    effectiveStartDate: formatDateOnly(apiData.effectiveStartDate, 'N/A'),
+    effectiveEndDate: formatDateOnly(apiData.effectiveEndDate, 'N/A'),
     operatingLocation: apiData.operatingLocation || 'N/A',
     priorityLevel: apiData.priorityLevel || 'N/A',
     transactionRateAmount: apiData.transactionRateAmount || 'N/A',

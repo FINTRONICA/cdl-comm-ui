@@ -170,6 +170,24 @@ export interface AgreementParameterUIData {
 export const mapAgreementParameterToUIData = (
   apiData: AgreementParameter
 ): AgreementParameterUIData => {
+  const formatDateOnly = (
+    dateString: string | null | undefined,
+    fallback: string
+  ): string => {
+    if (!dateString) return fallback;
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      return date.toLocaleDateString("en-GB", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+    } catch {
+      return dateString || fallback;
+    }
+  };
+
   const mapApiStatus = (): string => {
     // Default status for agreement parameters
     return "INITIATED";
@@ -178,8 +196,11 @@ export const mapAgreementParameterToUIData = (
   return {
     id: apiData.id.toString(),
     parametersRefNo: apiData.parametersRefNo || "N/A",
-    agreementEffectiveDate: apiData.agreementEffectiveDate || "N/A",
-    agreementExpiryDate: apiData.agreementExpiryDate || "N/A",
+    agreementEffectiveDate: formatDateOnly(
+      apiData.agreementEffectiveDate,
+      "N/A"
+    ),
+    agreementExpiryDate: formatDateOnly(apiData.agreementExpiryDate, "N/A"),
     agreementRemarks: apiData.agreementRemarks || "N/A",
     active: apiData.active || false,
     localeNames: apiData.agreementRemarks || "---",
