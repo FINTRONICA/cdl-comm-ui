@@ -48,7 +48,8 @@ const CopyableValueComponent: React.FC<CopyableValueProps> = ({
     return () => clearTimeout(timer)
   }, [showCopied])
 
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback((event?: React.MouseEvent<HTMLButtonElement>) => {
+    event?.stopPropagation()
     if (!isCopyable) return
     const copied = copy(stringValue)
     if (copied) {
