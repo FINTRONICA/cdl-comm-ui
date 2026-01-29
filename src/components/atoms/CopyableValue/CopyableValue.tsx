@@ -61,28 +61,32 @@ const CopyableValueComponent: React.FC<CopyableValueProps> = ({
     : 'opacity-100'
 
   return (
-    <div className={`group inline-flex items-center gap-2 min-w-0 ${className}`}>
-      <span
-        className={`min-w-0 truncate ${valueClassName}`}
-        title={stringValue}
-      >
-        {displayText}
-      </span>
-      <button
-        type="button"
-        onClick={handleCopy}
-        title={tooltipText}
-        aria-label={tooltipText}
-        disabled={!isCopyable}
-        className={`rounded p-0.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity ${iconVisibilityClass}`}
-      >
-        <Copy className={`h-3.5 w-3.5 ${iconClassName}`} />
-      </button>
+    <div
+      className={`group relative inline-flex flex-col gap-1 min-w-0 ${className}`}
+    >
       {showCopied && (
-        <span className="text-xs text-green-600 dark:text-green-400">
+        <span className="absolute left-0 text-xs text-blue-600 -top-4 dark:text-blue-400">
           Copied
         </span>
       )}
+      <div className="inline-flex items-center min-w-0 gap-2">
+        <span
+          className={`min-w-0 truncate ${valueClassName}`}
+          title={stringValue}
+        >
+          {displayText}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          title={tooltipText}
+          aria-label={tooltipText}
+          disabled={!isCopyable}
+          className={`rounded p-0.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity cursor-pointer ${iconVisibilityClass}`}
+        >
+          <Copy className={`h-3.5 w-3.5 ${iconClassName}`} />
+        </button>
+      </div>
     </div>
   )
 }

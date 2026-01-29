@@ -64,16 +64,18 @@ export const TableSearchRow: React.FC<TableSearchRowProps> = ({
               key={reactColumnKey}
               className={`${column.width || ''} px-4 py-2 pb-4 align-middle`}
             >
-              <Select
-                value={search[column.key] || ''}
-                onChange={(value) => onSearchChange(column.key, value)}
-                options={columnStatusOptions.map((opt) => ({
-                  value: opt,
-                  label: opt,
-                }))}
-                placeholder="Search"
-                className="w-full min-w-0 h-8 something px-2 py-1 text-xs font-outfit font-normal not-italic border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 dark:[&>option]:text-gray-200 dark:[&>option]:bg-gray-800 shadow-none placeholder:text-xs placeholder:font-outfit placeholder:font-normal placeholder:not-italic placeholder:text-gray-400 dark:placeholder:text-gray-500"
-              />
+              <div className="relative">
+                <Select
+                  value={search[column.key] || ''}
+                  onChange={(value) => onSearchChange(column.key, value)}
+                  options={columnStatusOptions.map((opt) => ({
+                    value: opt,
+                    label: opt,
+                  }))}
+                  placeholder="Search"
+                  className="w-full min-w-0 h-8 something px-2 py-1 text-xs font-outfit font-normal not-italic border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 dark:[&>option]:text-gray-200 dark:[&>option]:bg-gray-800 shadow-none placeholder:text-xs placeholder:font-outfit placeholder:font-normal placeholder:not-italic placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                />
+              </div>
             </th>
           )
         }
@@ -83,12 +85,24 @@ export const TableSearchRow: React.FC<TableSearchRowProps> = ({
             key={reactColumnKey}
             className={`${column.width || ''} px-4 py-2 pb-4 align-middle`}
           >
-            <input
-              placeholder="Search"
-              value={search[column.key] || ''}
-              onChange={(e) => onSearchChange(column.key, e.target.value)}
-              className="w-full min-w-0 h-8 px-2 py-1 text-xs font-outfit font-normal not-italic border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 placeholder:text-xs placeholder:font-outfit placeholder:font-normal placeholder:not-italic placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 shadow-none"
-            />
+            <div className="relative">
+              <input
+                placeholder="Search"
+                value={search[column.key] || ''}
+                onChange={(e) => onSearchChange(column.key, e.target.value)}
+                className="w-full h-8 min-w-0 px-2 py-1 pr-6 text-xs not-italic font-normal text-gray-900 bg-white border border-gray-300 rounded-md shadow-none font-outfit dark:border-gray-600 dark:bg-gray-800 placeholder:text-xs placeholder:font-outfit placeholder:font-normal placeholder:not-italic placeholder:text-gray-400 dark:placeholder:text-gray-500 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+              {search[column.key] && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => onSearchChange(column.key, '')}
+                  className="absolute text-gray-900 -translate-y-1/2 right-2 top-1/2 dark:text-gray-100"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </th>
         )
       })}

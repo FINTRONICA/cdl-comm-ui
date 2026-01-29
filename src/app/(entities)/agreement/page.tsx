@@ -176,13 +176,14 @@ const AgreementsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-40",
       sortable: true,
+      // copyable: true,
 
     },
     {
       key: "id",
       label: getAgreementLabelDynamic("CDL_ESCROW_AGREEMENT_ID"),
       type: "text" as const,
-      width: "w-48",
+      width: "w-30",
       sortable: true,
       copyable: true,
     },
