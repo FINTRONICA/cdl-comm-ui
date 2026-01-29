@@ -182,6 +182,7 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'moduleCode',
@@ -189,6 +190,7 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-48',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'version',
@@ -196,6 +198,7 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-26',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'status',

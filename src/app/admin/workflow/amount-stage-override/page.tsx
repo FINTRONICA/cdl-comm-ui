@@ -172,6 +172,7 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
         type: 'text' as const,
           width: 'w-48',
         sortable: true,
+        copyable: true,
       },
     {
       key: 'stageOrder',
@@ -179,6 +180,7 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
       type: 'text' as const,
         width: 'w-32',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'requiredApprovals',
@@ -207,6 +209,7 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
       type: 'text' as const,
         width: 'w-48',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'status',

@@ -33,7 +33,7 @@ export const CountryPageClient = dynamic(
   () => Promise.resolve(CountryPageImpl),
   {
     ssr: false,
-  }
+  },
 );
 
 const CountryPageImpl: React.FC = () => {
@@ -60,7 +60,7 @@ const CountryPageImpl: React.FC = () => {
   } = useCountries(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
+    searchFilters,
   );
 
   const deleteCountryMutation = useDeleteCountry();
@@ -89,6 +89,7 @@ const CountryPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-80",
         sortable: true,
+        copyable: true,
       },
       {
         key: "description",
@@ -96,6 +97,7 @@ const CountryPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-80",
         sortable: true,
+        copyable: true,
       },
       {
         key: "actions",
@@ -104,7 +106,7 @@ const CountryPageImpl: React.FC = () => {
         width: "w-20",
       },
     ],
-    [getCountryLabelDynamic]
+    [getCountryLabelDynamic],
   );
 
   const {
@@ -142,7 +144,7 @@ const CountryPageImpl: React.FC = () => {
         updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
-    [search, localHandlePageChange, currentApiSize, updatePagination]
+    [search, localHandlePageChange, currentApiSize, updatePagination],
   );
 
   const handleRowsPerPageChange = useCallback(
@@ -152,7 +154,7 @@ const CountryPageImpl: React.FC = () => {
       updatePagination(0, newRowsPerPage);
       localHandleRowsPerPageChange(newRowsPerPage);
     },
-    [localHandleRowsPerPageChange, updatePagination]
+    [localHandleRowsPerPageChange, updatePagination],
   );
 
   const apiTotal = apiPagination?.totalElements || 0;
@@ -205,7 +207,7 @@ const CountryPageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
+    ],
   );
 
   const handleRowEdit = useCallback(
@@ -217,7 +219,7 @@ const CountryPageImpl: React.FC = () => {
       setPanelMode("edit");
       setIsPanelOpen(true);
     },
-    [countryData]
+    [countryData],
   );
 
   const handleAddNew = useCallback(() => {
@@ -236,9 +238,7 @@ const CountryPageImpl: React.FC = () => {
   const handleDownloadTemplate = useCallback(async () => {
     try {
       await downloadTemplate("CountryTemplate.xlsx");
-    } catch {
-      
-    }
+    } catch {}
   }, [downloadTemplate]);
 
   const handleUploadSuccess = useCallback(() => {
@@ -251,7 +251,7 @@ const CountryPageImpl: React.FC = () => {
     (_error: string) => {
       // Error is handled by UploadDialog component
     },
-    []
+    [],
   );
 
   const handleRowApprove = useCallback(
@@ -276,7 +276,7 @@ const CountryPageImpl: React.FC = () => {
         },
       });
     },
-    [confirmApprove, createWorkflowRequest, refreshCountries]
+    [confirmApprove, createWorkflowRequest, refreshCountries],
   );
 
   const handleCountryAdded = useCallback(() => {
@@ -333,7 +333,7 @@ const CountryPageImpl: React.FC = () => {
         </div>
       </div>
     ),
-    [getCountryLabelDynamic]
+    [getCountryLabelDynamic],
   );
 
   return (

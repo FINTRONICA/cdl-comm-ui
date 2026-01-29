@@ -176,6 +176,7 @@ const AgreementsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-40",
       sortable: true,
+
     },
     {
       key: "id",
@@ -183,6 +184,7 @@ const AgreementsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
     },
     {
       key: "primaryEscrowCifNumber",
@@ -190,6 +192,7 @@ const AgreementsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-40",
       sortable: true,
+      copyable: true,
     },
     {
       key: "relationshipManagerName",
@@ -197,6 +200,7 @@ const AgreementsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
     },
     {
       key: "status",

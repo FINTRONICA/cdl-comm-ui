@@ -50,14 +50,14 @@ const AgreementSubTypePageClient = dynamic(
   {
     ssr: false,
     // Removed loading prop to prevent duplicate loading - page handles its own loading state
-  }
+  },
 );
 
 const AgreementSubTypePageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
   const [editingItem, setEditingItem] = useState<AgreementSubTypeData | null>(
-    null
+    null,
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [tableKey, setTableKey] = useState(0);
@@ -79,7 +79,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
   } = useAgreementSubTypes(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
+    searchFilters,
   );
 
   const deleteAgreementSubTypeMutation = useDeleteAgreementSubType();
@@ -114,7 +114,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
     (configId: string): string => {
       return getMasterLabel(configId);
     },
-    []
+    [],
   );
 
   const tableColumns = [
@@ -124,6 +124,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
     },
     {
       key: "agreementSubTypeName",
@@ -131,6 +132,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-56",
       sortable: true,
+      copyable: true,
     },
     {
       key: "agreementSubTypeDescription",
@@ -138,6 +140,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-65",
       sortable: true,
+      copyable: true,
     },
     {
       key: "agreementTypeDTO",
@@ -145,6 +148,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-56",
       sortable: true,
+      copyable: true,
     },
     {
       key: "status",
@@ -185,6 +189,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
       "agreementSubTypeId",
       "agreementSubTypeName",
       "agreementSubTypeDescription",
+      "agreementTypeDTO",
     ],
     initialRowsPerPage: currentApiSize,
   });
@@ -259,21 +264,21 @@ const AgreementSubTypePageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
+    ],
   );
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: AgreementSubTypeData, _index: number) => {
       const dataIndex = agreementSubTypeData.findIndex(
-        (item) => item.id === row.id
+        (item) => item.id === row.id,
       );
       setEditingItem(row);
       setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
       setPanelMode("edit");
       setIsPanelOpen(true);
     },
-    [agreementSubTypeData]
+    [agreementSubTypeData],
   );
 
   const handleAddNew = useCallback(() => {
@@ -307,7 +312,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
     (_error: string) => {
       // Error is handled by UploadDialog component
     },
-    []
+    [],
   );
 
   const handleRowApprove = useCallback(
@@ -332,7 +337,7 @@ const AgreementSubTypePageImpl: React.FC = () => {
         },
       });
     },
-    [confirmApprove, createWorkflowRequest, refreshAgreementSubTypes]
+    [confirmApprove, createWorkflowRequest, refreshAgreementSubTypes],
   );
 
   const handleAgreementSubTypeAdded = useCallback(() => {
@@ -468,8 +473,8 @@ const AgreementSubTypePageImpl: React.FC = () => {
           mode={panelMode === "approve" ? "edit" : panelMode}
           actionData={
             editingItem as unknown as
-            | import("@/services/api/masterApi/Customer/agreementSubTypeService").AgreementSubType
-            | null
+              | import("@/services/api/masterApi/Customer/agreementSubTypeService").AgreementSubType
+              | null
           }
           {...(editingItemIndex !== null && {
             agreementSubTypeIndex: editingItemIndex,

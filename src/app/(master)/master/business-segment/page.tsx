@@ -50,14 +50,14 @@ const BusinessSegmentPageClient = dynamic(
   {
     ssr: false,
     // Removed loading prop to prevent duplicate loading - page handles its own loading state
-  }
+  },
 );
 
 const BusinessSegmentPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
   const [editingItem, setEditingItem] = useState<BusinessSegmentData | null>(
-    null
+    null,
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [tableKey, setTableKey] = useState(0);
@@ -79,7 +79,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
   } = useBusinessSegments(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
+    searchFilters,
   );
 
   const deleteBusinessSegmentMutation = useDeleteBusinessSegment();
@@ -103,7 +103,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
         active: businessSegment.active,
         enabled: businessSegment.enabled,
         deleted: businessSegment.deleted,
-      })
+      }),
     ) as BusinessSegmentData[];
   }, [businessSegmentsResponse]);
 
@@ -111,7 +111,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
     (configId: string): string => {
       return getMasterLabel(configId);
     },
-    []
+    [],
   );
 
   const tableColumns = [
@@ -121,6 +121,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
     },
     {
       key: "businessSegmentName",
@@ -128,6 +129,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-64",
       sortable: true,
+      copyable: true,
     },
     {
       key: "businessSegmentDescription",
@@ -135,6 +137,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-96",
       sortable: true,
+      copyable: true,
     },
     {
       key: "status",
@@ -249,21 +252,21 @@ const BusinessSegmentPageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
+    ],
   );
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: BusinessSegmentData, _index: number) => {
       const dataIndex = businessSegmentData.findIndex(
-        (item) => item.id === row.id
+        (item) => item.id === row.id,
       );
       setEditingItem(row);
       setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
       setPanelMode("edit");
       setIsPanelOpen(true);
     },
-    [businessSegmentData]
+    [businessSegmentData],
   );
 
   const handleAddNew = useCallback(() => {
@@ -297,7 +300,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
     (_error: string) => {
       // Error is handled by UploadDialog component
     },
-    []
+    [],
   );
 
   const handleRowApprove = useCallback(
@@ -322,7 +325,7 @@ const BusinessSegmentPageImpl: React.FC = () => {
         },
       });
     },
-    [confirmApprove, createWorkflowRequest, refreshBusinessSegments]
+    [confirmApprove, createWorkflowRequest, refreshBusinessSegments],
   );
 
   const handleBusinessSegmentAdded = useCallback(() => {

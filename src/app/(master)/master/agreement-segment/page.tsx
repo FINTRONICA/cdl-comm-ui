@@ -39,7 +39,7 @@ export const AgreementSegmentPageClient = dynamic(
   () => Promise.resolve(AgreementSegmentPageImpl),
   {
     ssr: false,
-  }
+  },
 );
 
 const AgreementSegmentPageImpl: React.FC = () => {
@@ -66,7 +66,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
   } = useAgreementSegments(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
+    searchFilters,
   );
 
   const refreshAgreementSegments = useRefreshAgreementSegments();
@@ -91,7 +91,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
         active: agreementSegment.active,
         enabled: agreementSegment.enabled,
         deleted: agreementSegment.deleted,
-      })
+      }),
     ) as AgreementSegmentData[];
   }, [agreementSegmentsResponse]);
 
@@ -107,6 +107,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-48",
         sortable: true,
+        copyable: true,
       },
       {
         key: "agreementSegmentName",
@@ -114,6 +115,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-64",
         sortable: true,
+        copyable: true,
       },
       {
         key: "agreementSegmentDescription",
@@ -121,6 +123,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-96",
         sortable: true,
+        copyable: true,
       },
       {
         key: "status",
@@ -136,7 +139,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
         width: "w-20",
       },
     ],
-    [getAgreementSegmentLabel]
+    [getAgreementSegmentLabel],
   );
 
   const {
@@ -178,7 +181,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
         updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
-    [search, localHandlePageChange, currentApiSize, updatePagination]
+    [search, localHandlePageChange, currentApiSize, updatePagination],
   );
 
   const handleRowsPerPageChange = useCallback(
@@ -188,7 +191,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
       updatePagination(0, newRowsPerPage);
       localHandleRowsPerPageChange(newRowsPerPage);
     },
-    [localHandleRowsPerPageChange, updatePagination]
+    [localHandleRowsPerPageChange, updatePagination],
   );
 
   const apiTotal = apiPagination?.totalElements || 0;
@@ -242,14 +245,14 @@ const AgreementSegmentPageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
+    ],
   );
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: AgreementSegmentData, _index: number) => {
       const dataIndex = agreementSegmentData.findIndex(
-        (item) => item.id === row.id
+        (item) => item.id === row.id,
       );
 
       // Convert table data format to API format for the panel
@@ -268,7 +271,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
       setPanelMode("edit");
       setIsPanelOpen(true);
     },
-    [agreementSegmentData]
+    [agreementSegmentData],
   );
 
   const handleAddNew = useCallback(() => {
@@ -302,7 +305,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
     (_error: string) => {
       // Error is handled by UploadDialog component
     },
-    []
+    [],
   );
 
   const handleRowApprove = useCallback(
@@ -327,7 +330,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
         },
       });
     },
-    [confirmApprove, createWorkflowRequest, refreshAgreementSegments]
+    [confirmApprove, createWorkflowRequest, refreshAgreementSegments],
   );
 
   const handleAgreementSegmentAdded = useCallback(() => {
@@ -376,7 +379,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
         </div>
       </div>
     ),
-    [getAgreementSegmentLabel]
+    [getAgreementSegmentLabel],
   );
 
   return (

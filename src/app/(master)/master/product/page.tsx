@@ -56,7 +56,7 @@ export const ProductProgramPageClient = dynamic(
   () => Promise.resolve(ProductProgramPageImpl),
   {
     ssr: false,
-  }
+  },
 );
 
 // Main component implementation
@@ -65,7 +65,7 @@ const ProductProgramPageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
   const [editingItem, setEditingItem] = useState<ProductProgramData | null>(
-    null
+    null,
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [tableKey, setTableKey] = useState(0);
@@ -90,7 +90,7 @@ const ProductProgramPageImpl: React.FC = () => {
   } = useProductPrograms(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
+    searchFilters,
   );
 
   const deleteProductProgramMutation = useDeleteProductProgram();
@@ -115,14 +115,14 @@ const ProductProgramPageImpl: React.FC = () => {
         enabled: productProgram.enabled,
         deleted: productProgram.deleted,
         status: productProgram.active ? "ACTIVE" : "INACTIVE",
-      })
+      }),
     ) as ProductProgramData[];
   }, [productProgramsResponse]);
 
   // Label helper
   const getLabel = useCallback(
     (configId: string): string => getMasterLabel(configId),
-    []
+    [],
   );
 
   // Table columns configuration
@@ -134,6 +134,7 @@ const ProductProgramPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-48",
         sortable: true,
+        copyable: true,
       },
       {
         key: "productProgramName",
@@ -141,6 +142,7 @@ const ProductProgramPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-64",
         sortable: true,
+        copyable: true,
       },
       {
         key: "productProgramDescription",
@@ -148,6 +150,7 @@ const ProductProgramPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-96",
         sortable: true,
+        copyable: true,
       },
       {
         key: "status",
@@ -163,7 +166,7 @@ const ProductProgramPageImpl: React.FC = () => {
         width: "w-20",
       },
     ],
-    [getLabel]
+    [getLabel],
   );
 
   // Table state management
@@ -198,7 +201,7 @@ const ProductProgramPageImpl: React.FC = () => {
   // Pagination calculations
   const hasActiveSearch = useMemo(
     () => Object.values(search).some((value) => value.trim()),
-    [search]
+    [search],
   );
 
   const apiTotal = apiPagination?.totalElements || 0;
@@ -225,7 +228,7 @@ const ProductProgramPageImpl: React.FC = () => {
         updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
-    [hasActiveSearch, localHandlePageChange, currentApiSize, updatePagination]
+    [hasActiveSearch, localHandlePageChange, currentApiSize, updatePagination],
   );
 
   const handleRowsPerPageChange = useCallback(
@@ -235,7 +238,7 @@ const ProductProgramPageImpl: React.FC = () => {
       updatePagination(0, newRowsPerPage);
       localHandleRowsPerPageChange(newRowsPerPage);
     },
-    [localHandleRowsPerPageChange, updatePagination]
+    [localHandleRowsPerPageChange, updatePagination],
   );
 
   const handleAddNew = useCallback(() => {
@@ -255,14 +258,14 @@ const ProductProgramPageImpl: React.FC = () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: ProductProgramData, _index: number) => {
       const dataIndex = productProgramData.findIndex(
-        (item) => item.id === row.id
+        (item) => item.id === row.id,
       );
       setEditingItem(row);
       setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
       setPanelMode("edit");
       setIsPanelOpen(true);
     },
-    [productProgramData]
+    [productProgramData],
   );
 
   const handleRowDelete = useCallback(
@@ -301,7 +304,7 @@ const ProductProgramPageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
+    ],
   );
 
   const handleDownloadTemplate = useCallback(async () => {
@@ -324,7 +327,7 @@ const ProductProgramPageImpl: React.FC = () => {
       // Error is handled by UploadDialog component
       // Could add additional error handling here if needed
     },
-    []
+    [],
   );
 
   const handleRowApprove = useCallback(
@@ -349,7 +352,7 @@ const ProductProgramPageImpl: React.FC = () => {
         },
       });
     },
-    [confirmApprove, createWorkflowRequest, refreshProductPrograms]
+    [confirmApprove, createWorkflowRequest, refreshProductPrograms],
   );
 
   const handleProductProgramAdded = useCallback(() => {
@@ -399,7 +402,7 @@ const ProductProgramPageImpl: React.FC = () => {
         </div>
       </div>
     ),
-    [getLabel]
+    [getLabel],
   );
 
   return (

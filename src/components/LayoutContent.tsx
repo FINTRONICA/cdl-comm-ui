@@ -154,7 +154,7 @@ const LayoutContentComponent = ({ children }: LayoutContentProps) => {
           pathname === '/business-segment' ||
           pathname === '/business-sub-segment' ||
           pathname === '/agreement-Type' ||
-          pathname === '/agreement-Sub-Type' ||
+          pathname === '/agreement-sub-type' ||
           pathname === '/product' ||
           pathname === '/agreement-segment' ||
           pathname === '/general-ledger-account' ||
@@ -167,7 +167,7 @@ const LayoutContentComponent = ({ children }: LayoutContentProps) => {
           pathname?.startsWith('/business-segment/') ||
           pathname?.startsWith('/business-sub-segment/') ||
           pathname?.startsWith('/agreement-Type/') ||
-          pathname?.startsWith('/agreement-Sub-Type/') ||
+          pathname?.startsWith('/agreement-sub-type/') ||
           pathname?.startsWith('/product/') ||
           pathname?.startsWith('/agreement-segment/') ||
           pathname?.startsWith('/general-ledger-account/') ||

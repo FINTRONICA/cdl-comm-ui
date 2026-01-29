@@ -30,7 +30,7 @@ import { useRouter } from 'next/navigation'
 
 interface PaymentInstructionData
   extends PaymentInstructionUIData,
-    Record<string, unknown> {}
+  Record<string, unknown> { }
 
 const statusOptions = [
   'PENDING',
@@ -106,7 +106,7 @@ const PaymentInstructionPageImpl: React.FC = () => {
 
   const isDownloading = false
   const downloadError = null
-  const clearError = () => {}
+  const clearError = () => { }
 
   const { data: paymentInstructionLabels, getLabel } =
     usePaymentInstructionLabelsWithCache()
@@ -167,6 +167,7 @@ const PaymentInstructionPageImpl: React.FC = () => {
       type: 'text' as const,
       width: 'w-48',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'clientFullName',
@@ -176,6 +177,7 @@ const PaymentInstructionPageImpl: React.FC = () => {
       type: 'text' as const,
       width: 'w-40',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'debitAmount',
@@ -185,6 +187,7 @@ const PaymentInstructionPageImpl: React.FC = () => {
       type: 'text' as const,
       width: 'w-32',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'creditAmount',
@@ -194,6 +197,7 @@ const PaymentInstructionPageImpl: React.FC = () => {
       type: 'text' as const,
       width: 'w-32',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'status',

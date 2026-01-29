@@ -141,6 +141,7 @@ const WorkflowActionPage: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'actionName',
@@ -148,6 +149,7 @@ const WorkflowActionPage: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'moduleCode',
@@ -155,6 +157,7 @@ const WorkflowActionPage: React.FC = () => {
         type: 'text' as const,
         width: 'w-48',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'description',

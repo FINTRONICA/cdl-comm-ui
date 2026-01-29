@@ -3,6 +3,7 @@ import { Checkbox } from '../../atoms/Checkbox'
 import { StatusBadge } from '../../atoms/StatusBadge'
 import { TableSearchRow } from '../../molecules/TableSearchRow'
 import { ActionDropdown } from '../../molecules/ActionDropdown'
+import { CopyableTableCell } from '../../molecules/CopyableTableCell'
 
 import { MultiSelect } from '../../atoms/MultiSelect'
 import {
@@ -22,6 +23,7 @@ interface Column {
   width?: string
   sortable?: boolean
   searchable?: boolean
+  copyable?: boolean
   type:
     | 'checkbox'
     | 'text'
@@ -226,6 +228,15 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
     [expandedRows, onRowExpansionChange]
   )
 
+  const getCopyValue = useCallback((value: unknown) => {
+    if (value === null || value === undefined) return ''
+    return String(value)
+  }, [])
+
+  const isIdLikeValue = useCallback((value: string) => {
+    return /^[A-Z]+-\d+$/.test(value)
+  }, [])
+
   // Memoize page numbers generation
   const generatePageNumbers = useCallback(() => {
     const pages = []
@@ -404,22 +415,38 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     }
                     const value = row[column.key]
                     const displayValue = value
+                    const copyValue = getCopyValue(value)
+                    const isColumnCopyable =
+                      column.copyable ?? isIdLikeValue(copyValue)
+                    const isCopyable = isColumnCopyable && copyValue.length > 0
 
                     // Check if column has a custom render function
                     if (column.render) {
+                      const rendered = column.render(value, row)
+                      const displayText =
+                        typeof rendered === 'string' || typeof rendered === 'number'
+                          ? rendered
+                          : copyValue
                       return (
                         <td
                           key={reactColumnKey}
                           className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100 max-w-0`}
                         >
-                          <div
-                            className="truncate"
-                            title={
-                              typeof value === 'string' ? value : undefined
-                            }
-                          >
-                            {column.render(value, row)}
-                          </div>
+                          {isCopyable ? (
+                            <CopyableTableCell
+                              value={copyValue}
+                              displayValue={displayText}
+                            />
+                          ) : (
+                            <div
+                              className="truncate"
+                              title={
+                                typeof value === 'string' ? value : undefined
+                              }
+                            >
+                              {rendered}
+                            </div>
+                          )}
                         </td>
                       )
                     }
@@ -474,14 +501,29 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                     }
 
                     if (column.type === 'custom' && renderCustomCell) {
+                      const rendered = renderCustomCell(
+                        column.key,
+                        value,
+                        row,
+                        index
+                      )
+                      const displayText =
+                        typeof rendered === 'string' || typeof rendered === 'number'
+                          ? rendered
+                          : copyValue
                       return (
                         <td
                           key={reactColumnKey}
                           className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100 max-w-0`}
                         >
-                          <div className="truncate">
-                            {renderCustomCell(column.key, value, row, index)}
-                          </div>
+                          {isCopyable ? (
+                            <CopyableTableCell
+                              value={copyValue}
+                              displayValue={displayText}
+                            />
+                          ) : (
+                            <div className="truncate">{rendered}</div>
+                          )}
                         </td>
                       )
                     }
@@ -514,12 +556,16 @@ const ExpandableDataTableComponent = <T extends Record<string, unknown>>({
                         key={reactColumnKey}
                         className={`${column.width || 'w-auto'} px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100 max-w-0`}
                       >
-                        <div
-                          className="truncate"
-                          title={displayValue as string}
-                        >
-                          {displayValue as string}
-                        </div>
+                        {isCopyable ? (
+                          <CopyableTableCell value={copyValue} />
+                        ) : (
+                          <div
+                            className="truncate"
+                            title={displayValue as string}
+                          >
+                            {displayValue as string}
+                          </div>
+                        )}
                       </td>
                     )
                   })}

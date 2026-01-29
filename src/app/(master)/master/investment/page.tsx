@@ -50,7 +50,7 @@ const InvestmentPageClient = dynamic(
   {
     ssr: false,
     // Removed loading prop to prevent duplicate loading - page handles its own loading state
-  }
+  },
 );
 
 const InvestmentPageImpl: React.FC = () => {
@@ -77,7 +77,7 @@ const InvestmentPageImpl: React.FC = () => {
   } = useInvestments(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
+    searchFilters,
   );
 
   const deleteInvestmentMutation = useDeleteInvestment();
@@ -114,6 +114,7 @@ const InvestmentPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
     },
     {
       key: "investmentName",
@@ -121,6 +122,7 @@ const InvestmentPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-64",
       sortable: true,
+      copyable: true,
     },
     {
       key: "investmentDescription",
@@ -128,6 +130,7 @@ const InvestmentPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-96",
       sortable: true,
+      copyable: true,
     },
     {
       key: "status",
@@ -238,7 +241,7 @@ const InvestmentPageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
+    ],
   );
 
   const handleRowEdit = useCallback(
@@ -250,7 +253,7 @@ const InvestmentPageImpl: React.FC = () => {
       setPanelMode("edit");
       setIsPanelOpen(true);
     },
-    [investmentData]
+    [investmentData],
   );
 
   const handleAddNew = useCallback(() => {
@@ -284,7 +287,7 @@ const InvestmentPageImpl: React.FC = () => {
     (_error: string) => {
       // Error is handled by UploadDialog component
     },
-    []
+    [],
   );
 
   const handleRowApprove = useCallback(
@@ -309,7 +312,7 @@ const InvestmentPageImpl: React.FC = () => {
         },
       });
     },
-    [confirmApprove, createWorkflowRequest, refreshInvestments]
+    [confirmApprove, createWorkflowRequest, refreshInvestments],
   );
 
   const handleInvestmentAdded = useCallback(() => {

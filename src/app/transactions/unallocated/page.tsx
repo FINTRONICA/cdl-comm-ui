@@ -354,6 +354,7 @@ const UnallocatedTransactionPage: React.FC = () => {
       type: 'text' as const,
       width: 'w-40',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'tranReference',
@@ -361,6 +362,7 @@ const UnallocatedTransactionPage: React.FC = () => {
       type: 'text' as const,
       width: 'w-40',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'tranDesc',
@@ -368,6 +370,7 @@ const UnallocatedTransactionPage: React.FC = () => {
       type: 'text' as const,
       width: 'w-40',
       sortable: true,
+      // copyable: true,
     },
     {
       key: 'tranAmount',
@@ -375,6 +378,7 @@ const UnallocatedTransactionPage: React.FC = () => {
       type: 'custom' as const,
       width: 'w-40',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'tranDate',
@@ -382,6 +386,7 @@ const UnallocatedTransactionPage: React.FC = () => {
       type: 'text' as const,
       width: 'w-40',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'narration',
@@ -389,6 +394,7 @@ const UnallocatedTransactionPage: React.FC = () => {
       type: 'text' as const,
       width: 'w-48',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'tasMatch',
@@ -396,6 +402,7 @@ const UnallocatedTransactionPage: React.FC = () => {
       type: 'text' as const,
       width: 'w-32',
       sortable: true,
+      copyable: true,
     },
     {
       key: 'approvalStatus',

@@ -12,7 +12,7 @@ const TAB_ROUTES: Record<string, string> = {
   segment: "/business-segment",
   subSegment: "/business-sub-segment",
   dealType: "/agreement-Type",
-  dealSubType: "/agreement-Sub-Type",
+  dealSubType: "/agreement-sub-type",
   product: "/product",
   dealSegment: "/agreement-segment",
   ledgerAccount: "/general-ledger-account",

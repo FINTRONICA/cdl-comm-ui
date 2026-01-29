@@ -172,6 +172,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'minAmount',
@@ -179,6 +180,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'maxAmount',
@@ -186,6 +188,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'priority',

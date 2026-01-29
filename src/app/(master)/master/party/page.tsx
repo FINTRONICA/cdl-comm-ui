@@ -1,52 +1,49 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React from 'react'
+import dynamic from "next/dynamic";
+import React from "react";
 
-const PartiesPageClient = dynamic(
-  () => Promise.resolve(PartiesPageImpl),
-  {
-    ssr: false,
-    // Removed loading prop to prevent duplicate loading - page handles its own loading state
-  }
-)
+const PartiesPageClient = dynamic(() => Promise.resolve(PartiesPageImpl), {
+  ssr: false,
+  // Removed loading prop to prevent duplicate loading - page handles its own loading state
+});
 
-import { useCallback, useState, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import LeftSlidePanel from '@/components/organisms/LeftSlidePanel/LeftSlidePanel'
-import { usePartyLabelsWithCache } from '@/hooks/master/CustomerHook/usePartyLabelsWithCache'
-import { getPartyLabel } from '@/constants/mappings/master/partyMapping'
-import { useAppStore } from '@/store'
-import { GlobalLoading } from '@/components/atoms'
+import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import LeftSlidePanel from "@/components/organisms/LeftSlidePanel/LeftSlidePanel";
+import { usePartyLabelsWithCache } from "@/hooks/master/CustomerHook/usePartyLabelsWithCache";
+import { getPartyLabel } from "@/constants/mappings/master/partyMapping";
+import { useAppStore } from "@/store";
+import { GlobalLoading } from "@/components/atoms";
 import {
   useParties,
   useDeleteParty,
   PARTIES_QUERY_KEY,
-} from '@/hooks/master/CustomerHook/useParty'
+} from "@/hooks/master/CustomerHook/useParty";
 import {
   mapPartyToUIData,
   type PartyUIData,
   type Party,
-} from '@/services/api/masterApi/Customer/partyService'
-import type { PartyFilters } from '@/services/api/masterApi/Customer/partyService'
-import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
-import { TEMPLATE_FILES } from '@/constants'
-import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
-import { useRouter } from 'next/navigation'
+} from "@/services/api/masterApi/Customer/partyService";
+import type { PartyFilters } from "@/services/api/masterApi/Customer/partyService";
+import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
+import { TEMPLATE_FILES } from "@/constants";
+import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
+import { useRouter } from "next/navigation";
 
-interface PartyData extends PartyUIData, Record<string, unknown> { }
+interface PartyData extends PartyUIData, Record<string, unknown> {}
 
 const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
@@ -75,9 +72,9 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
         </h1>
         <p className="mb-4 text-gray-600">
           {error.message ||
-            'An error occurred while loading the data. Please try again.'}
+            "An error occurred while loading the data. Please try again."}
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <details className="text-left">
             <summary className="text-sm font-medium text-gray-600 cursor-pointer">
               Error Details (Development)
@@ -98,32 +95,31 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       )}
     </div>
   </div>
-)
+);
 
-const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />
+const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />;
 
 const PartiesPageImpl: React.FC = () => {
-  const router = useRouter()
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [tableKey, setTableKey] = useState(0)
+  const router = useRouter();
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [tableKey, setTableKey] = useState(0);
 
-  const currentLanguage = useAppStore((state) => state.language)
-  const queryClient = useQueryClient()
+  const currentLanguage = useAppStore((state) => state.language);
+  const queryClient = useQueryClient();
 
   const {
     downloadTemplate,
     isLoading: isDownloading,
     error: downloadError,
     clearError,
-  } = useTemplateDownload()
+  } = useTemplateDownload();
 
-  const { data: partyLabels, getLabel } =
-    usePartyLabelsWithCache()
+  const { data: partyLabels, getLabel } = usePartyLabelsWithCache();
 
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [filters] = useState<PartyFilters>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [filters] = useState<PartyFilters>({});
 
   const {
     data: apiResponse,
@@ -132,78 +128,81 @@ const PartiesPageImpl: React.FC = () => {
     refetch: refetchParties,
     updatePagination,
     apiPagination,
-  } = useParties(Math.max(0, currentApiPage - 1), currentApiSize, filters)
+  } = useParties(Math.max(0, currentApiPage - 1), currentApiSize, filters);
 
-  const deleteMutation = useDeleteParty()
-  const confirmDelete = useDeleteConfirmation()
+  const deleteMutation = useDeleteParty();
+  const confirmDelete = useDeleteConfirmation();
 
   const partiesData = useMemo(() => {
     if (apiResponse?.content && Array.isArray(apiResponse.content)) {
       return apiResponse.content.map((item: Party) =>
-        mapPartyToUIData(item)
-      ) as PartyData[]
+        mapPartyToUIData(item),
+      ) as PartyData[];
     }
-    return []
-  }, [apiResponse])
+    return [];
+  }, [apiResponse]);
 
   const getPartyLabelDynamic = useCallback(
     (configId: string): string => {
-      const fallback = getPartyLabel(configId)
+      const fallback = getPartyLabel(configId);
 
       if (partyLabels) {
-        return getLabel(configId, currentLanguage || 'EN', fallback)
+        return getLabel(configId, currentLanguage || "EN", fallback);
       }
-      return fallback
+      return fallback;
     },
-    [partyLabels, currentLanguage, getLabel]
-  )
+    [partyLabels, currentLanguage, getLabel],
+  );
 
   const tableColumns = useMemo(
     () => [
       {
-        key: 'partyFullName',
-        label: getPartyLabelDynamic('CDL_MP_PARTY_NAME'),
-        type: 'text' as const,
-        width: 'w-40',
+        key: "partyFullName",
+        label: getPartyLabelDynamic("CDL_MP_PARTY_NAME"),
+        type: "text" as const,
+        width: "w-40",
         sortable: true,
       },
       {
-        key: 'id',
-        label: getPartyLabelDynamic('CDL_MP_PARTY_ID'),
-        type: 'text' as const,
-        width: 'w-48',
+        key: "id",
+        label: getPartyLabelDynamic("CDL_MP_PARTY_ID"),
+        type: "text" as const,
+        width: "w-48",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "partyCifNumber",
+        label: getPartyLabelDynamic("CDL_MP_PARTY_CIF_NUMBER"),
+        type: "text" as const,
+        width: "w-40",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "emailAddress",
+        label: getPartyLabelDynamic("CDL_MP_PARTY_EMAIL"),
+        type: "text" as const,
+        width: "w-48",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "status",
+        label: getPartyLabelDynamic("CDL_COMMON_STATUS"),
+        type: "status" as const,
+        width: "w-32",
         sortable: true,
       },
       {
-        key: 'partyCifNumber',
-        label: getPartyLabelDynamic('CDL_MP_PARTY_CIF_NUMBER'),
-        type: 'text' as const,
-        width: 'w-40',
-        sortable: true,
-      },
-      {
-        key: 'emailAddress',
-        label: getPartyLabelDynamic('CDL_MP_PARTY_EMAIL'),
-        type: 'text' as const,
-        width: 'w-48',
-        sortable: true,
-      },
-      {
-        key: 'status',
-        label: getPartyLabelDynamic('CDL_COMMON_STATUS'),
-        type: 'status' as const,
-        width: 'w-32',
-        sortable: true,
-      },
-      {
-        key: 'actions',
-        label: getPartyLabelDynamic('CDL_COMMON_ACTION'),
-        type: 'actions' as const,
-        width: 'w-20',
+        key: "actions",
+        label: getPartyLabelDynamic("CDL_COMMON_ACTION"),
+        type: "actions" as const,
+        width: "w-20",
       },
     ],
-    [getPartyLabelDynamic]
-  )
+    [getPartyLabelDynamic],
+  );
 
   const {
     search,
@@ -226,68 +225,68 @@ const PartiesPageImpl: React.FC = () => {
   } = useTableState({
     data: partiesData,
     searchFields: [
-      'partyFullName',
-      'id',
-      'partyCifNumber',
-      'emailAddress',
-      'status',
+      "partyFullName",
+      "id",
+      "partyCifNumber",
+      "emailAddress",
+      "status",
     ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      const hasSearch = Object.values(search).some((value) => value.trim())
+      const hasSearch = Object.values(search).some((value) => value.trim());
 
       if (hasSearch) {
-        localHandlePageChange(newPage)
+        localHandlePageChange(newPage);
       } else {
-        setCurrentApiPage(newPage)
-        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+        setCurrentApiPage(newPage);
+        updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
-    [search, currentApiSize, localHandlePageChange, updatePagination]
-  )
+    [search, currentApiSize, localHandlePageChange, updatePagination],
+  );
 
   const handleRowsPerPageChange = useCallback(
     (newRowsPerPage: number) => {
-      setCurrentApiSize(newRowsPerPage)
-      setCurrentApiPage(1)
-      updatePagination(0, newRowsPerPage)
-      localHandleRowsPerPageChange(newRowsPerPage)
+      setCurrentApiSize(newRowsPerPage);
+      setCurrentApiPage(1);
+      updatePagination(0, newRowsPerPage);
+      localHandleRowsPerPageChange(newRowsPerPage);
     },
-    [localHandleRowsPerPageChange, updatePagination]
-  )
+    [localHandleRowsPerPageChange, updatePagination],
+  );
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const actionButtons: Array<{
-    label: string
-    onClick: () => void
-    disabled?: boolean
-    variant?: 'primary' | 'secondary'
-    icon?: string
-    iconAlt?: string
-  }> = []
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    variant?: "primary" | "secondary";
+    icon?: string;
+    iconAlt?: string;
+  }> = [];
 
   const handleRowDelete = useCallback(
     (row: PartyData) => {
       if (isDeleting) {
-        return
+        return;
       }
 
       confirmDelete({
@@ -295,21 +294,21 @@ const PartiesPageImpl: React.FC = () => {
         itemId: row.id,
         onConfirm: async () => {
           try {
-            setIsDeleting(true)
-            await deleteMutation.mutateAsync(row.id)
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            setIsDeleting(true);
+            await deleteMutation.mutateAsync(row.id);
+            await new Promise((resolve) => setTimeout(resolve, 500));
             await queryClient.invalidateQueries({
               queryKey: [PARTIES_QUERY_KEY],
-            })
-            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
-            setTableKey((prev) => prev + 1)
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
-            throw error
+            throw error;
           } finally {
-            setIsDeleting(false)
+            setIsDeleting(false);
           }
         },
-      })
+      });
     },
     [
       isDeleting,
@@ -319,35 +318,35 @@ const PartiesPageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
-  )
+    ],
+  );
 
   const handleRowView = useCallback(
     (row: PartyData) => {
-      router.push(`/master/party/${row.id}/step/1?mode=view`)
+      router.push(`/master/party/${row.id}/step/1?mode=view`);
     },
-    [router]
-  )
+    [router],
+  );
 
   const handleRowEdit = useCallback(
     (row: PartyData) => {
-      router.push(`/master/party/${row.id}/step/1?editing=true`)
+      router.push(`/master/party/${row.id}/step/1?editing=true`);
     },
-    [router]
-  )
+    [router],
+  );
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      await downloadTemplate(TEMPLATE_FILES.BUILD_PARTNER)
+      await downloadTemplate(TEMPLATE_FILES.BUILD_PARTNER);
     } catch {
       // Silently handle download errors
     }
-  }, [downloadTemplate])
+  }, [downloadTemplate]);
 
   const renderExpandedContent = useCallback(
     () => <div className="grid grid-cols-2 gap-8"></div>,
-    []
-  )
+    [],
+  );
 
   return (
     <>
@@ -381,10 +380,7 @@ const PartiesPageImpl: React.FC = () => {
           <LoadingSpinner />
         ) : partiesError ? (
           <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
-            <ErrorMessage
-              error={partiesError}
-              onRetry={refetchParties}
-            />
+            <ErrorMessage error={partiesError} onRetry={refetchParties} />
           </div>
         ) : (
           <>
@@ -429,10 +425,10 @@ const PartiesPageImpl: React.FC = () => {
                   onRowDelete={handleRowDelete}
                   onRowView={handleRowView}
                   onRowEdit={handleRowEdit}
-                  deletePermissions={['master_party_delete']}
-                  viewPermissions={['master_party_view']}
-                  editPermissions={['master_party_update']}
-                  updatePermissions={['master_party_update']}
+                  deletePermissions={["master_party_delete"]}
+                  viewPermissions={["master_party_view"]}
+                  editPermissions={["master_party_update"]}
+                  updatePermissions={["master_party_update"]}
                   showDeleteAction={true}
                   showViewAction={true}
                   showEditAction={true}
@@ -445,11 +441,11 @@ const PartiesPageImpl: React.FC = () => {
         )}
       </div>
     </>
-  )
-}
+  );
+};
 
 const PartiesPage: React.FC = () => {
-  return <PartiesPageClient />
-}
+  return <PartiesPageClient />;
+};
 
-export default PartiesPage
+export default PartiesPage;

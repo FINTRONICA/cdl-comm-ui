@@ -101,6 +101,7 @@ const CurrencyPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-80",
         sortable: true,
+        copyable: true,
       },
       {
         key: "description",
@@ -108,6 +109,7 @@ const CurrencyPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-80",
         sortable: true,
+        copyable: true,
       },
       {
         key: "actions",

@@ -21,6 +21,7 @@ interface Column {
   width?: string
   sortable?: boolean
   searchable?: boolean
+  copyable?: boolean
   options?: { value: string; label: string }[]
   statusOptions?: string[]
 }

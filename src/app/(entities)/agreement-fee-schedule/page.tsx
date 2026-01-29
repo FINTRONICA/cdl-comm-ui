@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React from 'react'
+import dynamic from "next/dynamic";
+import React from "react";
 
 const AgreementFeeSchedulesPageClient = dynamic(
   () => Promise.resolve(AgreementFeeSchedulesPageImpl),
@@ -12,45 +12,47 @@ const AgreementFeeSchedulesPageClient = dynamic(
         <GlobalLoading fullHeight />
       </div>
     ),
-  }
-)
+  },
+);
 
-import { useCallback, useState, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import LeftSlidePanel from '@/components/organisms/LeftSlidePanel/LeftSlidePanel'
-import { useAgreementFeeScheduleLabelsWithCache } from '@/hooks'
-import { getAgreementFeeScheduleLabel } from '@/constants/mappings/master/Entity/agreementFeeScheduleMapping'
-import { useAppStore } from '@/store'
-import { GlobalLoading } from '@/components/atoms'
+import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { DashboardLayout } from "@/components/templates/DashboardLayout";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import LeftSlidePanel from "@/components/organisms/LeftSlidePanel/LeftSlidePanel";
+import { useAgreementFeeScheduleLabelsWithCache } from "@/hooks";
+import { getAgreementFeeScheduleLabel } from "@/constants/mappings/master/Entity/agreementFeeScheduleMapping";
+import { useAppStore } from "@/store";
+import { GlobalLoading } from "@/components/atoms";
 import {
   useAgreementFeeSchedules,
   useDeleteAgreementFeeSchedule,
-} from '@/hooks'
-import { AGREEMENT_FEE_SCHEDULES_QUERY_KEY } from '@/hooks/master/EntitieHook/useAgreementFeeSchedule'
+} from "@/hooks";
+import { AGREEMENT_FEE_SCHEDULES_QUERY_KEY } from "@/hooks/master/EntitieHook/useAgreementFeeSchedule";
 import {
   mapAgreementFeeScheduleToUIData,
   type AgreementFeeScheduleUIData,
   type AgreementFeeSchedule,
-} from '@/services/api/masterApi/Entitie/agreementFeeScheduleService'
-import type { AgreementFeeScheduleFilters } from '@/services/api/masterApi/Entitie/agreementFeeScheduleService'
-import { useSidebarConfig } from '@/hooks/useSidebarConfig'
-import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
-import { useRouter } from 'next/navigation'
+} from "@/services/api/masterApi/Entitie/agreementFeeScheduleService";
+import type { AgreementFeeScheduleFilters } from "@/services/api/masterApi/Entitie/agreementFeeScheduleService";
+import { useSidebarConfig } from "@/hooks/useSidebarConfig";
+import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
+import { useRouter } from "next/navigation";
 
-interface AgreementFeeScheduleData extends AgreementFeeScheduleUIData, Record<string, unknown> {}
+interface AgreementFeeScheduleData
+  extends AgreementFeeScheduleUIData,
+    Record<string, unknown> {}
 
 const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
@@ -79,9 +81,9 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
         </h1>
         <p className="mb-4 text-gray-600">
           {error.message ||
-            'An error occurred while loading the data. Please try again.'}
+            "An error occurred while loading the data. Please try again."}
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <details className="text-left">
             <summary className="text-sm font-medium text-gray-600 cursor-pointer">
               Error Details (Development)
@@ -102,35 +104,35 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       )}
     </div>
   </div>
-)
+);
 
-const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />
+const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />;
 
 const AgreementFeeSchedulesPageImpl: React.FC = () => {
-  const router = useRouter()
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [tableKey, setTableKey] = useState(0)
-  const queryClient = useQueryClient()
+  const router = useRouter();
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [tableKey, setTableKey] = useState(0);
+  const queryClient = useQueryClient();
 
-  const currentLanguage = useAppStore((state) => state.language)
+  const currentLanguage = useAppStore((state) => state.language);
 
-  const isDownloading = false
-  const downloadError = null
-  const clearError = () => {}
+  const isDownloading = false;
+  const downloadError = null;
+  const clearError = () => {};
 
   const { data: agreementFeeScheduleLabels, getLabel } =
-    useAgreementFeeScheduleLabelsWithCache()
+    useAgreementFeeScheduleLabelsWithCache();
 
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [filters] = useState<AgreementFeeScheduleFilters>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [filters] = useState<AgreementFeeScheduleFilters>({});
 
-  const { getLabelResolver } = useSidebarConfig()
+  const { getLabelResolver } = useSidebarConfig();
 
   const agreementFeeSchedulesPageTitle = getLabelResolver
-    ? getLabelResolver('Agreement Fee Schedule', 'Agreement Fee Schedule')
-    : 'Agreement Fee Schedule'
+    ? getLabelResolver("Agreement Fee Schedule", "Agreement Fee Schedule")
+    : "Agreement Fee Schedule";
 
   const {
     data: apiResponse,
@@ -139,85 +141,108 @@ const AgreementFeeSchedulesPageImpl: React.FC = () => {
     refetch: refetchAgreementFeeSchedules,
     updatePagination,
     apiPagination,
-  } = useAgreementFeeSchedules(Math.max(0, currentApiPage - 1), currentApiSize, filters)
+  } = useAgreementFeeSchedules(
+    Math.max(0, currentApiPage - 1),
+    currentApiSize,
+    filters,
+  );
 
-  const deleteMutation = useDeleteAgreementFeeSchedule()
-  const confirmDelete = useDeleteConfirmation()
+  const deleteMutation = useDeleteAgreementFeeSchedule();
+  const confirmDelete = useDeleteConfirmation();
 
   const agreementFeeSchedulesData = useMemo(() => {
     if (apiResponse?.content) {
       return apiResponse.content.map((item) =>
-        mapAgreementFeeScheduleToUIData(item as AgreementFeeSchedule)
-      ) as AgreementFeeScheduleData[]
+        mapAgreementFeeScheduleToUIData(item as AgreementFeeSchedule),
+      ) as AgreementFeeScheduleData[];
     }
-    return []
-    }, [apiResponse])
+    return [];
+  }, [apiResponse]);
 
   const getAgreementFeeScheduleLabelDynamic = useCallback(
     (configId: string): string => {
-      const fallback = getAgreementFeeScheduleLabel(configId)
+      const fallback = getAgreementFeeScheduleLabel(configId);
 
       if (agreementFeeScheduleLabels) {
-        return getLabel(configId, currentLanguage || 'EN', fallback)
+        return getLabel(configId, currentLanguage || "EN", fallback);
       }
-      return fallback
+      return fallback;
     },
-    [agreementFeeScheduleLabels, currentLanguage, getLabel]
-  )
+    [agreementFeeScheduleLabels, currentLanguage, getLabel],
+  );
 
   const tableColumns = useMemo(
     () => [
       {
-        key: 'operatingLocation',
-        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_LOCATION'),
-        type: 'text' as const,
-        width: 'w-40',
+        key: "operatingLocation",
+        label: getAgreementFeeScheduleLabelDynamic(
+          "CDL_AGREEMENT_FEE_SCHEDULE_LOCATION",
+        ),
+        type: "text" as const,
+        width: "w-40",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "priorityLevel",
+        label: getAgreementFeeScheduleLabelDynamic(
+          "CDL_AGREEMENT_FEE_SCHEDULE_DEAL_PRIORITY",
+        ),
+        type: "text" as const,
+        width: "w-48",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "effectiveStartDate",
+        label: getAgreementFeeScheduleLabelDynamic(
+          "CDL_AGREEMENT_FEE_SCHEDULE_START_DATE",
+        ),
+        type: "text" as const,
+        width: "w-40",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "effectiveEndDate",
+        label: getAgreementFeeScheduleLabelDynamic(
+          "CDL_AGREEMENT_FEE_SCHEDULE_END_DATE",
+        ),
+        type: "text" as const,
+        width: "w-48",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "transactionRateAmount",
+        label: getAgreementFeeScheduleLabelDynamic(
+          "CDL_AGREEMENT_TRANSACTION_RATE_AMOUNT",
+        ),
+        type: "text" as const,
+        width: "w-48",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "status",
+        label: getAgreementFeeScheduleLabelDynamic(
+          "CDL_AGREEMENT_FEE_SCHEDULE_STATUS",
+        ),
+        type: "status" as const,
+        width: "w-32",
         sortable: true,
       },
       {
-        key: 'priorityLevel',
-        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DEAL_PRIORITY'),
-        type: 'text' as const,
-        width: 'w-48',
-        sortable: true,
-      },
-      {
-        key: 'effectiveStartDate',
-        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_START_DATE'),
-        type: 'text' as const,
-        width: 'w-40',
-        sortable: true,
-      },
-      {
-        key: 'effectiveEndDate',
-        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_END_DATE'),
-        type: 'text' as const,
-        width: 'w-48',
-        sortable: true,
-      },
-      {
-        key: 'transactionRateAmount',
-        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_TRANSACTION_RATE_AMOUNT'),
-        type: 'text' as const,
-        width: 'w-48',
-        sortable: true,
-      },
-      {
-        key: 'status',
-        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_STATUS'),
-        type: 'status' as const,
-        width: 'w-32',
-        sortable: true,
-      },
-      {
-        key: 'actions',
-        label: getAgreementFeeScheduleLabelDynamic('CDL_AGREEMENT_FEE_SCHEDULE_DOC_ACTION'),
-        type: 'actions' as const,
-        width: 'w-20',
+        key: "actions",
+        label: getAgreementFeeScheduleLabelDynamic(
+          "CDL_AGREEMENT_FEE_SCHEDULE_DOC_ACTION",
+        ),
+        type: "actions" as const,
+        width: "w-20",
       },
     ],
-    [getAgreementFeeScheduleLabelDynamic]
-  )
+    [getAgreementFeeScheduleLabelDynamic],
+  );
 
   const {
     search,
@@ -240,62 +265,62 @@ const AgreementFeeSchedulesPageImpl: React.FC = () => {
   } = useTableState({
     data: agreementFeeSchedulesData,
     searchFields: [
-      'operatingLocation',
-      'priorityLevel',
-      'effectiveStartDate',
-      'effectiveEndDate',
-      'transactionRateAmount',
-      'status',
+      "operatingLocation",
+      "priorityLevel",
+      "effectiveStartDate",
+      "effectiveEndDate",
+      "transactionRateAmount",
+      "status",
     ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+    const hasSearch = Object.values(search).some((value) => value.trim());
 
     if (hasSearch) {
-      localHandlePageChange(newPage)
+      localHandlePageChange(newPage);
     } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      setCurrentApiPage(newPage);
+      updatePagination(Math.max(0, newPage - 1), currentApiSize);
     }
-  }
+  };
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+    setCurrentApiSize(newRowsPerPage);
+    setCurrentApiPage(1);
+    updatePagination(0, newRowsPerPage);
+    localHandleRowsPerPageChange(newRowsPerPage);
+  };
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const actionButtons: Array<{
-    label: string
-    onClick: () => void
-    disabled?: boolean
-    variant?: 'primary' | 'secondary'
-    icon?: string
-    iconAlt?: string
-  }> = []
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    variant?: "primary" | "secondary";
+    icon?: string;
+    iconAlt?: string;
+  }> = [];
 
   const handleRowDelete = (row: AgreementFeeScheduleData) => {
     if (isDeleting) {
-      return
+      return;
     }
 
     confirmDelete({
@@ -303,42 +328,42 @@ const AgreementFeeSchedulesPageImpl: React.FC = () => {
       itemId: row.id.toString(),
       onConfirm: async () => {
         try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(row.id.toString())
-          await new Promise((resolve) => setTimeout(resolve, 500))
+          setIsDeleting(true);
+          await deleteMutation.mutateAsync(row.id.toString());
+          await new Promise((resolve) => setTimeout(resolve, 500));
           await queryClient.invalidateQueries({
             queryKey: [AGREEMENT_FEE_SCHEDULES_QUERY_KEY],
-          })
-          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
-          setTableKey((prev) => prev + 1)
+          });
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+          setTableKey((prev) => prev + 1);
         } catch (error) {
           const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-            console.error(`Failed to delete : ${errorMessage}`)
+            error instanceof Error ? error.message : "Unknown error occurred";
+          console.error(`Failed to delete : ${errorMessage}`);
 
-          throw error
+          throw error;
         } finally {
-          setIsDeleting(false)
+          setIsDeleting(false);
         }
       },
-    })
-  }
+    });
+  };
 
   const handleRowView = (row: AgreementFeeScheduleData) => {
-    router.push(`/agreement-fee-schedule/${row.id}/step/1?mode=view`)
-  }
+    router.push(`/agreement-fee-schedule/${row.id}/step/1?mode=view`);
+  };
 
   const handleRowEdit = (row: AgreementFeeScheduleData) => {
-    router.push(`/agreement-fee-schedule/${row.id}/step/1?editing=true`)
-  }
+    router.push(`/agreement-fee-schedule/${row.id}/step/1?editing=true`);
+  };
 
   const handleDownloadTemplate = async () => {
     // TODO: Add AGREEMENT_FEE_SCHEDULE template file when available
-  }
+  };
 
   const renderExpandedContent = () => (
     <div className="grid grid-cols-2 gap-8"></div>
-  )
+  );
 
   return (
     <>
@@ -438,11 +463,11 @@ const AgreementFeeSchedulesPageImpl: React.FC = () => {
         </div>
       </DashboardLayout>
     </>
-  )
-}
+  );
+};
 
 const AgreementFeeSchedulesPage: React.FC = () => {
-  return <AgreementFeeSchedulesPageClient />
-}
+  return <AgreementFeeSchedulesPageClient />;
+};
 
-export default AgreementFeeSchedulesPage
+export default AgreementFeeSchedulesPage;

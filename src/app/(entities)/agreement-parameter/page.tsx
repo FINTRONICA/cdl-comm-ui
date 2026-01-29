@@ -38,7 +38,7 @@ import { useRouter } from "next/navigation";
 
 interface AgreementParameterData
   extends AgreementParameterUIData,
-    Record<string, unknown> {}
+  Record<string, unknown> { }
 
 const statusOptions = [
   "PENDING",
@@ -114,7 +114,7 @@ const AgreementParametersPageImpl: React.FC = () => {
 
   const isDownloading = false;
   const downloadError = null;
-  const clearError = () => {};
+  const clearError = () => { };
 
   const { data: agreementParameterLabels, getLabel } =
     useAgreementParameterLabelsWithCache();
@@ -175,6 +175,7 @@ const AgreementParametersPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-40",
       sortable: true,
+      copyable: true,
     },
     {
       key: "agreementEffectiveDate",
@@ -184,6 +185,8 @@ const AgreementParametersPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
+
     },
     {
       key: "agreementExpiryDate",
@@ -193,6 +196,7 @@ const AgreementParametersPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
     },
     {
       key: "agreementRemarks",
@@ -202,6 +206,7 @@ const AgreementParametersPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
     },
     {
       key: "status",

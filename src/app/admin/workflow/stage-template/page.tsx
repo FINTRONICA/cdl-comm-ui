@@ -177,6 +177,7 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'stageKey',
@@ -184,6 +185,7 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-48',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'keycloakGroup',

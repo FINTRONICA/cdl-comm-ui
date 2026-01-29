@@ -35,7 +35,7 @@ import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
 import { useRouter } from "next/navigation";
 import { ACCOUNTS_QUERY_KEY } from "@/hooks/master/EntitieHook/useAccount";
 
-interface AccountData extends AccountUIData, Record<string, unknown> {}
+interface AccountData extends AccountUIData, Record<string, unknown> { }
 
 const statusOptions = [
   "PENDING",
@@ -111,7 +111,7 @@ const AccountsPageImpl: React.FC = () => {
 
   const isDownloading = false;
   const downloadError = null;
-  const clearError = () => {};
+  const clearError = () => { };
 
   const { data: accountLabels, getLabel } = useAccountLabelsWithCache();
 
@@ -165,6 +165,7 @@ const AccountsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-40",
       sortable: true,
+      copyable: true,
     },
     {
       key: "accountDisplayName",
@@ -172,6 +173,8 @@ const AccountsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-48",
       sortable: true,
+      copyable: true,
+
     },
     {
       key: "ibanNumber",
@@ -179,6 +182,7 @@ const AccountsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-40",
       sortable: true,
+      copyable: true,
     },
     {
       key: "accountTypeCode",
@@ -186,6 +190,8 @@ const AccountsPageImpl: React.FC = () => {
       type: "text" as const,
       width: "w-32",
       sortable: true,
+      copyable: true,
+
     },
     {
       key: "status",

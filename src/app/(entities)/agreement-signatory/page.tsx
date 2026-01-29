@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React from 'react'
+import dynamic from "next/dynamic";
+import React from "react";
 
 const AgreementSignatoriesPageClient = dynamic(
   () => Promise.resolve(AgreementSignatoriesPageImpl),
@@ -12,47 +12,44 @@ const AgreementSignatoriesPageClient = dynamic(
         <GlobalLoading fullHeight />
       </div>
     ),
-  }
-)
+  },
+);
 
-import { useCallback, useState, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import LeftSlidePanel from '@/components/organisms/LeftSlidePanel/LeftSlidePanel'
-import { useAgreementSignatoryLabelsWithCache } from '@/hooks'
-import { getAgreementSignatoryLabel } from '@/constants/mappings/master/Entity/agreementSignatoryMapping'
-import { useAppStore } from '@/store'
-import { GlobalLoading } from '@/components/atoms'
-import {
-  useAgreementSignatories,
-  useDeleteAgreementSignatory,
-} from '@/hooks'
-import { AGREEMENT_SIGNATORIES_QUERY_KEY } from '@/hooks/master/EntitieHook/useAgreementSignatory'
+import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { DashboardLayout } from "@/components/templates/DashboardLayout";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import LeftSlidePanel from "@/components/organisms/LeftSlidePanel/LeftSlidePanel";
+import { useAgreementSignatoryLabelsWithCache } from "@/hooks";
+import { getAgreementSignatoryLabel } from "@/constants/mappings/master/Entity/agreementSignatoryMapping";
+import { useAppStore } from "@/store";
+import { GlobalLoading } from "@/components/atoms";
+import { useAgreementSignatories, useDeleteAgreementSignatory } from "@/hooks";
+import { AGREEMENT_SIGNATORIES_QUERY_KEY } from "@/hooks/master/EntitieHook/useAgreementSignatory";
 import {
   mapAgreementSignatoryToUIData,
   type AgreementSignatoryUIData,
   type AgreementSignatory,
-} from '@/services/api/masterApi/Entitie/agreementSignatoryService'
-import type { AgreementSignatoryFilters } from '@/services/api/masterApi/Entitie/agreementSignatoryService'
-import { useSidebarConfig } from '@/hooks/useSidebarConfig'
-import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
-import { useRouter } from 'next/navigation'
+} from "@/services/api/masterApi/Entitie/agreementSignatoryService";
+import type { AgreementSignatoryFilters } from "@/services/api/masterApi/Entitie/agreementSignatoryService";
+import { useSidebarConfig } from "@/hooks/useSidebarConfig";
+import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
+import { useRouter } from "next/navigation";
 
 interface AgreementSignatoryData
   extends AgreementSignatoryUIData,
     Record<string, unknown> {}
 
 const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
@@ -81,9 +78,9 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
         </h1>
         <p className="mb-4 text-gray-600">
           {error.message ||
-            'An error occurred while loading the data. Please try again.'}
+            "An error occurred while loading the data. Please try again."}
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <details className="text-left">
             <summary className="text-sm font-medium text-gray-600 cursor-pointer">
               Error Details (Development)
@@ -104,35 +101,35 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       )}
     </div>
   </div>
-)
+);
 
-const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />
+const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />;
 
 const AgreementSignatoriesPageImpl: React.FC = () => {
-  const router = useRouter()
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [tableKey, setTableKey] = useState(0)
-  const queryClient = useQueryClient()
+  const router = useRouter();
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [tableKey, setTableKey] = useState(0);
+  const queryClient = useQueryClient();
 
-  const currentLanguage = useAppStore((state) => state.language)
+  const currentLanguage = useAppStore((state) => state.language);
 
-  const isDownloading = false
-  const downloadError = null
-  const clearError = () => {}
+  const isDownloading = false;
+  const downloadError = null;
+  const clearError = () => {};
 
   const { data: agreementSignatoryLabels, getLabel } =
-    useAgreementSignatoryLabelsWithCache()
+    useAgreementSignatoryLabelsWithCache();
 
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [filters] = useState<AgreementSignatoryFilters>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [filters] = useState<AgreementSignatoryFilters>({});
 
-  const { getLabelResolver } = useSidebarConfig()
+  const { getLabelResolver } = useSidebarConfig();
 
   const agreementSignatoriesPageTitle = getLabelResolver
-    ? getLabelResolver('agreement-signatory', 'Agreement Signatory')
-    : 'Agreement Signatory'
+    ? getLabelResolver("agreement-signatory", "Agreement Signatory")
+    : "Agreement Signatory";
 
   const {
     data: apiResponse,
@@ -144,75 +141,78 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
   } = useAgreementSignatories(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    filters
-  )
+    filters,
+  );
 
-  const deleteMutation = useDeleteAgreementSignatory()
-  const confirmDelete = useDeleteConfirmation()
+  const deleteMutation = useDeleteAgreementSignatory();
+  const confirmDelete = useDeleteConfirmation();
 
   const agreementSignatoriesData = useMemo(() => {
     if (apiResponse?.content) {
       return apiResponse.content.map((item) =>
-        mapAgreementSignatoryToUIData(item as AgreementSignatory)
-      ) as AgreementSignatoryData[]
+        mapAgreementSignatoryToUIData(item as AgreementSignatory),
+      ) as AgreementSignatoryData[];
     }
-    return []
-  }, [apiResponse])
+    return [];
+  }, [apiResponse]);
 
   const getAgreementSignatoryLabelDynamic = useCallback(
     (configId: string): string => {
-      const fallback = getAgreementSignatoryLabel(configId)
+      const fallback = getAgreementSignatoryLabel(configId);
 
       if (agreementSignatoryLabels) {
-        return getLabel(configId, currentLanguage || 'EN', fallback)
+        return getLabel(configId, currentLanguage || "EN", fallback);
       }
-      return fallback
+      return fallback;
     },
-    [agreementSignatoryLabels, currentLanguage, getLabel]
-  )
+    [agreementSignatoryLabels, currentLanguage, getLabel],
+  );
 
   const tableColumns = [
     {
-      key: 'partyFullName',
+      key: "partyFullName",
       label: getAgreementSignatoryLabelDynamic(
-        'CDL_ESCROW_AGREEMENT_SIGNATORY_NAME'
+        "CDL_ESCROW_AGREEMENT_SIGNATORY_NAME",
       ),
-      type: 'text' as const,
-      width: 'w-40',
+      type: "text" as const,
+      width: "w-40",
       sortable: true,
+      copyable: true,
     },
     {
-      key: 'partyReferenceNumber',
+      key: "partyReferenceNumber",
       label: getAgreementSignatoryLabelDynamic(
-        'CDL_ESCROW_AGREEMENT_SIGNATORY_REF_NO'
+        "CDL_ESCROW_AGREEMENT_SIGNATORY_REF_NO",
       ),
-      type: 'text' as const,
-      width: 'w-48',
+      type: "text" as const,
+      width: "w-48",
       sortable: true,
+      copyable: true,
     },
     {
-      key: 'signatoryRole',
+      key: "signatoryRole",
       label: getAgreementSignatoryLabelDynamic(
-        'CDL_ESCROW_AGREEMENT_SIGNATORY_ROLE'
+        "CDL_ESCROW_AGREEMENT_SIGNATORY_ROLE",
       ),
-      type: 'text' as const,
-      width: 'w-40',
+      type: "text" as const,
+      width: "w-40",
+      sortable: true,
+      copyable: true,
+    },
+    {
+      key: "status",
+      label: "Status",
+      type: "status" as const,
+      width: "w-32",
       sortable: true,
     },
     {
-      key: 'status',
-      label: 'Status',
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
+      key: "actions",
+      label: getAgreementSignatoryLabelDynamic("CDL_COMMON_ACTION"),
+      type: "actions" as const,
+      width: "w-20",
     },
-    {
-      key: 'actions',
-      label: getAgreementSignatoryLabelDynamic('CDL_COMMON_ACTION'),
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  ];
 
   const {
     search,
@@ -235,60 +235,60 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
   } = useTableState({
     data: agreementSignatoriesData,
     searchFields: [
-      'partyFullName',
-      'partyReferenceNumber',
-      'signatoryRole',
-      'status',
+      "partyFullName",
+      "partyReferenceNumber",
+      "signatoryRole",
+      "status",
     ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+    const hasSearch = Object.values(search).some((value) => value.trim());
 
     if (hasSearch) {
-      localHandlePageChange(newPage)
+      localHandlePageChange(newPage);
     } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      setCurrentApiPage(newPage);
+      updatePagination(Math.max(0, newPage - 1), currentApiSize);
     }
-  }
+  };
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+    setCurrentApiSize(newRowsPerPage);
+    setCurrentApiPage(1);
+    updatePagination(0, newRowsPerPage);
+    localHandleRowsPerPageChange(newRowsPerPage);
+  };
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const actionButtons: Array<{
-    label: string
-    onClick: () => void
-    disabled?: boolean
-    variant?: 'primary' | 'secondary'
-    icon?: string
-    iconAlt?: string
-  }> = []
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    variant?: "primary" | "secondary";
+    icon?: string;
+    iconAlt?: string;
+  }> = [];
 
   const handleRowDelete = (row: AgreementSignatoryData) => {
     if (isDeleting) {
-      return
+      return;
     }
 
     confirmDelete({
@@ -296,44 +296,44 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
       itemId: row.partyReferenceNumber,
       onConfirm: async () => {
         try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(row.id)
-          await new Promise((resolve) => setTimeout(resolve, 500))
+          setIsDeleting(true);
+          await deleteMutation.mutateAsync(row.id);
+          await new Promise((resolve) => setTimeout(resolve, 500));
           await queryClient.invalidateQueries({
             queryKey: [AGREEMENT_SIGNATORIES_QUERY_KEY],
-          })
-          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
-          setTableKey((prev) => prev + 1)
+          });
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+          setTableKey((prev) => prev + 1);
         } catch (error) {
           const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
-          console.error(`Failed to delete agreement signatory: ${errorMessage}`)
+            error instanceof Error ? error.message : "Unknown error occurred";
+          console.error(
+            `Failed to delete agreement signatory: ${errorMessage}`,
+          );
 
-          throw error
+          throw error;
         } finally {
-          setIsDeleting(false)
+          setIsDeleting(false);
         }
       },
-    })
-  }
+    });
+  };
 
   const handleRowView = (row: AgreementSignatoryData) => {
-    router.push(
-      `/agreement-signatory/${row.id}/step/1?mode=view`
-    )
-  }
+    router.push(`/agreement-signatory/${row.id}/step/1?mode=view`);
+  };
 
   const handleRowEdit = (row: AgreementSignatoryData) => {
-    router.push(`/agreement-signatory/${row.id}/step/1?editing=true`)
-  }
+    router.push(`/agreement-signatory/${row.id}/step/1?editing=true`);
+  };
 
   const handleDownloadTemplate = async () => {
     // TODO: Add AGREEMENT_SIGNATORY template file when available
-  }
+  };
 
   const renderExpandedContent = () => (
     <div className="grid grid-cols-2 gap-8"></div>
-  )
+  );
 
   return (
     <>
@@ -414,10 +414,10 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={['agreement_signatory_delete']}
-                    viewPermissions={['agreement_signatory_view']}
-                    editPermissions={['agreement_signatory_update']}
-                    updatePermissions={['agreement_signatory_update']}
+                    deletePermissions={["agreement_signatory_delete"]}
+                    viewPermissions={["agreement_signatory_view"]}
+                    editPermissions={["agreement_signatory_update"]}
+                    updatePermissions={["agreement_signatory_update"]}
                     showDeleteAction={true}
                     showViewAction={true}
                     showEditAction={true}
@@ -431,13 +431,11 @@ const AgreementSignatoriesPageImpl: React.FC = () => {
         </div>
       </DashboardLayout>
     </>
-  )
-}
+  );
+};
 
 const AgreementSignatoriesPage: React.FC = () => {
-  return <AgreementSignatoriesPageClient />
-}
+  return <AgreementSignatoriesPageClient />;
+};
 
-export default AgreementSignatoriesPage
-
-
+export default AgreementSignatoriesPage;

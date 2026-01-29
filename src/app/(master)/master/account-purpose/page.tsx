@@ -1,81 +1,83 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React, { useCallback, useState, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { GlobalLoading } from '@/components/atoms'
-import { RightSlideAccountPurposePanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideAccountPurposePanel'
+import dynamic from "next/dynamic";
+import React, { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import { getLabelByConfigId as getMasterLabel } from "@/constants/mappings/master/masterMapping";
+import { GlobalLoading } from "@/components/atoms";
+import { RightSlideAccountPurposePanel } from "@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideAccountPurposePanel";
 import {
   useAccountPurposes,
   useDeleteAccountPurpose,
   useRefreshAccountPurposes,
   ACCOUNT_PURPOSES_QUERY_KEY,
-} from '@/hooks/master/CustomerHook/useAccountPurpose'
-import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
-import { UploadDialog } from '@/components/molecules/UploadDialog'
+} from "@/hooks/master/CustomerHook/useAccountPurpose";
+import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
+import { UploadDialog } from "@/components/molecules/UploadDialog";
 import {
   AccountPurpose,
   CriticalityDTO,
   TaskStatusDTO,
-} from '@/services/api/masterApi/Customer/accountPurposeService'
+} from "@/services/api/masterApi/Customer/accountPurposeService";
 import {
   useDeleteConfirmation,
   useApproveConfirmation,
-} from '@/store/confirmationDialogStore'
-import { useCreateWorkflowRequest } from '@/hooks/workflow'
+} from "@/store/confirmationDialogStore";
+import { useCreateWorkflowRequest } from "@/hooks/workflow";
 
 interface AccountPurposeData extends Record<string, unknown> {
-  id: number
-  accountPurposeId?: string
-  uuid?: string
-  accountPurposeCode: string
-  accountPurposeName: string
-  criticalityDTO?: CriticalityDTO | null
-  taskStatusDTO?: TaskStatusDTO | null
-  active?: boolean
-  enabled?: boolean
-  deleted?: boolean
-  status?: string
+  id: number;
+  accountPurposeId?: string;
+  uuid?: string;
+  accountPurposeCode: string;
+  accountPurposeName: string;
+  criticalityDTO?: CriticalityDTO | null;
+  taskStatusDTO?: TaskStatusDTO | null;
+  active?: boolean;
+  enabled?: boolean;
+  deleted?: boolean;
+  status?: string;
 }
 
 const STATUS_OPTIONS = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 // Memoized dynamic component to prevent unnecessary re-renders
 export const AccountPurposePageClient = dynamic(
   () => Promise.resolve(AccountPurposePageImpl),
   {
     ssr: false,
-  }
-)
+  },
+);
 
 const AccountPurposePageImpl: React.FC = () => {
   // Panel state
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
-  const [editingItem, setEditingItem] = useState<AccountPurposeData | null>(null)
-  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [tableKey, setTableKey] = useState(0)
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
+  const [editingItem, setEditingItem] = useState<AccountPurposeData | null>(
+    null,
+  );
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
 
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Upload dialog state
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
   // API-driven pagination state
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const searchFilters = useMemo(() => ({} as { name?: string }), [])
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const searchFilters = useMemo(() => ({}) as { name?: string }, []);
 
   // API hooks
   const {
@@ -87,85 +89,85 @@ const AccountPurposePageImpl: React.FC = () => {
   } = useAccountPurposes(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
-  )
+    searchFilters,
+  );
 
-  const deleteAccountPurposeMutation = useDeleteAccountPurpose()
-  const confirmDelete = useDeleteConfirmation()
-  const confirmApprove = useApproveConfirmation()
-  const createWorkflowRequest = useCreateWorkflowRequest()
-  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
-  const refreshAccountPurposes = useRefreshAccountPurposes()
-  const queryClient = useQueryClient()
+  const deleteAccountPurposeMutation = useDeleteAccountPurpose();
+  const confirmDelete = useDeleteConfirmation();
+  const confirmApprove = useApproveConfirmation();
+  const createWorkflowRequest = useCreateWorkflowRequest();
+  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const refreshAccountPurposes = useRefreshAccountPurposes();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const accountPurposeData = useMemo(() => {
-    if (!accountPurposesResponse?.content) return []
+    if (!accountPurposesResponse?.content) return [];
     return accountPurposesResponse.content.map(
       (accountPurpose: AccountPurpose) => ({
         id: accountPurpose.id,
         accountPurposeId: accountPurpose.uuid || `AP-${accountPurpose.id}`,
         uuid: accountPurpose.uuid,
-        accountPurposeCode: accountPurpose.accountPurposeCode || '',
+        accountPurposeCode: accountPurpose.accountPurposeCode || "",
         accountPurposeName: accountPurpose.accountPurposeName,
         criticalityDTO: accountPurpose.criticalityDTO,
         taskStatusDTO: accountPurpose.taskStatusDTO,
         active: accountPurpose.active,
         enabled: accountPurpose.enabled,
         deleted: accountPurpose.deleted,
-        status: accountPurpose.active ? 'ACTIVE' : 'INACTIVE',
-      })
-    ) as AccountPurposeData[]
-  }, [accountPurposesResponse])
+        status: accountPurpose.active ? "ACTIVE" : "INACTIVE",
+      }),
+    ) as AccountPurposeData[];
+  }, [accountPurposesResponse]);
 
   // Memoized label getter
-  const getAccountPurposeLabel = useCallback(
-    (configId: string): string => {
-      return getMasterLabel(configId)
-    },
-    []
-  )
+  const getAccountPurposeLabel = useCallback((configId: string): string => {
+    return getMasterLabel(configId);
+  }, []);
 
   // Table columns configuration
   const tableColumns = useMemo(
     () => [
       {
-        key: 'accountPurposeId',
-        label: getAccountPurposeLabel('CDL_MAP_ID'),
-        type: 'text' as const,
-        width: 'w-48',
+        key: "accountPurposeId",
+        label: getAccountPurposeLabel("CDL_MAP_ID"),
+        type: "text" as const,
+        width: "w-48",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "accountPurposeName",
+        label: getAccountPurposeLabel("CDL_MAP_NAME"),
+        type: "text" as const,
+        width: "w-64",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "accountPurposeCode",
+        label: getAccountPurposeLabel("CDL_MAP_CODE"),
+        type: "text" as const,
+        width: "w-96",
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: "status",
+        label: getAccountPurposeLabel("CDL_MAP_STATUS"),
+        type: "status" as const,
+        width: "w-32",
         sortable: true,
       },
       {
-        key: 'accountPurposeName',
-        label: getAccountPurposeLabel('CDL_MAP_NAME'),
-        type: 'text' as const,
-        width: 'w-64',
-        sortable: true,
-      },
-      {
-        key: 'accountPurposeCode',
-        label: getAccountPurposeLabel('CDL_MAP_CODE'),
-        type: 'text' as const,
-        width: 'w-96',
-        sortable: true,
-      },
-      {
-        key: 'status',
-        label: getAccountPurposeLabel('CDL_MAP_STATUS'),
-        type: 'status' as const,
-        width: 'w-32',
-        sortable: true,
-      },
-      {
-        key: 'actions',
-        label: 'Actions',
-        type: 'actions' as const,
-        width: 'w-20',
+        key: "actions",
+        label: "Actions",
+        type: "actions" as const,
+        width: "w-20",
       },
     ],
-    [getAccountPurposeLabel]
-  )
+    [getAccountPurposeLabel],
+  );
 
   // Table state management
   const {
@@ -188,55 +190,59 @@ const AccountPurposePageImpl: React.FC = () => {
     handleSort,
   } = useTableState({
     data: accountPurposeData,
-    searchFields: ['accountPurposeId', 'accountPurposeName', 'accountPurposeCode'],
+    searchFields: [
+      "accountPurposeId",
+      "accountPurposeName",
+      "accountPurposeCode",
+    ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   // Pagination handlers
   const handlePageChange = useCallback(
     (newPage: number) => {
-      const hasSearch = Object.values(search).some((value) => value.trim())
+      const hasSearch = Object.values(search).some((value) => value.trim());
 
       if (hasSearch) {
-        localHandlePageChange(newPage)
+        localHandlePageChange(newPage);
       } else {
-        setCurrentApiPage(newPage)
-        updatePagination(Math.max(0, newPage - 1), currentApiSize)
+        setCurrentApiPage(newPage);
+        updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
-    [search, currentApiSize, localHandlePageChange, updatePagination]
-  )
+    [search, currentApiSize, localHandlePageChange, updatePagination],
+  );
 
   const handleRowsPerPageChange = useCallback(
     (newRowsPerPage: number) => {
-      setCurrentApiSize(newRowsPerPage)
-      setCurrentApiPage(1)
-      updatePagination(0, newRowsPerPage)
-      localHandleRowsPerPageChange(newRowsPerPage)
+      setCurrentApiSize(newRowsPerPage);
+      setCurrentApiPage(1);
+      updatePagination(0, newRowsPerPage);
+      localHandleRowsPerPageChange(newRowsPerPage);
     },
-    [localHandleRowsPerPageChange, updatePagination]
-  )
+    [localHandleRowsPerPageChange, updatePagination],
+  );
 
   // Effective pagination values
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   // Delete handlers
   const handleRowDelete = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: AccountPurposeData, _index: number) => {
       if (isDeleting) {
-        return
+        return;
       }
 
       confirmDelete({
@@ -244,21 +250,21 @@ const AccountPurposePageImpl: React.FC = () => {
         itemId: String(row.id),
         onConfirm: async () => {
           try {
-            setIsDeleting(true)
-            await deleteAccountPurposeMutation.mutateAsync(String(row.id))
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            setIsDeleting(true);
+            await deleteAccountPurposeMutation.mutateAsync(String(row.id));
+            await new Promise((resolve) => setTimeout(resolve, 500));
             await queryClient.invalidateQueries({
               queryKey: [ACCOUNT_PURPOSES_QUERY_KEY],
-            })
-            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
-            setTableKey((prev) => prev + 1)
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
-            throw error
+            throw error;
           } finally {
-            setIsDeleting(false)
+            setIsDeleting(false);
           }
         },
-      })
+      });
     },
     [
       deleteAccountPurposeMutation,
@@ -268,68 +274,72 @@ const AccountPurposePageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
-  )
+    ],
+  );
 
   // Edit handler
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: AccountPurposeData, _index: number) => {
-      const dataIndex = accountPurposeData.findIndex((item) => item.id === row.id)
-      setEditingItem(row)
-      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
-      setPanelMode('edit')
-      setIsPanelOpen(true)
+      const dataIndex = accountPurposeData.findIndex(
+        (item) => item.id === row.id,
+      );
+      setEditingItem(row);
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
+      setPanelMode("edit");
+      setIsPanelOpen(true);
     },
-    [accountPurposeData]
-  )
+    [accountPurposeData],
+  );
 
   // Add new handler
   const handleAddNew = useCallback(() => {
-    setEditingItem(null)
-    setEditingItemIndex(null)
-    setPanelMode('add')
-    setIsPanelOpen(true)
-  }, [])
+    setEditingItem(null);
+    setEditingItemIndex(null);
+    setPanelMode("add");
+    setIsPanelOpen(true);
+  }, []);
 
   // Panel close handler
   const handleClosePanel = useCallback(() => {
-    setIsPanelOpen(false)
-    setEditingItem(null)
-    setEditingItemIndex(null)
-  }, [])
+    setIsPanelOpen(false);
+    setEditingItem(null);
+    setEditingItemIndex(null);
+  }, []);
 
   // Template download handler
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      await downloadTemplate('AccountPurposeTemplate.xlsx')
+      await downloadTemplate("AccountPurposeTemplate.xlsx");
     } catch {
       // Error handling is done by the hook
     }
-  }, [downloadTemplate])
+  }, [downloadTemplate]);
 
   // Upload handlers
   const handleUploadSuccess = useCallback(() => {
-    refreshAccountPurposes()
-    setIsUploadDialogOpen(false)
-  }, [refreshAccountPurposes])
+    refreshAccountPurposes();
+    setIsUploadDialogOpen(false);
+  }, [refreshAccountPurposes]);
 
   const handleUploadError = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_error: string) => {
       // Error is handled by UploadDialog component
-    }, [])
+    },
+    [],
+  );
 
   // Account purpose added/updated handlers
   const handleAccountPurposeAdded = useCallback(() => {
-    refreshAccountPurposes()
-    handleClosePanel()
-  }, [handleClosePanel, refreshAccountPurposes])
+    refreshAccountPurposes();
+    handleClosePanel();
+  }, [handleClosePanel, refreshAccountPurposes]);
 
   const handleAccountPurposeUpdated = useCallback(() => {
-    refreshAccountPurposes()
-    handleClosePanel()
-  }, [handleClosePanel, refreshAccountPurposes])
+    refreshAccountPurposes();
+    handleClosePanel();
+  }, [handleClosePanel, refreshAccountPurposes]);
 
   // Expanded content renderer
   const renderExpandedContent = useCallback(
@@ -342,37 +352,37 @@ const AccountPurposePageImpl: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600 dark:text-gray-400">
-                {getAccountPurposeLabel('CDL_MAP_ID')}:
+                {getAccountPurposeLabel("CDL_MAP_ID")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.accountPurposeId || '-'}
+                {row.accountPurposeId || "-"}
               </span>
             </div>
             <div className="col-span-2">
               <span className="text-gray-600 dark:text-gray-400">
-                {getAccountPurposeLabel('CDL_MAP_NAME')}:
+                {getAccountPurposeLabel("CDL_MAP_NAME")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.accountPurposeName || '-'}
+                {row.accountPurposeName || "-"}
               </span>
             </div>
             <div className="col-span-2">
               <span className="text-gray-600 dark:text-gray-400">
-                {getAccountPurposeLabel('CDL_MAP_CODE')}:
+                {getAccountPurposeLabel("CDL_MAP_CODE")}:
               </span>
               <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                {row.accountPurposeCode || '-'}
+                {row.accountPurposeCode || "-"}
               </span>
             </div>
             {row.criticalityDTO && (
               <div className="col-span-2">
                 <span className="text-gray-600 dark:text-gray-400">
-                  {getAccountPurposeLabel('CDL_MAP_CRITICALITY')}:
+                  {getAccountPurposeLabel("CDL_MAP_CRITICALITY")}:
                 </span>
                 <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
                   {row.criticalityDTO.languageTranslationId?.configValue ||
                     row.criticalityDTO.settingValue ||
-                    '-'}
+                    "-"}
                 </span>
               </div>
             )}
@@ -382,7 +392,7 @@ const AccountPurposePageImpl: React.FC = () => {
                   Task Status:
                 </span>
                 <span className="ml-2 font-medium text-gray-800 dark:text-gray-200">
-                  {row.taskStatusDTO.name || row.taskStatusDTO.code || '-'}
+                  {row.taskStatusDTO.name || row.taskStatusDTO.code || "-"}
                 </span>
               </div>
             )}
@@ -390,8 +400,8 @@ const AccountPurposePageImpl: React.FC = () => {
         </div>
       </div>
     ),
-    [getAccountPurposeLabel]
-  )
+    [getAccountPurposeLabel],
+  );
 
   const handleRowApprove = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -403,20 +413,20 @@ const AccountPurposePageImpl: React.FC = () => {
           try {
             await createWorkflowRequest.mutateAsync({
               referenceId: String(row.id),
-              referenceType: 'ACCOUNT_PURPOSE',
-              moduleName: 'ACCOUNT_PURPOSE',
-              actionKey: 'APPROVE',
+              referenceType: "ACCOUNT_PURPOSE",
+              moduleName: "ACCOUNT_PURPOSE",
+              actionKey: "APPROVE",
               payloadJson: row as Record<string, unknown>,
-            })
-            refreshAccountPurposes()
+            });
+            refreshAccountPurposes();
           } catch (error) {
-            throw error
+            throw error;
           }
         },
-      })
+      });
     },
-    [confirmApprove, createWorkflowRequest, refreshAccountPurposes]
-  )
+    [confirmApprove, createWorkflowRequest, refreshAccountPurposes],
+  );
 
   return (
     <>
@@ -474,10 +484,10 @@ const AccountPurposePageImpl: React.FC = () => {
                 onRowApprove={handleRowApprove}
                 onRowDelete={handleRowDelete}
                 onRowEdit={handleRowEdit}
-                deletePermissions={['master_account_purpose_delete']}
-                editPermissions={['master_account_purpose_update']}
-                approvePermissions={['master_account_purpose_approve']}
-                updatePermissions={['master_account_purpose_update']}
+                deletePermissions={["master_account_purpose_delete"]}
+                editPermissions={["master_account_purpose_update"]}
+                approvePermissions={["master_account_purpose_approve"]}
+                updatePermissions={["master_account_purpose_update"]}
                 showDeleteAction={true}
                 showViewAction={true}
                 showEditAction={true}
@@ -490,14 +500,13 @@ const AccountPurposePageImpl: React.FC = () => {
         </div>
       </div>
 
-
       {isPanelOpen && (
         <RightSlideAccountPurposePanel
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onAccountPurposeAdded={handleAccountPurposeAdded}
           onAccountPurposeUpdated={handleAccountPurposeUpdated}
-          mode={panelMode === 'approve' ? 'edit' : panelMode}
+          mode={panelMode === "approve" ? "edit" : panelMode}
           actionData={editingItem as AccountPurpose | null}
           {...(editingItemIndex !== null && {
             accountPurposeIndex: editingItemIndex,
@@ -516,11 +525,11 @@ const AccountPurposePageImpl: React.FC = () => {
         />
       )}
     </>
-  )
-}
+  );
+};
 
 const AccountPurposePage: React.FC = () => {
-  return <AccountPurposePageClient />
-}
+  return <AccountPurposePageClient />;
+};
 
-export default AccountPurposePage
+export default AccountPurposePage;

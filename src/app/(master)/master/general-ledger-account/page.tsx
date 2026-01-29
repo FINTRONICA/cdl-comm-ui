@@ -54,7 +54,7 @@ export const GeneralLedgerAccountPageClient = dynamic(
   () => Promise.resolve(GeneralLedgerAccountPageImpl),
   {
     ssr: false,
-  }
+  },
 );
 
 const GeneralLedgerAccountPageImpl: React.FC = () => {
@@ -80,7 +80,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
   } = useGeneralLedgerAccounts(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
+    searchFilters,
   );
 
   const deleteGeneralLedgerAccountMutation = useDeleteGeneralLedgerAccount();
@@ -106,7 +106,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         enabled: account.enabled,
         deleted: account.deleted,
         status: account.active ? "ACTIVE" : "INACTIVE",
-      })
+      }),
     ) as GeneralLedgerAccountData[];
   }, [generalLedgerAccountsResponse]);
 
@@ -114,7 +114,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     (configId: string): string => {
       return getMasterLabel(configId);
     },
-    []
+    [],
   );
 
   const tableColumns = useMemo(
@@ -125,6 +125,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-56",
         sortable: true,
+        copyable: true,
       },
       {
         key: "ledgerAccountNumber",
@@ -132,6 +133,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-56",
         sortable: true,
+        copyable: true,
       },
       {
         key: "ledgerAccountTypeCode",
@@ -139,6 +141,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-56",
         sortable: true,
+        copyable: true,
       },
       {
         key: "ledgerAccountDescription",
@@ -146,6 +149,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-65",
         sortable: true,
+        copyable: true,
       },
       {
         key: "status",
@@ -161,7 +165,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         width: "w-20",
       },
     ],
-    [getGeneralLedgerAccountLabelDynamic]
+    [getGeneralLedgerAccountLabelDynamic],
   );
 
   const {
@@ -187,6 +191,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     searchFields: [
       "generalLedgerAccountId",
       "ledgerAccountNumber",
+      "ledgerAccountTypeCode",
       "ledgerAccountDescription",
     ],
     initialRowsPerPage: currentApiSize,
@@ -203,7 +208,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
-    [search, localHandlePageChange, currentApiSize, updatePagination]
+    [search, localHandlePageChange, currentApiSize, updatePagination],
   );
 
   const handleRowsPerPageChange = useCallback(
@@ -213,7 +218,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
       updatePagination(0, newRowsPerPage);
       localHandleRowsPerPageChange(newRowsPerPage);
     },
-    [updatePagination, localHandleRowsPerPageChange]
+    [updatePagination, localHandleRowsPerPageChange],
   );
 
   const apiTotal = apiPagination?.totalElements || 0;
@@ -245,7 +250,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
           try {
             setIsDeleting(true);
             await deleteGeneralLedgerAccountMutation.mutateAsync(
-              String(row.id)
+              String(row.id),
             );
             await new Promise((resolve) => setTimeout(resolve, 500));
             await queryClient.invalidateQueries({
@@ -269,21 +274,21 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
+    ],
   );
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: GeneralLedgerAccountData, _index: number) => {
       const dataIndex = generalLedgerAccountData.findIndex(
-        (item) => item.id === row.id
+        (item) => item.id === row.id,
       );
       setEditingItem(row);
       setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
       setPanelMode("edit");
       setIsPanelOpen(true);
     },
-    [generalLedgerAccountData]
+    [generalLedgerAccountData],
   );
 
   const handleAddNew = useCallback(() => {
@@ -317,7 +322,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
     (_error: string) => {
       // Error is handled by UploadDialog component
     },
-    []
+    [],
   );
 
   const handleRowApprove = useCallback(
@@ -342,7 +347,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         },
       });
     },
-    [confirmApprove, createWorkflowRequest, refreshGeneralLedgerAccounts]
+    [confirmApprove, createWorkflowRequest, refreshGeneralLedgerAccounts],
   );
 
   const handleGeneralLedgerAccountAdded = useCallback(() => {
@@ -383,7 +388,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
             <div>
               <span className="text-gray-600 dark:text-gray-400">
                 {getGeneralLedgerAccountLabelDynamic(
-                  "CDL_MGLA_IDENTIFIER_CODE"
+                  "CDL_MGLA_IDENTIFIER_CODE",
                 )}
                 :
               </span>
@@ -411,7 +416,7 @@ const GeneralLedgerAccountPageImpl: React.FC = () => {
         </div>
       </div>
     ),
-    [getGeneralLedgerAccountLabelDynamic]
+    [getGeneralLedgerAccountLabelDynamic],
   );
 
   return (

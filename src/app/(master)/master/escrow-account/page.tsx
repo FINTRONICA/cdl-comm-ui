@@ -224,6 +224,7 @@ const EscrowAccountsPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'escrowAccountNumber',
@@ -234,6 +235,7 @@ const EscrowAccountsPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-40',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'escrowBankName',
@@ -254,6 +256,7 @@ const EscrowAccountsPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-32',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'status',

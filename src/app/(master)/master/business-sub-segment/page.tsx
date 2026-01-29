@@ -1,71 +1,73 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React from 'react'
-import { useCallback, useState, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import { getLabelByConfigId as getMasterLabel } from '@/constants/mappings/master/masterMapping'
-import { GlobalLoading } from '@/components/atoms'
-import { RightSlideBusinessSubSegmentPanel } from '@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideBusinessSubSegmentPanel'
-import { useTemplateDownload } from '@/hooks/useRealEstateDocumentTemplate'
-import { UploadDialog } from '@/components/molecules/UploadDialog'
+import dynamic from "next/dynamic";
+import React from "react";
+import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import { getLabelByConfigId as getMasterLabel } from "@/constants/mappings/master/masterMapping";
+import { GlobalLoading } from "@/components/atoms";
+import { RightSlideBusinessSubSegmentPanel } from "@/components/organisms/RightSlidePanel/MasterRightSlidePanel/RightSlideBusinessSubSegmentPanel";
+import { useTemplateDownload } from "@/hooks/useRealEstateDocumentTemplate";
+import { UploadDialog } from "@/components/molecules/UploadDialog";
 import {
   useBusinessSubSegments,
   useDeleteBusinessSubSegment,
   useRefreshBusinessSegments,
   BUSINESS_SUB_SEGMENTS_QUERY_KEY,
-} from '@/hooks/master/CustomerHook/useBusinessSubSegment'
+} from "@/hooks/master/CustomerHook/useBusinessSubSegment";
 import {
   useDeleteConfirmation,
   useApproveConfirmation,
-} from '@/store/confirmationDialogStore'
-import { useCreateWorkflowRequest } from '@/hooks/workflow'
+} from "@/store/confirmationDialogStore";
+import { useCreateWorkflowRequest } from "@/hooks/workflow";
 
 interface BusinessSubSegmentData extends Record<string, unknown> {
-  id: number
-  businessSubSegmentId?: string
-  uuid?: string
-  businessSubSegmentName: string
-  businessSubSegmentDescription: string
-  businessSegmentNameDTO: string
-  active?: boolean
-  enabled?: boolean
-  deleted?: boolean
+  id: number;
+  businessSubSegmentId?: string;
+  uuid?: string;
+  businessSubSegmentName: string;
+  businessSubSegmentDescription: string;
+  businessSegmentNameDTO: string;
+  active?: boolean;
+  enabled?: boolean;
+  deleted?: boolean;
 }
 
 const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 const BusinessSubSegmentPageClient = dynamic(
   () => Promise.resolve(BusinessSubSegmentPageImpl),
   {
     ssr: false,
     // Removed loading prop to prevent duplicate loading - page handles its own loading state
-  }
-)
+  },
+);
 
 const BusinessSubSegmentPageImpl: React.FC = () => {
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [panelMode, setPanelMode] = useState<'add' | 'edit' | 'approve'>('add')
-  const [editingItem, setEditingItem] = useState<BusinessSubSegmentData | null>(null)
-  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
-  const [tableKey, setTableKey] = useState(0)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
+  const [editingItem, setEditingItem] = useState<BusinessSubSegmentData | null>(
+    null,
+  );
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [tableKey, setTableKey] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
   // API-driven pagination state
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [searchFilters] = useState<{ name?: string }>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [searchFilters] = useState<{ name?: string }>({});
 
   // API hooks
   const {
@@ -77,83 +79,92 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
   } = useBusinessSubSegments(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
-  )
+    searchFilters,
+  );
 
-  const deleteBusinessSubSegmentMutation = useDeleteBusinessSubSegment()
-  const confirmDelete = useDeleteConfirmation()
-  const confirmApprove = useApproveConfirmation()
-  const createWorkflowRequest = useCreateWorkflowRequest()
-  const refreshBusinessSubSegments = useRefreshBusinessSegments()
-  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload()
-  const queryClient = useQueryClient()
+  const deleteBusinessSubSegmentMutation = useDeleteBusinessSubSegment();
+  const confirmDelete = useDeleteConfirmation();
+  const confirmApprove = useApproveConfirmation();
+  const createWorkflowRequest = useCreateWorkflowRequest();
+  const refreshBusinessSubSegments = useRefreshBusinessSegments();
+  const { downloadTemplate, isLoading: isDownloading } = useTemplateDownload();
+  const queryClient = useQueryClient();
 
   // Transform API data to table format
   const businessSubSegmentData = useMemo(() => {
-    if (!businessSubSegmentsResponse?.content) return []
+    if (!businessSubSegmentsResponse?.content) return [];
     return businessSubSegmentsResponse.content.map((businessSubSegment) => ({
       id: businessSubSegment.id,
-      businessSubSegmentId: businessSubSegment.uuid || `MBSS-${businessSubSegment.id}`,
+      businessSubSegmentId:
+        businessSubSegment.uuid || `MBSS-${businessSubSegment.id}`,
       uuid: businessSubSegment.uuid,
-      businessSubSegmentName: businessSubSegment.subSegmentName || '',
-      businessSubSegmentDescription: businessSubSegment.subSegmentDescription || '',
-      businessSegmentNameDTO: businessSubSegment.businessSegmentNameDTO?.segmentName || businessSubSegment.businessSegmentNameDTO?.id?.toString() || '-',
+      businessSubSegmentName: businessSubSegment.subSegmentName || "",
+      businessSubSegmentDescription:
+        businessSubSegment.subSegmentDescription || "",
+      businessSegmentNameDTO:
+        businessSubSegment.businessSegmentNameDTO?.segmentName ||
+        businessSubSegment.businessSegmentNameDTO?.id?.toString() ||
+        "-",
       active: businessSubSegment.active,
       enabled: businessSubSegment.enabled,
       deleted: businessSubSegment.deleted,
-    })) as BusinessSubSegmentData[]
-  }, [businessSubSegmentsResponse])
+    })) as BusinessSubSegmentData[];
+  }, [businessSubSegmentsResponse]);
 
   const getBusinessSubSegmentLabelDynamic = useCallback(
     (configId: string): string => {
-      return getMasterLabel(configId)
+      return getMasterLabel(configId);
     },
-    []
-  )
+    [],
+  );
 
   const tableColumns = [
     {
-      key: 'businessSubSegmentId',
-      label: getBusinessSubSegmentLabelDynamic('CDL_MBSS_ID'),
-      type: 'text' as const,
-      width: 'w-48',
+      key: "businessSubSegmentId",
+      label: getBusinessSubSegmentLabelDynamic("CDL_MBSS_ID"),
+      type: "text" as const,
+      width: "w-48",
+      sortable: true,
+      copyable: true,
+    },
+    {
+      key: "businessSubSegmentName",
+      label: getBusinessSubSegmentLabelDynamic("CDL_MBSS_NAME"),
+      type: "text" as const,
+      width: "w-56",
+      sortable: true,
+      copyable: true,
+    },
+    {
+      key: "businessSubSegmentDescription",
+      label: getBusinessSubSegmentLabelDynamic("CDL_MBSS_DESCRIPTION"),
+      type: "text" as const,
+      width: "w-65",
+      sortable: true,
+      copyable: true,
+    },
+    {
+      key: "businessSegmentNameDTO",
+      label: getBusinessSubSegmentLabelDynamic("CDL_MBS_NAME"),
+      type: "text" as const,
+      width: "w-56",
+      sortable: true,
+      copyable: true,
+    },
+    {
+      key: "status",
+      label: getBusinessSubSegmentLabelDynamic("CDL_COMMON_STATUS"),
+      type: "status" as const,
+      width: "w-32",
       sortable: true,
     },
     {
-      key: 'businessSubSegmentName',
-      label: getBusinessSubSegmentLabelDynamic('CDL_MBSS_NAME'),
-      type: 'text' as const,
-      width: 'w-56',
-      sortable: true,
+      key: "actions",
+      label: getBusinessSubSegmentLabelDynamic("CDL_COMMON_ACTIONS"),
+      type: "actions" as const,
+      width: "w-20",
     },
-    {
-      key: 'businessSubSegmentDescription',
-      label: getBusinessSubSegmentLabelDynamic('CDL_MBSS_DESCRIPTION'),
-      type: 'text' as const,
-      width: 'w-65',
-      sortable: true,
-    },
-    {
-      key: 'businessSegmentNameDTO',
-      label: getBusinessSubSegmentLabelDynamic('CDL_MBS_NAME'),
-      type: 'text' as const,
-      width: 'w-56',
-      sortable: true,
-    },
-    {
-      key: 'status',
-      label: getBusinessSubSegmentLabelDynamic('CDL_COMMON_STATUS'),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: getBusinessSubSegmentLabelDynamic('CDL_COMMON_ACTIONS'),
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  ];
 
   const {
     search,
@@ -175,49 +186,54 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
     handleSort,
   } = useTableState({
     data: businessSubSegmentData,
-    searchFields: ['businessSubSegmentId', 'businessSubSegmentName', 'businessSubSegmentDescription'],
+    searchFields: [
+      "businessSubSegmentId",
+      "businessSubSegmentName",
+      "businessSubSegmentDescription",
+      "businessSegmentNameDTO",
+    ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+    const hasSearch = Object.values(search).some((value) => value.trim());
 
     if (hasSearch) {
-      localHandlePageChange(newPage)
+      localHandlePageChange(newPage);
     } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      setCurrentApiPage(newPage);
+      updatePagination(Math.max(0, newPage - 1), currentApiSize);
     }
-  }
+  };
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+    setCurrentApiSize(newRowsPerPage);
+    setCurrentApiPage(1);
+    updatePagination(0, newRowsPerPage);
+    localHandleRowsPerPageChange(newRowsPerPage);
+  };
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const handleRowDelete = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: BusinessSubSegmentData, _index: number) => {
       if (isDeleting) {
-        return
+        return;
       }
 
       confirmDelete({
@@ -225,21 +241,21 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
         itemId: String(row.id),
         onConfirm: async () => {
           try {
-            setIsDeleting(true)
-            await deleteBusinessSubSegmentMutation.mutateAsync(String(row.id))
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            setIsDeleting(true);
+            await deleteBusinessSubSegmentMutation.mutateAsync(String(row.id));
+            await new Promise((resolve) => setTimeout(resolve, 500));
             await queryClient.invalidateQueries({
               queryKey: [BUSINESS_SUB_SEGMENTS_QUERY_KEY],
-            })
-            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
-            setTableKey((prev) => prev + 1)
+            });
+            updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+            setTableKey((prev) => prev + 1);
           } catch (error) {
-            throw error
+            throw error;
           } finally {
-            setIsDeleting(false)
+            setIsDeleting(false);
           }
         },
-      })
+      });
     },
     [
       deleteBusinessSubSegmentMutation,
@@ -249,52 +265,56 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
-  )
+    ],
+  );
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: BusinessSubSegmentData, _index: number) => {
-      const dataIndex = businessSubSegmentData.findIndex((item) => item.id === row.id)
-      setEditingItem(row)
-      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null)
-      setPanelMode('edit')
-      setIsPanelOpen(true)
+      const dataIndex = businessSubSegmentData.findIndex(
+        (item) => item.id === row.id,
+      );
+      setEditingItem(row);
+      setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
+      setPanelMode("edit");
+      setIsPanelOpen(true);
     },
-    [businessSubSegmentData]
-  )
+    [businessSubSegmentData],
+  );
 
   const handleAddNew = useCallback(() => {
-    setEditingItem(null)
-    setEditingItemIndex(null)
-    setPanelMode('add')
-    setIsPanelOpen(true)
-  }, [])
+    setEditingItem(null);
+    setEditingItemIndex(null);
+    setPanelMode("add");
+    setIsPanelOpen(true);
+  }, []);
 
   const handleClosePanel = useCallback(() => {
-    setIsPanelOpen(false)
-    setEditingItem(null)
-    setEditingItemIndex(null)
-  }, [])
+    setIsPanelOpen(false);
+    setEditingItem(null);
+    setEditingItemIndex(null);
+  }, []);
 
   const handleDownloadTemplate = useCallback(async () => {
     try {
-      await downloadTemplate('BusinessSubSegmentTemplate.xlsx')
+      await downloadTemplate("BusinessSubSegmentTemplate.xlsx");
     } catch {
       // Error handling is done by the hook
     }
-  }, [downloadTemplate])
+  }, [downloadTemplate]);
 
   const handleUploadSuccess = useCallback(() => {
-    refreshBusinessSubSegments()
-    setIsUploadDialogOpen(false)
-  }, [refreshBusinessSubSegments])
+    refreshBusinessSubSegments();
+    setIsUploadDialogOpen(false);
+  }, [refreshBusinessSubSegments]);
 
   const handleUploadError = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_error: string) => {
       // Error is handled by UploadDialog component
-    }, [])
+    },
+    [],
+  );
 
   const handleRowApprove = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -306,30 +326,30 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
           try {
             await createWorkflowRequest.mutateAsync({
               referenceId: String(row.id),
-              referenceType: 'BUSINESS_SUB_SEGMENT',
-              moduleName: 'BUSINESS_SUB_SEGMENT',
-              actionKey: 'APPROVE',
+              referenceType: "BUSINESS_SUB_SEGMENT",
+              moduleName: "BUSINESS_SUB_SEGMENT",
+              actionKey: "APPROVE",
               payloadJson: row as Record<string, unknown>,
-            })
-            refreshBusinessSubSegments()
+            });
+            refreshBusinessSubSegments();
           } catch (error) {
-            throw error
+            throw error;
           }
         },
-      })
+      });
     },
-    [confirmApprove, createWorkflowRequest, refreshBusinessSubSegments]
-  )
+    [confirmApprove, createWorkflowRequest, refreshBusinessSubSegments],
+  );
 
   const handleBusinessSubSegmentAdded = useCallback(() => {
-    refreshBusinessSubSegments()
-    handleClosePanel()
-  }, [handleClosePanel, refreshBusinessSubSegments])
+    refreshBusinessSubSegments();
+    handleClosePanel();
+  }, [handleClosePanel, refreshBusinessSubSegments]);
 
   const handleBusinessSubSegmentUpdated = useCallback(() => {
-    refreshBusinessSubSegments()
-    handleClosePanel()
-  }, [handleClosePanel, refreshBusinessSubSegments])
+    refreshBusinessSubSegments();
+    handleClosePanel();
+  }, [handleClosePanel, refreshBusinessSubSegments]);
 
   const renderExpandedContent = (row: BusinessSubSegmentData) => (
     <div className="grid grid-cols-2 gap-8">
@@ -338,40 +358,40 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-gray-600">
-              {getBusinessSubSegmentLabelDynamic('CDL_MBSS_ID')}:
+              {getBusinessSubSegmentLabelDynamic("CDL_MBSS_ID")}:
             </span>
             <span className="ml-2 font-medium text-gray-800">
-              {row.businessSubSegmentId || '-'}
+              {row.businessSubSegmentId || "-"}
             </span>
           </div>
           <div className="col-span-2">
             <span className="text-gray-600">
-              {getBusinessSubSegmentLabelDynamic('CDL_MBSS_NAME')}:
+              {getBusinessSubSegmentLabelDynamic("CDL_MBSS_NAME")}:
             </span>
             <span className="ml-2 font-medium text-gray-800">
-              {row.businessSubSegmentName || '-'}
+              {row.businessSubSegmentName || "-"}
             </span>
           </div>
           <div className="col-span-2">
             <span className="text-gray-600">
-              {getBusinessSubSegmentLabelDynamic('CDL_MBS_NAME')}:
+              {getBusinessSubSegmentLabelDynamic("CDL_MBS_NAME")}:
             </span>
             <span className="ml-2 font-medium text-gray-800">
-              {row.businessSegmentNameDTO || '-'}
+              {row.businessSegmentNameDTO || "-"}
             </span>
           </div>
           <div className="col-span-2">
             <span className="text-gray-600">
-              {getBusinessSubSegmentLabelDynamic('CDL_MBSS_DESCRIPTION')}:
+              {getBusinessSubSegmentLabelDynamic("CDL_MBSS_DESCRIPTION")}:
             </span>
             <span className="ml-2 font-medium text-gray-800">
-              {row.businessSubSegmentDescription || '-'}
+              {row.businessSubSegmentDescription || "-"}
             </span>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 
   return (
     <>
@@ -429,10 +449,10 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
                 onRowDelete={handleRowDelete}
                 onRowApprove={handleRowApprove}
                 onRowEdit={handleRowEdit}
-                deletePermissions={['master_business_sub_segment_delete']}
-                editPermissions={['master_business_sub_segment_update']}
-                approvePermissions={['master_business_sub_segment_approve']}
-                updatePermissions={['master_business_sub_segment_update']}
+                deletePermissions={["master_business_sub_segment_delete"]}
+                editPermissions={["master_business_sub_segment_update"]}
+                approvePermissions={["master_business_sub_segment_approve"]}
+                updatePermissions={["master_business_sub_segment_update"]}
                 showDeleteAction={true}
                 showViewAction={true}
                 showEditAction={true}
@@ -451,8 +471,12 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
           onClose={handleClosePanel}
           onBusinessSubSegmentAdded={handleBusinessSubSegmentAdded}
           onBusinessSubSegmentUpdated={handleBusinessSubSegmentUpdated}
-          mode={panelMode === 'approve' ? 'edit' : panelMode}
-          actionData={editingItem as unknown as import('@/services/api/masterApi/Customer/businessSubSegmentService').BusinessSubSegment | null}
+          mode={panelMode === "approve" ? "edit" : panelMode}
+          actionData={
+            editingItem as unknown as
+              | import("@/services/api/masterApi/Customer/businessSubSegmentService").BusinessSubSegment
+              | null
+          }
           {...(editingItemIndex !== null && {
             businessSubSegmentIndex: editingItemIndex,
           })}
@@ -470,11 +494,11 @@ const BusinessSubSegmentPageImpl: React.FC = () => {
         />
       )}
     </>
-  )
-}
+  );
+};
 
 const BusinessSubSegmentPage: React.FC = () => {
-  return <BusinessSubSegmentPageClient />
-}
+  return <BusinessSubSegmentPageClient />;
+};
 
-export default BusinessSubSegmentPage
+export default BusinessSubSegmentPage;

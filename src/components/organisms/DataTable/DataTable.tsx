@@ -10,6 +10,7 @@ interface Column {
   sortable?: boolean
   type?: 'text' | 'badge' | 'date' | 'amount' | 'actions'
   badgeVariant?: 'approved' | 'rejected' | 'incomplete' | 'inReview' | 'default'
+  copyable?: boolean
 }
 
 interface DataTableProps {

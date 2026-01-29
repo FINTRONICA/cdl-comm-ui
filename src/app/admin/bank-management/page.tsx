@@ -115,6 +115,7 @@ const tableColumns = [
     type: 'text' as const,
     width: 'w-40',
     sortable: true,
+    copyable: true,
   },
   {
     key: 'swiftCode',
@@ -122,6 +123,7 @@ const tableColumns = [
     type: 'text' as const,
     width: 'w-40',
     sortable: true,
+    copyable: true,
   },
   {
     key: 'routingCode',
@@ -129,6 +131,7 @@ const tableColumns = [
     type: 'text' as const,
     width: 'w-40',
     sortable: true,
+    copyable: true,
   },
   {
     key: 'ttcCode',
@@ -136,6 +139,7 @@ const tableColumns = [
     type: 'text' as const,
     width: 'w-40',
     sortable: true,
+    copyable: true,
   },
   {
     key: 'branchCode',
@@ -143,6 +147,7 @@ const tableColumns = [
     type: 'text' as const,
     width: 'w-40',
     sortable: true,
+    copyable: true,
   },
 ]
 

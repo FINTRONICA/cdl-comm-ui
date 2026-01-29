@@ -1,45 +1,45 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import React from 'react'
-import { useCallback, useState, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { DashboardLayout } from '@/components/templates/DashboardLayout'
-import { PermissionAwareDataTable } from '@/components/organisms/PermissionAwareDataTable'
-import { useTableState } from '@/hooks/useTableState'
-import { PageActionButtons } from '@/components/molecules/PageActionButtons'
-import LeftSlidePanel from '@/components/organisms/LeftSlidePanel/LeftSlidePanel'
-import { usePaymentBeneficiaryLabelsWithCache } from '@/hooks/master/PaymentHook'
-import { getPaymentBeneficiaryLabel } from '@/constants/mappings/master/paymentMapping'
-import { useAppStore } from '@/store'
-import { GlobalLoading } from '@/components/atoms'
+import dynamic from "next/dynamic";
+import React from "react";
+import { useCallback, useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { DashboardLayout } from "@/components/templates/DashboardLayout";
+import { PermissionAwareDataTable } from "@/components/organisms/PermissionAwareDataTable";
+import { useTableState } from "@/hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
+import LeftSlidePanel from "@/components/organisms/LeftSlidePanel/LeftSlidePanel";
+import { usePaymentBeneficiaryLabelsWithCache } from "@/hooks/master/PaymentHook";
+import { getPaymentBeneficiaryLabel } from "@/constants/mappings/master/paymentMapping";
+import { useAppStore } from "@/store";
+import { GlobalLoading } from "@/components/atoms";
 import {
   usePaymentBeneficiaries,
   useDeletePaymentBeneficiary,
   PAYMENT_BENEFICIARIES_QUERY_KEY,
-} from '@/hooks/master/PaymentHook'
+} from "@/hooks/master/PaymentHook";
 import {
   mapPaymentBeneficiaryToUIData,
   type PaymentBeneficiaryUIData,
   type PaymentBeneficiary,
-} from '@/services/api/masterApi/Payment/paymentBeneficiaryService'
-import type { PaymentBeneficiaryFilters } from '@/services/api/masterApi/Payment/paymentBeneficiaryService'
-import { useSidebarConfig } from '@/hooks/useSidebarConfig'
-import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
-import { useRouter } from 'next/navigation'
+} from "@/services/api/masterApi/Payment/paymentBeneficiaryService";
+import type { PaymentBeneficiaryFilters } from "@/services/api/masterApi/Payment/paymentBeneficiaryService";
+import { useSidebarConfig } from "@/hooks/useSidebarConfig";
+import { useDeleteConfirmation } from "@/store/confirmationDialogStore";
+import { useRouter } from "next/navigation";
 
 interface PaymentBeneficiaryData
   extends PaymentBeneficiaryUIData,
     Record<string, unknown> {}
 
 const statusOptions = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'IN_PROGRESS',
-  'DRAFT',
-  'INITIATED',
-]
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "DRAFT",
+  "INITIATED",
+];
 
 const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
   error,
@@ -68,9 +68,9 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
         </h1>
         <p className="mb-4 text-gray-600">
           {error.message ||
-            'An error occurred while loading the data. Please try again.'}
+            "An error occurred while loading the data. Please try again."}
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <details className="text-left">
             <summary className="text-sm font-medium text-gray-600 cursor-pointer">
               Error Details (Development)
@@ -91,35 +91,35 @@ const ErrorMessage: React.FC<{ error: Error; onRetry?: () => void }> = ({
       )}
     </div>
   </div>
-)
+);
 
-const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />
+const LoadingSpinner: React.FC = () => <GlobalLoading fullHeight />;
 
 const PaymentBeneficiaryPageImpl: React.FC = () => {
-  const router = useRouter()
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [tableKey, setTableKey] = useState(0)
+  const router = useRouter();
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [tableKey, setTableKey] = useState(0);
 
-  const currentLanguage = useAppStore((state) => state.language)
-  const queryClient = useQueryClient()
+  const currentLanguage = useAppStore((state) => state.language);
+  const queryClient = useQueryClient();
 
-  const isDownloading = false
-  const downloadError = null
-  const clearError = () => {}
+  const isDownloading = false;
+  const downloadError = null;
+  const clearError = () => {};
 
   const { data: paymentBeneficiaryLabels, getLabel } =
-    usePaymentBeneficiaryLabelsWithCache()
+    usePaymentBeneficiaryLabelsWithCache();
 
-  const [currentApiPage, setCurrentApiPage] = useState(1)
-  const [currentApiSize, setCurrentApiSize] = useState(20)
-  const [filters] = useState<PaymentBeneficiaryFilters>({})
+  const [currentApiPage, setCurrentApiPage] = useState(1);
+  const [currentApiSize, setCurrentApiSize] = useState(20);
+  const [filters] = useState<PaymentBeneficiaryFilters>({});
 
-  const { getLabelResolver } = useSidebarConfig()
+  const { getLabelResolver } = useSidebarConfig();
 
   const paymentBeneficiaryPageTitle = getLabelResolver
-    ? getLabelResolver('payment-beneficiary', 'Payment Beneficiary')
-    : 'Payment Beneficiary'
+    ? getLabelResolver("payment-beneficiary", "Payment Beneficiary")
+    : "Payment Beneficiary";
 
   const {
     data: apiResponse,
@@ -131,80 +131,77 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
   } = usePaymentBeneficiaries(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    filters
-  )
+    filters,
+  );
 
-  const deleteMutation = useDeletePaymentBeneficiary()
-  const confirmDelete = useDeleteConfirmation()
+  const deleteMutation = useDeletePaymentBeneficiary();
+  const confirmDelete = useDeleteConfirmation();
 
   const paymentBeneficiariesData = useMemo(() => {
     if (apiResponse?.content) {
       return apiResponse.content.map((item) =>
-        mapPaymentBeneficiaryToUIData(item as PaymentBeneficiary)
-      ) as PaymentBeneficiaryData[]
+        mapPaymentBeneficiaryToUIData(item as PaymentBeneficiary),
+      ) as PaymentBeneficiaryData[];
     }
-    return []
-  }, [apiResponse])
+    return [];
+  }, [apiResponse]);
 
   const getPaymentBeneficiaryLabelDynamic = useCallback(
     (configId: string): string => {
-      const fallback = getPaymentBeneficiaryLabel(configId)
+      const fallback = getPaymentBeneficiaryLabel(configId);
 
       if (paymentBeneficiaryLabels) {
-        return getLabel(configId, currentLanguage || 'EN', fallback)
+        return getLabel(configId, currentLanguage || "EN", fallback);
       }
-      return fallback
+      return fallback;
     },
-    [paymentBeneficiaryLabels, currentLanguage, getLabel]
-  )
+    [paymentBeneficiaryLabels, currentLanguage, getLabel],
+  );
 
   const tableColumns = [
     {
-      key: 'beneficiaryAccountNumber',
+      key: "beneficiaryAccountNumber",
       label: getPaymentBeneficiaryLabelDynamic(
-        'CDL_PAYMENT_BENEFICIARY_ACCOUNT_NUMBER'
+        "CDL_PAYMENT_BENEFICIARY_ACCOUNT_NUMBER",
       ),
-      type: 'text' as const,
-      width: 'w-48',
+      type: "text" as const,
+      width: "w-48",
+      sortable: true,
+      copyable: true,
+    },
+    {
+      key: "beneficiaryBankIfscCode",
+      label: getPaymentBeneficiaryLabelDynamic(
+        "CDL_PAYMENT_BENEFICIARY_IFSC_CODE",
+      ),
+      type: "text" as const,
+      width: "w-40",
+      sortable: true,
+      copyable: true,
+    },
+    {
+      key: "creditAmount",
+      label: getPaymentBeneficiaryLabelDynamic("CDL_PAYMENT_CREDIT_AMOUNT"),
+      type: "text" as const,
+      width: "w-32",
+      sortable: true,
+      copyable: true,
+    },
+
+    {
+      key: "status",
+      label: getPaymentBeneficiaryLabelDynamic("CDL_COMMON_STATUS"),
+      type: "status" as const,
+      width: "w-32",
       sortable: true,
     },
     {
-      key: 'beneficiaryBankIfscCode',
-      label: getPaymentBeneficiaryLabelDynamic(
-        'CDL_PAYMENT_BENEFICIARY_IFSC_CODE'
-      ),
-      type: 'text' as const,
-      width: 'w-40',
-      sortable: true,
+      key: "actions",
+      label: getPaymentBeneficiaryLabelDynamic("CDL_COMMON_ACTION"),
+      type: "actions" as const,
+      width: "w-20",
     },
-    {
-      key: 'creditAmount',
-      label: getPaymentBeneficiaryLabelDynamic(
-        'CDL_PAYMENT_CREDIT_AMOUNT'
-      ),
-      type: 'text' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    
-    {
-      key: 'status',
-      label: getPaymentBeneficiaryLabelDynamic(
-        'CDL_COMMON_STATUS'
-      ),
-      type: 'status' as const,
-      width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'actions',
-      label: getPaymentBeneficiaryLabelDynamic(
-        'CDL_COMMON_ACTION'
-      ),
-      type: 'actions' as const,
-      width: 'w-20',
-    },
-  ]
+  ];
 
   const {
     search,
@@ -227,61 +224,61 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
   } = useTableState({
     data: paymentBeneficiariesData,
     searchFields: [
-      'beneficiaryAccountNumber',
-      'beneficiaryBankIfscCode',
-      'creditAmount',
-      'currencyCode',
-      'status',
+      "beneficiaryAccountNumber",
+      "beneficiaryBankIfscCode",
+      "creditAmount",
+      "currencyCode",
+      "status",
     ],
     initialRowsPerPage: currentApiSize,
-  })
+  });
 
   const handlePageChange = (newPage: number) => {
-    const hasSearch = Object.values(search).some((value) => value.trim())
+    const hasSearch = Object.values(search).some((value) => value.trim());
 
     if (hasSearch) {
-      localHandlePageChange(newPage)
+      localHandlePageChange(newPage);
     } else {
-      setCurrentApiPage(newPage)
-      updatePagination(Math.max(0, newPage - 1), currentApiSize)
+      setCurrentApiPage(newPage);
+      updatePagination(Math.max(0, newPage - 1), currentApiSize);
     }
-  }
+  };
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
-    setCurrentApiSize(newRowsPerPage)
-    setCurrentApiPage(1)
-    updatePagination(0, newRowsPerPage)
-    localHandleRowsPerPageChange(newRowsPerPage)
-  }
+    setCurrentApiSize(newRowsPerPage);
+    setCurrentApiPage(1);
+    updatePagination(0, newRowsPerPage);
+    localHandleRowsPerPageChange(newRowsPerPage);
+  };
 
-  const apiTotal = apiPagination?.totalElements || 0
-  const apiTotalPages = apiPagination?.totalPages || 1
+  const apiTotal = apiPagination?.totalElements || 0;
+  const apiTotalPages = apiPagination?.totalPages || 1;
 
-  const hasActiveSearch = Object.values(search).some((value) => value.trim())
+  const hasActiveSearch = Object.values(search).some((value) => value.trim());
 
-  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal
-  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages
-  const effectivePage = hasActiveSearch ? localPage : currentApiPage
+  const effectiveTotalRows = hasActiveSearch ? localTotalRows : apiTotal;
+  const effectiveTotalPages = hasActiveSearch ? localTotalPages : apiTotalPages;
+  const effectivePage = hasActiveSearch ? localPage : currentApiPage;
 
   const effectiveStartItem = hasActiveSearch
     ? startItem
-    : (currentApiPage - 1) * currentApiSize + 1
+    : (currentApiPage - 1) * currentApiSize + 1;
   const effectiveEndItem = hasActiveSearch
     ? endItem
-    : Math.min(currentApiPage * currentApiSize, apiTotal)
+    : Math.min(currentApiPage * currentApiSize, apiTotal);
 
   const actionButtons: Array<{
-    label: string
-    onClick: () => void
-    disabled?: boolean
-    variant?: 'primary' | 'secondary'
-    icon?: string
-    iconAlt?: string
-  }> = []
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    variant?: "primary" | "secondary";
+    icon?: string;
+    iconAlt?: string;
+  }> = [];
 
   const handleRowDelete = (row: PaymentBeneficiaryData) => {
     if (isDeleting) {
-      return
+      return;
     }
 
     confirmDelete({
@@ -289,48 +286,44 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
       itemId: row.id.toString(),
       onConfirm: async () => {
         try {
-          setIsDeleting(true)
-          await deleteMutation.mutateAsync(row.id.toString())
-          await new Promise((resolve) => setTimeout(resolve, 500))
+          setIsDeleting(true);
+          await deleteMutation.mutateAsync(row.id.toString());
+          await new Promise((resolve) => setTimeout(resolve, 500));
           await queryClient.invalidateQueries({
             queryKey: [PAYMENT_BENEFICIARIES_QUERY_KEY],
-          })
-          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize)
-          setTableKey((prev) => prev + 1)
+          });
+          updatePagination(Math.max(0, currentApiPage - 1), currentApiSize);
+          setTableKey((prev) => prev + 1);
         } catch (error) {
           const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error occurred'
+            error instanceof Error ? error.message : "Unknown error occurred";
           console.error(
-            `Failed to delete payment beneficiary: ${errorMessage}`
-          )
+            `Failed to delete payment beneficiary: ${errorMessage}`,
+          );
 
-          throw error
+          throw error;
         } finally {
-          setIsDeleting(false)
+          setIsDeleting(false);
         }
       },
-    })
-  }
+    });
+  };
 
   const handleRowView = (row: PaymentBeneficiaryData) => {
-    router.push(
-      `/payment-beneficiary/${row.id}/step/1?mode=view`
-    )
-  }
+    router.push(`/payment-beneficiary/${row.id}/step/1?mode=view`);
+  };
 
   const handleRowEdit = (row: PaymentBeneficiaryData) => {
-    router.push(
-      `/payment-beneficiary/${row.id}/step/1?editing=true`
-    )
-  }
+    router.push(`/payment-beneficiary/${row.id}/step/1?editing=true`);
+  };
 
   const handleDownloadTemplate = async () => {
     // TODO: Add STANDING_INSTRUCTION template file when available
-  }
+  };
 
   const renderExpandedContent = () => (
     <div className="grid grid-cols-2 gap-8"></div>
-  )
+  );
 
   return (
     <>
@@ -411,10 +404,10 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    deletePermissions={['payment_beneficiary_delete']}
-                    viewPermissions={['payment_beneficiary_view']}
-                    editPermissions={['payment_beneficiary_update']}
-                    updatePermissions={['payment_beneficiary_update']}
+                    deletePermissions={["payment_beneficiary_delete"]}
+                    viewPermissions={["payment_beneficiary_view"]}
+                    editPermissions={["payment_beneficiary_update"]}
+                    updatePermissions={["payment_beneficiary_update"]}
                     showDeleteAction={true}
                     showViewAction={true}
                     showEditAction={true}
@@ -428,8 +421,8 @@ const PaymentBeneficiaryPageImpl: React.FC = () => {
         </div>
       </DashboardLayout>
     </>
-  )
-}
+  );
+};
 
 const PaymentBeneficiaryPageClient = dynamic(
   () => Promise.resolve(PaymentBeneficiaryPageImpl),
@@ -440,11 +433,11 @@ const PaymentBeneficiaryPageClient = dynamic(
         <GlobalLoading fullHeight />
       </div>
     ),
-  }
-)
+  },
+);
 
 const PaymentBeneficiaryPage: React.FC = () => {
-  return <PaymentBeneficiaryPageClient />
-}
+  return <PaymentBeneficiaryPageClient />;
+};
 
-export default PaymentBeneficiaryPage
+export default PaymentBeneficiaryPage;

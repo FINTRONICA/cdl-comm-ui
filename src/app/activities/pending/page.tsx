@@ -139,7 +139,7 @@ const PendingActivitiesPage: React.FC = () => {
             navigationPath = `/master/agreement-Type`
             break
           case 'agreementSubType':
-            navigationPath = `/master/agreement-Sub-Type`
+            navigationPath = `/master/agreement-sub-type`
             break
           case 'businessSegment':
             navigationPath = `/master/business-segment`

@@ -51,7 +51,7 @@ const AgreementTypePageImpl: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [panelMode, setPanelMode] = useState<"add" | "edit" | "approve">("add");
   const [editingItem, setEditingItem] = useState<AgreementTypeData | null>(
-    null
+    null,
   );
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [tableKey, setTableKey] = useState(0);
@@ -73,7 +73,7 @@ const AgreementTypePageImpl: React.FC = () => {
   } = useAgreementTypes(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
-    searchFilters
+    searchFilters,
   );
 
   const deleteAgreementTypeMutation = useDeleteAgreementType();
@@ -113,7 +113,7 @@ const AgreementTypePageImpl: React.FC = () => {
 
   const getAgreementTypeLabel = useCallback(
     (configId: string): string => getMasterLabel(configId),
-    []
+    [],
   );
 
   const tableColumns = useMemo(
@@ -124,6 +124,7 @@ const AgreementTypePageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-48",
         sortable: true,
+        copyable: true,
       },
       {
         key: "agreementTypeName",
@@ -131,6 +132,7 @@ const AgreementTypePageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-64",
         sortable: true,
+        copyable: true,
       },
       {
         key: "agreementTypeDescription",
@@ -138,6 +140,7 @@ const AgreementTypePageImpl: React.FC = () => {
         type: "text" as const,
         width: "w-96",
         sortable: true,
+        copyable: true,
       },
       {
         key: "status",
@@ -153,7 +156,7 @@ const AgreementTypePageImpl: React.FC = () => {
         width: "w-20",
       },
     ],
-    [getAgreementTypeLabel]
+    [getAgreementTypeLabel],
   );
 
   const {
@@ -186,7 +189,7 @@ const AgreementTypePageImpl: React.FC = () => {
 
   const hasActiveSearch = useMemo(
     () => Object.values(search).some((value) => value.trim() !== ""),
-    [search]
+    [search],
   );
 
   const apiTotal = apiPagination?.totalElements || 0;
@@ -212,7 +215,7 @@ const AgreementTypePageImpl: React.FC = () => {
         updatePagination(Math.max(0, newPage - 1), currentApiSize);
       }
     },
-    [hasActiveSearch, localHandlePageChange, currentApiSize, updatePagination]
+    [hasActiveSearch, localHandlePageChange, currentApiSize, updatePagination],
   );
 
   const handleRowsPerPageChange = useCallback(
@@ -222,7 +225,7 @@ const AgreementTypePageImpl: React.FC = () => {
       updatePagination(0, newRowsPerPage);
       localHandleRowsPerPageChange(newRowsPerPage);
     },
-    [localHandleRowsPerPageChange, updatePagination]
+    [localHandleRowsPerPageChange, updatePagination],
   );
 
   const handleRowDelete = useCallback(
@@ -261,21 +264,21 @@ const AgreementTypePageImpl: React.FC = () => {
       updatePagination,
       currentApiPage,
       currentApiSize,
-    ]
+    ],
   );
 
   const handleRowEdit = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (row: AgreementTypeData, _index: number) => {
       const dataIndex = agreementTypeData.findIndex(
-        (item) => item.id === row.id
+        (item) => item.id === row.id,
       );
       setEditingItem(row);
       setEditingItemIndex(dataIndex >= 0 ? dataIndex : null);
       setPanelMode("edit");
       setIsPanelOpen(true);
     },
-    [agreementTypeData]
+    [agreementTypeData],
   );
 
   const handleAddNew = useCallback(() => {
@@ -309,7 +312,7 @@ const AgreementTypePageImpl: React.FC = () => {
     (_error: string) => {
       // Error is handled by UploadDialog component
     },
-    []
+    [],
   );
 
   const handleRowApprove = useCallback(
@@ -334,7 +337,7 @@ const AgreementTypePageImpl: React.FC = () => {
         },
       });
     },
-    [confirmApprove, createWorkflowRequest, refreshAgreementTypes]
+    [confirmApprove, createWorkflowRequest, refreshAgreementTypes],
   );
 
   const handleAgreementTypeAdded = useCallback(() => {
@@ -383,7 +386,7 @@ const AgreementTypePageImpl: React.FC = () => {
         </div>
       </div>
     ),
-    [getAgreementTypeLabel]
+    [getAgreementTypeLabel],
   );
 
   return (
@@ -511,7 +514,7 @@ export const AgreementTypePageClient = dynamic(
   () => Promise.resolve(AgreementTypePageImpl),
   {
     ssr: false,
-  }
+  },
 );
 
 const AgreementTypePage: React.FC = () => {
