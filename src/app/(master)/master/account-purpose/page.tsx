@@ -83,6 +83,8 @@ const AccountPurposePageImpl: React.FC = () => {
   const {
     data: accountPurposesResponse,
     isLoading: accountPurposesLoading,
+    isFetching: accountPurposesFetching,
+
     error: accountPurposesError,
     updatePagination,
     apiPagination,
@@ -428,102 +430,141 @@ const AccountPurposePageImpl: React.FC = () => {
     [confirmApprove, createWorkflowRequest, refreshAccountPurposes],
   );
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isRefreshLoading = isRefreshing || accountPurposesFetching;
+  const showRefreshOverlay = isRefreshLoading || accountPurposesLoading;
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await refreshAccountPurposes();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refreshAccountPurposes]);
+
+  if (accountPurposesLoading || accountPurposesFetching) {
+    return (
+      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <GlobalLoading fullHeight />
+      </div>
+    );
+  }
   return (
     <>
-      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
-        <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
-          <PageActionButtons
-            entityType="accountPurpose"
-            onAddNew={handleAddNew}
-            onDownloadTemplate={handleDownloadTemplate}
-            onUploadDetails={() => setIsUploadDialogOpen(true)}
-            isDownloading={isDownloading}
-            showButtons={{
-              addNew: true,
-              downloadTemplate: true,
-              uploadDetails: true,
-            }}
-            customActionButtons={[]}
-          />
-        </div>
-        <div className="flex flex-col flex-1 min-h-0">
-          {accountPurposesLoading ? (
-            <div className="flex items-center justify-center flex-1">
-              <GlobalLoading />
+      <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        {showRefreshOverlay && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
+              <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Loading...
+              </span>
             </div>
-          ) : accountPurposesError ? (
-            <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-red-600 dark:text-red-400">
-                Error loading account purposes. Please try again.
+          </div>
+        )}
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
+            <PageActionButtons
+              entityType="accountPurpose"
+              onAddNew={handleAddNew}
+              onDownloadTemplate={handleDownloadTemplate}
+              onUploadDetails={() => setIsUploadDialogOpen(true)}
+              isDownloading={isDownloading}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshLoading}
+              showButtons={{
+                addNew: true,
+                downloadTemplate: true,
+                uploadDetails: true,
+                refresh: true,
+              }}
+              customActionButtons={[]}
+            />
+          </div>
+          <div className="flex flex-col flex-1 min-h-0">
+            {accountPurposesLoading ? (
+              <div className="flex items-center justify-center flex-1">
+                <GlobalLoading />
               </div>
-            </div>
-          ) : (
-            <div className="flex-1 overflow-auto">
-              <PermissionAwareDataTable<AccountPurposeData>
-                key={`account-purpose-table-${tableKey}`}
-                data={paginated}
-                columns={tableColumns}
-                searchState={search}
-                onSearchChange={handleSearchChange}
-                paginationState={{
-                  page: effectivePage,
-                  rowsPerPage: rowsPerPage,
-                  totalRows: effectiveTotalRows,
-                  totalPages: effectiveTotalPages,
-                  startItem: effectiveStartItem,
-                  endItem: effectiveEndItem,
-                }}
-                onPageChange={handlePageChange}
-                onRowsPerPageChange={handleRowsPerPageChange}
-                selectedRows={selectedRows}
-                onRowSelectionChange={handleRowSelectionChange}
-                expandedRows={expandedRows}
-                onRowExpansionChange={handleRowExpansionChange}
-                renderExpandedContent={renderExpandedContent}
-                statusOptions={STATUS_OPTIONS}
-                onRowApprove={handleRowApprove}
-                onRowDelete={handleRowDelete}
-                onRowEdit={handleRowEdit}
-                deletePermissions={["master_account_purpose_delete"]}
-                editPermissions={["master_account_purpose_update"]}
-                approvePermissions={["master_account_purpose_approve"]}
-                updatePermissions={["master_account_purpose_update"]}
-                showDeleteAction={true}
-                showViewAction={true}
-                showEditAction={true}
-                showApproveAction={true}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-            </div>
-          )}
+            ) : accountPurposesError ? (
+              <div className="flex items-center justify-center flex-1 p-4">
+                <div className="text-red-600 dark:text-red-400">
+                  Error loading account purposes. Please try again.
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-auto">
+                <PermissionAwareDataTable<AccountPurposeData>
+                  key={`account-purpose-table-${tableKey}`}
+                  data={paginated}
+                  columns={tableColumns}
+                  searchState={search}
+                  onSearchChange={handleSearchChange}
+                  paginationState={{
+                    page: effectivePage,
+                    rowsPerPage: rowsPerPage,
+                    totalRows: effectiveTotalRows,
+                    totalPages: effectiveTotalPages,
+                    startItem: effectiveStartItem,
+                    endItem: effectiveEndItem,
+                  }}
+                  onPageChange={handlePageChange}
+                  onRowsPerPageChange={handleRowsPerPageChange}
+                  selectedRows={selectedRows}
+                  onRowSelectionChange={handleRowSelectionChange}
+                  expandedRows={expandedRows}
+                  onRowExpansionChange={handleRowExpansionChange}
+                  renderExpandedContent={renderExpandedContent}
+                  statusOptions={STATUS_OPTIONS}
+                  onRowApprove={handleRowApprove}
+                  onRowDelete={handleRowDelete}
+                  onRowEdit={handleRowEdit}
+                  deletePermissions={["master_account_purpose_delete"]}
+                  editPermissions={["master_account_purpose_update"]}
+                  approvePermissions={["master_account_purpose_approve"]}
+                  updatePermissions={["master_account_purpose_update"]}
+                  showDeleteAction={true}
+                  showViewAction={true}
+                  showEditAction={true}
+                  showApproveAction={true}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+              </div>
+            )}
+          </div>
         </div>
+
+        {isPanelOpen && (
+          <RightSlideAccountPurposePanel
+            isOpen={isPanelOpen}
+            onClose={handleClosePanel}
+            onAccountPurposeAdded={handleAccountPurposeAdded}
+            onAccountPurposeUpdated={handleAccountPurposeUpdated}
+            mode={panelMode === "approve" ? "edit" : panelMode}
+            actionData={editingItem as AccountPurpose | null}
+            {...(editingItemIndex !== null && {
+              accountPurposeIndex: editingItemIndex,
+            })}
+          />
+        )}
+
+        {isUploadDialogOpen && (
+          <UploadDialog
+            open={isUploadDialogOpen}
+            onClose={() => setIsUploadDialogOpen(false)}
+            onUploadSuccess={handleUploadSuccess}
+            onUploadError={handleUploadError}
+            title="Upload Account Purpose Data"
+            entityType="accountPurpose"
+          />
+        )}
       </div>
-
-      {isPanelOpen && (
-        <RightSlideAccountPurposePanel
-          isOpen={isPanelOpen}
-          onClose={handleClosePanel}
-          onAccountPurposeAdded={handleAccountPurposeAdded}
-          onAccountPurposeUpdated={handleAccountPurposeUpdated}
-          mode={panelMode === "approve" ? "edit" : panelMode}
-          actionData={editingItem as AccountPurpose | null}
-          {...(editingItemIndex !== null && {
-            accountPurposeIndex: editingItemIndex,
-          })}
-        />
-      )}
-
-      {isUploadDialogOpen && (
-        <UploadDialog
-          open={isUploadDialogOpen}
-          onClose={() => setIsUploadDialogOpen(false)}
-          onUploadSuccess={handleUploadSuccess}
-          onUploadError={handleUploadError}
-          title="Upload Account Purpose Data"
-          entityType="accountPurpose"
-        />
-      )}
     </>
   );
 };

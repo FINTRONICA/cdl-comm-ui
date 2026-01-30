@@ -60,6 +60,7 @@ const AgreementSegmentPageImpl: React.FC = () => {
   const {
     data: agreementSegmentsResponse,
     isLoading: agreementSegmentsLoading,
+    isFetching: agreementSegmentsFetching,
     error: agreementSegmentsError,
     updatePagination,
     apiPagination,
@@ -382,74 +383,115 @@ const AgreementSegmentPageImpl: React.FC = () => {
     [getAgreementSegmentLabel],
   );
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isRefreshLoading = isRefreshing || agreementSegmentsFetching;
+  const showRefreshOverlay = isRefreshLoading || agreementSegmentsLoading;
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await refreshAgreementSegments();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refreshAgreementSegments]);
+
+  if (agreementSegmentsLoading || agreementSegmentsFetching) {
+    return (
+      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <GlobalLoading fullHeight />
+      </div>
+    );
+  }
+
+
   return (
     <>
-      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
-        <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
-          <PageActionButtons
-            entityType="agreementSegment"
-            onAddNew={handleAddNew}
-            onDownloadTemplate={handleDownloadTemplate}
-            onUploadDetails={() => setIsUploadDialogOpen(true)}
-            isDownloading={isDownloading}
-            showButtons={{
-              addNew: true,
-              downloadTemplate: true,
-              uploadDetails: true,
-            }}
-            customActionButtons={[]}
-          />
-        </div>
-        <div className="flex flex-col flex-1 min-h-0">
-          {agreementSegmentsLoading ? (
-            <div className="flex items-center justify-center flex-1">
-              <GlobalLoading />
+      <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        {showRefreshOverlay && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
+              <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Loading...
+              </span>
             </div>
-          ) : agreementSegmentsError ? (
-            <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-red-600 dark:text-red-400">
-                Error loading agreement segments. Please try again.
+          </div>
+        )}
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
+            <PageActionButtons
+              entityType="agreementSegment"
+              onAddNew={handleAddNew}
+              onDownloadTemplate={handleDownloadTemplate}
+              onUploadDetails={() => setIsUploadDialogOpen(true)}
+              isDownloading={isDownloading}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshLoading}
+              showButtons={{
+                addNew: true,
+                downloadTemplate: true,
+                uploadDetails: true,
+                refresh: true,
+              }}
+              customActionButtons={[]}
+            />
+          </div>
+          <div className="flex flex-col flex-1 min-h-0">
+            {agreementSegmentsLoading ? (
+              <div className="flex items-center justify-center flex-1">
+                <GlobalLoading />
               </div>
-            </div>
-          ) : (
-            <div className="flex-1 overflow-auto">
-              <PermissionAwareDataTable<AgreementSegmentData>
-                key={`agreement-segments-table-${tableKey}`}
-                data={paginated}
-                columns={tableColumns}
-                searchState={search}
-                onSearchChange={handleSearchChange}
-                paginationState={{
-                  page: effectivePage,
-                  rowsPerPage: rowsPerPage,
-                  totalRows: effectiveTotalRows,
-                  totalPages: effectiveTotalPages,
-                  startItem: effectiveStartItem,
-                  endItem: effectiveEndItem,
-                }}
-                onPageChange={handlePageChange}
-                onRowsPerPageChange={handleRowsPerPageChange}
-                selectedRows={selectedRows}
-                onRowSelectionChange={handleRowSelectionChange}
-                expandedRows={expandedRows}
-                onRowExpansionChange={handleRowExpansionChange}
-                renderExpandedContent={renderExpandedContent}
-                onRowDelete={handleRowDelete}
-                onRowApprove={handleRowApprove}
-                onRowEdit={handleRowEdit}
-                deletePermissions={["master_agreement_segment_delete"]}
-                editPermissions={["master_agreement_segment_update"]}
-                approvePermissions={["master_agreement_segment_approve"]}
-                updatePermissions={["master_agreement_segment_update"]}
-                showDeleteAction={true}
-                showViewAction={true}
-                showEditAction={true}
-                showApproveAction={true}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-            </div>
-          )}
+            ) : agreementSegmentsError ? (
+              <div className="flex items-center justify-center flex-1 p-4">
+                <div className="text-red-600 dark:text-red-400">
+                  Error loading agreement segments. Please try again.
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-auto">
+                <PermissionAwareDataTable<AgreementSegmentData>
+                  key={`agreement-segments-table-${tableKey}`}
+                  data={paginated}
+                  columns={tableColumns}
+                  searchState={search}
+                  onSearchChange={handleSearchChange}
+                  paginationState={{
+                    page: effectivePage,
+                    rowsPerPage: rowsPerPage,
+                    totalRows: effectiveTotalRows,
+                    totalPages: effectiveTotalPages,
+                    startItem: effectiveStartItem,
+                    endItem: effectiveEndItem,
+                  }}
+                  onPageChange={handlePageChange}
+                  onRowsPerPageChange={handleRowsPerPageChange}
+                  selectedRows={selectedRows}
+                  onRowSelectionChange={handleRowSelectionChange}
+                  expandedRows={expandedRows}
+                  onRowExpansionChange={handleRowExpansionChange}
+                  renderExpandedContent={renderExpandedContent}
+                  onRowDelete={handleRowDelete}
+                  onRowApprove={handleRowApprove}
+                  onRowEdit={handleRowEdit}
+                  deletePermissions={["master_agreement_segment_delete"]}
+                  editPermissions={["master_agreement_segment_update"]}
+                  approvePermissions={["master_agreement_segment_approve"]}
+                  updatePermissions={["master_agreement_segment_update"]}
+                  showDeleteAction={true}
+                  showViewAction={true}
+                  showEditAction={true}
+                  showApproveAction={true}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

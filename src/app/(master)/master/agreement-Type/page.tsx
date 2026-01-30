@@ -67,6 +67,7 @@ const AgreementTypePageImpl: React.FC = () => {
   const {
     data: agreementTypesResponse,
     isLoading: agreementTypesLoading,
+    isFetching: agreementTypesFetching,
     error: agreementTypesError,
     updatePagination,
     apiPagination,
@@ -389,123 +390,165 @@ const AgreementTypePageImpl: React.FC = () => {
     [getAgreementTypeLabel],
   );
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isRefreshLoading = isRefreshing || agreementTypesFetching;
+  const showRefreshOverlay = isRefreshLoading || agreementTypesLoading;
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await refreshAgreementTypes();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refreshAgreementTypes]);
+
+  if (agreementTypesLoading || agreementTypesFetching) {
+    return (
+      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <GlobalLoading fullHeight />
+      </div>
+    );
+  }
   return (
     <>
-      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
-        <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
-          <PageActionButtons
-            entityType="agreementType"
-            onAddNew={handleAddNew}
-            onDownloadTemplate={handleDownloadTemplate}
-            onUploadDetails={() => setIsUploadDialogOpen(true)}
-            isDownloading={isDownloading}
-            showButtons={{
-              addNew: true,
-              downloadTemplate: true,
-              uploadDetails: true,
-            }}
-            customActionButtons={[]}
+      <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        {showRefreshOverlay && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
+              <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Loading...
+              </span>
+            </div>
+          </div>
+        )}
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
+            <PageActionButtons
+              entityType="agreementType"
+              onAddNew={handleAddNew}
+              onDownloadTemplate={handleDownloadTemplate}
+              onUploadDetails={() => setIsUploadDialogOpen(true)}
+              isDownloading={isDownloading}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshLoading}
+              showButtons={{
+                addNew: true,
+                downloadTemplate: true,
+                uploadDetails: true,
+                refresh: true,
+              }}
+              customActionButtons={[]}
+            />
+          </div>
+          <div className="flex flex-col flex-1 min-h-0">
+            {agreementTypesLoading ? (
+              <div className="flex items-center justify-center flex-1">
+                <GlobalLoading />
+              </div>
+            ) : agreementTypesError ? (
+              <div className="flex items-center justify-center flex-1 p-4">
+                <div className="text-red-600 dark:text-red-400">
+                  <div className="mb-2 font-semibold">
+                    Error loading agreement types.
+                  </div>
+                  <div className="text-sm">
+                    {agreementTypesError instanceof Error
+                      ? agreementTypesError.message
+                      : "Please try again."}
+                  </div>
+                  {process.env.NODE_ENV === "development" && (
+                    <details className="mt-2 text-xs">
+                      <summary className="cursor-pointer">
+                        Error Details
+                      </summary>
+                      <pre className="p-2 mt-2 overflow-auto bg-gray-100 rounded dark:bg-gray-800">
+                        {JSON.stringify(agreementTypesError, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              </div>
+            ) : agreementTypeData.length === 0 ? (
+              <div className="flex items-center justify-center flex-1 p-4">
+                <div className="text-gray-500 dark:text-gray-400">
+                  No agreement types found
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-auto">
+                <PermissionAwareDataTable<AgreementTypeData>
+                  key={`agreement-types-table-${tableKey}`}
+                  data={paginated}
+                  columns={tableColumns}
+                  searchState={search}
+                  onSearchChange={handleSearchChange}
+                  paginationState={{
+                    page: effectivePage,
+                    rowsPerPage: rowsPerPage,
+                    totalRows: effectiveTotalRows,
+                    totalPages: effectiveTotalPages,
+                    startItem: effectiveStartItem,
+                    endItem: effectiveEndItem,
+                  }}
+                  onPageChange={handlePageChange}
+                  onRowsPerPageChange={handleRowsPerPageChange}
+                  selectedRows={selectedRows}
+                  onRowSelectionChange={handleRowSelectionChange}
+                  expandedRows={expandedRows}
+                  onRowExpansionChange={handleRowExpansionChange}
+                  renderExpandedContent={renderExpandedContent}
+                  statusOptions={STATUS_OPTIONS}
+                  onRowDelete={handleRowDelete}
+                  onRowApprove={handleRowApprove}
+                  onRowEdit={handleRowEdit}
+                  deletePermissions={["master_agreement_type_delete"]}
+                  editPermissions={["master_agreement_type_update"]}
+                  approvePermissions={["master_agreement_type_approve"]}
+                  updatePermissions={["master_agreement_type_update"]}
+                  showDeleteAction={true}
+                  showViewAction={true}
+                  showEditAction={true}
+                  showApproveAction={true}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        </div>
+
+        {isPanelOpen && (
+          <RightSlideAgreementTypePanel
+            isOpen={isPanelOpen}
+            onClose={handleClosePanel}
+            onAgreementTypeAdded={handleAgreementTypeAdded}
+            onAgreementTypeUpdated={handleAgreementTypeUpdated}
+            mode={panelMode === "approve" ? "edit" : panelMode}
+            actionData={editingItem as AgreementType | null}
+            {...(editingItemIndex !== null && {
+              agreementTypeIndex: editingItemIndex,
+            })}
           />
-        </div>
-        <div className="flex flex-col flex-1 min-h-0">
-          {agreementTypesLoading ? (
-            <div className="flex items-center justify-center flex-1">
-              <GlobalLoading />
-            </div>
-          ) : agreementTypesError ? (
-            <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-red-600 dark:text-red-400">
-                <div className="mb-2 font-semibold">
-                  Error loading agreement types.
-                </div>
-                <div className="text-sm">
-                  {agreementTypesError instanceof Error
-                    ? agreementTypesError.message
-                    : "Please try again."}
-                </div>
-                {process.env.NODE_ENV === "development" && (
-                  <details className="mt-2 text-xs">
-                    <summary className="cursor-pointer">Error Details</summary>
-                    <pre className="p-2 mt-2 overflow-auto bg-gray-100 rounded dark:bg-gray-800">
-                      {JSON.stringify(agreementTypesError, null, 2)}
-                    </pre>
-                  </details>
-                )}
-              </div>
-            </div>
-          ) : agreementTypeData.length === 0 ? (
-            <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-gray-500 dark:text-gray-400">
-                No agreement types found
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 overflow-auto">
-              <PermissionAwareDataTable<AgreementTypeData>
-                key={`agreement-types-table-${tableKey}`}
-                data={paginated}
-                columns={tableColumns}
-                searchState={search}
-                onSearchChange={handleSearchChange}
-                paginationState={{
-                  page: effectivePage,
-                  rowsPerPage: rowsPerPage,
-                  totalRows: effectiveTotalRows,
-                  totalPages: effectiveTotalPages,
-                  startItem: effectiveStartItem,
-                  endItem: effectiveEndItem,
-                }}
-                onPageChange={handlePageChange}
-                onRowsPerPageChange={handleRowsPerPageChange}
-                selectedRows={selectedRows}
-                onRowSelectionChange={handleRowSelectionChange}
-                expandedRows={expandedRows}
-                onRowExpansionChange={handleRowExpansionChange}
-                renderExpandedContent={renderExpandedContent}
-                statusOptions={STATUS_OPTIONS}
-                onRowDelete={handleRowDelete}
-                onRowApprove={handleRowApprove}
-                onRowEdit={handleRowEdit}
-                deletePermissions={["master_agreement_type_delete"]}
-                editPermissions={["master_agreement_type_update"]}
-                approvePermissions={["master_agreement_type_approve"]}
-                updatePermissions={["master_agreement_type_update"]}
-                showDeleteAction={true}
-                showViewAction={true}
-                showEditAction={true}
-                showApproveAction={true}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-            </div>
-          )}
-        </div>
-      </div>
+        )}
 
-      {isPanelOpen && (
-        <RightSlideAgreementTypePanel
-          isOpen={isPanelOpen}
-          onClose={handleClosePanel}
-          onAgreementTypeAdded={handleAgreementTypeAdded}
-          onAgreementTypeUpdated={handleAgreementTypeUpdated}
-          mode={panelMode === "approve" ? "edit" : panelMode}
-          actionData={editingItem as AgreementType | null}
-          {...(editingItemIndex !== null && {
-            agreementTypeIndex: editingItemIndex,
-          })}
-        />
-      )}
-
-      {isUploadDialogOpen && (
-        <UploadDialog
-          open={isUploadDialogOpen}
-          onClose={() => setIsUploadDialogOpen(false)}
-          onUploadSuccess={handleUploadSuccess}
-          onUploadError={handleUploadError}
-          title="Upload Agreement Type Data"
-          entityType="agreementType"
-        />
-      )}
+        {isUploadDialogOpen && (
+          <UploadDialog
+            open={isUploadDialogOpen}
+            onClose={() => setIsUploadDialogOpen(false)}
+            onUploadSuccess={handleUploadSuccess}
+            onUploadError={handleUploadError}
+            title="Upload Agreement Type Data"
+            entityType="agreementType"
+          />
+        )}
+     
     </>
   );
 };

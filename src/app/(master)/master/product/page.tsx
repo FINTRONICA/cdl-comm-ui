@@ -84,6 +84,7 @@ const ProductProgramPageImpl: React.FC = () => {
   const {
     data: productProgramsResponse,
     isLoading: productProgramsLoading,
+    isFetching: productProgramsFetching,
     error: productProgramsError,
     updatePagination,
     apiPagination,
@@ -405,75 +406,115 @@ const ProductProgramPageImpl: React.FC = () => {
     [getLabel],
   );
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isRefreshLoading = isRefreshing || productProgramsFetching;
+  const showRefreshOverlay = isRefreshLoading || productProgramsLoading;
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await refreshProductPrograms();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refreshProductPrograms]);
+
+  if (productProgramsLoading || productProgramsFetching) {
+    return (
+      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <GlobalLoading fullHeight />
+      </div>
+    );
+  }
   return (
     <>
-      <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
-        <div className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 bg-white/75 dark:bg-gray-800/80 rounded-t-2xl">
-          <PageActionButtons
-            entityType="productProgram"
-            onAddNew={handleAddNew}
-            onDownloadTemplate={handleDownloadTemplate}
-            onUploadDetails={() => setIsUploadDialogOpen(true)}
-            isDownloading={isDownloading}
-            showButtons={{
-              addNew: true,
-              downloadTemplate: true,
-              uploadDetails: true,
-            }}
-            customActionButtons={[]}
-          />
-        </div>
-        <div className="flex flex-col flex-1 min-h-0">
-          {productProgramsLoading ? (
-            <div className="flex items-center justify-center flex-1">
-              <GlobalLoading />
+      <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        {showRefreshOverlay && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
+              <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Loading...
+              </span>
             </div>
-          ) : productProgramsError ? (
-            <div className="flex items-center justify-center flex-1 p-4">
-              <div className="text-red-600 dark:text-red-400">
-                Error loading product programs. Please try again.
+          </div>
+        )}
+
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <div className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 bg-white/75 dark:bg-gray-800/80 rounded-t-2xl">
+            <PageActionButtons
+              entityType="productProgram"
+              onAddNew={handleAddNew}
+              onDownloadTemplate={handleDownloadTemplate}
+              onUploadDetails={() => setIsUploadDialogOpen(true)}
+              isDownloading={isDownloading}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshLoading}
+              showButtons={{
+                addNew: true,
+                downloadTemplate: true,
+                uploadDetails: true,
+                refresh: true,
+              }}
+              customActionButtons={[]}
+            />
+          </div>
+          <div className="flex flex-col flex-1 min-h-0">
+            {productProgramsLoading ? (
+              <div className="flex items-center justify-center flex-1">
+                <GlobalLoading />
               </div>
-            </div>
-          ) : (
-            <div className="flex-1 overflow-auto">
-              <PermissionAwareDataTable<ProductProgramData>
-                key={`product-programs-table-${tableKey}`}
-                data={paginated}
-                columns={tableColumns}
-                searchState={search}
-                onSearchChange={handleSearchChange}
-                paginationState={{
-                  page: effectivePage,
-                  rowsPerPage: rowsPerPage,
-                  totalRows: effectiveTotalRows,
-                  totalPages: effectiveTotalPages,
-                  startItem: effectiveStartItem,
-                  endItem: effectiveEndItem,
-                }}
-                onPageChange={handlePageChange}
-                onRowsPerPageChange={handleRowsPerPageChange}
-                selectedRows={selectedRows}
-                onRowSelectionChange={handleRowSelectionChange}
-                expandedRows={expandedRows}
-                onRowExpansionChange={handleRowExpansionChange}
-                renderExpandedContent={renderExpandedContent}
-                statusOptions={STATUS_OPTIONS}
-                onRowDelete={handleRowDelete}
-                onRowApprove={handleRowApprove}
-                onRowEdit={handleRowEdit}
-                deletePermissions={["master_product_delete"]}
-                editPermissions={["master_product_update"]}
-                approvePermissions={["master_product_approve"]}
-                updatePermissions={["master_product_update"]}
-                showDeleteAction={true}
-                showViewAction={true}
-                showEditAction={true}
-                showApproveAction={true}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-            </div>
-          )}
+            ) : productProgramsError ? (
+              <div className="flex items-center justify-center flex-1 p-4">
+                <div className="text-red-600 dark:text-red-400">
+                  Error loading product programs. Please try again.
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-auto">
+                <PermissionAwareDataTable<ProductProgramData>
+                  key={`product-programs-table-${tableKey}`}
+                  data={paginated}
+                  columns={tableColumns}
+                  searchState={search}
+                  onSearchChange={handleSearchChange}
+                  paginationState={{
+                    page: effectivePage,
+                    rowsPerPage: rowsPerPage,
+                    totalRows: effectiveTotalRows,
+                    totalPages: effectiveTotalPages,
+                    startItem: effectiveStartItem,
+                    endItem: effectiveEndItem,
+                  }}
+                  onPageChange={handlePageChange}
+                  onRowsPerPageChange={handleRowsPerPageChange}
+                  selectedRows={selectedRows}
+                  onRowSelectionChange={handleRowSelectionChange}
+                  expandedRows={expandedRows}
+                  onRowExpansionChange={handleRowExpansionChange}
+                  renderExpandedContent={renderExpandedContent}
+                  statusOptions={STATUS_OPTIONS}
+                  onRowDelete={handleRowDelete}
+                  onRowApprove={handleRowApprove}
+                  onRowEdit={handleRowEdit}
+                  deletePermissions={["master_product_delete"]}
+                  editPermissions={["master_product_update"]}
+                  approvePermissions={["master_product_approve"]}
+                  updatePermissions={["master_product_update"]}
+                  showDeleteAction={true}
+                  showViewAction={true}
+                  showEditAction={true}
+                  showApproveAction={true}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
