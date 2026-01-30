@@ -370,7 +370,16 @@ const WorkflowActionPage: React.FC = () => {
       setIsRefreshing(false)
     }
   }, [isRefreshing, refetchWorkflowActions])
-
+  
+  if (workflowActionsLoading || workflowActionsFetching) {
+    return (
+      <DashboardLayout title="Workflow Actions">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
+        </div>
+      </DashboardLayout>
+    )
+  }
   return (
     <>
       <DashboardLayout title="Workflow Actions">

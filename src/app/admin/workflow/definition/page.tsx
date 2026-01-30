@@ -354,7 +354,8 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
       setIsRefreshing(false)
     }
   }, [isRefreshing, refetchWorkflowDefinitions])
-
+  
+  
   // Memoize the definition data for the panel
   const panelDefinitionData = useMemo<WorkflowDefinitionUIData | null>(() => {
     if (!editingItem) return null
@@ -378,6 +379,17 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
       enabled: editingItem.enabled ?? false,
     } as WorkflowDefinitionUIData
   }, [editingItem])
+
+  if (workflowDefinitionsLoading || workflowDefinitionsFetching) {
+    return (
+      <DashboardLayout title="Workflow Definitions">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
 
   return (
     <>

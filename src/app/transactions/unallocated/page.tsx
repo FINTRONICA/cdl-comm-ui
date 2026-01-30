@@ -372,7 +372,7 @@ const UnallocatedTransactionPage: React.FC = () => {
       type: 'text' as const,
       width: 'w-40',
       sortable: true,
-      // copyable: true,
+      copyable: true,
     },
     {
       key: 'tranAmount',
@@ -572,7 +572,7 @@ const UnallocatedTransactionPage: React.FC = () => {
     }
   }, [isRefreshing, refetch])
 
-  if (isLoading || labelsLoading) {
+  if (isLoading || labelsLoading || isFetching) {
     return (
       <DashboardLayout title={unallocatedTitle}>
         <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
@@ -607,10 +607,10 @@ const UnallocatedTransactionPage: React.FC = () => {
       )}
 
       <DashboardLayout title={unallocatedTitle}>
-        <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
           {showRefreshOverlay && (
             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-              <div className="flex items-center gap-2 rounded-md bg-white/90 dark:bg-gray-900/90 px-4 py-2 shadow">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
                 <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                   Loading...
@@ -619,21 +619,17 @@ const UnallocatedTransactionPage: React.FC = () => {
             </div>
           )}
           <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
-            <div className="flex justify-end gap-2 py-3.5 px-4">
-              <PageActionButtons
-                entityType="pendingPayment"
-                onDownloadTemplate={handleDownloadTemplate}
-                isDownloading={isDownloading}
-                onRefresh={handleRefresh}
-                isRefreshing={isRefreshLoading}
-                showButtons={{
-                  downloadTemplate: true,
-                  uploadDetails: true,
-                  addNew: false,
-                  refresh: true,
-                }}
-              />
-            </div>
+            <PageActionButtons
+              entityType="pendingPayment"
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshLoading}
+              showButtons={{
+                downloadTemplate: false,
+                uploadDetails: false,
+                addNew: false,
+                refresh: true,
+              }}
+            />
           </div>
 
           <PermissionAwareDataTable<TransactionData>

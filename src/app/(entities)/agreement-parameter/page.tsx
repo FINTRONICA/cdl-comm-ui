@@ -367,6 +367,15 @@ const AgreementParametersPageImpl: React.FC = () => {
       setIsRefreshing(false);
     }
   }, [isRefreshing, refetchAgreementParameters]);
+  if (agreementParametersLoading || agreementParametersFetching) {
+    return (
+      <DashboardLayout title={agreementParametersPageTitle}>
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <>
@@ -398,7 +407,7 @@ const AgreementParametersPageImpl: React.FC = () => {
         <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
           {showRefreshOverlay && (
             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-              <div className="flex items-center gap-2 rounded-md bg-white/90 dark:bg-gray-900/90 px-4 py-2 shadow">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
                 <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                   Loading...

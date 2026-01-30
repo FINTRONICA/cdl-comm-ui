@@ -365,26 +365,8 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
     () => <div className="grid grid-cols-2 gap-8"></div>,
     []
   )
-
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const isRefreshLoading = isRefreshing || workflowAmountRulesFetching
-  const showRefreshOverlay = isRefreshLoading || workflowAmountRulesLoading
-
-  const handleRefresh = useCallback(async () => {
-    if (isRefreshing) {
-      return
-    }
-
-    setIsRefreshing(true)
-    try {
-      await refetchWorkflowAmountRules()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }, [isRefreshing, refetchWorkflowAmountRules])
-
-  // Memoize the amount rule data for the panel
-  const panelAmountRuleData = useMemo<WorkflowAmountRuleUIData | null>(() => {
+   // Memoize the amount rule data for the panel
+   const panelAmountRuleData = useMemo<WorkflowAmountRuleUIData | null>(() => {
     if (!editingItem) return null
     return {
       id: String(editingItem.id),
@@ -402,6 +384,34 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       enabled: editingItem.enabled ?? false,
     } as WorkflowAmountRuleUIData
   }, [editingItem])
+
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isRefreshLoading = isRefreshing || workflowAmountRulesFetching
+  const showRefreshOverlay = isRefreshLoading || workflowAmountRulesLoading
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      await refetchWorkflowAmountRules()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [isRefreshing, refetchWorkflowAmountRules])
+  if (workflowAmountRulesLoading || workflowAmountRulesFetching) {
+    return (
+      <DashboardLayout title="Workflow Amount Rules">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
+          </div>
+        </DashboardLayout>
+      )
+    }
+
+ 
 
   return (
     <>

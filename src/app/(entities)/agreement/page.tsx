@@ -357,6 +357,15 @@ const AgreementsPageImpl: React.FC = () => {
       setIsRefreshing(false);
     }
   }, [isRefreshing, refetchAgreements]);
+  if (agreementsLoading || agreementsLoading || agreementsFetching) {
+    return (
+      <DashboardLayout title={agrementPageTitle}>
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <>

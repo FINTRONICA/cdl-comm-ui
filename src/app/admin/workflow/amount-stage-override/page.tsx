@@ -380,6 +380,16 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
     }
   }, [isRefreshing, refetchWorkflowAmountStageOverrides])
 
+  if (workflowAmountStageOverridesLoading || workflowAmountStageOverridesFetching) {
+    return (
+      <DashboardLayout title="Workflow Amount Stage Overrides">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <>
       <DashboardLayout title="Workflow Amount Stage Overrides">

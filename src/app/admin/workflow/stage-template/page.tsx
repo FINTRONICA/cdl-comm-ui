@@ -379,6 +379,8 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
     }
   }, [isRefreshing, refetchWorkflowStageTemplates]);
 
+  
+
   // Memoize the template data for the panel
   const panelTemplateData = useMemo<WorkflowStageTemplate | null>(() => {
     if (!editingItem) return null;
@@ -401,6 +403,16 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
       updatedAt: editingItem.updatedAt || "",
     } as WorkflowStageTemplate;
   }, [editingItem]);
+  
+  if (workflowStageTemplatesLoading || workflowStageTemplatesFetching) {
+    return (
+      <DashboardLayout title="Workflow Stage Templates">
+        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          <GlobalLoading fullHeight />
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <>
