@@ -15,6 +15,7 @@ export { SearchInput } from './SearchInput'
 export { Typography } from './Typography'
 export { UserAvatarGroup } from './UserAvatarGroup'
 export { PermissionTags } from './PermissionTags'
+export { RefreshIconButton } from './RefreshIconButton'
 
 // Global Loading Components
 export { GlobalLoading } from './GlobalLoading'

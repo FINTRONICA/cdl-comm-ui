@@ -39,7 +39,7 @@ const RightSlideWorkflowDefinitionPanel = dynamic(
 
 interface WorkflowDefinitionData
   extends WorkflowDefinitionUIData,
-    Record<string, unknown> {}
+  Record<string, unknown> { }
 
 const STATUS_OPTIONS: string[] = [
   'PENDING',
@@ -127,6 +127,7 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
   const {
     data: apiResponse,
     isLoading: workflowDefinitionsLoading,
+    isFetching: workflowDefinitionsFetching,
     error: workflowDefinitionsError,
     refetch: refetchWorkflowDefinitions,
   } = useWorkflowDefinitions(
@@ -168,6 +169,7 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-64',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'workflowActionName',
@@ -175,6 +177,7 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-64',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'actionCode',
@@ -335,6 +338,23 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
     []
   )
 
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isRefreshLoading = isRefreshing || workflowDefinitionsFetching
+  const showRefreshOverlay = isRefreshLoading || workflowDefinitionsLoading
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      await refetchWorkflowDefinitions()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [isRefreshing, refetchWorkflowDefinitions])
+
   // Memoize the definition data for the panel
   const panelDefinitionData = useMemo<WorkflowDefinitionUIData | null>(() => {
     if (!editingItem) return null
@@ -362,7 +382,17 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
   return (
     <>
       <DashboardLayout title="Workflow Definitions">
-        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          {showRefreshOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
+                <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Loading...
+                </span>
+              </div>
+            </div>
+          )}
           {workflowDefinitionsLoading ? (
             <LoadingSpinner />
           ) : workflowDefinitionsError ? (
@@ -379,8 +409,11 @@ const WorkflowDefinitionsPageImpl: React.FC = () => {
                   entityType="workflowDefinition"
                   customActionButtons={[]}
                   onAddNew={handleAddNew}
+                  onRefresh={handleRefresh}
+                  isRefreshing={isRefreshLoading}
                   showButtons={{
                     addNew: true,
+                    refresh: true,
                   }}
                 />
               </div>

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { DashboardLayout } from "../../../components/templates/DashboardLayout";
 import { PermissionAwareDataTable } from "../../../components/organisms/PermissionAwareDataTable";
 import { useTableState } from "../../../hooks/useTableState";
+import { PageActionButtons } from "@/components/molecules/PageActionButtons";
 import LeftSlidePanel from "@/components/organisms/LeftSlidePanel/LeftSlidePanel";
 import { useProcessedTransactions } from "@/hooks/useProcessedTransactions";
 import { getProcessedTransactionLabel } from "@/constants/mappings/processedTransactionMapping";
@@ -41,6 +42,7 @@ const AllocatedTransactionPage: React.FC = () => {
     error: transactionsError,
     updatePagination,
     deleteTransaction,
+    refetch: refetchProcessedTransactions,
   } = useProcessedTransactions(
     Math.max(0, currentApiPage - 1),
     currentApiSize,
@@ -550,6 +552,23 @@ const AllocatedTransactionPage: React.FC = () => {
     </div>
   );
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isRefreshLoading = isRefreshing || transactionsLoading;
+  const showRefreshOverlay = isRefreshLoading;
+
+  const handleRefresh = React.useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await refetchProcessedTransactions();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refetchProcessedTransactions]);
+
   if (transactionsLoading || labelsLoading) {
     return (
       <DashboardLayout title={allocatedTitle}>
@@ -585,7 +604,30 @@ const AllocatedTransactionPage: React.FC = () => {
       )}
 
       <DashboardLayout title={allocatedTitle}>
-        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          {showRefreshOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 rounded-md bg-white/90 dark:bg-gray-900/90 px-4 py-2 shadow">
+                <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Loading...
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
+            <PageActionButtons
+              entityType="pendingPayment"
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshLoading}
+              showButtons={{
+                downloadTemplate: false,
+                uploadDetails: false,
+                addNew: false,
+                refresh: true,
+              }}
+            />
+          </div>
           <div className="flex flex-col flex-1 min-h-0">
             <div className="flex-1 overflow-auto">
               <PermissionAwareDataTable<TransactionTableData>

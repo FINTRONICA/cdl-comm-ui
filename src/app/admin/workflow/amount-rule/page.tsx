@@ -39,7 +39,7 @@ const RightSlideWorkflowAmountRulePanel = dynamic(
 
 interface WorkflowAmountRuleData
   extends WorkflowAmountRuleUIData,
-    Record<string, unknown> {}
+  Record<string, unknown> { }
 
 const STATUS_OPTIONS: string[] = [
   'PENDING',
@@ -127,6 +127,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
   const {
     data: apiResponse,
     isLoading: workflowAmountRulesLoading,
+    isFetching: workflowAmountRulesFetching,
     error: workflowAmountRulesError,
     refetch: refetchWorkflowAmountRules,
   } = useWorkflowAmountRules(
@@ -196,6 +197,8 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-26',
         sortable: true,
+        copyable: true,
+
       },
       {
         key: 'requiredMakers',
@@ -203,6 +206,8 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-26',
         sortable: true,
+        copyable: true,
+
       },
       {
         key: 'requiredCheckers',
@@ -210,6 +215,8 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-26',
         sortable: true,
+        copyable: true,
+
       },
       {
         key: 'workflowDefinitionName',
@@ -219,6 +226,8 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
         type: 'text' as const,
         width: 'w-75',
         sortable: true,
+        copyable: true,
+
       },
       {
         key: 'status',
@@ -263,6 +272,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
       'maxAmount',
       'priority',
       'requiredMakers',
+
       'requiredCheckers',
       'workflowDefinitionName',
       'status',
@@ -356,6 +366,23 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
     []
   )
 
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isRefreshLoading = isRefreshing || workflowAmountRulesFetching
+  const showRefreshOverlay = isRefreshLoading || workflowAmountRulesLoading
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      await refetchWorkflowAmountRules()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [isRefreshing, refetchWorkflowAmountRules])
+
   // Memoize the amount rule data for the panel
   const panelAmountRuleData = useMemo<WorkflowAmountRuleUIData | null>(() => {
     if (!editingItem) return null
@@ -379,7 +406,17 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
   return (
     <>
       <DashboardLayout title="Workflow Amount Rules">
-        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          {showRefreshOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
+                <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Loading...
+                </span>
+              </div>
+            </div>
+          )}
           {workflowAmountRulesLoading ? (
             <LoadingSpinner />
           ) : workflowAmountRulesError ? (
@@ -396,8 +433,11 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
                   entityType="workflowAmountRule"
                   customActionButtons={[]}
                   onAddNew={handleAddNew}
+                  onRefresh={handleRefresh}
+                  isRefreshing={isRefreshLoading}
                   showButtons={{
                     addNew: true,
+                    refresh: true,
                   }}
                 />
               </div>
@@ -428,6 +468,7 @@ const WorkflowAmountRulesPageImpl: React.FC = () => {
                     onRowDelete={handleRowDelete}
                     onRowEdit={handleRowEdit}
                     deletePermissions={['*']}
+                    viewPermissions={['*']}
                     editPermissions={['*']}
                     updatePermissions={['*']}
                     sortConfig={sortConfig}

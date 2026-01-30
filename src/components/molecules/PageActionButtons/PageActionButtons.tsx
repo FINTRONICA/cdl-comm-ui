@@ -1,8 +1,11 @@
 import React, { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { PermissionButton } from '@/components/atoms/PermissionButton'
 import { Tooltip } from '@mui/material'
 import { Loader } from 'lucide-react'
+import { RefreshActionButton } from '@/components/molecules/RefreshActionButton'
+import { UploadActionButton } from '@/components/molecules/UploadActionButton'
 import { UploadDialog } from '@/components/molecules/UploadDialog'
 
 export type EntityType =
@@ -60,15 +63,18 @@ interface PageActionButtonsProps {
   entityType: EntityType
   onDownloadTemplate?: () => void
   onUploadDetails?: () => void
+  onRefresh?: () => void
   onAddNew?: () => void
   className?: string
   showButtons?: {
     downloadTemplate?: boolean
     uploadDetails?: boolean
+    refresh?: boolean
     addNew?: boolean
   }
   customActionButtons?: ActionButton[]
   isDownloading?: boolean
+  isRefreshing?: boolean
 
   downloadPermission?: string[]
   uploadPermission?: string[]
@@ -94,21 +100,25 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
   entityType,
   onDownloadTemplate,
   onUploadDetails,
+  onRefresh,
   onAddNew,
   className = '',
   showButtons = {
     downloadTemplate: true,
     uploadDetails: true,
+    refresh: true,
     addNew: true,
   },
   customActionButtons = [],
   isDownloading = false,
+  isRefreshing = false,
   additionalDownloads = [],
   uploadConfig,
   downloadPermission = ['*'], // Default to wildcard for backward compatibility
   uploadPermission = ['*'], // Default to wildcard for backward compatibility
 }) => {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
   // Entity-specific configurations with permissions
@@ -441,6 +451,16 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
     }
   }, [onDownloadTemplate, entityType])
 
+  const handleRefresh = useCallback(() => {
+    if (onRefresh) {
+      onRefresh()
+      return
+    }
+
+    queryClient.invalidateQueries({ type: 'active' })
+    router.refresh()
+  }, [onRefresh, queryClient, router])
+
   const handleUploadDetails = useCallback(() => {
     if (onUploadDetails) {
       onUploadDetails()
@@ -486,6 +506,12 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
 
   return (
     <div className={`flex justify-end gap-2 py-3.5 px-4 ${className}`}>
+      {showButtons.refresh && (
+        <RefreshActionButton
+          onRefresh={handleRefresh}
+          loading={isRefreshing}
+        />
+      )}
       {showButtons.downloadTemplate && (
         <PermissionButton
           requiredPermissions={effectiveDownloadPermission}
@@ -549,15 +575,11 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
         </PermissionButton>
       ))}
       {showButtons.uploadDetails && (
-        <PermissionButton
+        <UploadActionButton
+          onUpload={handleUploadDetails}
           requiredPermissions={effectiveUploadPermission}
-          onClick={handleUploadDetails}
           className="flex items-center cursor-pointer h-8 py-1.5 bg-[#DBEAFE] dark:bg-blue-900/30 rounded-md px-2.5 gap-1.5 text-[#155DFC] dark:text-blue-400 font-sans font-medium text-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-        >
-          <Tooltip title="Upload Details" arrow placement="bottom">
-            <img src="/upload.svg" alt="upload icon" />
-          </Tooltip>
-        </PermissionButton>
+        />
       )}
       {/* Render custom action buttons if provided, otherwise render default add new button */}
       {customActionButtons.length > 0

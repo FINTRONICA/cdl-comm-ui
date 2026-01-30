@@ -124,6 +124,7 @@ const PaymentInstructionPageImpl: React.FC = () => {
   const {
     data: apiResponse,
     isLoading: paymentInstructionsLoading,
+    isFetching: paymentInstructionsFetching,
     error: paymentInstructionsError,
     refetch: refetchPaymentInstructions,
     updatePagination,
@@ -344,6 +345,23 @@ const PaymentInstructionPageImpl: React.FC = () => {
     <div className="grid grid-cols-2 gap-8"></div>
   )
 
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isRefreshLoading = isRefreshing || paymentInstructionsFetching
+  const showRefreshOverlay = isRefreshLoading || paymentInstructionsLoading
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      await refetchPaymentInstructions()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [isRefreshing, refetchPaymentInstructions])
+
   return (
     <>
       {isSidePanelOpen && (
@@ -370,7 +388,17 @@ const PaymentInstructionPageImpl: React.FC = () => {
       )}
 
       <DashboardLayout title={paymentInstructionPageTitle}>
-        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          {showRefreshOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 rounded-md bg-white/90 dark:bg-gray-900/90 px-4 py-2 shadow">
+                <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Loading...
+                </span>
+              </div>
+            </div>
+          )}
           {paymentInstructionsLoading ? (
             <LoadingSpinner />
           ) : paymentInstructionsError ? (
@@ -388,9 +416,12 @@ const PaymentInstructionPageImpl: React.FC = () => {
                   customActionButtons={actionButtons}
                   onDownloadTemplate={handleDownloadTemplate}
                   isDownloading={isDownloading}
+                  onRefresh={handleRefresh}
+                  isRefreshing={isRefreshLoading}
                   showButtons={{
                     downloadTemplate: true,
                     uploadDetails: true,
+                    refresh: true,
                     addNew: true,
                   }}
                 />

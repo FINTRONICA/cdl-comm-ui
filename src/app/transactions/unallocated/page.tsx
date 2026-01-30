@@ -57,7 +57,7 @@ const usePendingRows = (
     return baseFilters
   }, [searchFilters])
   
-  const { data, isLoading, error } = usePendingTransactionsUI(
+  const { data, isLoading, isFetching, error, refetch } = usePendingTransactionsUI(
     Math.max(0, page - 1),
     size,
     filters
@@ -97,7 +97,7 @@ const usePendingRows = (
   const total = data?.page?.totalElements || 0
   const totalPages = data?.page?.totalPages || 1
 
-  return { rows, total, totalPages, isLoading, error }
+  return { rows, total, totalPages, isLoading, isFetching, error, refetch }
 }
 
 const mapPaymentStatusToApprovalStatus = (paymentStatus: string): string => {
@@ -211,7 +211,9 @@ const UnallocatedTransactionPage: React.FC = () => {
     total: apiTotal,
     totalPages: apiTotalPages,
     isLoading,
+    isFetching,
     error,
+    refetch,
   } = usePendingRows(currentApiPage, currentApiSize, apiSearchFilters)
 
   const deleteMutation = useDeletePendingTransaction()
@@ -553,6 +555,23 @@ const UnallocatedTransactionPage: React.FC = () => {
     </div>
   )
 
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isRefreshLoading = isRefreshing || isFetching
+  const showRefreshOverlay = isRefreshLoading
+
+  const handleRefresh = React.useCallback(async () => {
+    if (isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      await refetch()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [isRefreshing, refetch])
+
   if (isLoading || labelsLoading) {
     return (
       <DashboardLayout title={unallocatedTitle}>
@@ -588,17 +607,30 @@ const UnallocatedTransactionPage: React.FC = () => {
       )}
 
       <DashboardLayout title={unallocatedTitle}>
-        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          {showRefreshOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 rounded-md bg-white/90 dark:bg-gray-900/90 px-4 py-2 shadow">
+                <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Loading...
+                </span>
+              </div>
+            </div>
+          )}
           <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
             <div className="flex justify-end gap-2 py-3.5 px-4">
               <PageActionButtons
                 entityType="pendingPayment"
                 onDownloadTemplate={handleDownloadTemplate}
                 isDownloading={isDownloading}
+                onRefresh={handleRefresh}
+                isRefreshing={isRefreshLoading}
                 showButtons={{
                   downloadTemplate: true,
                   uploadDetails: true,
                   addNew: false,
+                  refresh: true,
                 }}
               />
             </div>

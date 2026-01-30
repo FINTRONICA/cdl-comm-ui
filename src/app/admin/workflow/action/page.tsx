@@ -19,7 +19,7 @@ import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 
 interface WorkflowActionData
   extends WorkflowActionUIData,
-    Record<string, unknown> {}
+  Record<string, unknown> { }
 
 interface ErrorMessageProps {
   error: Error
@@ -96,6 +96,7 @@ const WorkflowActionPage: React.FC = () => {
   const {
     data: apiResponse,
     isLoading: workflowActionsLoading,
+    isFetching: workflowActionsFetching,
     error: workflowActionsError,
     refetch: refetchWorkflowActions,
     updatePagination,
@@ -134,6 +135,8 @@ const WorkflowActionPage: React.FC = () => {
         type: 'text' as const,
         width: 'w-70',
         sortable: true,
+        copyable: true,
+
       },
       {
         key: 'actionKey',
@@ -165,6 +168,7 @@ const WorkflowActionPage: React.FC = () => {
         type: 'text' as const,
         width: 'w-60',
         sortable: true,
+        copyable: true,
       },
       {
         key: 'actions',
@@ -271,7 +275,7 @@ const WorkflowActionPage: React.FC = () => {
           } catch (error) {
             // Extract detailed error message from axios error
             let errorMessage = 'Failed to delete workflow action'
-            
+
             if (error && typeof error === 'object' && 'response' in error) {
               const axiosError = error as {
                 response?: {
@@ -280,10 +284,10 @@ const WorkflowActionPage: React.FC = () => {
                 }
                 message?: string
               }
-              
+
               const status = axiosError.response?.status
               const responseData = axiosError.response?.data
-              
+
               if (responseData?.message) {
                 errorMessage = responseData.message
               } else if (responseData?.error) {
@@ -302,14 +306,14 @@ const WorkflowActionPage: React.FC = () => {
             } else if (error instanceof Error) {
               errorMessage = error.message
             }
-            
+
             console.error('Failed to delete workflow action:', {
               error,
               message: errorMessage,
               rowId: row.id,
               rowName: row.actionName || row.actionKey,
             })
-            
+
             // Don't re-throw - let React Query handle the error state
             // The API client's error handler will show the toast notification
           } finally {
@@ -350,10 +354,37 @@ const WorkflowActionPage: React.FC = () => {
     []
   )
 
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isRefreshLoading = isRefreshing || workflowActionsFetching
+  const showRefreshOverlay = isRefreshLoading || workflowActionsLoading
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      await refetchWorkflowActions()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [isRefreshing, refetchWorkflowActions])
+
   return (
     <>
       <DashboardLayout title="Workflow Actions">
-        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          {showRefreshOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
+                <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Loading...
+                </span>
+              </div>
+            </div>
+          )}
           {/* Show loading state within the layout */}
           {workflowActionsLoading ? (
             <LoadingSpinner />
@@ -371,8 +402,11 @@ const WorkflowActionPage: React.FC = () => {
                   entityType="workflowAction"
                   customActionButtons={actionButtons}
                   onAddNew={handleAddNew}
+                  onRefresh={handleRefresh}
+                  isRefreshing={isRefreshLoading}
                   showButtons={{
                     addNew: true,
+                    refresh: true,
                   }}
                 />
               </div>
@@ -400,9 +434,9 @@ const WorkflowActionPage: React.FC = () => {
                     onRowExpansionChange={handleRowExpansionChange}
                     renderExpandedContent={renderExpandedContent}
                     onRowDelete={handleRowDelete}
-                    onRowView={handleRowView}
+                    // onRowView={handleRowView}
                     onRowEdit={handleRowEdit}
-                    viewPermissions={['wa_view']}
+                    // viewPermissions={['*']}
                     deletePermissions={['*']}
                     editPermissions={['*']}
                     updatePermissions={['*']}

@@ -41,7 +41,7 @@ import { useDeleteConfirmation } from '@/store/confirmationDialogStore'
 
 interface WorkflowAmountStageOverrideData
   extends WorkflowAmountStageOverrideUIData,
-    Record<string, unknown> {}
+  Record<string, unknown> { }
 
 const statusOptions = [
   'PENDING',
@@ -129,6 +129,7 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
   const {
     data: apiResponse,
     isLoading: workflowAmountStageOverridesLoading,
+    isFetching: workflowAmountStageOverridesFetching,
     error: workflowAmountStageOverridesError,
     refetch: refetchWorkflowAmountStageOverrides,
   } = useWorkflowAmountStageOverrides(
@@ -148,9 +149,9 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
       return apiResponse.content.map((item) =>
         mapWorkflowAmountStageOverrideToUI(item)
       ) as WorkflowAmountStageOverrideData[]
-        }
-        return []
-    }, [apiResponse])
+    }
+    return []
+  }, [apiResponse])
 
   const getWorkflowAmountStageOverrideLabelDynamic = useCallback(
     (configId: string): string => {
@@ -170,43 +171,45 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
         key: 'stageKey',
         label: getWorkflowAmountStageOverrideLabelDynamic('CDL_WASO_STAGE_KEY'),
         type: 'text' as const,
-          width: 'w-48',
+        width: 'w-48',
         sortable: true,
         copyable: true,
       },
-    {
-      key: 'stageOrder',
-      label: getWorkflowAmountStageOverrideLabelDynamic('CDL_WASO_STAGE_ORDER'),
-      type: 'text' as const,
+      {
+        key: 'stageOrder',
+        label: getWorkflowAmountStageOverrideLabelDynamic('CDL_WASO_STAGE_ORDER'),
+        type: 'text' as const,
         width: 'w-32',
-      sortable: true,
-      copyable: true,
-    },
-    {
-      key: 'requiredApprovals',
-      label: getWorkflowAmountStageOverrideLabelDynamic(
-        'CDL_WASO_REQUIRED_APPROVALS'
-      ),
-      type: 'text' as const,
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: 'requiredApprovals',
+        label: getWorkflowAmountStageOverrideLabelDynamic(
+          'CDL_WASO_REQUIRED_APPROVALS'
+        ),
+        type: 'text' as const,
         width: 'w-32',
-      sortable: true,
-    },
-    {
-      key: 'keycloakGroup',
-      label: getWorkflowAmountStageOverrideLabelDynamic(
-        'CDL_WASO_KEYCLOAK_GROUP'
-      ),
-      type: 'text' as const,
+        sortable: true,
+        copyable: true,
+      },
+      {
+        key: 'keycloakGroup',
+        label: getWorkflowAmountStageOverrideLabelDynamic(
+          'CDL_WASO_KEYCLOAK_GROUP'
+        ),
+        type: 'text' as const,
         width: 'w-48',
-      sortable: true,
-    },
-  
-    {
-      key: 'workflowAmountRuleName',
-      label: getWorkflowAmountStageOverrideLabelDynamic(
+        sortable: true,
+        copyable: true,
+      },
+
+      {
+        key: 'workflowAmountRuleName',
+        label: getWorkflowAmountStageOverrideLabelDynamic(
           'CDL_WAR_WORKFLOW_AMOUNT_RULE'
-      ),
-      type: 'text' as const,
+        ),
+        type: 'text' as const,
         width: 'w-48',
         sortable: true,
         copyable: true,
@@ -217,13 +220,13 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
         type: 'status' as const,
         width: 'w-32',
         sortable: true,
-    },
-    {
-      key: 'actions',
-      label: getWorkflowAmountStageOverrideLabelDynamic('CDL_COMMON_ACTIONS'),
-      type: 'actions' as const,
+      },
+      {
+        key: 'actions',
+        label: getWorkflowAmountStageOverrideLabelDynamic('CDL_COMMON_ACTIONS'),
+        type: 'actions' as const,
         width: 'w-20',
-    },
+      },
     ],
     [getWorkflowAmountStageOverrideLabelDynamic]
   )
@@ -303,30 +306,30 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
   const handleRowDelete = useCallback(
     (row: WorkflowAmountStageOverrideData) => {
       if (isDeleting || deleteMutation.isPending) {
-      return
-    }
+        return
+      }
 
       if (!row?.id) {
         return
       }
 
-    confirmDelete({
+      confirmDelete({
         itemName: `workflow amount stage override: ${row.stageKey || row.id}`,
         itemId: String(row.id),
-      onConfirm: async () => {
-        try {
-          setIsDeleting(true)
+        onConfirm: async () => {
+          try {
+            setIsDeleting(true)
             await deleteMutation.mutateAsync(String(row.id))
             // Refetch data after successful delete
             await refetchWorkflowAmountStageOverrides()
-        } catch (error) {
+          } catch (error) {
             // Error is handled by the mutation's onError
-          throw error
-        } finally {
-          setIsDeleting(false)
-        }
-      },
-    })
+            throw error
+          } finally {
+            setIsDeleting(false)
+          }
+        },
+      })
     },
     [isDeleting, deleteMutation, confirmDelete, refetchWorkflowAmountStageOverrides]
   )
@@ -359,10 +362,38 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
     <div className="grid grid-cols-2 gap-8"></div>
   )
 
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isRefreshLoading = isRefreshing || workflowAmountStageOverridesFetching
+  const showRefreshOverlay =
+    isRefreshLoading || workflowAmountStageOverridesLoading
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      await refetchWorkflowAmountStageOverrides()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [isRefreshing, refetchWorkflowAmountStageOverrides])
+
   return (
     <>
       <DashboardLayout title="Workflow Amount Stage Overrides">
-        <div className="flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+        <div className="relative flex flex-col h-full bg-white/75 dark:bg-gray-800/80 rounded-2xl">
+          {showRefreshOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-md shadow bg-white/90 dark:bg-gray-900/90">
+                <span className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Loading...
+                </span>
+              </div>
+            </div>
+          )}
           {workflowAmountStageOverridesLoading ? (
             <LoadingSpinner />
           ) : workflowAmountStageOverridesError ? (
@@ -375,24 +406,27 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
           ) : (
             <>
               <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/75 dark:bg-gray-800/80 dark:border-gray-700 rounded-t-2xl">
-            <PageActionButtons
-              entityType="workflowAmountStageOverride"
+                <PageActionButtons
+                  entityType="workflowAmountStageOverride"
                   customActionButtons={actionButtons}
                   onAddNew={handleAddNew}
+                  onRefresh={handleRefresh}
+                  isRefreshing={isRefreshLoading}
                   showButtons={{
                     addNew: true,
-              }}
-            />
-          </div>
+                    refresh: true,
+                  }}
+                />
+              </div>
 
-          <div className="flex flex-col flex-1 min-h-0">
-            <div className="flex-1 overflow-auto">
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-auto">
                   <PermissionAwareDataTable<WorkflowAmountStageOverrideData>
                     data={paginated}
-                columns={tableColumns}
-                searchState={search}
-                onSearchChange={handleSearchChange}
-                paginationState={{
+                    columns={tableColumns}
+                    searchState={search}
+                    onSearchChange={handleSearchChange}
+                    paginationState={{
                       page: effectivePage,
                       rowsPerPage: rowsPerPage,
                       totalRows: effectiveTotalRows,
@@ -402,22 +436,23 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
                     }}
                     onPageChange={handlePageChange}
                     onRowsPerPageChange={handleRowsPerPageChange}
-                selectedRows={selectedRows}
-                onRowSelectionChange={handleRowSelectionChange}
-                expandedRows={expandedRows}
-                onRowExpansionChange={handleRowExpansionChange}
+                    selectedRows={selectedRows}
+                    onRowSelectionChange={handleRowSelectionChange}
+                    expandedRows={expandedRows}
+                    onRowExpansionChange={handleRowExpansionChange}
                     renderExpandedContent={renderExpandedContent}
-                statusOptions={statusOptions}
-                onRowDelete={handleRowDelete}
+                    statusOptions={statusOptions}
+                    onRowDelete={handleRowDelete}
                     onRowEdit={handleRowEdit}
                     deletePermissions={['*']}
+                    viewPermissions={['*']}
                     editPermissions={['*']}
                     updatePermissions={['*']}
                     sortConfig={sortConfig}
                     onSort={handleSort}
-              />
-            </div>
-          </div>
+                  />
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -431,16 +466,16 @@ const WorkflowAmountStageOverridesPage: React.FC = () => {
           stageOverrideData={
             editingItem
               ? ({
-                  id: editingItem.id,
-                  stageOrder: editingItem.stageOrder,
-                  requiredApprovals: editingItem.requiredApprovals,
-                  keycloakGroup: editingItem.keycloakGroup,
-                  stageKey: editingItem.stageKey,
-                  workflowAmountRuleId: editingItem.workflowAmountRuleId,
-                  workflowAmountRuleName:
-                    editingItem.workflowAmountRuleName || '',
-                  active: editingItem.active ?? false,
-                } as WorkflowAmountStageOverrideUIData)
+                id: editingItem.id,
+                stageOrder: editingItem.stageOrder,
+                requiredApprovals: editingItem.requiredApprovals,
+                keycloakGroup: editingItem.keycloakGroup,
+                stageKey: editingItem.stageKey,
+                workflowAmountRuleId: editingItem.workflowAmountRuleId,
+                workflowAmountRuleName:
+                  editingItem.workflowAmountRuleName || '',
+                active: editingItem.active ?? false,
+              } as WorkflowAmountStageOverrideUIData)
               : null
           }
         />
