@@ -51,25 +51,20 @@ const CopyableValueComponent: React.FC<CopyableValueProps> = ({
   const handleCopy = useCallback((event?: React.MouseEvent<HTMLButtonElement>) => {
     event?.stopPropagation()
     if (!isCopyable) return
-    const copied = copy(stringValue)
-    if (copied) {
-      setShowCopied(true)
-    }
+    copy(stringValue)
+    setShowCopied(true)
   }, [isCopyable, stringValue])
 
   const iconVisibilityClass = showIconOnHover
     ? 'opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto'
     : 'opacity-100'
 
+  const copiedIconClass = showCopied ? 'text-blue-600 dark:text-blue-400' : ''
+
   return (
     <div
       className={`group relative inline-flex flex-col gap-1 min-w-0 ${className}`}
     >
-      {showCopied && (
-        <span className="absolute left-0 text-xs text-blue-600 -top-4 dark:text-blue-400">
-          Copied
-        </span>
-      )}
       <div className="inline-flex items-center min-w-0 gap-2">
         <span
           className={`min-w-0 truncate ${valueClassName}`}
@@ -85,7 +80,7 @@ const CopyableValueComponent: React.FC<CopyableValueProps> = ({
           disabled={!isCopyable}
           className={`rounded p-0.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity cursor-pointer ${iconVisibilityClass}`}
         >
-          <Copy className={`h-3.5 w-3.5 ${iconClassName}`} />
+          <Copy className={`h-3.5 w-3.5 ${iconClassName} ${copiedIconClass}`} />
         </button>
       </div>
     </div>

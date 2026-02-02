@@ -166,6 +166,14 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
   const tableColumns = useMemo(
     () => [
       {
+        key: "stageOrder",
+        label: getWorkflowStageTemplateLabelDynamic("CDL_WST_ORDER"),
+        type: "text" as const,
+        width: "w-38",
+        sortable: true,
+        copyable: true,
+      },
+      {
         key: "name",
         label: getWorkflowStageTemplateLabelDynamic("CDL_WST_NAME"),
         type: "text" as const,
@@ -183,14 +191,7 @@ const WorkflowStageTemplatesPageImpl: React.FC = () => {
         sortable: true,
         copyable: true,
       },
-      {
-        key: "stageOrder",
-        label: getWorkflowStageTemplateLabelDynamic("CDL_WST_ORDER"),
-        type: "text" as const,
-        width: "w-38",
-        sortable: true,
-        copyable: true,
-      },
+     
       {
         key: "stageKey",
         label: getWorkflowStageTemplateLabelDynamic("CDL_WST_KEY"),
