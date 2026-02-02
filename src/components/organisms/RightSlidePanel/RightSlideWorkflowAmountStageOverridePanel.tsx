@@ -112,8 +112,13 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
     if (!workflowAmountRulesData?.content) return []
 
     const amountRuleNames = workflowAmountRulesData.content.map((rule) => ({
-      amountRuleName: `RULE_${rule.id}`,
+      amountRuleName: rule.amountRuleName?.trim() || `RULE_${rule.id}`,
       id: rule.id,
+      workflowDefinitionName:
+        typeof rule.workflowDefinitionDTO === 'object' &&
+        rule.workflowDefinitionDTO !== null
+          ? (rule.workflowDefinitionDTO as { name?: string }).name || ''
+          : '',
     }))
 
     const uniqueAmountRuleNames = amountRuleNames.filter(
@@ -122,7 +127,12 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
         self.findIndex((t) => t.amountRuleName === item.amountRuleName)
     )
 
-    return uniqueAmountRuleNames
+    return uniqueAmountRuleNames.map((item) => {
+      const label = item.workflowDefinitionName
+        ? `${item.workflowDefinitionName}(${item.amountRuleName})`
+        : item.amountRuleName
+      return { ...item, label }
+    })
   }, [workflowAmountRulesData])
 
   const {
@@ -238,7 +248,8 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
       if (firstRule && typeof firstRule.id === 'number') {
         setSelectedWorkflowAmountRuleId(firstRule.id)
         // Set the default amountRuleName value in the form
-        setValue('amountRuleName', `RULE_${firstRule.id}`, {
+        const defaultRuleName = firstRule.amountRuleName?.trim() || `RULE_${firstRule.id}`
+        setValue('amountRuleName', defaultRuleName, {
           shouldValidate: false,
         })
       }
@@ -812,6 +823,13 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
                     if (extraProps.onChange) extraProps.onChange(val)
                   }}
                   onBlur={field.onBlur}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        maxHeight: 280,
+                      },
+                    },
+                  }}
                 >
                   {extraProps.isLoading ? (
                     <MenuItem disabled>
@@ -996,7 +1014,7 @@ export const RightSlideWorkflowAmountStageOverridePanel: React.FC<
                 'CDL_WAR_WORKFLOW_AMOUNT_RULE'
               ),
               availableAmountRuleNames.map((rule) => ({
-                label: rule.amountRuleName,
+                label: rule.label ?? rule.amountRuleName,
                 value: rule.amountRuleName,
                 id: rule.id,
               })),

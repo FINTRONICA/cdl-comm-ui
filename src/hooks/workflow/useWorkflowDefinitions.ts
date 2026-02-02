@@ -232,11 +232,14 @@ export function useApplicationModules() {
 }
 
 export function useWorkflowActions() {
+  const page = 0
+  const size = 1000
   return useQuery({
-    queryKey: ['workflowActions'],
-    queryFn: () => workflowDefinitionService.getWorkflowDefinitionActions(),
+    queryKey: ['workflowActions', page, size],
+    queryFn: () => workflowDefinitionService.getWorkflowDefinitionActions(page, size),
     staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
+    refetchOnMount: true,
     retry: 2,
   })
 }

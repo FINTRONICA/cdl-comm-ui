@@ -423,6 +423,13 @@ const RightSlideWorkflowDefinitionPanelComponent: React.FC<
                     }
                   }}
                   onBlur={field.onBlur}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        maxHeight: 280,
+                      },
+                    },
+                  }}
                 >
                   {extraProps.isLoading ? (
                     <MenuItem disabled>

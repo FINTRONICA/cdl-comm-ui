@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from 'react'
-import { sanitizeInput } from '@/utils'
 
 interface UseTableStateProps<T> {
   data: T[]
@@ -55,20 +54,20 @@ export const useTableState = <T>({
     if (hasSearchValues) {
       filteredData = data.filter((row: unknown) => {
         return memoizedSearchFields.every((field) => {
-          const searchVal = search[field]?.trim() || ''
-          if (!searchVal) return true
+          const searchVal = search[field] ?? ''
+          const normalizedSearch = searchVal.trim().toLowerCase()
+          if (!normalizedSearch) return true
 
           const value = (row as Record<string, unknown>)[field]
 
           // For status fields, use exact match (case-insensitive)
           if (field === 'status' || field === 'paymentStatus' || field === 'approvalStatus') {
-            return String(value ?? '').toUpperCase() === searchVal.toUpperCase()
+            return String(value ?? '').trim().toLowerCase() === normalizedSearch
           }
 
           // For other fields, use substring match (case-insensitive)
-          const searchLower = searchVal.toLowerCase()
           const valueLower = String(value ?? '').toLowerCase()
-          return valueLower.includes(searchLower)
+          return valueLower.includes(normalizedSearch)
         })
       })
     }
@@ -140,9 +139,8 @@ export const useTableState = <T>({
   }, [filtered, pagination])
 
   const handleSearchChange = useCallback((field: string, value: string) => {
-    const sanitizedValue = sanitizeInput(value)
     setSearch((prev) => {
-      const newSearch = { ...prev, [field]: sanitizedValue }
+      const newSearch = { ...prev, [field]: value }
 
       setPage(1)
       return newSearch

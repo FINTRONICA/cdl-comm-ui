@@ -769,11 +769,19 @@ export class WorkflowDefinitionService {
     }
   }
 
-  async getWorkflowDefinitionActions(): Promise<WorkflowActionDTO[]> {
+  async getWorkflowDefinitionActions(
+    page = 0,
+    size = 999
+  ): Promise<WorkflowActionDTO[]> {
     try {
-      const result = await apiClient.get<PaginatedResponse<WorkflowActionDTO>>(
-        buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.FIND_ALL)
-      )
+      const params = {
+        ...buildPaginationParams(page, size),
+        'deleted.equals': 'false',
+        'enabled.equals': 'true',
+      }
+      const queryString = new URLSearchParams(params).toString()
+      const url = `${buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.FIND_ALL)}?${queryString}`
+      const result = await apiClient.get<PaginatedResponse<WorkflowActionDTO>>(url)
       return result.content || []
     } catch (error) {
       throw error
