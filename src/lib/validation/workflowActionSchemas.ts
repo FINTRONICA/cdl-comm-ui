@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sanitizeInput, sanitizeOptionalInput } from '@/utils';
 
 // Workflow Action validation schemas
 export const WorkflowActionSchemas = {
@@ -170,11 +171,11 @@ export const sanitizeWorkflowActionData = (data: {
   description: string
 } => {
   return {
-    actionKey: data.actionKey?.toString().trim() || '',
-    actionName: data.actionName?.toString().trim().replace(/\s+/g, ' ') || '', // Normalize whitespace
-    moduleCode: data.moduleCode?.toString().trim() || '',
-    name: data.name?.toString().trim().replace(/\s+/g, ' ') || '', // Normalize whitespace
-    description: data.description?.toString().trim() || '',
+    actionKey: sanitizeInput(data.actionKey?.toString() ?? ''),
+    actionName: sanitizeInput(data.actionName?.toString() ?? ''),
+    moduleCode: sanitizeInput(data.moduleCode?.toString() ?? ''),
+    name: sanitizeInput(data.name?.toString() ?? ''),
+    description: sanitizeOptionalInput(data.description?.toString()),
   };
 };
 

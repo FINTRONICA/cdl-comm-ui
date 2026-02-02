@@ -28,6 +28,7 @@ import { getWorkflowLabelsByCategory } from '@/constants/mappings/workflowMappin
 import { useAppStore } from '@/store'
 import { alpha, useTheme } from '@mui/material/styles'
 import { buildPanelSurfaceTokens } from './panelTheme'
+import { sanitizeInput } from '@/utils'
 
 interface WorkflowActionFormData {
   actionKey: string
@@ -120,6 +121,7 @@ export const RightSlideWorkflowActionPanel: React.FC<RightSlidePanelProps> = ({
     control,
     handleSubmit,
     reset,
+    setValue,
     trigger,
     formState: { errors },
   } = useForm<WorkflowActionFormData>({
@@ -190,26 +192,27 @@ export const RightSlideWorkflowActionPanel: React.FC<RightSlidePanelProps> = ({
     try {
       // Simple required checks first so empty required fields show errors immediately
       const requiredFields: Record<string, string> = {
-        actionKey: 'Action Key is required',
-        actionName: 'Action Name is required',
-        moduleCode: 'Module Code is required',
-        name: 'Name is required',
+        actionKey: 'This field cannot be empty or spaces only',
+        actionName: 'This field cannot be empty or spaces only',
+        moduleCode: 'This field cannot be empty or spaces only',
+        name: 'This field cannot be empty or spaces only',
         // Description is optional, not required
       }
 
       if (requiredFields[fieldName]) {
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
+        const sanitizedValue = sanitizeInput(value ?? '')
+        if (!sanitizedValue) {
           return requiredFields[fieldName]
         }
       }
 
       // Transform form data to match WorkflowActionSchemas format
       const workflowActionForValidation = {
-        actionKey: allValues.actionKey,
-        actionName: allValues.actionName,
-        moduleCode: allValues.moduleCode,
-        name: allValues.name,
-        description: allValues.description || '',
+        actionKey: sanitizeInput(allValues.actionKey),
+        actionName: sanitizeInput(allValues.actionName),
+        moduleCode: sanitizeInput(allValues.moduleCode),
+        name: sanitizeInput(allValues.name),
+        description: sanitizeInput(allValues.description || ''),
       }
 
       // Validate using WorkflowActionSchemas.workflowActionForm
@@ -225,7 +228,7 @@ export const RightSlideWorkflowActionPanel: React.FC<RightSlidePanelProps> = ({
           issue.path.includes(fieldName)
         )
 
-        return fieldError ? fieldError.message : true
+        return fieldError ? 'Invalid input' : true
       }
     } catch {
       return true // Return true on error to avoid blocking the form
@@ -250,24 +253,32 @@ export const RightSlideWorkflowActionPanel: React.FC<RightSlidePanelProps> = ({
         const isValid = await trigger()
 
         if (!isValid) {
-          // Get specific validation errors for text fields only
-          const errors: string[] = []
-          if (!data.actionKey?.trim()) errors.push('Action Key is required')
-          if (!data.actionName?.trim()) errors.push('Action Name is required')
-          if (!data.moduleCode?.trim()) errors.push('Module Code is required')
-          if (!data.name?.trim()) errors.push('Name is required')
-          // Description is optional, not required
+          const hasEmptyRequiredFields = [
+            data.actionKey,
+            data.actionName,
+            data.moduleCode,
+            data.name,
+          ].some((value) => !sanitizeInput(value ?? ''))
 
-          if (errors.length > 0) {
-            setErrorMessage(
-              `Please fill in the required fields: ${errors.join(', ')}`
-            )
-          }
+          setErrorMessage(
+            hasEmptyRequiredFields
+              ? 'This field cannot be empty or spaces only'
+              : 'Invalid input'
+          )
           return
         }
 
-        // Validate and sanitize form data
-        const validatedData = validateAndSanitizeWorkflowActionData(data)
+        let validatedData: WorkflowActionFormData
+        try {
+          const parsedData = validateAndSanitizeWorkflowActionData(data)
+          validatedData = {
+            ...parsedData,
+            description: parsedData.description ?? '',
+          }
+        } catch {
+          setErrorMessage('Invalid input')
+          return
+        }
 
         const hasId =
           !!(dataToEdit && (dataToEdit as { id?: string | number }).id) ||
@@ -416,6 +427,14 @@ export const RightSlideWorkflowActionPanel: React.FC<RightSlidePanelProps> = ({
           <>
             <TextField
               {...field}
+              onBlur={(event) => {
+                const sanitizedValue = sanitizeInput(event.target.value)
+                setValue(name, sanitizedValue, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+                field.onBlur()
+              }}
               label={label}
               fullWidth
               required={required}

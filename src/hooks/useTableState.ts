@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import { sanitizeInput } from '@/utils'
 
 interface UseTableStateProps<T> {
   data: T[]
@@ -139,8 +140,9 @@ export const useTableState = <T>({
   }, [filtered, pagination])
 
   const handleSearchChange = useCallback((field: string, value: string) => {
+    const sanitizedValue = sanitizeInput(value)
     setSearch((prev) => {
-      const newSearch = { ...prev, [field]: value }
+      const newSearch = { ...prev, [field]: sanitizedValue }
 
       setPage(1)
       return newSearch

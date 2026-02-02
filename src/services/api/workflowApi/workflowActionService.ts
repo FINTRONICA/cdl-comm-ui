@@ -5,6 +5,7 @@ import {
   API_ENDPOINTS,
 } from '@/constants/apiEndpoints'
 import type { PaginatedResponse } from '@/types'
+import { sanitizeInput } from '@/utils'
 export interface WorkflowAction {
   id: number
   actionKey: string
@@ -78,19 +79,85 @@ export const mapWorkflowActionToUIData = (
     description: formatValue(apiData.description),
   }
 }
+
+const sanitizeWorkflowActionFilters = (filters?: WorkflowActionFilters) => {
+  if (!filters) return {}
+
+  const sanitizedFilters: Record<string, string> = {}
+  const setIfValid = (key: keyof WorkflowActionFilters) => {
+    const value = filters[key]
+    if (typeof value !== 'string') return
+    const sanitizedValue = sanitizeInput(value)
+    if (sanitizedValue) {
+      sanitizedFilters[key] = sanitizedValue
+    }
+  }
+
+  setIfValid('name')
+  setIfValid('moduleCode')
+  setIfValid('actionKey')
+  setIfValid('actionName')
+  setIfValid('description')
+
+  return sanitizedFilters
+}
+
+const sanitizeCreateWorkflowActionPayload = (
+  data: CreateWorkflowActionRequest
+): CreateWorkflowActionRequest => {
+  const sanitizedDescription = sanitizeInput(data.description ?? '')
+
+  const sanitizedPayload: CreateWorkflowActionRequest = {
+    ...data,
+    actionKey: sanitizeInput(data.actionKey),
+    actionName: sanitizeInput(data.actionName),
+    moduleCode: sanitizeInput(data.moduleCode),
+    name: sanitizeInput(data.name),
+  }
+
+  if (sanitizedDescription) {
+    sanitizedPayload.description = sanitizedDescription
+  }
+
+  return sanitizedPayload
+}
+
+const sanitizeUpdateWorkflowActionPayload = (
+  data: UpdateWorkflowActionRequest
+): UpdateWorkflowActionRequest => {
+  const sanitizedPayload: UpdateWorkflowActionRequest = { ...data }
+  type WorkflowActionStringField =
+    | 'actionKey'
+    | 'actionName'
+    | 'moduleCode'
+    | 'name'
+    | 'description'
+  const sanitizeOptionalField = (key: WorkflowActionStringField) => {
+    const value = sanitizedPayload[key]
+    if (typeof value !== 'string') return
+    const sanitizedValue = sanitizeInput(value)
+    if (!sanitizedValue) {
+      delete sanitizedPayload[key]
+      return
+    }
+    sanitizedPayload[key] = sanitizedValue
+  }
+
+  sanitizeOptionalField('actionKey')
+  sanitizeOptionalField('actionName')
+  sanitizeOptionalField('moduleCode')
+  sanitizeOptionalField('name')
+  sanitizeOptionalField('description')
+
+  return sanitizedPayload
+}
 export class WorkflowActionService {
   async getWorkflowActions(
     page = 0,
     size = 20,
     filters?: WorkflowActionFilters
   ): Promise<PaginatedResponse<WorkflowAction>> {
-    const apiFilters: Record<string, string> = {}
-    if (filters) {
-      if (filters.name) apiFilters.name = filters.name
-      if (filters.moduleCode) apiFilters.moduleCode = filters.moduleCode
-      if (filters.actionKey) apiFilters.actionKey = filters.actionKey
-      if (filters.description) apiFilters.description = filters.description
-    }
+    const apiFilters = sanitizeWorkflowActionFilters(filters)
     const params = {
       ...buildPaginationParams(page, size),
       ...apiFilters,
@@ -122,7 +189,11 @@ export class WorkflowActionService {
     page = 0,
     size = 20
   ): Promise<PaginatedResponse<WorkflowAction>> {
-    const params = { ...buildPaginationParams(page, size), query }
+    const sanitizedQuery = sanitizeInput(query)
+    if (!sanitizedQuery) {
+      return this.getWorkflowActions(page, size)
+    }
+    const params = { ...buildPaginationParams(page, size), query: sanitizedQuery }
     const queryString = new URLSearchParams(params).toString()
     const url = `${buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.SEARCH)}?${queryString}`
 
@@ -148,9 +219,10 @@ export class WorkflowActionService {
     data: CreateWorkflowActionRequest
   ): Promise<WorkflowAction> {
     try {
+      const sanitizedPayload = sanitizeCreateWorkflowActionPayload(data)
       const result = await apiClient.post<WorkflowAction>(
         buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.SAVE),
-        data
+        sanitizedPayload
       )
       return result
     } catch (error) {
@@ -163,9 +235,10 @@ export class WorkflowActionService {
     updates: UpdateWorkflowActionRequest
   ): Promise<WorkflowAction> {
     try {
+      const sanitizedUpdates = sanitizeUpdateWorkflowActionPayload(updates)
       const result = await apiClient.put<WorkflowAction>(
         buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.UPDATE(id)),
-        updates
+        sanitizedUpdates
       )
       return result
     } catch (error) {
@@ -176,7 +249,7 @@ export class WorkflowActionService {
   async deleteWorkflowAction(id: string): Promise<void> {
     try {
       await apiClient.delete<string>(
-        buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.SOFT_DELETE(id))
+        buildApiUrl(API_ENDPOINTS.WORKFLOW_ACTION.DELETE(id))
       )
     } catch (error) {
       throw error

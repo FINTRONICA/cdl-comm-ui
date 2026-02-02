@@ -10,9 +10,11 @@ import { JWTParser } from '@/utils/jwtParser';
 import { JWTPayload } from '@/types/auth';
 import { getAuthCookies } from '@/utils/cookieUtils';
 import { displayValue } from './nullHandling'
+import { sanitizeInput, sanitizeOptionalInput } from './sanitizeInput'
 
 // Status utilities
 export * from './statusUtils'
+export { sanitizeInput, sanitizeOptionalInput }
 
 dayjs.extend(relativeTime)
 dayjs.extend(timezone)
