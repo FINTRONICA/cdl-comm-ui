@@ -1,46 +1,46 @@
-import React from 'react'
-import { useRouter } from 'next/navigation'
-import { UserProfile } from '../../molecules/UserProfile'
-import { ThemeSwitcher } from '../../molecules/ThemeSwitcher'
-import { useAuthStore } from '@/store/authStore'
-import { useLogout } from '@/hooks/useAuthQuery'
+import React from "react";
+import { useRouter } from "next/navigation";
+import { UserProfile } from "../../molecules/UserProfile";
+import { ThemeSwitcher } from "../../molecules/ThemeSwitcher";
+import { useAuthStore } from "@/store/authStore";
+import { useLogout } from "@/hooks/useAuthQuery";
 
 interface HeaderProps {
-  title: string
-  subtitle?: string
-  showActions?: boolean
-  showFilters?: boolean
-  className?: string
+  title: string;
+  subtitle?: string;
+  showActions?: boolean;
+  showFilters?: boolean;
+  className?: string;
   actions?: {
-    label: string
-    icon?: React.ComponentType<{ className?: string }>
-    onClick: () => void
-    variant?: 'primary' | 'secondary'
-  }[]
+    label: string;
+    icon?: React.ComponentType<{ className?: string }>;
+    onClick: () => void;
+    variant?: "primary" | "secondary";
+  }[];
 }
 
 export const Header: React.FC<HeaderProps> = ({
   title,
-  subtitle = 'Description text',
-  className = '',
+  subtitle = "Description text",
+  className = "",
 }) => {
-  const router = useRouter()
-  const { user } = useAuthStore()
-  const logoutMutation = useLogout()
+  const router = useRouter();
+  const { user } = useAuthStore();
+  const logoutMutation = useLogout();
 
   const handleLogout = async () => {
     try {
-      await logoutMutation.mutateAsync()
-      router.push('/login')
+      await logoutMutation.mutateAsync();
+      router.push("/login");
     } catch (error) {
       // Even if logout fails, redirect to login
-      router.push('/login')
+      router.push("/login");
     }
-  }
+  };
 
   // Fallback user data if user is not available
-  const displayName = user?.name || 'User'
-  const displayEmail = user?.email
+  const displayName = user?.name || "User";
+  const displayEmail = user?.email;
 
   return (
     <header className={`dark:bg-gray-900 px-5 py-4 ${className}`}>
@@ -58,8 +58,11 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex-1"></div>
 
         {/* Right side - Controls */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <ThemeSwitcher />
+          <div className="inline-flex items-center justify-center min-h-0 px-0.5 text-xs font-semibold text-white bg-blue-500 rounded-md shadow-sm aspect-square min-w-4">
+            Comm
+          </div>
           <UserProfile
             name={displayName}
             {...(displayEmail && { email: displayEmail })}
@@ -68,5 +71,5 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
     </header>
-  )
-}
+  );
+};
