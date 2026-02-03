@@ -280,7 +280,7 @@ const PageActionButtonsComponent: React.FC<PageActionButtonsProps> = ({
     },
     agreementSubType: {
       label: 'Add New Agreement Sub Type',
-      route: '/master/agreement-Sub-Type/new',
+      route: '/master/agreement-sub-type/new',
       permissions: ['*'], // Temporarily set to allow all users
       downloadPermission: ['data_export'], // Unified download permission
       uploadPermission: ['bulk_upload'], // Unified upload permission
