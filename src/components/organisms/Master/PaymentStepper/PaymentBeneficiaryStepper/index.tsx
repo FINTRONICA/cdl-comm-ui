@@ -12,7 +12,7 @@ import {
   CircularProgress,
   Typography,
 } from "@mui/material";
-import { FormProvider } from "react-hook-form";
+import { FormProvider, type FieldErrors } from "react-hook-form";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import {
   usePaymentBeneficiaryStepStatus,
@@ -82,6 +82,7 @@ export default function PaymentBeneficiaryStepperWrapper({
   const [activeStep, setActiveStep] = useState(initialStep);
   const [isEditingMode, setIsEditingMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isStepValidating, setIsStepValidating] = useState(false);
 
   const mode = searchParams.get("mode");
   const isViewMode =
@@ -144,6 +145,10 @@ export default function PaymentBeneficiaryStepperWrapper({
     [methods]
   );
 
+  useEffect(() => {
+    setActiveStep(initialStep);
+  }, [initialStep]);
+
   const getStepContent = useCallback(
     (step: number) => {
       switch (step) {
@@ -204,6 +209,121 @@ export default function PaymentBeneficiaryStepperWrapper({
     return "";
   }, [isViewMode, isEditingMode]);
 
+  const getErrorByPath = useCallback((errors: FieldErrors, path: string) => {
+    return path.split(".").reduce<unknown>((acc, key) => {
+      if (acc && typeof acc === "object" && key in (acc as Record<string, unknown>)) {
+        return (acc as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, errors);
+  }, []);
+
+  const findFirstErrorPath = useCallback(
+    (errors: FieldErrors, prefix = ""): string | null => {
+      for (const [key, value] of Object.entries(errors)) {
+        const currentPath = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === "object") {
+          if ("message" in value || "type" in value) {
+            return currentPath;
+          }
+          const nested = findFirstErrorPath(value as FieldErrors, currentPath);
+          if (nested) return nested;
+        }
+      }
+      return null;
+    },
+    []
+  );
+
+  const scrollToFirstError = useCallback(() => {
+    const errors = methods.formState.errors as FieldErrors;
+    const firstError = findFirstErrorPath(errors);
+    if (!firstError || typeof document === "undefined") return;
+    methods.setFocus(firstError as never);
+    const fieldElement = document.querySelector(
+      `[name="${firstError}"]`
+    ) as HTMLElement | null;
+    fieldElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [methods, findFirstErrorPath]);
+
+  const validateFormFields = useCallback(async () => {
+    const isFormValid = await methods.trigger(undefined, { shouldFocus: false });
+    if (!isFormValid) {
+      notifications.showError(
+        "Please fill in all required fields correctly before proceeding."
+      );
+      scrollToFirstError();
+    }
+    return isFormValid;
+  }, [methods, notifications, scrollToFirstError]);
+
+  const stepConfigs = useMemo(
+    () => ({
+      0: {
+        validateStep: async () => validateFormFields(),
+      },
+      1: {
+        validateStep: async () => {
+          if (!paymentBeneficiaryId) {
+            notifications.showError(
+              "Payment Beneficiary ID is required to proceed to Review step."
+            );
+            return false;
+          }
+          return true;
+        },
+      },
+      2: {
+        validateStep: async () => {
+          if (!stepStatus?.step1) {
+            notifications.showError(
+              "Please complete Payment Beneficiary details before continuing."
+            );
+            return false;
+          }
+          return true;
+        },
+      },
+    }),
+    [validateFormFields, notifications, paymentBeneficiaryId, stepStatus?.step1]
+  );
+
+  const validateCurrentStep = useCallback(async () => {
+    const stepConfig = stepConfigs[activeStep as keyof typeof stepConfigs];
+    const validator = stepConfig?.validateStep;
+    if (!validator) return true;
+    setIsStepValidating(true);
+    try {
+      return await validator();
+    } finally {
+      setIsStepValidating(false);
+    }
+  }, [activeStep, stepConfigs]);
+
+  useEffect(() => {
+    if (!paymentBeneficiaryId || !stepStatus) return;
+    const maxAllowedStep = stepStatus.step1 ? 2 : 0;
+    if (activeStep <= maxAllowedStep) return;
+    const querySuffix = isViewMode
+      ? "?mode=view"
+      : isEditingMode
+        ? "?editing=true"
+        : "";
+    router.replace(
+      `/payment-beneficiary/${paymentBeneficiaryId}/step/${maxAllowedStep + 1}${querySuffix}`
+    );
+    setActiveStep(maxAllowedStep);
+    notifications.showError("Please complete previous steps before continuing.");
+  }, [
+    activeStep,
+    paymentBeneficiaryId,
+    stepStatus,
+    router,
+    isViewMode,
+    isEditingMode,
+    notifications,
+  ]);
+
   useEffect(() => {
     if (
       activeStep !== 2 &&
@@ -238,8 +358,14 @@ export default function PaymentBeneficiaryStepperWrapper({
 
   const handleSaveAndNext = async () => {
     try {
-      setIsSaving(true);
       notifications.clearNotifications();
+
+      const canProceed = await validateCurrentStep();
+      if (!canProceed) {
+        return;
+      }
+
+      setIsSaving(true);
 
       if (isViewMode) {
         const nextStep = activeStep + 1;
@@ -338,25 +464,6 @@ export default function PaymentBeneficiaryStepperWrapper({
           setIsSaving(false);
           return;
         }
-      }
-
-      const isFormValid = await methods.trigger();
-
-      if (!isFormValid) {
-        const formErrors = methods.formState.errors;
-        const errorFields = Object.keys(formErrors);
-        const errorMessages = errorFields.map((field) => {
-          const error = formErrors[field as keyof typeof formErrors];
-          return error?.message || `${field} is invalid`;
-        });
-
-        notifications.showError(
-          errorMessages.length > 0
-            ? `Please fix the following errors: ${errorMessages.join(", ")}`
-            : "Please fill in all required fields correctly before proceeding."
-        );
-        setIsSaving(false);
-        return;
       }
 
       const currentFormData = methods.getValues() as unknown as Record<
@@ -633,14 +740,14 @@ export default function PaymentBeneficiaryStepperWrapper({
               <Button
                 onClick={handleSaveAndNext}
                 variant="contained"
-                disabled={isSaving}
+                disabled={isSaving || isStepValidating}
                 startIcon={
-                  isSaving ? (
+                  isSaving || isStepValidating ? (
                     <CircularProgress size={16} color="inherit" />
                   ) : undefined
                 }
                 sx={{
-                  width: isSaving ? "140px" : "114px",
+                  width: isSaving || isStepValidating ? "140px" : "114px",
                   height: "36px",
                   gap: "6px",
                   opacity: 1,
@@ -667,8 +774,10 @@ export default function PaymentBeneficiaryStepperWrapper({
                   },
                 }}
               >
-                {isSaving
-                  ? "Saving..."
+                {isSaving || isStepValidating
+                  ? isSaving
+                    ? "Saving..."
+                    : "Validating..."
                   : isViewMode
                     ? activeStep === steps.length - 1
                       ? "Done"

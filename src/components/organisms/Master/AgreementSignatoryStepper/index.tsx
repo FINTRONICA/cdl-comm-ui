@@ -12,7 +12,7 @@ import {
   CircularProgress,
   Typography,
 } from '@mui/material'
-import { FormProvider } from 'react-hook-form'
+import { FormProvider, type FieldErrors } from 'react-hook-form'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import {
   useAgreementSignatoryStepStatus,
@@ -83,6 +83,7 @@ export default function AgreementSignatoryStepperWrapper({
   const [activeStep, setActiveStep] = useState(initialStep)
   const [isEditingMode, setIsEditingMode] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isStepValidating, setIsStepValidating] = useState(false)
 
   // Check if we're in view mode (read-only)
   const mode = searchParams.get('mode')
@@ -157,6 +158,10 @@ export default function AgreementSignatoryStepperWrapper({
     [methods]
   )
 
+  useEffect(() => {
+    setActiveStep(initialStep)
+  }, [initialStep])
+
   // Step content renderer - memoized to prevent unnecessary re-renders
   const stepContent = useMemo(() => {
     switch (activeStep) {
@@ -219,6 +224,116 @@ export default function AgreementSignatoryStepperWrapper({
     return ''
   }, [isViewMode, isEditingMode])
 
+  const getErrorByPath = useCallback((errors: FieldErrors, path: string) => {
+    return path.split('.').reduce<unknown>((acc, key) => {
+      if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+        return (acc as Record<string, unknown>)[key]
+      }
+      return undefined
+    }, errors)
+  }, [])
+
+  const findFirstErrorPath = useCallback((errors: FieldErrors, prefix = ''): string | null => {
+    for (const [key, value] of Object.entries(errors)) {
+      const currentPath = prefix ? `${prefix}.${key}` : key
+      if (value && typeof value === 'object') {
+        if ('message' in value || 'type' in value) {
+          return currentPath
+        }
+        const nested = findFirstErrorPath(value as FieldErrors, currentPath)
+        if (nested) return nested
+      }
+    }
+    return null
+  }, [])
+
+  const scrollToFirstError = useCallback(() => {
+    const errors = methods.formState.errors as FieldErrors
+    const firstError = findFirstErrorPath(errors)
+    if (!firstError || typeof document === 'undefined') return
+    methods.setFocus(firstError as never)
+    const fieldElement = document.querySelector(`[name="${firstError}"]`) as HTMLElement | null
+    fieldElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [methods, findFirstErrorPath])
+
+  const validateFormFields = useCallback(async () => {
+    const isFormValid = await methods.trigger(undefined, { shouldFocus: false })
+    if (!isFormValid) {
+      notifications.showError(
+        'Please fill in all required fields correctly before proceeding.'
+      )
+      scrollToFirstError()
+    }
+    return isFormValid
+  }, [methods, notifications, scrollToFirstError])
+
+  const stepConfigs = useMemo(
+    () => ({
+      0: {
+        validateStep: async () => validateFormFields(),
+      },
+      1: {
+        validateStep: async () => {
+          if (!effectiveAgreementSignatoryId) {
+            notifications.showError(
+              'Agreement Signatory ID is required to proceed to Review step.'
+            )
+            return false
+          }
+          return true
+        },
+      },
+      2: {
+        validateStep: async () => {
+          if (!stepStatus?.step1) {
+            notifications.showError(
+              'Please complete Agreement Signatory details before continuing.'
+            )
+            return false
+          }
+          return true
+        },
+      },
+    }),
+    [validateFormFields, notifications, effectiveAgreementSignatoryId, stepStatus?.step1]
+  )
+
+  const validateCurrentStep = useCallback(async () => {
+    const stepConfig = stepConfigs[activeStep as keyof typeof stepConfigs]
+    const validator = stepConfig?.validateStep
+    if (!validator) return true
+    setIsStepValidating(true)
+    try {
+      return await validator()
+    } finally {
+      setIsStepValidating(false)
+    }
+  }, [activeStep, stepConfigs])
+
+  useEffect(() => {
+    if (!effectiveAgreementSignatoryId || !stepStatus) return
+    const maxAllowedStep = stepStatus.step1 ? 2 : 0
+    if (activeStep <= maxAllowedStep) return
+    const querySuffix = isViewMode
+      ? '?mode=view'
+      : isEditingMode
+        ? '?editing=true'
+        : ''
+    router.replace(
+      `/agreement-signatory/${effectiveAgreementSignatoryId}/step/${maxAllowedStep + 1}${querySuffix}`
+    )
+    setActiveStep(maxAllowedStep)
+    notifications.showError('Please complete previous steps before continuing.')
+  }, [
+    activeStep,
+    effectiveAgreementSignatoryId,
+    stepStatus,
+    router,
+    isViewMode,
+    isEditingMode,
+    notifications,
+  ])
+
   useEffect(() => {
     // Only process step data if we have agreementSignatoryId and stepStatus
     // Skip processing for Review step (Step 3) as it loads its own data
@@ -255,8 +370,14 @@ export default function AgreementSignatoryStepperWrapper({
 
   const handleSaveAndNext = async () => {
     try {
-      setIsSaving(true)
       notifications.clearNotifications()
+
+      const canProceed = await validateCurrentStep()
+      if (!canProceed) {
+        return
+      }
+
+      setIsSaving(true)
 
       // In view mode, just navigate without saving
       if (isViewMode) {
@@ -358,26 +479,6 @@ export default function AgreementSignatoryStepperWrapper({
           setIsSaving(false)
           return
         }
-      }
-
-      // Trigger form validation
-      const isFormValid = await methods.trigger()
-
-      if (!isFormValid) {
-        const formErrors = methods.formState.errors
-        const errorFields = Object.keys(formErrors)
-        const errorMessages = errorFields.map((field) => {
-          const error = formErrors[field as keyof typeof formErrors]
-          return error?.message || `${field} is invalid`
-        })
-
-        notifications.showError(
-          errorMessages.length > 0
-            ? `Please fix the following errors: ${errorMessages.join(', ')}`
-            : 'Please fill in all required fields correctly before proceeding.'
-        )
-        setIsSaving(false)
-        return
       }
 
       // All other steps make API calls
@@ -672,14 +773,14 @@ export default function AgreementSignatoryStepperWrapper({
               <Button
                 onClick={handleSaveAndNext}
                 variant="contained"
-                disabled={isSaving}
+                disabled={isSaving || isStepValidating}
                 startIcon={
-                  isSaving ? (
+                  isSaving || isStepValidating ? (
                     <CircularProgress size={16} color="inherit" />
                   ) : undefined
                 }
                 sx={{
-                  width: isSaving ? '140px' : '114px',
+                  width: isSaving || isStepValidating ? '140px' : '114px',
                   height: '36px',
                   gap: '6px',
                   opacity: 1,
@@ -706,8 +807,10 @@ export default function AgreementSignatoryStepperWrapper({
                   },
                 }}
               >
-                {isSaving
-                  ? 'Saving...'
+                {isSaving || isStepValidating
+                  ? isSaving
+                    ? 'Saving...'
+                    : 'Validating...'
                   : isViewMode
                     ? activeStep === steps.length - 1
                       ? 'Done'

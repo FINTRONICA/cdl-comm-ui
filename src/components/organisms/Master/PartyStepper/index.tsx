@@ -12,7 +12,7 @@ import {
   CircularProgress,
   Typography,
 } from '@mui/material'
-import { FormProvider } from 'react-hook-form'
+import { FormProvider, type FieldErrors, type FieldPath } from 'react-hook-form'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { usePartyStepStatus, usePartyStepManager } from '@/hooks'
 import { useCreateWorkflowRequest } from '@/hooks/workflow'
@@ -31,6 +31,7 @@ import {
 } from './hooks'
 import { useStepContentRenderer } from './stepRenderer'
 import { transformStepData, useStepDataTransformers } from './transformers'
+import type { PartyDataStepsData } from './partyTypes'
 
 // Hook to detect dark mode
 const useIsDarkMode = () => {
@@ -66,6 +67,8 @@ export default function PartyStepperWrapper({
   const [activeStep, setActiveStep] = useState(initialStep)
   const [isEditingMode, setIsEditingMode] = useState(propIsEditingMode || false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isStepValidating, setIsStepValidating] = useState(false)
+  const isBusy = isSaving || isStepValidating
   const router = useRouter()
   const searchParams = useSearchParams()
   const fullPathname = usePathname()
@@ -140,6 +143,10 @@ export default function PartyStepperWrapper({
 
   const { data: stepStatus } = usePartyStepStatus(partyId || '')
 
+  useEffect(() => {
+    setActiveStep(initialStep)
+  }, [initialStep])
+
   // Set editing mode based on prop, URL parameter, or partyId
   useEffect(() => {
     // Use prop if provided (from page component)
@@ -186,9 +193,151 @@ export default function PartyStepperWrapper({
     }
   }, [activeStep, stepStatus, partyId, formState.shouldResetForm, dataProcessing, methods, setShouldResetForm])
 
+  const stepFieldOrder = useMemo(
+    () => ({
+      0: [
+        'id',
+        'partyCifNumber',
+        'partyFullName',
+        'addressLine1',
+        'addressLine2',
+        'addressLine3',
+      ],
+      2: [
+        'customerCifNumber',
+        'partyDropdown',
+        'signatoryFullName',
+        'addressLine1',
+        'addressLine2',
+        'addressLine3',
+      ],
+    }),
+    []
+  )
+
+  const getErrorByPath = useCallback((errors: FieldErrors, path: string) => {
+    return path.split('.').reduce<unknown>((acc, key) => {
+      if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+        return (acc as Record<string, unknown>)[key]
+      }
+      return undefined
+    }, errors)
+  }, [])
+
+  const findFirstErrorPath = useCallback((errors: FieldErrors, prefix = ''): string | null => {
+    for (const [key, value] of Object.entries(errors)) {
+      const currentPath = prefix ? `${prefix}.${key}` : key
+      if (value && typeof value === 'object') {
+        if ('message' in value || 'type' in value) {
+          return currentPath
+        }
+        const nested = findFirstErrorPath(value as FieldErrors, currentPath)
+        if (nested) return nested
+      }
+    }
+    return null
+  }, [])
+
+  const scrollToFirstError = useCallback(
+    (step: number) => {
+      const errors = methods.formState.errors as FieldErrors
+      const orderedFields = stepFieldOrder[step as keyof typeof stepFieldOrder] || []
+      const orderedMatch = orderedFields.find((field) => !!getErrorByPath(errors, field))
+      const fallbackMatch = orderedMatch || findFirstErrorPath(errors)
+      if (!fallbackMatch || typeof document === 'undefined') return
+      methods.setFocus(fallbackMatch as never)
+      const fieldElement = document.querySelector(`[name="${fallbackMatch}"]`) as HTMLElement | null
+      fieldElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    },
+    [methods, stepFieldOrder, getErrorByPath, findFirstErrorPath]
+  )
+
+  const validateFormFields = useCallback(
+    async (step: number, fields: string[]) => {
+      const fieldList = fields as FieldPath<PartyDataStepsData>[]
+      const isFormValid = await methods.trigger(fieldList, { shouldFocus: false })
+      if (!isFormValid) {
+        notifications.showError(
+          'Please fill in all required fields correctly before proceeding.'
+        )
+        scrollToFirstError(step)
+      }
+      return isFormValid
+    },
+    [methods, notifications, scrollToFirstError]
+  )
+
+  const stepConfigs = useMemo(
+    () => ({
+      0: {
+        validateStep: async () => validateFormFields(0, stepFieldOrder[0]),
+      },
+      1: {
+        validateStep: async () => {
+          if (!partyId) {
+            notifications.showError(
+              'Party ID is required. Please complete Step 1 first.'
+            )
+            return false
+          }
+          return true
+        },
+      },
+      2: {
+        validateStep: async () => validateFormFields(2, stepFieldOrder[2]),
+      },
+      3: {
+        validateStep: async () => {
+          if (!stepStatus?.step1) {
+            notifications.showError('Please complete Party Details before continuing.')
+            return false
+          }
+          if (!stepStatus?.step2) {
+            notifications.showError(
+              'Please complete Authorized Signatory details before continuing.'
+            )
+            return false
+          }
+          return true
+        },
+      },
+    }),
+    [validateFormFields, stepFieldOrder, notifications, partyId, stepStatus?.step1, stepStatus?.step2]
+  )
+
+  const validateCurrentStep = useCallback(async () => {
+    const stepConfig = stepConfigs[activeStep as keyof typeof stepConfigs]
+    const validator = stepConfig?.validateStep
+    if (!validator) return true
+    setIsStepValidating(true)
+    try {
+      return await validator()
+    } finally {
+      setIsStepValidating(false)
+    }
+  }, [activeStep, stepConfigs])
+
+  useEffect(() => {
+    if (!partyId || isNewPartyRoute || !stepStatus) return
+    const maxAllowedStep = stepStatus.step1
+      ? stepStatus.step2
+        ? 3
+        : 2
+      : 0
+    if (activeStep <= maxAllowedStep) return
+    const targetStep = maxAllowedStep
+    const querySuffix = isViewMode
+      ? '?mode=view'
+      : isEditingMode
+        ? '?editing=true'
+        : ''
+    router.replace(`/master/party/${partyId}/step/${targetStep + 1}${querySuffix}`)
+    setActiveStep(targetStep)
+    notifications.showError('Please complete previous steps before continuing.')
+  }, [activeStep, partyId, isNewPartyRoute, stepStatus, router, isViewMode, isEditingMode, notifications])
+
   const handleSaveAndNext = async () => {
     try {
-      setIsSaving(true)
       notifications.clearNotifications()
 
       // In view mode, just navigate without saving
@@ -210,6 +359,13 @@ export default function PartyStepperWrapper({
         }
         return
       }
+
+      const canProceed = await validateCurrentStep()
+      if (!canProceed) {
+        return
+      }
+
+      setIsSaving(true)
 
       // Documents (Optional) step doesn't need API call here - items are saved when uploaded
       // This step should skip ALL validation and just navigate
@@ -299,16 +455,6 @@ export default function PartyStepperWrapper({
         } finally {
           setIsSaving(false)
         }
-        return
-      }
-
-      const isFormValid = await methods.trigger()
-
-      if (!isFormValid) {
-        notifications.showError(
-          'Please fill in all required fields correctly before proceeding.'
-        )
-        setIsSaving(false)
         return
       }
 
@@ -600,14 +746,14 @@ export default function PartyStepperWrapper({
               <Button
                 onClick={handleSaveAndNext}
                 variant="contained"
-                disabled={isSaving}
+                disabled={isBusy}
                 startIcon={
-                  isSaving ? (
+                  isBusy ? (
                     <CircularProgress size={16} color="inherit" />
                   ) : undefined
                 }
                 sx={{
-                  width: isSaving ? '140px' : '114px',
+                  width: isBusy ? '140px' : '114px',
                   height: '36px',
                   gap: '6px',
                   opacity: 1,
@@ -634,8 +780,10 @@ export default function PartyStepperWrapper({
                   },
                 }}
               >
-                {isSaving
-                  ? 'Saving...'
+                {isBusy
+                  ? isSaving
+                    ? 'Saving...'
+                    : 'Validating...'
                   : isViewMode
                     ? activeStep === steps.length - 1
                       ? 'Done'

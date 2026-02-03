@@ -14,7 +14,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import type { Theme } from "@mui/material/styles";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import Step1, { type Step1Ref } from "./steps/Step1";
 import Step2 from "./steps/Step2";
 import DocumentUploadFactory from "../../DocumentUpload/DocumentUploadFactory";
@@ -28,6 +28,7 @@ import {
   cancelButtonSx,
 } from "./styles";
 import { useBeneficiaryLabelsWithCache } from "@/hooks/master/CustomerHook/useBeneficiaryLabelsWithCache";
+import { useBeneficiaryStepStatus } from "@/hooks/master/CustomerHook/useBeneficiary";
 import { useAppStore } from "@/store";
 import { BeneficiaryFormData } from "./types";
 import { DEFAULT_FORM_VALUES } from "./constants";
@@ -65,6 +66,7 @@ export default function BeneficiaryStepperWrapper({
 
   const [activeStep, setActiveStep] = useState(initialStep);
   const [isSaving, setIsSaving] = useState(false);
+  const [isStepValidating, setIsStepValidating] = useState(false);
   const [currentBeneficiaryId, setCurrentBeneficiaryId] = useState<
     string | null
   >(beneficiaryId || null);
@@ -81,6 +83,13 @@ export default function BeneficiaryStepperWrapper({
 
   const isEditMode = Boolean(currentBeneficiaryId);
   const step1Ref = useRef<Step1Ref>(null);
+  const { data: stepStatus } = useBeneficiaryStepStatus(
+    currentBeneficiaryId ? currentBeneficiaryId : ""
+  );
+
+  useEffect(() => {
+    setActiveStep(initialStep);
+  }, [initialStep]);
 
   const updateURL = useCallback(
     (step: number, id?: string | null) => {
@@ -128,6 +137,34 @@ export default function BeneficiaryStepperWrapper({
     defaultValues: DEFAULT_FORM_VALUES,
   });
 
+  const findFirstErrorPath = useCallback(
+    (errors: FieldErrors, prefix = ""): string | null => {
+      for (const [key, value] of Object.entries(errors)) {
+        const currentPath = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === "object") {
+          if ("message" in value || "type" in value) {
+            return currentPath;
+          }
+          const nested = findFirstErrorPath(value as FieldErrors, currentPath);
+          if (nested) return nested;
+        }
+      }
+      return null;
+    },
+    []
+  );
+
+  const scrollToFirstError = useCallback(() => {
+    const errors = methods.formState.errors as FieldErrors;
+    const firstError = findFirstErrorPath(errors);
+    if (!firstError || typeof document === "undefined") return;
+    methods.setFocus(firstError as never);
+    const fieldElement = document.querySelector(
+      `[name="${firstError}"]`
+    ) as HTMLElement | null;
+    fieldElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [methods, findFirstErrorPath]);
+
   const handleAsyncStep = useCallback(
     async (stepRef: { handleSaveAndNext: () => Promise<void> }) => {
       try {
@@ -142,12 +179,13 @@ export default function BeneficiaryStepperWrapper({
             ? error.message
             : "Failed to save beneficiary. Please try again.";
         setErrorMessage(errorMsg);
+        scrollToFirstError();
         return false;
       } finally {
         setIsSaving(false);
       }
     },
-    []
+    [scrollToFirstError]
   );
 
   const navigateToNextStep = useCallback(() => {
@@ -158,25 +196,59 @@ export default function BeneficiaryStepperWrapper({
     }
   }, [activeStep, steps.length, currentBeneficiaryId, updateURL]);
 
+  const stepConfigs = useMemo(
+    () => ({
+      0: {
+        validateStep: async () => {
+          if (isViewMode) return true;
+          if (!step1Ref.current) return false;
+          return handleAsyncStep(step1Ref.current);
+        },
+      },
+      1: {
+        validateStep: async () => {
+          if (!currentBeneficiaryId) {
+            setErrorMessage(
+              "Beneficiary ID is required to proceed to Review step."
+            );
+            return false;
+          }
+          return true;
+        },
+      },
+      2: {
+        validateStep: async () => {
+          if (!stepStatus?.step1) {
+            setErrorMessage("Please complete Beneficiary Details before continuing.");
+            return false;
+          }
+          return true;
+        },
+      },
+    }),
+    [isViewMode, handleAsyncStep, currentBeneficiaryId, stepStatus?.step1]
+  );
+
+  const validateCurrentStep = useCallback(async () => {
+    const stepConfig = stepConfigs[activeStep as keyof typeof stepConfigs];
+    const validator = stepConfig?.validateStep;
+    if (!validator) return true;
+    setIsStepValidating(true);
+    try {
+      return await validator();
+    } finally {
+      setIsStepValidating(false);
+    }
+  }, [activeStep, stepConfigs]);
+
   const handleNext = useCallback(async () => {
-    if (isViewMode) {
-      navigateToNextStep();
+    const canProceed = await validateCurrentStep();
+    if (!canProceed) return;
+    if (activeStep === 0) {
       return;
     }
-
-    if (activeStep === 0 && step1Ref.current) {
-      await handleAsyncStep(step1Ref.current);
-      return;
-    }
-
-    if (activeStep === 1) {
-      // Documents step - just navigate
-      navigateToNextStep();
-      return;
-    }
-
     navigateToNextStep();
-  }, [isViewMode, activeStep, handleAsyncStep, navigateToNextStep]);
+  }, [activeStep, navigateToNextStep, validateCurrentStep]);
 
   const handleBack = useCallback(() => {
     const prevStep = activeStep - 1;
@@ -221,6 +293,18 @@ export default function BeneficiaryStepperWrapper({
     },
     [currentBeneficiaryId, isViewMode, router]
   );
+
+  useEffect(() => {
+    if (!currentBeneficiaryId || !stepStatus) return;
+    const maxAllowedStep = stepStatus.step1 ? 2 : 0;
+    if (activeStep <= maxAllowedStep) return;
+    const queryParam = isViewMode ? "?mode=view" : "?editing=true";
+    router.replace(
+      `/master/beneficiary/${currentBeneficiaryId}/step/${maxAllowedStep + 1}${queryParam}`
+    );
+    setActiveStep(maxAllowedStep);
+    setErrorMessage("Please complete previous steps before continuing.");
+  }, [activeStep, currentBeneficiaryId, stepStatus, router, isViewMode]);
 
   const getStepContent = useCallback(
     (step: number) => {
@@ -337,18 +421,20 @@ export default function BeneficiaryStepperWrapper({
                     : handleNext
                 }
                 variant="contained"
-                disabled={isSaving}
+                disabled={isSaving || isStepValidating}
                 startIcon={
-                  isSaving ? (
+                  isSaving || isStepValidating ? (
                     <CircularProgress size={16} color="inherit" />
                   ) : undefined
                 }
                 sx={nextButtonSx}
               >
-                {isSaving
-                  ? activeStep === steps.length - 1
-                    ? "Submitting..."
-                    : "Saving..."
+                {isSaving || isStepValidating
+                  ? isSaving
+                    ? activeStep === steps.length - 1
+                      ? "Submitting..."
+                      : "Saving..."
+                    : "Validating..."
                   : activeStep === steps.length - 1
                     ? isViewMode
                       ? "Close"
