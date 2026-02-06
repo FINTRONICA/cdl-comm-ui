@@ -60,8 +60,8 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Right side - Controls */}
         <div className="flex items-center gap-4">
           <ThemeSwitcher />
-          <div className="inline-flex items-center justify-center min-h-0 px-0.5 text-xs font-semibold text-white bg-blue-500 rounded-md shadow-sm aspect-square min-w-4">
-            Comm
+          <div className="inline-flex items-center justify-center min-h-0 px-0.5 text-xs font-semibold text-white bg-blue-500 rounded-md shadow-sm aspect-square min-w-2">
+            COMM
           </div>
           <UserProfile
             name={displayName}
