@@ -381,6 +381,8 @@ export interface WorkflowRequestUIData {
   [key: string]: unknown
 }
 
+const WORKFLOW_REQUEST_TIMEOUT_MS = 5 * 60 * 1000
+
 export const mapToAwaitingActionsUIData = (
   apiData: WorkflowAwaitingAction
 ): AwaitingActionsUIData => {
@@ -499,10 +501,18 @@ export class WorkflowRequestService {
   ): Promise<WorkflowRequest> {
     try {
       const url = buildApiUrl(API_ENDPOINTS.WORKFLOW_REQUEST.CREATE_REQUEST)
-      const result = await apiClient.post<WorkflowRequest>(url, data)
+      console.log('[WorkflowRequest] create-request start', {
+        url,
+        timeoutMs: WORKFLOW_REQUEST_TIMEOUT_MS,
+      })
+      const result = await apiClient.post<WorkflowRequest>(url, data, {
+        timeout: WORKFLOW_REQUEST_TIMEOUT_MS,
+      })
+      console.log('[WorkflowRequest] create-request success')
 
       return result
     } catch (error) {
+      console.error('[WorkflowRequest] create-request error', error)
       throw error
     }
   }
@@ -783,10 +793,18 @@ export class WorkflowRequestService {
 
     try {
       const url = buildApiUrl(API_ENDPOINTS.WORKFLOW_REQUEST.CREATE_REQUEST)
-      const result = await apiClient.post<WorkflowRequest>(url, hardcodedData)
+      console.log('[WorkflowRequest] create-request (developer) start', {
+        url,
+        timeoutMs: WORKFLOW_REQUEST_TIMEOUT_MS,
+      })
+      const result = await apiClient.post<WorkflowRequest>(url, hardcodedData, {
+        timeout: WORKFLOW_REQUEST_TIMEOUT_MS,
+      })
+      console.log('[WorkflowRequest] create-request (developer) success')
 
       return result
     } catch (error) {
+      console.error('[WorkflowRequest] create-request (developer) error', error)
       throw error
     }
   }
